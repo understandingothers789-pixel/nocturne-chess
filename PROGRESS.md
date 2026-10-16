@@ -491,3 +491,19 @@ behavior changed. A second Windows build will validate the correction.
 Local unittest also ran 91 tests, OK (skipped=2), 20.276s; source archive
 integrity/exclusions and Linux wheel native-reader/license inclusion checked.
 Inspected a rendered analysis branch tree showing Bc4 and Nc3 together.
+
+The corrected Windows attempt compiled/installed the native reader, downloaded
+verified fixtures, passed Ruff and passed its full test step. Packaging/frozen
+smokes remain in progress. Additional executed local differential check used
+seed 400 and 120 valid nonterminal KQ/KR/KP three-piece positions: all WDL and
+DTZ values matched python-chess's independent Syzygy reader. The Linux native
+wheel built successfully and was inspected for reader/license inclusion and
+absence of table files.
+
+Windows attempt 38970164641 compiled both apps and passed both full test runs
+(91 run, OK skipped=2, 27.973s and 27.706s), but the new frozen tablebase smoke
+failed decoding a diagnostic middle dot: redirected Windows UCI stdout used the
+legacy code page. Made UCI entry-point stdin/stdout/stderr explicitly UTF-8,
+also ensuring non-ASCII Syzygy folder paths survive the transport. The frozen
+Syzygy smoke remains the regression check; rebuilding rather than publishing
+the failed package.

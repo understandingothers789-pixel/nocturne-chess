@@ -169,6 +169,11 @@ class UciSession:
 
 
 def main():
+    # Windows redirected console streams otherwise use the legacy code page.
+    # Keep folder paths and diagnostic strings consistent with UCI transports.
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     session = UciSession()
     try:
         for line in sys.stdin:
