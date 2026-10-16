@@ -18,7 +18,7 @@ if pyside_licenses.exists():
 
 gui = Analysis(
     [str(root / 'scripts/launch_gui.py')], pathex=[str(root / 'src')],
-    binaries=[], datas=common_data, hiddenimports=[], hookspath=[], hooksconfig={},
+    binaries=[], datas=common_data, hiddenimports=["nocturne.engine._syzygy"], hookspath=[], hooksconfig={},
     runtime_hooks=[], excludes=['chess', 'pytest', 'numpy', 'tkinter', 'PySide6.QtTest'],
     noarchive=False,
 )
@@ -36,7 +36,7 @@ uci = Analysis(
     [str(root / 'scripts/launch_uci.py')], pathex=[str(root / 'src')],
     binaries=[], datas=[(str(root / 'LICENSE'), '.'),
                         (str(root / 'THIRD_PARTY_NOTICES.md'), '.'),
-                        (str(root / 'licenses'), 'licenses')], hiddenimports=[],
+                        (str(root / 'licenses'), 'licenses')], hiddenimports=["nocturne.engine._syzygy"],
     hookspath=[], hooksconfig={}, runtime_hooks=[],
     excludes=['PySide6', 'chess', 'pytest', 'numpy', 'tkinter'], noarchive=False,
 )

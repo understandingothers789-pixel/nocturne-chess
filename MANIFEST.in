@@ -1,0 +1,2 @@
+recursive-include native *.c *.h LICENSE *.md
+recursive-include licenses *.txt

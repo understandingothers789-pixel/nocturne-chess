@@ -55,6 +55,7 @@ class SearchInfo:
     seconds: float
     pv: tuple[Move, ...]
     hashfull: int = 0  # permille
+    tbhits: int = 0
 
     @property
     def nps(self) -> int:

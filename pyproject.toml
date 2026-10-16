@@ -1,14 +1,15 @@
 [build-system]
-requires = ["setuptools>=75"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "nocturne-chess"
-version = "0.3.2"
+version = "0.4.0"
 description = "An offline native chess studio with an independent, inspectable chess engine"
 readme = "README.md"
 requires-python = ">=3.12"
-license = {file = "LICENSE"}
+license = "MIT"
+license-files = ["LICENSE", "licenses/*.txt"]
 authors = [{name = "Nocturne Chess contributors"}]
 dependencies = ["PySide6>=6.8,<7"]
 

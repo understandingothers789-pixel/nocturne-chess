@@ -6,6 +6,12 @@ icon are original project code/assets, distributed under the MIT license in
 
 ## Runtime
 
+* **Fathom**: MIT-licensed Syzygy reader, pinned to
+  `c9c6fef0dddc05d2e242c183acf5833149ab676d` from
+  https://github.com/jdart1/Fathom. See `licenses/FATHOM-LICENSE.txt`.
+  Local Unicode-path patch is documented in `native/fathom/README.nocturne.md`.
+  No tablebase files are distributed in the application.
+
 * **Python**: Python Software Foundation License. The actual Python runtime's
   license text is retained in `licenses/PYTHON-LICENSE.txt`.
   https://www.python.org/psf/license/

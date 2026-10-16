@@ -6,7 +6,7 @@ Completed checks are supported by executed results in `PROGRESS.md`.
 
 - [x] Separate rules, notation, engine, GUI, persistence and test modules.
 - [x] Complete standard legal move generation, FEN and reversible state.
-- [x] SAN/UCI notation, main-line PGN, automatic/claimable draw separation.
+- [x] SAN/UCI notation, PGN with move variations, automatic/claimable draw separation.
 - [x] Six reference perft positions, deep start/Kiwipete counts, hash integrity.
 - [x] Independently compared seeded games using development-only python-chess.
 - [x] Native two-player board; click, drag and explicit underpromotion verified.
@@ -55,7 +55,10 @@ Completed checks are supported by executed results in `PROGRESS.md`.
 - [x] Analysis panel left, moves below, display-only history/PV hover previews.
 - [x] Saved engine-game results and aggregate white/black/draw counts.
 - [ ] Graphical unrestricted position-placement editor.
-- [ ] Full variation trees and preserving PGN annotations/variations.
+- [x] Ordered variation trees, branch navigation/promotion, PGN and saved-tree round trips.
+- [x] Offline Syzygy WDL/DTZ root probes and optional external-engine path.
+- [ ] Preserve PGN comments/NAGs and support Multi-PV.
+- [ ] Validate full five/seven-piece table collections and cold-disk probe latency.
 - [ ] Multi-PV with independently scored lines.
 - [ ] Defensible depth-aware move classification and automated blunder review.
 - [ ] Reliable licensed opening database/identification.

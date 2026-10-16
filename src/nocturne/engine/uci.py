@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import sys
 import threading
+import time
+from dataclasses import replace
 
 from .. import __version__
 from ..core.board import Board
 from .search import MATE, MATE_THRESHOLD, SearchInfo, SearchLimits, Searcher
+from .tablebase import probe, root_result
 
 
 def uci_info(info: SearchInfo) -> str:
@@ -17,13 +20,14 @@ def uci_info(info: SearchInfo) -> str:
         score = f"mate {distance if info.score > 0 else -distance}"
     pv = " ".join(m.uci() for m in info.pv)
     return (f"info depth {info.depth} seldepth {info.seldepth} score {score} nodes {info.nodes} "
-            f"nps {info.nps} time {int(info.seconds * 1000)} hashfull {info.hashfull} pv {pv}")
+            f"nps {info.nps} time {int(info.seconds * 1000)} hashfull {info.hashfull} tbhits {info.tbhits} pv {pv}")
 
 
 class UciSession:
     def __init__(self, output=None):
         self.board = Board()
         self.hash_mb = 32
+        self.syzygy_path = ""
         self._thread: threading.Thread | None = None
         self._cancel = threading.Event()
         self._write_lock = threading.Lock()
@@ -90,10 +94,21 @@ class UciSession:
         board = self.board.copy()
         self._cancel = threading.Event()
         cancel = self._cancel
+        path = self.syzygy_path
 
         def run():
             try:
-                result = Searcher(limits, cancel.is_set).search(board, lambda info: self.send(uci_info(info)))
+                started = time.perf_counter()
+                tb = probe(board, path, cancel.is_set)
+                if path:
+                    self.send("info string " + tb["message"])
+                result = root_result(board, tb, started)
+                if result is None:
+                    remaining = max(.001, limits.seconds - (time.perf_counter() - started))
+                    result = Searcher(replace(limits, seconds=remaining), cancel.is_set).search(
+                        board, lambda info: self.send(uci_info(info)))
+                elif result.info.tbhits:
+                    self.send(uci_info(result.info))
                 move = result.best_move
                 if result.claim_draw:
                     self.send("info string draw claim available; UCI transport returns a legal move")
@@ -116,7 +131,8 @@ class UciSession:
             if command == "uci":
                 for line in (f"id name Nocturne {__version__}", "id author Nocturne Chess contributors",
                              "option name Hash type spin default 32 min 1 max 256",
-                             "option name Threads type spin default 1 min 1 max 1", "uciok"):
+                             "option name Threads type spin default 1 min 1 max 1",
+                             "option name SyzygyPath type string default <empty>", "uciok"):
                     self.send(line)
             elif command == "isready":
                 self.send("readyok")
@@ -131,6 +147,9 @@ class UciSession:
                 value = " ".join(args[value_index + 1:])
                 if name == "hash":
                     self.hash_mb = min(256, max(1, int(value)))
+                elif name == "syzygypath":
+                    self.stop()
+                    self.syzygy_path = "" if value == "<empty>" else value
                 elif name == "threads" and value != "1":
                     self.send("info string Nocturne supports one search thread")
             elif command == "position":

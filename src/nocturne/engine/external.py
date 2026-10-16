@@ -17,7 +17,7 @@ class ExternalEngineError(RuntimeError):
 
 
 def run_external(command: str | list[str], initial_fen: str, moves: list[str], limits: SearchLimits,
-                 cancel: Callable[[], bool], on_info: Callable[[SearchInfo], None]) -> SearchResult:
+                 cancel: Callable[[], bool], on_info: Callable[[SearchInfo], None], tablebase_path="") -> SearchResult:
     board = Board(initial_fen)
     for move in moves:
         board.play_uci(move)
@@ -86,6 +86,10 @@ def run_external(command: str | list[str], initial_fen: str, moves: list[str], l
             send(f"setoption name Hash value {limits.hash_mb}")
         if "threads" in options:
             send("setoption name Threads value 1")
+        if "syzygypath" in options and tablebase_path:
+            if "\n" in tablebase_path or "\r" in tablebase_path:
+                raise ExternalEngineError("Invalid Syzygy path")
+            send("setoption name SyzygyPath value " + tablebase_path)
         send("ucinewgame")
         send("isready")
         ready_deadline = time.perf_counter() + 5
@@ -158,6 +162,7 @@ def parse_info(line: str, board: Board, elapsed: float, previous: SearchInfo) ->
                 copy.push(move)
         return SearchInfo(number("depth", previous.depth), number("seldepth", previous.seldepth), score,
                           max(0, number("nodes", previous.nodes)), elapsed, tuple(pv),
-                          min(1000, max(0, number("hashfull", previous.hashfull))))
+                          min(1000, max(0, number("hashfull", previous.hashfull))),
+                          max(0, number("tbhits", previous.tbhits)))
     except (ValueError, IndexError):
         return None

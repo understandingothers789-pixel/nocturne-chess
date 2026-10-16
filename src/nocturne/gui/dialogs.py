@@ -153,6 +153,14 @@ class SettingsDialog(QDialog):
         engine_row.addWidget(self.external)
         engine_row.addWidget(browse)
         form.addRow("External engine", engine_row)
+        tb_row = QHBoxLayout()
+        self.syzygy = QLineEdit(config.get("syzygy_path", ""))
+        self.syzygy.setPlaceholderText("Folder with .rtbw and .rtbz files")
+        tb_browse = QPushButton("Browse…")
+        tb_browse.clicked.connect(self._browse_syzygy)
+        tb_row.addWidget(self.syzygy)
+        tb_row.addWidget(tb_browse)
+        form.addRow("Syzygy tablebases", tb_row)
         layout.addLayout(form)
         note = QLabel("Custom engine: one search process, one search thread.\nHash size is an approximate Python memory budget. No engine is bundled.")
         note.setObjectName("muted")
@@ -167,11 +175,16 @@ class SettingsDialog(QDialog):
         if file:
             self.external.setText(file)
 
+    def _browse_syzygy(self):
+        directory = QFileDialog.getExistingDirectory(self, "Choose Syzygy tablebase folder", self.syzygy.text())
+        if directory:
+            self.syzygy.setText(directory)
+
     def config(self):
         return {"theme": self.theme.currentText(), **{k: c.isChecked() for k, c in self.checks.items()},
                 "hash_mb": self.hash.value(), "analysis_depth": self.depth.value(),
                 "analysis_seconds": self.seconds.value(), "external_path": self.external.text().strip(),
-                "watch_delay_ms": self.delay.value()}
+                "watch_delay_ms": self.delay.value(), "syzygy_path": self.syzygy.text().strip()}
 
 
 class TextDialog(QDialog):

@@ -13,3 +13,7 @@ dist/
 *.db-wal
 *.db-shm
 .coverage
+
+.tb-test-fixtures/
+*.so
+*.pyd

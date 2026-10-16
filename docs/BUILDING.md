@@ -105,3 +105,17 @@ Preserve Qt's applicable license/source-availability notices and the supplied
 license texts. Review the exact platform libraries collected by PyInstaller
 before distribution. The pinned build describes dependency versions and steps;
 byte-identical binaries across machines are not promised.
+
+## Native Syzygy reader (0.4.0+)
+
+Source installation compiles the bundled MIT Fathom C extension. On Windows,
+install Visual Studio Build Tools with Desktop development with C++ (MSVC and
+Windows SDK), then use the documented Python build. GitHub Windows runners
+provide this compiler. Linux developers can use `CC=gcc LDSHARED='gcc -shared'`
+if their Python configuration names an unavailable compiler. No python-chess
+runtime dependency is introduced.
+
+CI explicitly downloads checksum-pinned, small development-only Syzygy fixtures,
+runs real probes and independent comparisons, and probes again through the frozen
+UCI executable. Fixtures are excluded from source/release bundles. The native
+reader and its license are included in both Windows application bundles.

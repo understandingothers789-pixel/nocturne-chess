@@ -1,6 +1,8 @@
 """Developer-only Windows builds; release archives require trusted native signatures."""
 
 import argparse
+import os
+import threading
 from pathlib import Path
 import shutil
 import subprocess
@@ -29,6 +31,35 @@ def smoke_test(dist: Path):
                  capture_output=True, text=True, encoding="utf-8", timeout=15)
     if not {"uciok", "readyok"}.issubset(result.stdout.splitlines()):
         raise BuildError("The packaged UCI handshake failed")
+    fixtures = os.environ.get("NOCTURNE_TEST_SYZYGY")
+    if fixtures:
+        process = subprocess.Popen([str(dist / "Nocturne-UCI" / "Nocturne-UCI.exe")],
+                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, text=True, encoding="utf-8")
+        # Give the frozen engine time to answer before quit cancels its search.
+        def finish():
+            try:
+                process.stdin.write("quit\n")
+                process.stdin.flush()
+            except (OSError, ValueError):
+                pass
+        timer = threading.Timer(3, finish)
+        timer.start()
+        try:
+            commands = ("setoption name SyzygyPath value " + fixtures + "\n"
+                        "position fen 8/8/8/8/8/2K5/4Q3/k7 w - - 0 1\ngo depth 2\n")
+            process.stdin.write(commands)
+            process.stdin.flush()
+            process.wait(timeout=15)
+            output = process.stdout.read()
+            if "tbhits 1" not in output or "bestmove " not in output:
+                raise BuildError("Packaged Syzygy probe failed: " + output)
+        finally:
+            timer.cancel()
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+
 
 
 def build_only(skip_tests=False):

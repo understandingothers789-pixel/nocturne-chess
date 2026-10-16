@@ -1,4 +1,4 @@
-"""Legal SAN and single-game PGN main-line interchange."""
+"""Legal SAN and single-game PGN interchange with recursive variations."""
 
 from __future__ import annotations
 
@@ -61,51 +61,15 @@ class PgnGame:
     initial_fen: str = START_FEN
     moves: list[Move] = field(default_factory=list)
     result: str = "*"
+    edges: list[tuple[int, Move]] = field(default_factory=list)
 
 
 _TAG = re.compile(r'^\s*\[([A-Za-z0-9_]+)\s+"((?:\\.|[^"\\])*)"\]\s*', re.MULTILINE)
 _RESULTS = {"1-0", "0-1", "1/2-1/2", "*"}
 
 
-def _mainline(text: str) -> str:
-    output: list[str] = []
-    variation = 0
-    comment = False
-    line_comment = False
-    for char in text:
-        if line_comment:
-            if char == "\n":
-                line_comment = False
-                output.append(" ")
-            continue
-        if comment:
-            if char == "}":
-                comment = False
-                output.append(" ")
-            continue
-        if char == ";":
-            line_comment = True
-        elif char == "{":
-            comment = True
-        elif char == "(":
-            variation += 1
-            output.append(" ")
-        elif char == ")":
-            variation -= 1
-            if variation < 0:
-                raise ValueError("Unmatched PGN variation terminator")
-            output.append(" ")
-        elif char == "}":
-            raise ValueError("Unmatched PGN comment terminator")
-        elif not variation:
-            output.append(char)
-    if variation or comment:
-        raise ValueError("Unclosed PGN comment or variation")
-    return "".join(output)
-
-
 def read_pgn(text: str) -> PgnGame:
-    """Read one game's main line. Comments/NAGs/variations are intentionally skipped."""
+    """Read one game with ordered recursive variations; skip comments and NAGs."""
     if len(text) > 4_000_000:
         raise ValueError("PGN exceeds the 4 MB single-game import limit")
     headers: dict[str, str] = {}
@@ -119,27 +83,55 @@ def read_pgn(text: str) -> PgnGame:
     initial = headers.get("FEN", START_FEN)
     board = Board(initial)
     game = PgnGame(headers, initial)
-    body = re.sub(r"\$\d+", " ", _mainline(text[pos:]))
+    # Strip comments/NAGs while retaining RAV parentheses.
+    body = re.sub(r";[^\n]*|\{[^}]*\}", " ", text[pos:])
+    if "{" in body or "}" in body:
+        raise ValueError("Unclosed or unmatched PGN comment")
+    body = re.sub(r"\$\d+", " ", body)
     body = re.sub(r"\d+\.(?:\.\.)?", " ", body)
-    tokens = body.split()
-    for index, token in enumerate(tokens):
-        if token in ("...", "e.p.", "ep") or re.fullmatch(r"[!?]+", token):
+    tokens = re.findall(r"[()]|[^\s()]+", body)
+    current, stack, ended, root_result = 0, [], False, None
+    lookup, children = {}, {0: []}
+    for token in tokens:
+        if token == "(":
+            if ended or current == 0:
+                raise ValueError("Variation has no preceding move")
+            stack.append((board.copy(), current, ended))
+            current = game.edges[current - 1][0]
+            board.pop()
+            ended = False
+        elif token == ")":
+            if not stack:
+                raise ValueError("Unmatched PGN variation terminator")
+            board, current, ended = stack.pop()
+        elif token in ("...", "e.p.", "ep") or re.fullmatch(r"[!?]+", token):
             continue
-        if token in _RESULTS:
-            game.result = token
-            if index != len(tokens) - 1:
+        elif token in _RESULTS:
+            if ended:
                 raise ValueError("Import one PGN game at a time")
-            break
-        if len(game.moves) >= 20_000:
-            raise ValueError("PGN has too many moves")
-        try:
+            ended = True
+            if not stack:
+                root_result = token
+        else:
+            if ended:
+                raise ValueError("Import one PGN game at a time")
             move = parse_san(board, token)
-        except ValueError as exc:
-            raise ValueError(f"PGN at ply {len(game.moves) + 1}: {exc}") from exc
-        game.moves.append(move)
-        board.push(move)
-    else:
-        game.result = headers.get("Result", "*")
+            key = (current, move)
+            if key not in lookup:
+                if len(game.edges) >= 20_000:
+                    raise ValueError("PGN has too many moves")
+                game.edges.append((current, move))
+                lookup[key] = len(game.edges)
+                children.setdefault(current, []).append(len(game.edges))
+            current = lookup[key]
+            board.push(move)
+    if stack:
+        raise ValueError("Unclosed PGN variation")
+    index = 0
+    while children.get(index):
+        index = children[index][0]
+        game.moves.append(game.edges[index - 1][1])
+    game.result = root_result or headers.get("Result", "*")
     if game.result not in _RESULTS:
         raise ValueError("Invalid PGN result")
     if "Result" in headers and headers["Result"] != game.result:
@@ -162,15 +154,20 @@ def write_pgn(game: PgnGame) -> str:
             continue
         escaped = str(value).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ").replace("\r", " ")
         lines.append(f'[{name} "{escaped}"]')
-    board = Board(game.initial_fen)
     tokens = []
-    for i, move in enumerate(game.moves):
-        if board.turn == 1:
-            tokens.append(f"{board.fullmove}.")
-        elif i == 0:
-            tokens.append(f"{board.fullmove}...")
-        tokens.append(san(board, move))
-        board.push(move)
+    if game.edges:
+        from .variation import build_nodes, tree_tokens
+        nodes = build_nodes(game.initial_fen, game.edges)
+        tokens = [text for text, _ in tree_tokens(nodes, game.initial_fen)]
+    else:
+        board = Board(game.initial_fen)
+        for i, move in enumerate(game.moves):
+            if board.turn == 1:
+                tokens.append(f"{board.fullmove}.")
+            elif i == 0:
+                tokens.append(f"{board.fullmove}...")
+            tokens.append(san(board, move))
+            board.push(move)
     tokens.append(game.result)
     wrapped, current = [], ""
     for token in tokens:

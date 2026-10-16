@@ -8,7 +8,7 @@ DEFAULTS = {
     "white_name": "White", "black_name": "Black", "white_engine": "custom", "black_engine": "custom",
     "theme": "Forest", "light": False, "coordinates": True, "animations": True, "overlays": True,
     "hash_mb": 32, "analysis_depth": 8, "analysis_seconds": 3.0,
-    "external_path": "", "watch_delay_ms": 500,
+    "external_path": "", "syzygy_path": "", "watch_delay_ms": 500,
 }
 
 
@@ -32,7 +32,7 @@ def normalize(data) -> dict:
         if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
             value = min(maximum, max(minimum, value))
             result[key] = float(value) if key == "analysis_seconds" else int(value)
-    for key, limit in (("white_name", 80), ("black_name", 80), ("external_path", 4096)):
+    for key, limit in (("white_name", 80), ("black_name", 80), ("external_path", 4096), ("syzygy_path", 4096)):
         if isinstance(data.get(key), str):
             result[key] = data[key].strip()[:limit]
     return result

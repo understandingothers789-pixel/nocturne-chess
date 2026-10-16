@@ -73,6 +73,9 @@ class MoveText(QTextBrowser):
         color = "#21372c" if light else "#e3ecd8"
         tokens = []
         for text, index in self._items:
+            if index is None:
+                tokens.append(escape(text))
+                continue
             style = "color: #19291c; background-color: #b5d99d;" if index == current else f"color: {color};"
             tokens.append(f'<a href="move:{index}" style="{style} text-decoration:none;">{escape(text)}</a>')
         self.setHtml('<div style="font-family:Consolas,monospace; font-size:14px; line-height:160%;">'

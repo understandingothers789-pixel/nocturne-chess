@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from .board import Board, Move, Outcome, START_FEN, SQUARES, KING, PAWN, ROOK, QUEEN, BISHOP, KNIGHT
 from .notation import PgnGame, read_pgn, san, write_pgn
+from .variation import Node, build_nodes, mainline, ordered_edges, tree_tokens
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +41,9 @@ class Game:
         self.declared: Outcome | None = None
         self.evaluations: dict[int, int] = {}
         self.metadata: dict[str, Any] = {}
+        self.nodes = [Node(None, None, clock=self._remaining.copy())]
+        self._line_nodes = [0]
+        self._main_result = "*"
 
     @property
     def outcome(self) -> Outcome | None:
@@ -95,6 +99,17 @@ class Game:
         if move not in legal:
             raise ValueError(f"Illegal move: {move.uci()}")
         notation = san(self.board, move, legal)
+        self._sync_tree_state()
+        parent = self.current_node
+        existing = next((c for c in self.nodes[parent].children if self.nodes[c].move == move), None)
+        if existing is not None:
+            running = self.running
+            self.select_node(existing)
+            if running:
+                self.start_clock(now)
+            return notation
+        if len(self.nodes) > 20_000:
+            raise ValueError("Move tree exceeds 20,000 nodes")
         self._remaining = self.clock_values(now)
         if self.time_control.seconds:
             self._remaining[self.board.turn] += self.time_control.increment
@@ -102,6 +117,10 @@ class Game:
         self.sans[self.cursor:] = [notation]
         self._clock_history[self.cursor + 1:] = [self._remaining.copy()]
         self.evaluations = {k: v for k, v in self.evaluations.items() if k <= self.cursor}
+        index = len(self.nodes)
+        self.nodes.append(Node(parent, move, notation, self.cursor + 1, clock=self._remaining.copy()))
+        self.nodes[parent].children.append(index)
+        self._line_nodes[self.cursor + 1:] = [index]
         self.board.push(move)
         self.cursor += 1
         self._anchor = time.monotonic() if now is None else now
@@ -109,9 +128,65 @@ class Game:
             self.pause_clock(now)
         return notation
 
+    @property
+    def current_node(self):
+        return self._line_nodes[self.cursor]
+
+    def _sync_tree_state(self):
+        if self.declared and self.current_node == mainline(self.nodes)[-1]:
+            self._main_result = self.declared.result
+        for ply, index in enumerate(self._line_nodes):
+            self.nodes[index].clock = self._clock_history[ply].copy()
+            self.nodes[index].evaluation = self.evaluations.get(ply)
+
+    def node_path(self, index):
+        if type(index) is not int or not 0 <= index < len(self.nodes):
+            raise ValueError("Unknown variation node")
+        path = []
+        while index is not None:
+            path.append(index)
+            index = self.nodes[index].parent
+        return list(reversed(path))
+
+    def position_at_node(self, index):
+        board = Board(self.initial_fen)
+        for child in self.node_path(index)[1:]:
+            board.push(self.nodes[child].move)
+        return board
+
+    def select_node(self, index):
+        path = self.node_path(index)
+        self.pause_clock()
+        self._sync_tree_state()
+        self._line_nodes = path[:-1] + mainline(self.nodes, index)
+        self.moves = [self.nodes[i].move for i in self._line_nodes[1:]]
+        self.sans = [self.nodes[i].san for i in self._line_nodes[1:]]
+        self._clock_history = [self.nodes[i].clock.copy() for i in self._line_nodes]
+        self.evaluations = {p: self.nodes[i].evaluation for p, i in enumerate(self._line_nodes)
+                            if self.nodes[i].evaluation is not None}
+        self.board = self.position_at_node(index)
+        self.cursor = len(path) - 1
+        self._remaining = self._clock_history[self.cursor].copy()
+        self.declared = None
+
+    def tree_tokens(self):
+        return tree_tokens(self.nodes, self.initial_fen)
+
+    def promote_current_line(self):
+        for parent, child in zip(self._line_nodes[:self.cursor], self._line_nodes[1:self.cursor + 1]):
+            children = self.nodes[parent].children
+            children.remove(child)
+            children.insert(0, child)
+        self._main_result = "*"
+
+    def mainline_node(self, depth):
+        path = mainline(self.nodes)
+        return path[min(max(0, depth), len(path) - 1)]
+
     def undo(self) -> bool:
         if not self.cursor:
             return False
+        self._sync_tree_state()
         self.pause_clock()
         self.board.pop()
         self.cursor -= 1
@@ -159,9 +234,12 @@ class Game:
         self.declared = Outcome("1/2-1/2", reasons[0])
 
     def pgn(self) -> str:
-        outcome = self.outcome
+        self._sync_tree_state()
+        path = mainline(self.nodes)
+        outcome = self.outcome if self.current_node == path[-1] else self.position_at_node(path[-1]).outcome()
+        result = outcome.result if outcome else self._main_result
         return write_pgn(PgnGame(self.headers.copy(), self.initial_fen,
-                                 self.moves[:self.cursor], outcome.result if outcome else "*"))
+                                 result=result, edges=ordered_edges(self.nodes)))
 
     def fork_for_analysis(self) -> Game:
         fork = Game.from_dict(self.to_dict())
@@ -174,8 +252,10 @@ class Game:
         parsed = read_pgn(text)
         game = cls(parsed.initial_fen)
         game.headers.update(parsed.headers)
-        for move in parsed.moves:
-            game.play(move)
+        game.nodes = build_nodes(parsed.initial_fen, parsed.edges)
+        game._line_nodes = [0]
+        game.select_node(mainline(game.nodes)[-1])
+        game._main_result = parsed.result
         if parsed.result != "*" and not game.outcome:
             winner = 1 if parsed.result == "1-0" else -1 if parsed.result == "0-1" else None
             game.declared = Outcome(parsed.result, "Imported PGN result", winner)
@@ -184,13 +264,18 @@ class Game:
         return game
 
     def to_dict(self) -> dict:
-        return {"schema": 1, "id": self.id, "initial_fen": self.initial_fen,
+        self._sync_tree_state()
+        return {"schema": 2, "id": self.id, "initial_fen": self.initial_fen,
                 "moves": [m.uci() for m in self.moves], "cursor": self.cursor,
                 "headers": self.headers.copy(), "time_control": [self.time_control.seconds, self.time_control.increment],
                 "remaining": self.clock_values(), "clock_history": self._clock_history,
                 "declared": {"result": self.declared.result, "reason": self.declared.reason,
                              "winner": self.declared.winner} if self.declared else None,
-                "evaluations": self.evaluations, "metadata": self.metadata}
+                "evaluations": self.evaluations.copy(), "metadata": self.metadata.copy(),
+                "tree": [{"parent": n.parent, "move": n.move.uci() if n.move else None,
+                          "clock": n.clock.copy(), "evaluation": n.evaluation,
+                          "children": n.children.copy()} for n in self.nodes],
+                "line": self._line_nodes.copy(), "main_result": self._main_result}
 
     @classmethod
     def from_dict(cls, data: dict) -> Game:
@@ -198,7 +283,7 @@ class Game:
         try:
             if not isinstance(data, dict):
                 raise ValueError("Saved game must be an object")
-            if data["schema"] != 1:
+            if data["schema"] not in (1, 2):
                 raise ValueError("Unsupported game schema")
             for key in ("headers", "metadata", "evaluations"):
                 if not isinstance(data.get(key, {}), dict):
@@ -220,6 +305,37 @@ class Game:
             if len(clocks) != len(game.moves) + 1:
                 raise ValueError("Invalid saved clock history")
             game._clock_history = [_clock_record(c) for c in clocks]
+            if data["schema"] == 2:
+                raw = data.get("tree")
+                if not isinstance(raw, list) or not 1 <= len(raw) <= 20_001:
+                    raise ValueError("Invalid saved variation tree")
+                if raw[0].get("parent") is not None or raw[0].get("move") is not None:
+                    raise ValueError("Invalid saved tree root")
+                nodes = build_nodes(game.initial_fen,
+                                    [(n["parent"], Move.from_uci(n["move"])) for n in raw[1:]])
+                for node, record in zip(nodes, raw):
+                    children = record.get("children", node.children)
+                    if (not isinstance(children, list) or any(type(c) is not int for c in children)
+                            or sorted(children) != sorted(node.children)):
+                        raise ValueError("Invalid variation child order")
+                    node.children = children.copy()
+                    node.clock = _clock_record(record["clock"])
+                    value = record.get("evaluation")
+                    if value is not None and type(value) is not int:
+                        raise ValueError("Invalid variation evaluation")
+                    node.evaluation = value
+                line = data.get("line")
+                if (not isinstance(line, list) or not line or line[0] != 0
+                        or any(type(i) is not int or not 0 <= i < len(nodes) for i in line)
+                        or any(nodes[c].parent != p for p, c in zip(line, line[1:]))
+                        or nodes[line[-1]].children
+                        or [nodes[i].move for i in line[1:]] != game.moves
+                        or [nodes[i].clock for i in line] != game._clock_history):
+                    raise ValueError("Invalid saved selected line")
+                game.nodes, game._line_nodes = nodes, line.copy()
+                game._main_result = data.get("main_result", "*")
+                if game._main_result not in ("*", "1-0", "0-1", "1/2-1/2"):
+                    raise ValueError("Invalid main-line result")
             game.navigate(cursor)
             game._remaining = _clock_record(data["remaining"])
             game.headers.update({str(k): str(v) for k, v in data.get("headers", {}).items()})
@@ -231,8 +347,9 @@ class Game:
             game.evaluations = {int(k): int(v) for k, v in data.get("evaluations", {}).items()
                                 if 0 <= int(k) <= len(game.moves)}
             game.metadata = dict(data.get("metadata", {}))
+            game._sync_tree_state()
             return game
-        except (KeyError, TypeError, IndexError, OverflowError) as exc:
+        except (KeyError, TypeError, IndexError, OverflowError, AttributeError) as exc:
             raise ValueError("Incomplete or corrupted game record") from exc
 
 

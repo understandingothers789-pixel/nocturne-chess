@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 — Persistent variations and offline Syzygy
+
+- Alternate moves preserve the main continuation as ordered branches. Nested
+  PGN variations, autosaves, branch navigation and main-line promotion round-trip.
+- Syzygy folder selection, WDL/DTZ diagnostics and legal root move selection via
+  MIT Fathom; up to seven-piece reader support, no table downloads in the app.
+- External UCI SyzygyPath forwarding, custom UCI option, TB-hit telemetry.
+- Native extension packaging and real tablebase fixture/oracle regression tests.
+- Comments/NAGs, full five/seven-piece validation and Multi-PV remain pending.
+
 ## 0.3.2 — 2026-10-16
 
 * Dedicated Analysis layout: engine panel left, board right, resizable game

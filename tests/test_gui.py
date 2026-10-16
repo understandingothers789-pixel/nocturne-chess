@@ -52,6 +52,27 @@ class GuiTests(unittest.TestCase):
                          pos=board.square_rect(parse_square(name)).center().toPoint())
         self.app.processEvents()
 
+    def test_analysis_alternative_preserves_original_and_hover_restores(self):
+        window = self.window
+        window.analysis_mode = True
+        window.game = Game.from_pgn("1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 *")
+        original = window.game.current_node
+        window.game.navigate(4)
+        window.game.play(window.game.board.parse_uci("b1c3"))
+        alternative = window.game.current_node
+        window._refresh()
+        fen = window.game.board.fen()
+        window._preview_history(original)
+        self.assertEqual(window.game.board.fen(), fen)
+        self.assertIsNotNone(window.board_view.preview_board)
+        window._end_preview("history")
+        self.assertIsNone(window.board_view.preview_board)
+        window._navigate_node(original)
+        self.assertEqual(window.game.sans[4:], ["Bc4", "Bc5"])
+        window._navigate_node(alternative)
+        self.assertEqual(window.game.sans[4:], ["Nc3"])
+        self.assertIn("(", window.game.pgn())
+
     def test_click_move_updates_model_board_and_san_history(self):
         self._click("e2")
         self.assertEqual(self.window.board_view.selected, parse_square("e2"))

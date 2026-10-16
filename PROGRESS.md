@@ -448,3 +448,38 @@ archives and checksums; archive integrity and prohibited-launcher exclusions
 are checked. The executable remains an explicitly authorized unsigned test
 build. Single-PV, main-line PGN and manual clean-Windows UI/signing limitations
 remain. No changes to rules/search were needed for this feature.
+
+## 0.4.0 — Variations and Syzygy implementation
+
+Implemented ordered variation nodes, legal validation of every branch, nested
+PGN import/export, schema-2 save migration, branch navigation/promotion and
+display-only hover on any branch. Existing main-line continuations survive
+alternate moves. Added core/GUI regressions. Changed core game/notation, new
+core/variation.py, GUI moves/window and tests/test_variations.py.
+
+Added MIT Fathom pinned at c9c6fef0dddc05d2e242c183acf5833149ab676d,
+a serialized CPython extension, local folder settings, root WDL/DTZ probes,
+worker/UCI/external integration and TB telemetry. Native Windows file opening
+uses UTF-8 to CreateFileW. No tablebase or external engine is downloaded by the
+application. Build source/licenses/extension are included in packaging; compiled
+Linux artifacts and developer tables are excluded from source archives.
+
+Executed: rules/storage 25 passed; initial variation tests 6 passed; existing
+GUI 28 passed. Initial full integration found one worker protocol regression
+(disabled tablebase message arriving before search info), fixed by emitting
+TB messages only when configured. Initial real-table run: 3 passed, 1 failed
+because cached directory contents missed newly added DTZ files; fixed by
+refreshing native initialization per root probe. GCC native rebuild succeeded
+after the environment's missing clang default was overridden.
+
+Full executed command: NOCTURNE_TEST_SYZYGY=/workspace/.tb-test-fixtures
+QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q: 89 passed, 2 optional
+deep-perft skipped in 20.42s. Ruff check src tests scripts passed. Tests include
+real WDL/DTZ comparisons against development-only python-chess, Unicode folder,
+missing DTZ, corrupt-header diagnostics, cancellation, UCI use, nested branches,
+save migration and GUI branch/hover restoration. Fixtures were downloaded only
+by an explicit developer script and verified against pinned Git blob checksums.
+Only small three-piece tables were available; full five/seven-piece data and
+manual Windows interaction remain unverified. Slow native/disk I/O can overrun
+the calculation budget before returning; the GUI worker can be terminated.
+Windows build/frozen probe validation is next.

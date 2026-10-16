@@ -1,4 +1,4 @@
-# Nocturne Chess · 0.3.2
+# Nocturne Chess · 0.4.0
 
 A native, offline chess studio with an independent Python chess engine, a
 PySide6 desktop interface, and reproducible rules/search tests. Designed for
@@ -100,8 +100,10 @@ annotations. The last move and a checked king have distinct highlights.
 
 **Analysis** saves and forks the current game before exploration, preserving
 the played game in the library. History navigation pauses clocks. A new move
-from an earlier position replaces the continuation in that analysis copy;
-full variation trees are a later milestone. **Import** accepts a legal FEN or
+from an earlier position creates a variation and preserves the original
+continuation. Click either branch in the bottom move tree to explore it.
+The Tree menu switches sibling variations, returns to the main line, or
+promotes the selected variation. All branches survive autosave and PGN export. **Import** accepts a legal FEN or
 one PGN game. A FEN contains no prior repetition history; importing a PGN
 replays and preserves that history.
 
@@ -166,9 +168,9 @@ Material draws are recognized conservatively: bare kings, one minor vs king,
 and bishop-only positions with every bishop on the same color. No known legal
 move edge case is intentionally omitted.
 
-PGN interchange keeps the main line and tags; comments, NAGs and variations are
-accepted/skipped on import and are not preserved. Multi-PV, full variation
-trees, automated move classification/blunder review, an opening database,
+PGN interchange preserves move variations and tags. Comments and NAGs are
+accepted on import but not preserved. Multi-PV,
+automated move classification/blunder review, an opening database,
 sound and alternate piece sets are pending. PVS remains an opt-in benchmark
 experiment; null-move pruning, LMR, SEE, NNUE and native engine acceleration are
 not implemented. The custom engine supports one search thread. Hash size is an
@@ -180,6 +182,32 @@ Saved data uses versioned SQLite in Qt's local application-data directory
 before backing up the database. Invalid records are reported and retained;
 invalid preferences fall back to bounded defaults. The app never deletes a
 corrupt library to conceal an error.
+
+## Offline Syzygy tablebases
+
+Choose **Engine → Choose Syzygy folder…** (also available in Settings) and
+select the folder containing your `.rtbw` and `.rtbz` files. Five-piece sets
+work; the reader supports up to seven pieces when the necessary tables are
+present. Include the smaller dependent tables. Nothing is downloaded by the app.
+
+Analysis displays WDL and DTZ (distance to a capture or pawn move, in plies,
+not distance to mate). A complete DTZ root probe can select an exact legal move;
+missing DTZ, repetition-sensitive positions and draw claims fall back to normal
+search. WDL-only results explicitly disclose the halfmove-clock limitation.
+The normal chess rules still decide when the game ends. Castling positions
+are unsupported. Installed external UCI engines receive `SyzygyPath` when they
+advertise that option. Probes run in the engine worker; cancellation can stop
+that process without blocking the GUI. Slow disk/native I/O can exceed a search
+budget before returning; no tablebase probes are performed inside search nodes.
+
+The bundled reader is MIT-licensed Fathom, separate from the custom rules/search.
+Real three-piece fixtures are cross-checked against a development-only reader;
+full five/seven-piece collections have not been tested here. For development:
+
+```sh
+python scripts/fetch_tablebase_test_data.py
+# Set NOCTURNE_TEST_SYZYGY to the absolute .tb-test-fixtures directory before tests.
+```
 
 ## Project and licenses
 

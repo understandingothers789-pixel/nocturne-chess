@@ -31,13 +31,13 @@ class EngineController(QObject):
     def busy(self):
         return self.active is not None
 
-    def start(self, game: Game, limits: SearchLimits, external="", kind="search") -> int:
+    def start(self, game: Game, limits: SearchLimits, external="", kind="search", tablebase_path="") -> int:
         self.stop()
         output, child_output = self.context.Pipe(duplex=False)
         child_control, control = self.context.Pipe(duplex=False)
         request = {"kind": kind, "initial_fen": game.initial_fen,
                    "moves": [m.uci() for m in game.moves[:game.cursor]],
-                   "limits": asdict(limits), "external": external}
+                   "limits": asdict(limits), "external": external, "tablebase_path": tablebase_path}
         proc = self.context.Process(target=run_worker, args=(request, child_output, child_control), daemon=True)
         proc.start()
         child_output.close()

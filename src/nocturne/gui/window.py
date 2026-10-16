@@ -248,6 +248,8 @@ class MainWindow(QMainWindow):
         self.engine_layout.addWidget(self.engine_state)
         self.telemetry = label("Independent rules · native desktop", "muted", True)
         self.engine_layout.addWidget(self.telemetry)
+        self.tablebase_label = label("Syzygy: not configured", "muted", True)
+        self.engine_layout.addWidget(self.tablebase_label)
         self.engine_layout.addWidget(label("PRINCIPAL VARIATION", "eyebrow"))
         self.pv_label = MoveText()
         self.pv_label.setAccessibleName("Principal variation moves")
@@ -327,7 +329,7 @@ class MainWindow(QMainWindow):
         self.analysis_history.setAccessibleName("Analysis game moves")
         self.analysis_history.setMinimumHeight(45)
         self.analysis_history.move_hovered.connect(self._preview_history)
-        self.analysis_history.move_clicked.connect(self._navigate)
+        self.analysis_history.move_clicked.connect(self._navigate_node)
         self.analysis_history.preview_ended.connect(lambda: self._end_preview("history"))
         history_layout.addWidget(self.analysis_history, 1)
         self.workspace_splitter.addWidget(self.analysis_moves_panel)
@@ -392,6 +394,11 @@ class MainWindow(QMainWindow):
         add(tree, "End", lambda: self._navigate(len(self.game.moves)), "End")
         add(tree, "Backward", self._undo, "Left")
         add(tree, "Forward", self._redo, "Right")
+        tree.addSeparator()
+        add(tree, "Return to main line", lambda: self._navigate_node(self.game.mainline_node(self.game.cursor)))
+        add(tree, "Previous variation", lambda: self._sibling(-1))
+        add(tree, "Next variation", lambda: self._sibling(1))
+        add(tree, "Promote variation to main line", self._promote_line)
 
         analysis = self.menuBar().addMenu("&Analysis")
         add(analysis, "Go", self._start_analysis, "Ctrl+G")
@@ -411,6 +418,7 @@ class MainWindow(QMainWindow):
 
         engine = self.menuBar().addMenu("&Engine")
         add(engine, "Choose engine…", self._choose_engine)
+        add(engine, "Choose Syzygy folder…", self._choose_tablebase)
         add(engine, "Engine settings…", self._settings)
         play = self.menuBar().addMenu("&Play")
         add(play, "New game…", self._new_game)
@@ -441,6 +449,15 @@ class MainWindow(QMainWindow):
             self.config["external_path"] = path
             self._apply_settings()
             self.analysis_source.setCurrentIndex(1)
+            self._save()
+            self._schedule_engine()
+
+    def _choose_tablebase(self):
+        path = QFileDialog.getExistingDirectory(self, "Choose Syzygy tablebase folder", self.config.get("syzygy_path", ""))
+        if path:
+            self._stop_engine()
+            self.config["syzygy_path"] = path
+            self.tablebase_label.setText("Syzygy: folder selected; awaiting probe")
             self._save()
             self._schedule_engine()
 
@@ -488,31 +505,21 @@ class MainWindow(QMainWindow):
             self.main_splitter.setSizes([720, 350])
 
     def _render_move_history(self):
-        position = Board(self.game.initial_fen)
-        turn, number = position.turn, position.fullmove
-        items = []
-        for ply, notation in enumerate(self.game.sans, 1):
-            prefix = f"{number}. " if turn == 1 else (f"{number}... " if ply == 1 else "")
-            items.append((prefix + notation, ply))
-            if turn == -1:
-                number += 1
-            turn = -turn
-        self.analysis_history.set_moves(items, self.game.cursor, self.config.get("light", False))
+        self.analysis_history.set_moves(self.game.tree_tokens(), self.game.current_node,
+                                        self.config.get("light", False))
 
     def _end_preview(self, source):
         if self._preview_source == source:
             self._preview_source = None
             self.board_view.clear_preview()
 
-    def _preview_history(self, ply):
-        if not self.analysis_mode or not 1 <= ply <= len(self.game.moves):
+    def _preview_history(self, node_id):
+        if not self.analysis_mode or not 1 <= node_id < len(self.game.nodes):
             return
-        position = Board(self.game.initial_fen)
-        for move in self.game.moves[:ply]:
-            position.push(move)
+        node = self.game.nodes[node_id]
+        position = self.game.position_at_node(node_id)
         self._preview_source = "history"
-        self.board_view.show_preview(position, self.game.moves[ply - 1],
-                                     f"History preview · {self.game.sans[ply - 1]}")
+        self.board_view.show_preview(position, node.move, f"History preview · {node.san}")
 
     def _preview_pv(self, ply):
         if (not self.analysis_mode or self._pv_root is None
@@ -561,6 +568,7 @@ class MainWindow(QMainWindow):
             self._pv_root = None
             self._pv_moves = []
             self.pv_label.set_moves([])
+            self.tablebase_label.setText("Syzygy: awaiting probe" if self.config.get("syzygy_path") else "Syzygy: not configured")
         outcome = self.game.outcome
         self.board_view.interactive = not outcome and not self.paused and (self.analysis_mode or not self._is_engine_turn())
         turn = "White" if self.game.board.turn == 1 else "Black"
@@ -742,6 +750,36 @@ class MainWindow(QMainWindow):
         self.analysis_nav.setChecked(True)
         self.title_label.setText("Room to explore.")
         self._refresh()
+        self._schedule_engine()
+
+    def _navigate_node(self, node_id):
+        if not self.analysis_mode and not self.config.get("takebacks", True):
+            return
+        self._stop_engine()
+        self._ensure_analysis_copy()
+        self.game.select_node(node_id)
+        self.analysis_mode = True
+        self._analysis_enabled = True
+        self.paused = False
+        self._refresh()
+        self._save()
+        self._schedule_engine()
+
+    def _sibling(self, direction):
+        node = self.game.nodes[self.game.current_node]
+        if node.parent is None:
+            return
+        siblings = self.game.nodes[node.parent].children
+        index = siblings.index(self.game.current_node) + direction
+        if 0 <= index < len(siblings):
+            self._navigate_node(siblings[index])
+
+    def _promote_line(self):
+        self._stop_engine()
+        self._ensure_analysis_copy()
+        self.game.promote_current_line()
+        self._refresh()
+        self._save()
         self._schedule_engine()
 
     def _history_clicked(self, row, column):
@@ -1037,7 +1075,7 @@ class MainWindow(QMainWindow):
         else:
             return
         try:
-            generation = self.engine.start(self.game, limits, external)
+            generation = self.engine.start(self.game, limits, external, tablebase_path=self.config.get("syzygy_path", ""))
         except (OSError, RuntimeError) as exc:
             self._error("Cannot start engine", str(exc))
             self.paused = True
@@ -1058,6 +1096,9 @@ class MainWindow(QMainWindow):
             return
         if job["identity"] != self._position_identity():
             self._stop_engine()
+            return
+        if kind == "tablebase":
+            self.tablebase_label.setText(payload["message"])
             return
         if kind == "benchmark_progress":
             if self._lab:
@@ -1124,12 +1165,14 @@ class MainWindow(QMainWindow):
         self._last_info = info.copy()
         white_score = info["score"] * job["turn"]
         self.eval_label.setText(score_text(white_score))
+        if info.get("tbhits") and abs(info["score"]) in (0, 20000):
+            self.eval_label.setText("TB · White wins" if white_score > 0 else "TB · Black wins" if white_score < 0 else "TB · Draw")
         self.eval_bar.set_score(white_score)
         duration = info.get("seconds", 0)
         self.telemetry.setText(
             f"Depth {info['depth']}  ·  selective {info['seldepth']}\n"
             f"{info['nodes']:,} nodes  ·  {info.get('nps', 0):,} nodes/sec\n"
-            f"{duration:.2f} seconds  ·  hash {info.get('hashfull', 0) / 10:.1f}%\n"
+            f"{duration:.2f} seconds  ·  hash {info.get('hashfull', 0) / 10:.1f}%  ·  TB hits {info.get('tbhits', 0)}\n"
             f"Hash budget {self.config.get('hash_mb', 32)} MB  ·  1 thread")
         position = self.game.board.copy()
         self._pv_root = self.game.board.copy(history=False)
