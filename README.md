@@ -12,14 +12,15 @@ It does not claim a verified Elo or complete advanced analysis suite.
 
 ## Play
 
-**There is no Windows executable available yet.** This project was developed in
-a Linux environment, and the executable in `dist/Nocturne` is a Linux program.
-It will not run on Windows. GitHub Actions has now built and smoke-tested the
-Windows GUI and UCI apps, and all CI tests passed. That temporary runner build
-was not published or retained because it is unsigned. See [the Windows build
-status and requirements](docs/BUILDING.md). A downloadable Windows release
-still needs trusted signing and additional Windows validation. No batch or
-PowerShell launchers or warning bypass instructions are provided.
+Windows test builds are available from the latest successful run on the
+[Actions page](https://github.com/understandingothers789-pixel/nocturne-chess/actions).
+While signed into GitHub, open the run and download the artifact named
+**Nocturne-0.3.0-Windows-x64-unsigned**. Extract the entire ZIP, open the
+`Nocturne` folder, and double-click `Nocturne.exe`. Keep `_internal` beside it.
+Python is not required. These test builds are unsigned and Windows may show a
+SmartScreen warning. They expire after 30 days. No batch or PowerShell launcher
+files are included. The executable built locally in this Linux workspace is
+still Linux-only; use the Windows artifact from GitHub.
 
 For developers with the source on Windows, the [developer-only Python
 builder](scripts/build_windows.py) validates a local build. It does not create a

@@ -4,20 +4,17 @@
 
 ### For players
 
-There is no Windows app available to download from this workspace yet. The
-`dist/Nocturne/Nocturne` file built here is for Linux and will not run on
-Windows. The source is in the [Nocturne Chess GitHub
-repository](https://github.com/understandingothers789-pixel/nocturne-chess).
-Its GitHub Actions workflow has successfully built and smoke-tested both
-Windows apps, but the temporary runner files were not published or retained.
-Do not open the Linux file on Windows.
+The user has opted into an unsigned Windows test executable. Open the latest
+successful [Windows workflow run](https://github.com/understandingothers789-pixel/nocturne-chess/actions),
+then download **Nocturne-0.3.0-Windows-x64-unsigned** under Artifacts. GitHub
+requires you to be signed in. Extract the whole ZIP, then open
+`Nocturne/Nocturne.exe`. Keep the accompanying `_internal` directory in place.
+No Python installation or launcher scripts are required.
 
-A downloadable Windows release requires trusted code signing. No signing
-identity is configured for this project, so the CI workflow deliberately does
-not publish its unsigned executables. Even with a valid signature, SmartScreen
-also considers publisher reputation and local policy, so a warning-free launch
-cannot be promised. No batch or PowerShell launchers or warning-bypass steps
-are used.
+This is an unsigned test build and Windows may display a SmartScreen warning.
+It is not a signed release. Artifacts expire after 30 days; rerun the workflow
+to generate another. The signed release verification procedure below remains
+available for future distribution.
 
 ### For developers building on Windows
 
@@ -34,7 +31,7 @@ The tool creates `.venv-build`, installs pinned build/validation dependencies,
 runs Ruff and the test suite, renders the application icon, and runs
 `Nocturne.spec`. It smoke-tests the packaged GUI and UCI endpoint. This mode
 creates local validation directories; it does not create a Windows release ZIP.
-The CI workflow uses this mode and does not upload unsigned application builds.
+The CI workflow uses this mode and uploads successful unsigned test builds.
 
 Before distribution, sign all `.exe`, `.dll` and `.pyd` files in the two
 application directories using a legitimately issued, trusted code-signing
@@ -67,8 +64,8 @@ Python/architecture and set pip's `PIP_NO_INDEX` / `PIP_FIND_LINKS` accordingly.
 The checked-in GitHub Actions workflow completed successfully on Windows in
 run [#1](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38952576627).
 It installed dependencies, passed Ruff and the full automated suite, built both
-PyInstaller apps, and passed GUI/UCI smoke checks. It did not publish an
-unsigned build. Signed distribution requires trusted signing and the separate
+PyInstaller apps, and passed GUI/UCI smoke checks. That first run did not retain an artifact; subsequent runs now retain unsigned
+test builds with user authorization. Signed distribution requires trusted signing and the separate
 verification/packaging step above.
 
 ## Linux validation performed here

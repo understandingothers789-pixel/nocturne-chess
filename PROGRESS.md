@@ -325,3 +325,15 @@ code signing, Windows reputation/clean-machine checks, and a deliberate signed
 release are outstanding. A valid signature still cannot guarantee no
 SmartScreen warning. README and BUILDING.md now reflect the successful run and
 the remaining release gate.
+
+### Downloadable Windows executable requested
+
+The user explicitly chose the Windows executable option after being informed
+that an unsigned app may show a Windows warning. This supersedes the earlier
+restriction on retaining unsigned test builds. No batch/PowerShell launchers
+are introduced. The Windows workflow now uploads both complete application
+folders as a clearly named unsigned test artifact for 30 days, only after the
+existing tests, native build, and smoke checks succeed. PR runs do not upload.
+README and BUILDING.md now include download/extract/launch instructions.
+Signed-release verification remains separate. Windows CI results are pending
+for this workflow change.
