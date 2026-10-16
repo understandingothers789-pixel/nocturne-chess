@@ -61,7 +61,7 @@ def stylesheet(light: bool = False) -> str:
     QMenuBar::item:selected {{ background: {raised}; }}
     QMenu {{ background: {panel}; border: 1px solid {border}; padding: 5px; }}
     QMenu::item {{ padding: 8px 24px; }}
-    QMenu::item:selected {{ background: #344b35; border-radius: 4px; }}
+    QMenu::item:selected {{ background: #344b35; color: #eef2e7; border-radius: 4px; }}
     QStatusBar {{ color: {muted}; font-size: 11px; }}
     QSplitter::handle {{ background: transparent; width: 12px; }}
     """

@@ -383,3 +383,7 @@ window. The final GUI-only rerun passed all 22 tests; Ruff passed. A menu
 screenshot helper initially failed when using a temporary QAction list; keeping
 the list alive fixed that inspection command. This was not an application
 interaction failure.
+
+Final menu review also checked light appearance. Fixed selected-menu text
+contrast and visually verified the actual light File popup. This one-line
+stylesheet adjustment is included in the final Windows build.
