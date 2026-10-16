@@ -43,6 +43,7 @@ def stylesheet(light: bool = False) -> str:
     QComboBox::drop-down {{ border: none; width: 24px; }}
     QComboBox QAbstractItemView {{ background: {panel}; selection-background-color: #395039; padding: 5px; }}
     QTabWidget::pane {{ border: none; }}
+    QTextBrowser {{ background: transparent; border: none; }}
     QTabBar::tab {{ background: transparent; color: {muted}; padding: 11px 17px; border-bottom: 2px solid transparent; }}
     QTabBar::tab:selected {{ color: {accent}; border-bottom: 2px solid {accent}; }}
     QTableWidget, QListWidget {{ background: transparent; border: none; gridline-color: {border}; outline: none; }}

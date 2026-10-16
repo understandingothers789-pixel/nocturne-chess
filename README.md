@@ -1,4 +1,4 @@
-# Nocturne Chess · 0.3.1
+# Nocturne Chess · 0.3.2
 
 A native, offline chess studio with an independent Python chess engine, a
 PySide6 desktop interface, and reproducible rules/search tests. Designed for
@@ -12,12 +12,12 @@ It does not claim a verified Elo or complete advanced analysis suite.
 
 ## Play
 
-[Download the Windows test ZIP (0.3.1)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38960506947/artifacts/12073040643) (GitHub sign-in required).
+[Previous Windows test ZIP (0.3.1)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38960506947/artifacts/12073040643) (GitHub sign-in required).
 
 Future Windows test builds are available from the latest successful run on the
 [Actions page](https://github.com/understandingothers789-pixel/nocturne-chess/actions).
 While signed into GitHub, open the run and download the artifact named
-**Nocturne-0.3.1-Windows-x64-unsigned**. Extract the entire ZIP, open the
+**Nocturne-0.3.2-Windows-x64-unsigned**. Extract the entire ZIP, open the
 `Nocturne` folder, and double-click `Nocturne.exe`. Keep `_internal` beside it.
 Python is not required. These test builds are unsigned and Windows may show a
 SmartScreen warning. They expire after 30 days. No batch or PowerShell launcher
@@ -70,6 +70,14 @@ new game cancels the previous job. Engine results still cross the legal-move
 boundary before they can change the game.
 
 ## Using the studio
+
+**Analysis** has a dedicated layout: engine information on the left, board on
+the right, and a resizable move strip across the bottom. Hover a game move or a
+move in the principal variation to preview the position after that move.
+Moving off the move restores the current board. Hovering is display-only: it
+never navigates, changes clocks or saves, or restarts the engine. Clicking a
+game move navigates to it. [See a hover preview](docs/preview-hover.png).
+Play retains its board/side-panel layout.
 
 The top menus follow Nibbler's File, Tree, Analysis, Display, Engine and Play
 organization for supported features. Hover tooltips are removed. In the **PGN**

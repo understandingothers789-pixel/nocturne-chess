@@ -1,6 +1,7 @@
 """Native Qt integration tests. Explicitly skipped if the binding is absent."""
 
 import os
+from copy import deepcopy
 from pathlib import Path
 import tempfile
 import time
@@ -81,6 +82,128 @@ class GuiTests(unittest.TestCase):
         self.assertIn(self.window.menu_actions["load_clipboard"], menu.actions())
         self.assertIn(self.window.menu_actions["copy_pgn"], menu.actions())
         menu.close()
+
+    def _analysis_game(self, text="1. e4 e5 2. Nf3 Nc6 *"):
+        self.window._stop_engine()
+        self.window.game = Game.from_pgn(text)
+        self.window.game.metadata["mode"] = "analysis"
+        self.window.analysis_mode = True
+        self.window._analysis_enabled = False
+        self.window._refresh()
+        self.app.processEvents()
+
+    def _hover_word(self, view, word):
+        self.app.processEvents()
+        cursor = view.document().find(word)
+        self.assertFalse(cursor.isNull(), word)
+        cursor.setPosition(cursor.selectionStart() + 1)
+        QTest.mouseMove(view.viewport(), pos=view.viewport().rect().bottomRight() - QPointF(4, 4).toPoint())
+        QTest.mouseMove(view.viewport(), pos=view.cursorRect(cursor).center())
+        self.app.processEvents()
+
+    def test_analysis_layout_is_left_with_history_below_and_play_restores(self):
+        self._analysis_game()
+        self.window.resize(1024, 660)
+        self.app.processEvents()
+        self.assertIs(self.window.main_splitter.widget(0), self.window.panel)
+        self.assertIs(self.window.main_splitter.widget(1), self.window.arena)
+        self.assertTrue(self.window.analysis_moves_panel.isVisible())
+        self.assertFalse(self.window.tabs.isTabVisible(0))
+        self.assertEqual(self.window.height(), 660)
+        self.assertGreater(self.window.analysis_moves_panel.y(), self.window.main_splitter.y())
+        self.window._workspace(False)
+        self.assertIs(self.window.main_splitter.widget(0), self.window.arena)
+        self.assertFalse(self.window.analysis_moves_panel.isVisible())
+        self.assertTrue(self.window.tabs.isTabVisible(0))
+        self.assertTrue(self.window.sidebar.isVisible())
+
+    def test_history_mouse_hover_is_display_only_and_blank_space_restores(self):
+        self._analysis_game()
+        game = self.window.game
+        before, key, generation = deepcopy(game.to_dict()), game.board.key, self.window.engine.generation
+        self._hover_word(self.window.analysis_history, "e4")
+        expected = Game.from_pgn("1.e4 *").board.fen()
+        self.assertIs(self.window.board_view.board, game.board)
+        self.assertEqual(self.window.board_view.display_board.fen(), expected)
+        self.assertEqual(game.to_dict(), before)
+        self.assertEqual((game.board.key, self.window.engine.generation), (key, generation))
+        view = self.window.analysis_history
+        QTest.mouseMove(view.viewport(), pos=view.viewport().rect().bottomRight() - QPointF(4, 4).toPoint())
+        self.app.processEvents()
+        self.assertIsNone(self.window.board_view.preview_board)
+        self.assertIs(self.window.board_view.display_board, game.board)
+
+    def test_pv_mouse_hover_previews_prefix_and_exit_restores(self):
+        self._analysis_game("1.e4 e5 *")
+        info = {"depth": 3, "seldepth": 4, "score": 15, "nodes": 100,
+                "pv": ["g1f3", "b8c6", "f1b5", "a1a8"]}
+        self.window._show_info(info, {"turn": 1})
+        self.assertEqual(len(self.window._pv_moves), 3)
+        before = deepcopy(self.window.game.to_dict())
+        generation = self.window.engine.generation
+        self._hover_word(self.window.pv_label, "Nc6")
+        self.assertEqual(self.window.board_view.display_board.fen(),
+                         Game.from_pgn("1.e4 e5 2.Nf3 Nc6 *").board.fen())
+        self.assertEqual(self.window.game.to_dict(), before)
+        self.assertEqual(self.window.engine.generation, generation)
+        self.app.sendEvent(self.window.pv_label.viewport(), QEvent(QEvent.Type.Leave))
+        self.assertIsNone(self.window.board_view.preview_board)
+        self.assertEqual(self.window.game.to_dict(), before)
+
+    def test_position_change_or_new_pv_cannot_restore_stale_preview(self):
+        self._analysis_game("1.e4 e5 *")
+        self.window._preview_history(1)
+        self.window.game.play(self.window.game.board.parse_uci("g1f3"))
+        self.window._refresh()
+        actual = self.window.game.board.fen()
+        self.window.analysis_history.cancel_preview()
+        self.assertEqual(self.window.board_view.display_board.fen(), actual)
+        info = {"depth": 2, "seldepth": 3, "score": 0, "nodes": 50, "pv": ["b8c6", "f1b5"]}
+        self.window._show_info(info, {"turn": -1})
+        self.window._preview_pv(2)
+        self.assertIsNotNone(self.window.board_view.preview_board)
+        self.window._show_info(info | {"pv": ["g8f6"]}, {"turn": -1})
+        self.assertIsNone(self.window.board_view.preview_board)
+        self.assertEqual(self.window.board_view.display_board.fen(), actual)
+
+    def test_hover_special_moves_uses_copies_and_preserves_hash_and_cursor(self):
+        cases = [("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", "e1g1"),
+                 ("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", "e5d6"),
+                 ("4k3/P7/8/8/8/8/8/4K3 w - - 0 1", "a7a8n")]
+        self._analysis_game()
+        for fen, uci in cases:
+            with self.subTest(uci=uci):
+                game = Game(fen)
+                game.metadata["mode"] = "analysis"
+                game.play(game.board.parse_uci(uci))
+                expected = game.board.fen()
+                game.navigate(0)
+                self.window.game = game
+                self.window._refresh()
+                before, key = deepcopy(game.to_dict()), game.board.key
+                self.window._preview_history(1)
+                self.assertEqual(self.window.board_view.display_board.fen(), expected)
+                self.assertEqual(game.to_dict(), before)
+                self.assertEqual(game.board.key, key)
+                self.window._end_preview("history")
+                self.assertEqual(self.window.board_view.display_board.fen(), fen)
+
+    def test_preview_blocks_board_input_and_clicking_history_navigates(self):
+        self._analysis_game()
+        self.window._preview_history(1)
+        cursor = self.window.game.cursor
+        self._click("d2")
+        self._click("d4")
+        self.assertEqual(self.window.game.cursor, cursor)
+        self.window.analysis_history.cancel_preview()
+        self._hover_word(self.window.analysis_history, "Nf3")
+        view = self.window.analysis_history
+        text_cursor = view.document().find("Nf3")
+        text_cursor.setPosition(text_cursor.selectionStart() + 1)
+        with patch.object(self.window, "_schedule_engine"):
+            QTest.mouseClick(view.viewport(), Qt.MouseButton.LeftButton, pos=view.cursorRect(text_cursor).center())
+        self.assertEqual(self.window.game.cursor, 3)
+        self.assertIsNone(self.window.board_view.preview_board)
 
     def test_paste_plain_moves_apply_and_copy_pgn_without_file(self):
         self.window._show_pgn()

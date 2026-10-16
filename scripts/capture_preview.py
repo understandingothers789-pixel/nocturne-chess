@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--output", type=Path, default=Path("docs/preview.png"))
     parser.add_argument("--light", action="store_true")
     parser.add_argument("--pgn", action="store_true")
+    parser.add_argument("--preview-ply", type=int, help="Render a display-only history preview")
     parser.add_argument("--width", type=int, default=1340)
     parser.add_argument("--height", type=int, default=920)
     args = parser.parse_args()
@@ -48,10 +49,16 @@ def main():
             if window.engine.busy:
                 QTimer.singleShot(100, capture)
                 return
+            actual_fen = window.game.board.fen()
+            if args.preview_ply is not None:
+                window._preview_history(args.preview_ply)
+                assert window.game.board.fen() == actual_fen
             args.output.parent.mkdir(parents=True, exist_ok=True)
             if not window.grab().save(str(args.output)):
                 raise RuntimeError("Could not save Qt capture")
             print(f"Captured actual Qt window: {args.output}", flush=True)
+            window.board_view.clear_preview()
+            assert window.board_view.display_board.fen() == actual_fen
             window.close()
             app.quit()
 

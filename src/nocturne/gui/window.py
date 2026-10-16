@@ -26,6 +26,7 @@ from ..storage import Store, StorageError
 from .board import BoardWidget
 from .dialogs import NewGameDialog, SettingsDialog, TextDialog
 from .engine import EngineController
+from .moves import MoveText
 from .theme import ASSETS, stylesheet
 from .widgets import EvaluationBar, EvaluationGraph
 
@@ -85,6 +86,11 @@ class MainWindow(QMainWindow):
         self._benchmark_report = None
         self._last_info = None
         self._history_signature = None
+        self._analysis_layout_active = None
+        self._pv_root = None
+        self._pv_moves = []
+        self._pv_identity = None
+        self._preview_source = None
         self._build()
         self.engine = EngineController(self)
         self.engine.message.connect(self._engine_message)
@@ -109,6 +115,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         sidebar = QFrame()
+        self.sidebar = sidebar
         sidebar.setObjectName("sidebar")
         sidebar.setFixedWidth(164)
         nav = QVBoxLayout(sidebar)
@@ -152,10 +159,14 @@ class MainWindow(QMainWindow):
         top.addLayout(heading)
         top.addStretch()
         top.addWidget(button("＋  New game", self._new_game, "primary"))
-        content.addLayout(top)
+        self.workspace_header = QWidget()
+        self.workspace_header.setLayout(top)
+        content.addWidget(self.workspace_header)
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.main_splitter = splitter
         splitter.setChildrenCollapsible(False)
         arena = QWidget()
+        self.arena = arena
         board_layout = QVBoxLayout(arena)
         board_layout.setContentsMargins(0, 0, 0, 0)
         board_layout.setSpacing(0)
@@ -187,7 +198,8 @@ class MainWindow(QMainWindow):
         side = QVBoxLayout(self.panel)
         side.setContentsMargins(20, 16, 20, 12)
         side.setSpacing(10)
-        side.addWidget(label("THE GAME", "eyebrow"))
+        self.panel_caption = label("THE GAME", "eyebrow")
+        side.addWidget(self.panel_caption)
         self.mode_label = label("Two players", "score")
         side.addWidget(self.mode_label)
         self.status_label = label("White to move", "subtitle", True)
@@ -236,7 +248,12 @@ class MainWindow(QMainWindow):
         self.engine_layout.addWidget(self.engine_state)
         self.telemetry = label("Independent rules · native desktop", "muted", True)
         self.engine_layout.addWidget(self.telemetry)
-        self.pv_label = label("", "muted", True)
+        self.engine_layout.addWidget(label("PRINCIPAL VARIATION", "eyebrow"))
+        self.pv_label = MoveText()
+        self.pv_label.setAccessibleName("Principal variation moves")
+        self.pv_label.setFixedHeight(100)
+        self.pv_label.move_hovered.connect(self._preview_pv)
+        self.pv_label.preview_ended.connect(lambda: self._end_preview("pv"))
         self.engine_layout.addWidget(self.pv_label)
         self.engine_layout.addWidget(label("SAMPLED EVALUATION · WHITE", "eyebrow"))
         self.graph = EvaluationGraph()
@@ -290,7 +307,34 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 0)
         splitter.setSizes([720, 350])
-        content.addWidget(splitter, 1)
+        self.workspace_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.workspace_splitter.setChildrenCollapsible(False)
+        self.workspace_splitter.addWidget(splitter)
+        self.analysis_moves_panel = QFrame()
+        self.analysis_moves_panel.setObjectName("panel")
+        self.analysis_moves_panel.setMinimumHeight(110)
+        history_layout = QVBoxLayout(self.analysis_moves_panel)
+        history_layout.setContentsMargins(14, 8, 14, 8)
+        history_layout.setSpacing(4)
+        history_tools = QHBoxLayout()
+        history_tools.addWidget(label("GAME MOVES", "eyebrow"))
+        history_tools.addStretch()
+        for text, callback in (("|‹", lambda: self._navigate(0)), ("‹", self._undo),
+                               ("›", self._redo), ("›|", lambda: self._navigate(len(self.game.moves)))):
+            history_tools.addWidget(button(text, callback, "quiet"))
+        history_layout.addLayout(history_tools)
+        self.analysis_history = MoveText()
+        self.analysis_history.setAccessibleName("Analysis game moves")
+        self.analysis_history.setMinimumHeight(45)
+        self.analysis_history.move_hovered.connect(self._preview_history)
+        self.analysis_history.move_clicked.connect(self._navigate)
+        self.analysis_history.preview_ended.connect(lambda: self._end_preview("history"))
+        history_layout.addWidget(self.analysis_history, 1)
+        self.workspace_splitter.addWidget(self.analysis_moves_panel)
+        self.workspace_splitter.setStretchFactor(0, 1)
+        self.workspace_splitter.setStretchFactor(1, 0)
+        self.analysis_moves_panel.hide()
+        content.addWidget(self.workspace_splitter, 1)
         layout.addLayout(content, 1)
         self.statusBar().showMessage("Ready · Nocturne Chess · Offline by design")
 
@@ -414,10 +458,80 @@ class MainWindow(QMainWindow):
         self.analysis_source.addItem("Nocturne · independent engine", "custom")
         if self.config.get("external_path"):
             self.analysis_source.addItem("External UCI engine", "external")
+        self._render_move_history()
+        if self._pv_root is not None:
+            self.pv_label.set_moves(self.pv_label._items, light=self.config.get("light", False))
         self.board_view.update()
 
+    def _sync_workspace_layout(self):
+        analysis = self.analysis_mode
+        if self._analysis_layout_active == analysis:
+            return
+        self._analysis_layout_active = analysis
+        self.board_view.clear_preview()
+        self._preview_source = None
+        for widget in (self.sidebar, self.workspace_header, self.top_card, self.bottom_card,
+                       self.pause_button, self.draw_button, self.resign_button):
+            widget.setVisible(not analysis)
+        self.analysis_moves_panel.setVisible(analysis)
+        self.tabs.setTabVisible(0, not analysis)
+        self.panel_caption.setText("ENGINE ANALYSIS" if analysis else "THE GAME")
+        self.panel.setMaximumWidth(480 if analysis else 420)
+        self.main_splitter.insertWidget(0 if analysis else 1, self.panel)
+        self.main_splitter.setStretchFactor(0, 0 if analysis else 1)
+        self.main_splitter.setStretchFactor(1, 1 if analysis else 0)
+        if analysis:
+            self.tabs.setCurrentIndex(1)
+            self.main_splitter.setSizes([390, 800])
+            self.workspace_splitter.setSizes([620, 150])
+        else:
+            self.main_splitter.setSizes([720, 350])
+
+    def _render_move_history(self):
+        position = Board(self.game.initial_fen)
+        turn, number = position.turn, position.fullmove
+        items = []
+        for ply, notation in enumerate(self.game.sans, 1):
+            prefix = f"{number}. " if turn == 1 else (f"{number}... " if ply == 1 else "")
+            items.append((prefix + notation, ply))
+            if turn == -1:
+                number += 1
+            turn = -turn
+        self.analysis_history.set_moves(items, self.game.cursor, self.config.get("light", False))
+
+    def _end_preview(self, source):
+        if self._preview_source == source:
+            self._preview_source = None
+            self.board_view.clear_preview()
+
+    def _preview_history(self, ply):
+        if not self.analysis_mode or not 1 <= ply <= len(self.game.moves):
+            return
+        position = Board(self.game.initial_fen)
+        for move in self.game.moves[:ply]:
+            position.push(move)
+        self._preview_source = "history"
+        self.board_view.show_preview(position, self.game.moves[ply - 1],
+                                     f"History preview · {self.game.sans[ply - 1]}")
+
+    def _preview_pv(self, ply):
+        if (not self.analysis_mode or self._pv_root is None
+                or self._pv_identity != self._position_identity() or not 1 <= ply <= len(self._pv_moves)):
+            return
+        position = self._pv_root.copy(history=False)
+        for move in self._pv_moves[:ply]:
+            position.push(move)
+        self._preview_source = "pv"
+        self.board_view.show_preview(position, self._pv_moves[ply - 1], f"Suggested line preview · ply {ply}")
+
+    def changeEvent(self, event):
+        if event.type() == QEvent.Type.ActivationChange and not self.isActiveWindow() and hasattr(self, "board_view"):
+            self._preview_source = None
+            self.board_view.clear_preview()
+        super().changeEvent(event)
+
     def _human_move(self, move: Move):
-        if not self.board_view.interactive:
+        if not self.board_view.interactive or self.board_view.preview_board is not None:
             return
         self._stop_engine()
         if not self.analysis_mode:
@@ -432,6 +546,8 @@ class MainWindow(QMainWindow):
         self._schedule_engine()
 
     def _refresh(self, animate=False):
+        self._sync_workspace_layout()
+        self._preview_source = None
         if self._pgn_game_id != self.game.id or not self.pgn_editor.document().isModified():
             text = self.game.pgn()
             if self.pgn_editor.toPlainText() != text:
@@ -440,6 +556,11 @@ class MainWindow(QMainWindow):
             self._pgn_game_id = self.game.id
         last = self.game.moves[self.game.cursor - 1] if self.game.cursor else None
         self.board_view.set_position(self.game.board, last, animate)
+        self._render_move_history()
+        if self._pv_identity != self._position_identity():
+            self._pv_root = None
+            self._pv_moves = []
+            self.pv_label.set_moves([])
         outcome = self.game.outcome
         self.board_view.interactive = not outcome and not self.paused and (self.analysis_mode or not self._is_engine_turn())
         turn = "White" if self.game.board.turn == 1 else "Black"
@@ -1011,18 +1132,23 @@ class MainWindow(QMainWindow):
             f"{duration:.2f} seconds  ·  hash {info.get('hashfull', 0) / 10:.1f}%\n"
             f"Hash budget {self.config.get('hash_mb', 32)} MB  ·  1 thread")
         position = self.game.board.copy()
+        self._pv_root = self.game.board.copy(history=False)
+        self._pv_identity = self._position_identity()
+        self._pv_moves = []
         line = []
         first = None
-        for text in info.get("pv", [])[:10]:
+        for text in info.get("pv", [])[:96]:
             try:
                 move = position.parse_uci(text)
                 if first is None:
                     first = move
-                line.append(san(position, move))
+                prefix = f"{position.fullmove}. " if position.turn == 1 else (f"{position.fullmove}... " if not line else "")
+                line.append((prefix + san(position, move), len(line) + 1))
+                self._pv_moves.append(move)
                 position.push(move)
             except ValueError:
                 break
-        self.pv_label.setText("Principal variation\n" + ("  ".join(line) or "—"))
+        self.pv_label.set_moves(line, light=self.config.get("light", False))
         self.board_view.best_move = first
         self.board_view.update()
         if self._lab:

@@ -400,3 +400,37 @@ README and BUILDING now point directly to the verified 0.3.1 artifact. Local
 0.3.1 source/wheel archives and their checksums are refreshed. No Windows
 launcher scripts are included. The test executable remains unsigned with user
 authorization; signing and manual clean-machine UI checks remain outstanding.
+
+### 0.3.2 — Dedicated Analysis layout and reversible hover previews
+
+User requested engine analysis on the left, moves at the bottom, and Nibbler-
+style hover previews that restore the current board when the pointer leaves.
+Modified window.py, board.py and theme.py; added gui/moves.py for flowing,
+linked move text. Analysis hides play-specific chrome and uses horizontal and
+vertical splitters: engine left, board right, game moves below. Play retains
+its previous layout. History and PV tokens emit hover/click signals. Board
+preview state is separate from its authoritative board reference; rendering
+uses the preview while the game, clock, history cursor, hashes and search job
+are unchanged. History clicks still navigate. Input is blocked during preview.
+Leaving, hiding or defocusing the text, replacing a PV or actual position, and
+changing workspaces clear previews. PVs remain single-line analysis; MultiPV
+and variation trees are still deferred. No tooltips were added.
+
+Executed: existing 22 GUI tests passed before the new regressions. New GUI run
+initially had 27 passes/1 failure: the mouse helper needed layout processing
+and an off-anchor move before hovering. After fixing the helper, all 28 GUI
+tests passed in 10.62s. Ruff passed. Tests cover actual history/PV mouse hover,
+restore, current-game/hash/cursor/engine-generation invariants, layout switch,
+position and PV replacement, input guards, history clicks and castling/EP/
+underpromotion. Inspected full and compact Qt renders; bounded PV text height
+keeps the sampled graph visible at full size, with scrolling at compact sizes.
+Updated capture script can render a display-only hover and asserts that the
+underlying board remains unchanged. Version/docs/build artifact bumped to
+0.3.2. Full validation and Windows artifact are next.
+
+Final local full validation: pytest 78 passed, 2 optional deep-perft tests
+skipped in 15.93s; Ruff passed. Captured and visually inspected dark, light,
+compact and PGN layouts, plus a history hover preview showing a different board
+while the real current move remains selected. The capture helper asserts the
+actual FEN is unchanged and restored after rendering. Uploading code and
+screenshots for native Windows CI/build verification next.

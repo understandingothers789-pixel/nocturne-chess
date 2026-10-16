@@ -52,6 +52,7 @@ Completed checks are supported by executed results in `PROGRESS.md`.
 - [x] Legal FEN/PGN setup/import, history navigation and alternative main lines.
 - [x] Evaluation bar, best-move arrow, single PV, adjustable analysis limits.
 - [x] Actual sampled evaluation graph and developer performance dashboard.
+- [x] Analysis panel left, moves below, display-only history/PV hover previews.
 - [x] Saved engine-game results and aggregate white/black/draw counts.
 - [ ] Graphical unrestricted position-placement editor.
 - [ ] Full variation trees and preserving PGN annotations/variations.

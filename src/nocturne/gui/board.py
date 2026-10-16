@@ -21,6 +21,9 @@ class BoardWidget(QWidget):
         self.setMinimumSize(330, 330)
         self.setMouseTracking(True)
         self.board = Board()
+        self.preview_board: Board | None = None
+        self.preview_last_move: Move | None = None
+        self.preview_caption = ""
         self.flipped = False
         self.coordinates = True
         self.theme = "Forest"
@@ -77,6 +80,7 @@ class BoardWidget(QWidget):
         return rank * 16 + file
 
     def set_position(self, board: Board, last_move: Move | None = None, animate=False):
+        self.clear_preview()
         self._animation.stop()
         self._anim_move = None
         self.board, self.last_move = board, last_move
@@ -87,6 +91,22 @@ class BoardWidget(QWidget):
         if animate and last_move and self.animations:
             self._anim_move = last_move
             self._animation.start()
+        self.update()
+
+    @property
+    def display_board(self):
+        return self.preview_board if self.preview_board is not None else self.board
+
+    def show_preview(self, board: Board, last_move: Move | None = None, caption="Preview"):
+        self.preview_board = board
+        self.preview_last_move = last_move
+        self.preview_caption = caption
+        self.update()
+
+    def clear_preview(self):
+        self.preview_board = None
+        self.preview_last_move = None
+        self.preview_caption = ""
         self.update()
 
     def _animate(self, value):
@@ -127,6 +147,9 @@ class BoardWidget(QWidget):
         painter.drawPolygon(QPolygonF([b, base + normal, base - normal]))
 
     def paintEvent(self, event):
+        board = self.display_board
+        preview = self.preview_board is not None
+        last_move = self.preview_last_move if preview else self.last_move
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         rect, unit = self._geometry()
@@ -141,20 +164,20 @@ class BoardWidget(QWidget):
         for square in SQUARES:
             square_rect = self.square_rect(square)
             painter.fillRect(square_rect, QColor(dark if ((square >> 4) + (square & 7)) % 2 == 0 else light))
-            if self.last_move and square in (self.last_move.from_sq, self.last_move.to_sq):
+            if last_move and square in (last_move.from_sq, last_move.to_sq):
                 painter.fillRect(square_rect, QColor(220, 215, 105, 105))
-            if square in self.marks:
+            if not preview and square in self.marks:
                 painter.fillRect(square_rect, QColor(76, 170, 159, 135))
-            if square == self.selected:
+            if not preview and square == self.selected:
                 painter.fillRect(square_rect, QColor(217, 236, 131, 130))
                 painter.setPen(QPen(QColor("#d8ecb2"), 3))
                 painter.setBrush(Qt.BrushStyle.NoBrush)
                 painter.drawRect(square_rect.adjusted(1.5, 1.5, -1.5, -1.5))
                 painter.setPen(Qt.PenStyle.NoPen)
-        if self.board.in_check():
-            king = self.board.kings[0 if self.board.turn == 1 else 1]
+        if board.in_check():
+            king = board.kings[0 if board.turn == 1 else 1]
             painter.fillRect(self.square_rect(king), QColor(207, 74, 68, 160))
-        if self.selected is not None:
+        if not preview and self.selected is not None:
             for move in self.legal:
                 if move.from_sq != self.selected:
                     continue
@@ -168,29 +191,34 @@ class BoardWidget(QWidget):
                     painter.setBrush(QColor(20, 49, 32, 95))
                     painter.drawEllipse(target.center(), unit * .135, unit * .135)
         for square in SQUARES:
-            piece = self.board.cells[square]
-            if not piece or (self._drag_pos is not None and square == self._pressed):
+            piece = board.cells[square]
+            if not piece or (not preview and self._drag_pos is not None and square == self._pressed):
                 continue
-            if self._anim_move and square == self._anim_move.to_sq:
+            if not preview and self._anim_move and square == self._anim_move.to_sq:
                 continue
             self._piece(painter, piece, self.square_rect(square))
-        if self._anim_move:
+        if not preview and self._anim_move:
             a = self.square_rect(self._anim_move.from_sq).topLeft()
             b = self.square_rect(self._anim_move.to_sq).topLeft()
             pos = a + (b - a) * self._anim_progress
             piece = self.board.cells[self._anim_move.to_sq]
             if piece:
                 self._piece(painter, piece, QRectF(pos.x(), pos.y(), unit, unit))
-        for src, dst in self.arrows:
+        for src, dst in (() if preview else self.arrows):
             self._arrow(painter, src, dst, QColor(232, 175, 79, 200), unit)
-        if self.overlays and self.best_move:
+        if not preview and self.overlays and self.best_move:
             self._arrow(painter, self.best_move.from_sq, self.best_move.to_sq, QColor(94, 192, 181, 195), unit)
-        if self._drag_pos is not None and self._pressed is not None:
+        if not preview and self._drag_pos is not None and self._pressed is not None:
             piece = self.board.cells[self._pressed]
             if piece:
                 self._piece(painter, piece, QRectF(self._drag_pos.x() - unit / 2,
                                                   self._drag_pos.y() - unit / 2, unit, unit))
         painter.restore()
+        if preview:
+            painter.setPen(QColor("#82998a"))
+            painter.setFont(QFont("Segoe UI", 10))
+            painter.drawText(QRectF(rect.x(), rect.y() - 22, rect.width(), 18),
+                             Qt.AlignmentFlag.AlignCenter, self.preview_caption)
         if self.coordinates:
             painter.setFont(QFont("Segoe UI", 10))
             painter.setPen(QColor("#82998a"))
@@ -227,6 +255,8 @@ class BoardWidget(QWidget):
         return True
 
     def mousePressEvent(self, event: QMouseEvent):
+        if self.preview_board is not None:
+            return
         square = self.square_at(event.position())
         if event.button() == Qt.MouseButton.RightButton:
             self._right_from = square
@@ -247,12 +277,16 @@ class BoardWidget(QWidget):
         self.update()
 
     def mouseMoveEvent(self, event: QMouseEvent):
+        if self.preview_board is not None:
+            return
         if self._pressed is not None and event.buttons() & Qt.MouseButton.LeftButton:
             if (event.position() - self._press_pos).manhattanLength() > 5:
                 self._drag_pos = event.position()
                 self.update()
 
     def mouseReleaseEvent(self, event: QMouseEvent):
+        if self.preview_board is not None:
+            return
         square = self.square_at(event.position())
         if event.button() == Qt.MouseButton.RightButton:
             if self._right_from is not None and square is not None:

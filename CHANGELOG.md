@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.2 — 2026-10-16
+
+* Dedicated Analysis layout: engine panel left, board right, resizable game
+  moves strip across the bottom; Play retains its layout.
+* Hover history or suggested PV moves for display-only board previews. Leaving
+  the move restores the actual position; clicks on history still navigate.
+* Preview rendering preserves game state, clocks, engine jobs, selection and
+  annotations. Position/PV updates and focus or workspace changes clear stale
+  previews. No hover tooltips are introduced.
+* Regression checks cover mouse hover/leave, layout switching, engine/game
+  invariants, stale PV replacement, input guards and all special moves.
+
 ## 0.3.1 — 2026-10-16
 
 * Added a native File / Tree / Analysis / Display / Engine / Play menu bar,
