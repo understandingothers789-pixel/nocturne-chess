@@ -19,6 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("docs/preview.png"))
     parser.add_argument("--light", action="store_true")
+    parser.add_argument("--pgn", action="store_true")
     parser.add_argument("--width", type=int, default=1340)
     parser.add_argument("--height", type=int, default=920)
     args = parser.parse_args()
@@ -39,7 +40,7 @@ def main():
         window.game = game
         window._apply_settings()
         window._workspace(True)
-        window.tabs.setCurrentIndex(1)
+        window.tabs.setCurrentIndex(2 if args.pgn else 1)
         window.resize(args.width, args.height)
         window.show()
 

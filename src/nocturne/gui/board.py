@@ -52,7 +52,6 @@ class BoardWidget(QWidget):
         self._animation.valueChanged.connect(self._animate)
         self._animation.finished.connect(self._animation_finished)
         self.setAccessibleName("Chessboard")
-        self.setToolTip("Click or drag to move · Right-drag for arrows · Right-click to mark · F to flip")
 
     def sizeHint(self):
         return QSize(690, 690)

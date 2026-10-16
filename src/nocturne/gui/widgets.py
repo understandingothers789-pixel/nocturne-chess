@@ -14,7 +14,6 @@ class EvaluationBar(QWidget):
         self.score: int | None = None
         self.flipped = False
         self.board_view = None
-        self.setToolTip("Engine evaluation, from White's perspective. A sample is an estimate, not a result.")
 
     def set_score(self, score: int | None):
         self.score = score
@@ -54,7 +53,6 @@ class EvaluationGraph(QWidget):
         self.cursor = 0
         self.total = 0
         self.light = False
-        self.setToolTip("Sampled engine evaluations · click a point to inspect that position")
 
     def set_samples(self, samples: dict[int, int], cursor: int, total: int):
         self.samples = samples.copy()

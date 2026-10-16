@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 import random
 
-from PySide6.QtCore import QStandardPaths, Qt, QTimer
+from PySide6.QtCore import QEvent, QStandardPaths, Qt, QTimer
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QButtonGroup, QDialog, QDialogButtonBox, QFileDialog,
@@ -38,13 +38,11 @@ def label(text: str, style: str = "", wrap=False) -> QLabel:
     return widget
 
 
-def button(text, callback, style="", tooltip=""):
+def button(text, callback, style=""):
     widget = QPushButton(text)
     if style:
         widget.setObjectName(style)
     widget.clicked.connect(callback)
-    if tooltip:
-        widget.setToolTip(tooltip)
     return widget
 
 
@@ -153,7 +151,7 @@ class MainWindow(QMainWindow):
         heading.addWidget(self.subtitle_label)
         top.addLayout(heading)
         top.addStretch()
-        top.addWidget(button("＋  New game", self._new_game, "primary", "Ctrl+N"))
+        top.addWidget(button("＋  New game", self._new_game, "primary"))
         content.addLayout(top)
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
@@ -178,8 +176,8 @@ class MainWindow(QMainWindow):
         board_tools = QHBoxLayout()
         board_tools.addWidget(label("Drag a piece or select a square", "muted"))
         board_tools.addStretch()
-        board_tools.addWidget(button("⇅  Flip", self._flip, "quiet", "F"))
-        board_tools.addWidget(button("FEN", self._copy_fen, "quiet", "Copy FEN · Ctrl+Shift+C"))
+        board_tools.addWidget(button("⇅  Flip", self._flip, "quiet"))
+        board_tools.addWidget(button("Copy FEN", self._copy_fen, "quiet"))
         board_layout.addLayout(board_tools)
         splitter.addWidget(arena)
         self.panel = QFrame()
@@ -187,8 +185,8 @@ class MainWindow(QMainWindow):
         self.panel.setMinimumWidth(310)
         self.panel.setMaximumWidth(420)
         side = QVBoxLayout(self.panel)
-        side.setContentsMargins(20, 22, 20, 18)
-        side.setSpacing(14)
+        side.setContentsMargins(20, 16, 20, 12)
+        side.setSpacing(10)
         side.addWidget(label("THE GAME", "eyebrow"))
         self.mode_label = label("Two players", "score")
         side.addWidget(self.mode_label)
@@ -210,10 +208,13 @@ class MainWindow(QMainWindow):
         self.history.cellClicked.connect(self._history_clicked)
         moves_layout.addWidget(self.history, 1)
         navigation = QHBoxLayout()
-        self.first_button = button("|‹", lambda: self._navigate(0), tooltip="First position · Home")
-        self.undo_button = button("‹", self._undo, tooltip="Take back · Left")
-        self.redo_button = button("›", self._redo, tooltip="Next move · Right")
-        self.last_button = button("›|", lambda: self._navigate(len(self.game.moves)), tooltip="Latest position · End")
+        self.first_button = button("|‹", lambda: self._navigate(0))
+        self.undo_button = button("‹", self._undo)
+        self.redo_button = button("›", self._redo)
+        self.last_button = button("›|", lambda: self._navigate(len(self.game.moves)))
+        for widget, name in ((self.first_button, "First position"), (self.undo_button, "Take back"),
+                             (self.redo_button, "Next move"), (self.last_button, "Latest position")):
+            widget.setAccessibleName(name)
         for widget in (self.first_button, self.undo_button, self.redo_button, self.last_button):
             navigation.addWidget(widget)
         moves_layout.addLayout(navigation)
@@ -250,6 +251,25 @@ class MainWindow(QMainWindow):
         self.analyze_button = button("Analyze position", self._analyze, "primary")
         engine_page_layout.addWidget(self.analyze_button)
         self.tabs.addTab(engine_page, "Engine")
+        pgn_page = QWidget()
+        pgn_layout = QVBoxLayout(pgn_page)
+        pgn_layout.setContentsMargins(0, 10, 0, 0)
+        pgn_layout.addWidget(label("Paste PGN or a line of SAN moves, then apply.", "muted", True))
+        self.pgn_editor = QPlainTextEdit()
+        self.pgn_editor.installEventFilter(self)
+        self.pgn_editor.setAccessibleName("PGN game text")
+        self.pgn_editor.setPlaceholderText("1. e4 e5 2. Nf3 Nc6 *")
+        self.pgn_editor.setMinimumHeight(100)
+        pgn_layout.addWidget(self.pgn_editor, 1)
+        self.apply_pgn_button = button("Apply PGN", self._apply_pgn, "primary")
+        self.load_pgn_button = button("Load current", self._load_current_pgn)
+        self.load_pgn_button.setAccessibleName("Load current game into PGN editor")
+        pgn_actions = QHBoxLayout()
+        pgn_actions.addWidget(self.apply_pgn_button)
+        pgn_actions.addWidget(self.load_pgn_button)
+        pgn_layout.addLayout(pgn_actions)
+        self.tabs.addTab(pgn_page, "PGN")
+        self._pgn_game_id = None
         side.addWidget(self.tabs, 1)
         self.pause_button = button("Pause", self._pause)
         side.addWidget(self.pause_button)
@@ -260,8 +280,8 @@ class MainWindow(QMainWindow):
         actions.addWidget(self.resign_button)
         side.addLayout(actions)
         io = QHBoxLayout()
-        io.addWidget(button("Import", self._import_menu, "quiet"))
-        io.addWidget(button("Export PGN", self._export, "quiet"))
+        io.addWidget(button("Paste FEN / PGN", self._load_clipboard, "quiet"))
+        io.addWidget(button("Copy PGN", self._copy_pgn, "quiet"))
         side.addLayout(io)
         self.save_label = label("Games stay on this device", "eyebrow")
         self.save_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -295,16 +315,87 @@ class MainWindow(QMainWindow):
         return frame, name, detail, clock
 
     def _shortcuts(self):
-        for keys, callback in (("Ctrl+N", self._new_game), ("F", self._flip),
-                               ("Left", self._undo), ("Right", self._redo),
-                               ("Home", lambda: self._navigate(0)), ("End", lambda: self._navigate(len(self.game.moves))),
-                               ("Ctrl+S", self._save), ("Ctrl+O", self._import_menu),
-                               ("Ctrl+E", self._export), ("Ctrl+Shift+C", self._copy_fen),
-                               ("Space", self._pause), ("Escape", self.board_view.clear_annotations)):
-            action = QAction(self)
-            action.setShortcut(QKeySequence(keys))
+        self.menuBar().setNativeMenuBar(False)
+        self.menu_actions = {}
+        self.display_actions = {}
+
+        def add(menu, text, callback, keys=None, name=None):
+            action = QAction(text, self)
+            if keys:
+                action.setShortcut(QKeySequence(keys))
             action.triggered.connect(callback)
-            self.addAction(action)
+            menu.addAction(action)
+            self.menu_actions[name or text] = action
+            return action
+
+        file = self.menuBar().addMenu("&File")
+        add(file, "New game…", self._new_game, "Ctrl+N")
+        add(file, "Open PGN…", self._open_pgn, "Ctrl+O")
+        add(file, "Load FEN / PGN from clipboard", self._load_clipboard, "Ctrl+Shift+V", "load_clipboard")
+        add(file, "Edit / paste PGN…", self._show_pgn, "Ctrl+I")
+        add(file, "Enter FEN / PGN…", self._import_menu)
+        file.addSeparator()
+        add(file, "Save this game as PGN…", self._export, "Ctrl+E")
+        add(file, "Write PGN to clipboard", self._copy_pgn, "Ctrl+Shift+P", "copy_pgn")
+        add(file, "Write FEN to clipboard", self._copy_fen, "Ctrl+Shift+C")
+        add(file, "Save to library", self._save, "Ctrl+S")
+        add(file, "Game library…", self._library)
+        file.addSeparator()
+        add(file, "Quit", self.close, "Ctrl+Q")
+
+        tree = self.menuBar().addMenu("&Tree")
+        add(tree, "Root", lambda: self._navigate(0), "Home")
+        add(tree, "End", lambda: self._navigate(len(self.game.moves)), "End")
+        add(tree, "Backward", self._undo, "Left")
+        add(tree, "Forward", self._redo, "Right")
+
+        analysis = self.menuBar().addMenu("&Analysis")
+        add(analysis, "Go", self._start_analysis, "Ctrl+G")
+        add(analysis, "Halt", self._halt_analysis, "Ctrl+H")
+        add(analysis, "Engine performance…", self._engine_lab)
+
+        display = self.menuBar().addMenu("&Display")
+        add(display, "Flip board", self._flip, "F")
+        add(display, "Clear arrows and marks", self.board_view.clear_annotations, "Escape")
+        display.addSeparator()
+        for key, text in (("coordinates", "Coordinates"), ("overlays", "Analysis overlays"),
+                          ("animations", "Move animations"), ("light", "Light appearance")):
+            action = add(display, text, lambda checked, k=key: self._set_display(k, checked))
+            action.setCheckable(True)
+            self.display_actions[key] = action
+        add(display, "Board appearance…", self._settings)
+
+        engine = self.menuBar().addMenu("&Engine")
+        add(engine, "Choose engine…", self._choose_engine)
+        add(engine, "Engine settings…", self._settings)
+        play = self.menuBar().addMenu("&Play")
+        add(play, "New game…", self._new_game)
+        add(play, "Pause / continue", self._pause, "Space")
+        add(play, "Offer / claim draw…", self._draw)
+        add(play, "Resign…", self._resign)
+
+    def _set_display(self, key, value):
+        self.config[key] = value
+        self._apply_settings()
+        self._save()
+
+    def eventFilter(self, watched, event):
+        if (watched is getattr(self, "pgn_editor", None)
+                and event.type() == QEvent.Type.ShortcutOverride
+                and event.modifiers() in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.ShiftModifier)):
+            event.accept()
+            return True
+        return super().eventFilter(watched, event)
+
+    def _choose_engine(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Choose UCI engine", "", "Executables (*.exe);;All files (*)")
+        if path:
+            self._stop_engine()
+            self.config["external_path"] = path
+            self._apply_settings()
+            self.analysis_source.setCurrentIndex(1)
+            self._save()
+            self._schedule_engine()
 
     def _apply_settings(self):
         QApplication.instance().setStyleSheet(stylesheet(self.config.get("light", False)))
@@ -314,6 +405,8 @@ class MainWindow(QMainWindow):
         self.board_view.overlays = self.config.get("overlays", True)
         self.graph.light = self.config.get("light", False)
         self.eval_bar.setVisible(self.board_view.overlays)
+        for key, action in self.display_actions.items():
+            action.setChecked(bool(self.config.get(key, False)))
         self.analysis_source.clear()
         self.analysis_source.addItem("Nocturne · independent engine", "custom")
         if self.config.get("external_path"):
@@ -336,6 +429,12 @@ class MainWindow(QMainWindow):
         self._schedule_engine()
 
     def _refresh(self, animate=False):
+        if self._pgn_game_id != self.game.id or not self.pgn_editor.document().isModified():
+            text = self.game.pgn()
+            if self.pgn_editor.toPlainText() != text:
+                self.pgn_editor.setPlainText(text)
+            self.pgn_editor.document().setModified(False)
+            self._pgn_game_id = self.game.id
         last = self.game.moves[self.game.cursor - 1] if self.game.cursor else None
         self.board_view.set_position(self.game.board, last, animate)
         outcome = self.game.outcome
@@ -596,17 +695,52 @@ class MainWindow(QMainWindow):
         QApplication.clipboard().setText(self.game.board.fen())
         self.statusBar().showMessage("FEN copied to clipboard", 3000)
 
+    def _copy_pgn(self):
+        QApplication.clipboard().setText(self.game.pgn())
+        self.statusBar().showMessage("PGN copied to clipboard", 3000)
+
+    def _show_pgn(self):
+        self.tabs.setCurrentIndex(2)
+        self.pgn_editor.setFocus()
+
+    def _load_current_pgn(self):
+        self.pgn_editor.setPlainText(self.game.pgn())
+        self.pgn_editor.document().setModified(False)
+        self._pgn_game_id = self.game.id
+
+    def _apply_pgn(self):
+        self._import_text(self.pgn_editor.toPlainText())
+
+    def _load_clipboard(self):
+        if self._import_text(QApplication.clipboard().text()):
+            self._show_pgn()
+
+    def _open_pgn(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Open PGN", "", "PGN games (*.pgn);;All files (*)")
+        if path:
+            try:
+                text = Path(path).read_text(encoding="utf-8-sig")
+            except (OSError, UnicodeError) as exc:
+                self._error("Cannot open PGN", str(exc))
+                return
+            self._import_text(text)
+
     def _import_menu(self):
         dialog = TextDialog("Import position or game", "Paste a six-field FEN or a single PGN game.", parent=self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
-        text = dialog.editor.toPlainText().strip()
+        self._import_text(dialog.editor.toPlainText())
+
+    def _import_text(self, text):
+        text = text.strip()
         try:
+            if not text:
+                raise ValueError("Paste a PGN game, SAN moves, or a six-field FEN first.")
             first = text.split()[0] if text else ""
             game = Game(text) if first.count("/") == 7 else Game.from_pgn(text)
         except ValueError as exc:
             self._error("Cannot import", str(exc))
-            return
+            return False
         self._save()
         self._stop_engine()
         self.game = game
@@ -616,6 +750,7 @@ class MainWindow(QMainWindow):
         self.paused = False
         self._refresh()
         self._save()
+        return True
 
     def _export(self):
         path, _ = QFileDialog.getSaveFileName(self, "Export PGN", "nocturne-game.pgn", "PGN games (*.pgn)")
@@ -698,10 +833,16 @@ class MainWindow(QMainWindow):
 
     def _analyze(self):
         if self._job and self._job["kind"] == "analysis":
-            self._analysis_enabled = False
-            self._stop_engine()
-            self.analyze_button.setText("Analyze position")
+            self._halt_analysis()
             return
+        self._start_analysis()
+
+    def _halt_analysis(self):
+        self._analysis_enabled = False
+        self._stop_engine()
+        self.analyze_button.setText("Analyze position")
+
+    def _start_analysis(self):
         self._workspace(True)
         self._analysis_enabled = True
         self.tabs.setCurrentIndex(1)

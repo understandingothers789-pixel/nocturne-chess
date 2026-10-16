@@ -27,6 +27,7 @@ Completed checks are supported by executed results in `PROGRESS.md`.
 - [x] Legal/capture/check/last-move highlights, annotations, flip, animation.
 - [x] Primary game modes, increment clocks, pause, resign, draws and takebacks.
 - [x] SAN history, save/resume, multiple games, preferences, FEN/PGN interchange.
+- [x] Nibbler-style native menus, PGN editor and direct clipboard interchange; no tooltips.
 - [x] Isolated analysis copies preserve the played game's saved record.
 - [x] Configurable hash budget; explicit one-thread limitation.
 - [x] Compact engine-panel scrolling and light-theme contrast review.
@@ -66,7 +67,8 @@ Completed checks are supported by executed results in `PROGRESS.md`.
 - [x] Windows release ZIP gate: trusted native signatures, timestamps and smoke checks.
 - [x] Exclude batch/PowerShell launchers and security-bypass instructions from distribution.
 - [x] Linux GUI/UCI bundles built and exercised with packaged smoke checks.
-- [ ] Execute Windows build and inspect artifacts on a clean Windows 11 system.
+- [x] Native Windows CI builds, packaged smoke checks and downloadable unsigned test artifact.
+- [ ] Inspect downloaded artifacts and interact manually on a clean Windows 11 system.
 - [ ] Obtain legitimate trusted signing, sign binaries and verify Windows/SmartScreen behavior.
 - [ ] Optional installer; full platform/license distribution audit.
 

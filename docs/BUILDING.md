@@ -4,12 +4,12 @@
 
 ### For players
 
-[Download the verified Windows test artifact](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38954107896/artifacts/12070336096).
+[Previous verified Windows test artifact (0.3.0)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38954107896/artifacts/12070336096).
 GitHub sign-in is required.
 
 The user has opted into an unsigned Windows test executable. Open the latest
 successful [Windows workflow run](https://github.com/understandingothers789-pixel/nocturne-chess/actions),
-then download **Nocturne-0.3.0-Windows-x64-unsigned** under Artifacts. GitHub
+then download **Nocturne-0.3.1-Windows-x64-unsigned** under Artifacts. GitHub
 requires you to be signed in. Extract the whole ZIP, then open
 `Nocturne/Nocturne.exe`. Keep the accompanying `_internal` directory in place.
 No Python installation or launcher scripts are required.
@@ -48,7 +48,7 @@ py -3.12 scripts/build_windows.py --package-signed --signtool "C:\path\to\signto
 
 SignTool must accept every native file under the Authenticode trust policy;
 missing/untrusted signatures and timestamp warnings stop packaging. Smoke
-checks must also pass. The resulting `dist/Nocturne-0.3.0-win64-signed.zip`
+checks must also pass. The resulting `dist/Nocturne-0.3.1-win64-signed.zip`
 contains the windowed `Nocturne/Nocturne.exe` and console
 `Nocturne-UCI/Nocturne-UCI.exe`, plus their runtime directories and notices.
 No launcher scripts are included. Unsigned or failed builds are not packaged

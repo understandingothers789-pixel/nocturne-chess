@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased — Windows distribution constraint
+## 0.3.1 — 2026-10-16
+
+* Added a native File / Tree / Analysis / Display / Engine / Play menu bar,
+  organized around supported Nibbler-style commands.
+* Added an editable PGN tab, direct clipboard FEN/PGN load and PGN copy, and
+  file-based PGN opening. Plain SAN move text is accepted without a file.
+* Preserve the board and draft on invalid PGN; keep text editing shortcuts
+  independent of board navigation and play shortcuts.
+* Removed hover tooltips and retained accessible names for navigation buttons.
+* With explicit user authorization, successful Windows CI builds now retain
+  unsigned executable downloads for 30 days. Windows may show a warning.
+
+### Earlier Windows distribution changes
 
 * Replaced the PowerShell builder with a developer-only Python tool; removed
   the execution-policy bypass instruction.

@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 from nocturne.core.board import parse_square
 from nocturne.core.game import Game
@@ -14,7 +15,7 @@ try:
     from PySide6.QtCore import QEvent, QPointF, QTimer, Qt
     from PySide6.QtGui import QMouseEvent
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication, QMenu
+    from PySide6.QtWidgets import QApplication, QMenu, QWidget
     from nocturne.gui.window import MainWindow
     HAS_QT = True
 except ImportError:
@@ -59,6 +60,94 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(self.window.history.item(0, 1).text(), "e4")
         self.assertEqual(self.window.game.board.cells[parse_square("e4")], 1)
         self.assertIs(self.window.board_view.board, self.window.game.board)
+
+    def test_nibbler_style_menus_and_no_widget_tooltips(self):
+        self.assertEqual([a.text().replace("&", "") for a in self.window.menuBar().actions()],
+                         ["File", "Tree", "Analysis", "Display", "Engine", "Play"])
+        self.assertTrue(all(not w.toolTip() for w in self.window.findChildren(QWidget)))
+        action = self.window.display_actions["coordinates"]
+        action.trigger()
+        self.assertFalse(self.window.board_view.coordinates)
+        action.trigger()
+        self.assertTrue(self.window.board_view.coordinates)
+
+    def test_paste_plain_moves_apply_and_copy_pgn_without_file(self):
+        self.window._show_pgn()
+        editor = self.window.pgn_editor
+        QApplication.clipboard().setText("1. e4 e5 2. Nf3 Nc6 *")
+        editor.selectAll()
+        QTest.keyClick(editor, Qt.Key.Key_V, Qt.KeyboardModifier.ControlModifier)
+        with patch.object(self.window, "_schedule_engine"):
+            QTest.mouseClick(self.window.apply_pgn_button, Qt.MouseButton.LeftButton)
+        self.assertEqual(self.window.game.sans, ["e4", "e5", "Nf3", "Nc6"])
+        self.assertTrue(self.window.analysis_mode)
+        self.window.menu_actions["copy_pgn"].trigger()
+        restored = Game.from_pgn(QApplication.clipboard().text())
+        self.assertEqual(restored.board.fen(), self.window.game.board.fen())
+        self.assertEqual(restored.sans, self.window.game.sans)
+
+    def test_pgn_typing_does_not_trigger_play_or_flip_shortcuts(self):
+        self.window._show_pgn()
+        editor = self.window.pgn_editor
+        editor.selectAll()
+        flipped, paused = self.window.board_view.flipped, self.window.paused
+        QTest.keyClicks(editor, '1. e4 e5 2. Nf3 Nc6 *')
+        self.assertEqual(editor.toPlainText(), '1. e4 e5 2. Nf3 Nc6 *')
+        QTest.keyClick(editor, Qt.Key.Key_Home)
+        QTest.keyClicks(editor, 'F')
+        self.assertEqual(editor.toPlainText(), 'F1. e4 e5 2. Nf3 Nc6 *')
+        self.assertEqual((self.window.board_view.flipped, self.window.paused), (flipped, paused))
+        self.window._refresh()
+        self.assertEqual(editor.toPlainText(), 'F1. e4 e5 2. Nf3 Nc6 *')
+
+    def test_bad_pgn_preserves_current_game_and_editor(self):
+        game = self.window.game
+        self.window.pgn_editor.setPlainText("1. e4 e5 2. Ke3")
+        self.window.pgn_editor.document().setModified(True)
+        with patch.object(self.window, "_error") as error:
+            self.window._apply_pgn()
+        error.assert_called_once()
+        self.assertIs(self.window.game, game)
+        self.assertEqual(game.sans, [])
+        self.assertEqual(self.window.pgn_editor.toPlainText(), "1. e4 e5 2. Ke3")
+
+    def test_compact_pgn_controls_remain_readable(self):
+        self.window.resize(1024, 660)
+        self.window._show_pgn()
+        self.app.processEvents()
+        self.assertEqual(self.window.height(), 660)
+        self.assertGreaterEqual(self.window.pgn_editor.height(), 100)
+        for control in (self.window.apply_pgn_button, self.window.load_pgn_button):
+            self.assertGreaterEqual(control.height(), 30)
+            self.assertTrue(self.window.tabs.rect().contains(control.mapTo(self.window.tabs, control.rect().bottomRight())))
+
+    def test_open_pgn_file_and_reload_editor(self):
+        path = Path(self.tmp.name) / "game.pgn"
+        path.write_text("\ufeff1. d4 Nf6 2. c4 e6 *", encoding="utf-8")
+        with patch("nocturne.gui.window.QFileDialog.getOpenFileName", return_value=(str(path), "")), \
+                patch.object(self.window, "_schedule_engine"):
+            self.window.menu_actions["Open PGN…"].trigger()
+        self.assertEqual(self.window.game.sans, ["d4", "Nf6", "c4", "e6"])
+        self.window.pgn_editor.setPlainText("temporary draft")
+        self.window._load_current_pgn()
+        self.assertEqual(self.window.pgn_editor.toPlainText(), self.window.game.pgn())
+        self.assertFalse(self.window.pgn_editor.document().isModified())
+
+    def test_clipboard_load_pgn_fen_and_empty_clipboard(self):
+        with patch.object(self.window, "_schedule_engine"):
+            QApplication.clipboard().setText("1.d4 d5 2.c4 *")
+            self.window.menu_actions["load_clipboard"].trigger()
+            self.assertEqual(self.window.game.sans, ["d4", "d5", "c4"])
+            fen = self.window.game.board.fen()
+            QApplication.clipboard().setText(fen)
+            self.window._load_clipboard()
+            self.assertEqual(self.window.game.board.fen(), fen)
+        game = self.window.game
+        QApplication.clipboard().clear()
+        with patch.object(self.window, "_error") as error:
+            self.window._load_clipboard()
+        error.assert_called_once()
+        self.assertIs(self.window.game, game)
 
     def test_drag_move(self):
         board = self.window.board_view

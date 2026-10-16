@@ -345,3 +345,34 @@ The archive SHA-256 reported by GitHub is
 README and BUILDING.md now include the direct artifact link. Local source and
 wheel archives are refreshed with the documentation; signed-release validation
 and manual Windows UI checks remain outstanding.
+
+### 0.3.1 — Nibbler-style menus and PGN text workflow
+
+User requested removal of tooltips, menus closer to Nibbler, and move/PGN
+copy/paste without requiring a file. The uploaded nibbler.exe exceeds the
+32 MiB transfer limit and was not executed. Instead, inspected the upstream
+public menu definitions at https://github.com/rooklift/nibbler (menu translation
+template). Implemented menu organization independently; no Nibbler code or
+assets are bundled.
+
+Modified window.py, board.py, widgets.py and theme.py: added File, Tree,
+Analysis, Display, Engine and Play menus for working features; removed hover
+tooltips; added an editable PGN tab with Apply/Copy/Load current controls,
+clipboard FEN/PGN import/export, and file-based PGN opening. Text is parsed
+before replacing the current game. Dirty PGN drafts survive ordinary refreshes,
+and typing/navigation in the editor does not activate board shortcuts.
+Updated GUI regression tests, version metadata to 0.3.1, Windows artifact name,
+README, BUILDING, TODO and CHANGELOG. No unsupported variation-tree or MultiPV
+commands were added. Existing main-line-only PGN limitation remains.
+
+Executed so far: Ruff passed; native offscreen GUI suite: 19 passed in 8.17s.
+Full suite, visual inspection and updated native Windows artifact are next.
+
+Visual QA found clipped PGN controls at 1024×660. Fixed the panel spacing,
+placed PGN actions in one row, and enforced a readable editor height. Added
+regressions for compact control geometry and opening UTF-8/BOM PGN files.
+Full suite after the fix: 71 passed, 2 skipped; Ruff passed. Both skipped tests
+are optional deep perft checks; rules/search code did not change. Rendered and
+inspected updated full-size and compact PGN screenshots using
+scripts/capture_preview.py. The PNGs show the real Qt window. Windows CI build
+and new executable upload are the remaining verification step.

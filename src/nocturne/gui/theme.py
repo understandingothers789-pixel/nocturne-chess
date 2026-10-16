@@ -56,10 +56,12 @@ def stylesheet(light: bool = False) -> str:
     QCheckBox {{ spacing: 9px; }}
     QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid #667f65; background: {raised}; }}
     QCheckBox::indicator:checked {{ background: #a7ca91; }}
+    QMenuBar {{ background: {panel}; color: {text}; padding: 3px; }}
+    QMenuBar::item {{ padding: 6px 12px; background: transparent; }}
+    QMenuBar::item:selected {{ background: {raised}; }}
     QMenu {{ background: {panel}; border: 1px solid {border}; padding: 5px; }}
     QMenu::item {{ padding: 8px 24px; }}
     QMenu::item:selected {{ background: #344b35; border-radius: 4px; }}
-    QToolTip {{ background: {raised}; color: {text}; border: 1px solid {border}; padding: 6px; }}
     QStatusBar {{ color: {muted}; font-size: 11px; }}
     QSplitter::handle {{ background: transparent; width: 12px; }}
     """

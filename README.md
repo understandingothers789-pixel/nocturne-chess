@@ -1,4 +1,4 @@
-# Nocturne Chess · 0.3.0
+# Nocturne Chess · 0.3.1
 
 A native, offline chess studio with an independent Python chess engine, a
 PySide6 desktop interface, and reproducible rules/search tests. Designed for
@@ -12,12 +12,12 @@ It does not claim a verified Elo or complete advanced analysis suite.
 
 ## Play
 
-[Download the Windows test ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38954107896/artifacts/12070336096) (GitHub sign-in required).
+[Download the previous Windows test ZIP (0.3.0)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38954107896/artifacts/12070336096) (GitHub sign-in required).
 
 Future Windows test builds are available from the latest successful run on the
 [Actions page](https://github.com/understandingothers789-pixel/nocturne-chess/actions).
 While signed into GitHub, open the run and download the artifact named
-**Nocturne-0.3.0-Windows-x64-unsigned**. Extract the entire ZIP, open the
+**Nocturne-0.3.1-Windows-x64-unsigned**. Extract the entire ZIP, open the
 `Nocturne` folder, and double-click `Nocturne.exe`. Keep `_internal` beside it.
 Python is not required. These test builds are unsigned and Windows may show a
 SmartScreen warning. They expire after 30 days. No batch or PowerShell launcher
@@ -71,6 +71,17 @@ boundary before they can change the game.
 
 ## Using the studio
 
+The top menus follow Nibbler's File, Tree, Analysis, Display, Engine and Play
+organization for supported features. Hover tooltips are removed. In the **PGN**
+tab, paste a full PGN game or plain SAN moves (for example `1. e4 e5 2. Nf3 Nc6 *`)
+and click **Apply PGN**. Invalid text preserves the current game and your draft.
+**Load current** resets the editor to the game on the board. Normal
+Ctrl+C/Ctrl+V work inside the editor. PGN import keeps only the main line.
+
+**File → Load FEN / PGN from clipboard** (Ctrl+Shift+V) imports clipboard text
+directly. **File → Write PGN to clipboard** (Ctrl+Shift+P) copies the current
+game. File-based Open PGN and Save this game as PGN remain available.
+
 **New game** selects mode, side, difficulty, clock and player/engine choices.
 Beginner/Casual select among searched moves within a bounded score margin;
 stronger profiles increase depth/time. The profiles are not Elo ratings.
@@ -110,8 +121,10 @@ marked. Use JSON exports for comparisons. See [measured results](docs/BENCHMARKS
 | Shortcut | Action |
 | --- | --- |
 | Ctrl+N / Ctrl+S | New game / save |
-| Ctrl+O / Ctrl+E | Import / export PGN |
+| Ctrl+O / Ctrl+E | Open / save PGN file |
 | Ctrl+Shift+C | Copy FEN |
+| Ctrl+I | Open PGN editor |
+| Ctrl+Shift+V / Ctrl+Shift+P | Load clipboard / copy PGN |
 | F / Escape | Flip / clear annotations |
 | Left / Right | Takeback / next history position |
 | Home / End | First / latest history position |
