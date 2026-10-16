@@ -4,6 +4,9 @@
 
 ### For players
 
+[Download the verified Windows test artifact](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38954107896/artifacts/12070336096).
+GitHub sign-in is required.
+
 The user has opted into an unsigned Windows test executable. Open the latest
 successful [Windows workflow run](https://github.com/understandingothers789-pixel/nocturne-chess/actions),
 then download **Nocturne-0.3.0-Windows-x64-unsigned** under Artifacts. GitHub

@@ -12,7 +12,9 @@ It does not claim a verified Elo or complete advanced analysis suite.
 
 ## Play
 
-Windows test builds are available from the latest successful run on the
+[Download the Windows test ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38954107896/artifacts/12070336096) (GitHub sign-in required).
+
+Future Windows test builds are available from the latest successful run on the
 [Actions page](https://github.com/understandingothers789-pixel/nocturne-chess/actions).
 While signed into GitHub, open the run and download the artifact named
 **Nocturne-0.3.0-Windows-x64-unsigned**. Extract the entire ZIP, open the

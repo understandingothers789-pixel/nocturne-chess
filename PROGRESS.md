@@ -335,5 +335,13 @@ are introduced. The Windows workflow now uploads both complete application
 folders as a clearly named unsigned test artifact for 30 days, only after the
 existing tests, native build, and smoke checks succeed. PR runs do not upload.
 README and BUILDING.md now include download/extract/launch instructions.
-Signed-release verification remains separate. Windows CI results are pending
-for this workflow change.
+Signed-release verification remains separate. Windows CI run 38954107896 completed successfully: Ruff passed; unittest ran
+66 tests with OK (skipped=2); PyInstaller built the native GUI/UCI apps; packaged
+smoke checks and artifact upload passed. GitHub retained artifact 12070336096
+(60,833,471 bytes), named Nocturne-0.3.0-Windows-x64-unsigned, expiring
+2026-11-15. The artifact download endpoint also returned the ZIP successfully.
+The archive SHA-256 reported by GitHub is
+506bb5485415799c541ca55f80b79be85cd36aa6d50b8a6fa4350413636f9056.
+README and BUILDING.md now include the direct artifact link. Local source and
+wheel archives are refreshed with the documentation; signed-release validation
+and manual Windows UI checks remain outstanding.
