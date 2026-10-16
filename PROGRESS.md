@@ -507,3 +507,31 @@ legacy code page. Made UCI entry-point stdin/stdout/stderr explicitly UTF-8,
 also ensuring non-ASCII Syzygy folder paths survive the transport. The frozen
 Syzygy smoke remains the regression check; rebuilding rather than publishing
 the failed package.
+
+After the UTF-8 fix: pytest tests/test_tablebase.py tests/test_protocol_worker.py
+ran 10 tests, all passed in 0.56s; Ruff passed. A real UCI subprocess with
+PYTHONIOENCODING=cp1252 still emitted valid UTF-8 and a tablebase hit. An actual
+Qt/background-worker integration probe displayed TB · White wins, produced a
+legal PV, and left the analyzed FEN unchanged. Inspected the rendered tablebase
+analysis window; labels fit and the board/move layout remains intact.
+
+## 0.4.0 — Verified Windows delivery
+
+Windows run 38970560841 succeeded for commit
+882c81f03ffe1d445179bdcd262d74ceff6a2031. Both full unittest runs
+ran 91 tests, OK (skipped=2): 89 passed each, in 24.802s and 25.435s.
+Ruff, native MSVC compilation, GUI/UCI PyInstaller builds, packaged GUI smoke,
+UCI handshake and real frozen Syzygy probe all passed. Upload succeeded.
+Artifact 12076786361: Nocturne-0.4.0-Windows-x64-unsigned, 60955462 bytes,
+SHA-256 5331154ab441dd9b3d0716e6054630f3eb3ed71b4fc466f743a9d33b03626218.
+Metadata reports unexpired, retained until 2026-11-15. Download:
+https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38970560841/artifacts/12076786361
+
+README/BUILDING updated to this verified Windows download. Source archive and
+Linux native wheel refreshed locally; source archive integrity and native-source
+inclusion checked with generated binaries/table files/script launchers excluded.
+Remaining limitations: table fixtures cover three-piece data only; full five/
+seven-piece collections and manual Windows desktop interaction are unverified.
+PGN comments/NAGs and Multi-PV remain deferred. Native/disk probe I/O is not
+hard-interruptible inside the standalone UCI thread; GUI worker processes are
+killable. No signed-release claim or playing-strength estimate is made.
