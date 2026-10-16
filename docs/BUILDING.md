@@ -6,14 +6,18 @@
 
 There is no Windows app available to download from this workspace yet. The
 `dist/Nocturne/Nocturne` file built here is for Linux and will not run on
-Windows. The project is not connected to a GitHub repository, so its Windows
-workflow has not run. Do not open that Linux file on Windows.
+Windows. The source is in the [Nocturne Chess GitHub
+repository](https://github.com/understandingothers789-pixel/nocturne-chess).
+Its GitHub Actions workflow has successfully built and smoke-tested both
+Windows apps, but the temporary runner files were not published or retained.
+Do not open the Linux file on Windows.
 
-A Windows release must be built on Windows and signed with a trusted code
-signing identity before it can be offered as a safety-checked download. This
-workspace has neither a Windows build machine nor a signing identity. I cannot
-promise a warning-free Windows executable until those are available. No batch
-or PowerShell launchers and no warning-bypass steps are used.
+A downloadable Windows release requires trusted code signing. No signing
+identity is configured for this project, so the CI workflow deliberately does
+not publish its unsigned executables. Even with a valid signature, SmartScreen
+also considers publisher reputation and local policy, so a warning-free launch
+cannot be promised. No batch or PowerShell launchers or warning-bypass steps
+are used.
 
 ### For developers building on Windows
 
@@ -60,10 +64,12 @@ downloaded or included. Build requirements need internet access once; playing
 does not. For an air-gapped build, prepare a wheelhouse on a matching Windows
 Python/architecture and set pip's `PIP_NO_INDEX` / `PIP_FIND_LINKS` accordingly.
 
-The checked-in GitHub Actions workflow installs the oracle/test tools, runs
-headless Qt tests and Ruff, then validates a developer build. Creating or
-editing the workflow file did not execute GitHub Actions. Signed distribution
-requires the separate verification/packaging step above.
+The checked-in GitHub Actions workflow completed successfully on Windows in
+run [#1](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38952576627).
+It installed dependencies, passed Ruff and the full automated suite, built both
+PyInstaller apps, and passed GUI/UCI smoke checks. It did not publish an
+unsigned build. Signed distribution requires trusted signing and the separate
+verification/packaging step above.
 
 ## Linux validation performed here
 
@@ -89,11 +95,11 @@ Setuptools must already be installed for `--no-build-isolation`.
 
 ## Release checks still requiring Windows
 
-Run the developer build, then manually check drag/drop and promotion, board resize at
-100/150/200% DPI, clocks through suspend/resume, cancellation on close/new game,
-library permissions, and an explicitly installed UCI engine. Check the built
-signed archive on a clean Windows 11 machine without Python. Trusted signing
-is a release requirement. A conventional installer remains future release work.
+Manually check drag/drop and promotion, board resize at 100/150/200% DPI, clocks
+through suspend/resume, cancellation on close/new game, library permissions,
+and an explicitly installed UCI engine. Check the signed archive on a clean
+Windows 11 machine without Python. Trusted signing is a release requirement. A
+conventional installer remains future release work.
 
 Preserve Qt's applicable license/source-availability notices and the supplied
 license texts. Review the exact platform libraries collected by PyInstaller

@@ -302,3 +302,26 @@ promised from this environment.
 Git repository/remote is configured in `/workspace`. No Windows build or
 signature was produced. The source ZIP is refreshed after these documentation
 changes; no chess source or tests changed.
+
+### GitHub repository and first native Windows CI build
+
+**Repository:** https://github.com/understandingothers789-pixel/nocturne-chess
+
+Uploaded the complete 0.3.0 project source, original assets, tests, benchmark
+records, licenses, documentation, and Windows workflow. The first GitHub Actions
+run completed successfully on a Windows runner:
+
+- Python and pinned dependencies installed successfully.
+- Ruff passed.
+- Full automated test suite passed.
+- PyInstaller built the GUI and UCI Windows executables.
+- The builder's packaged GUI and UCI smoke checks passed.
+
+Run: https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38952576627
+
+**Distribution limit:** the run builds in an ephemeral worker and does not
+upload the unsigned executable. There is still no downloadable `.exe`; trusted
+code signing, Windows reputation/clean-machine checks, and a deliberate signed
+release are outstanding. A valid signature still cannot guarantee no
+SmartScreen warning. README and BUILDING.md now reflect the successful run and
+the remaining release gate.

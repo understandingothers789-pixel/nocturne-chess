@@ -14,11 +14,12 @@ It does not claim a verified Elo or complete advanced analysis suite.
 
 **There is no Windows executable available yet.** This project was developed in
 a Linux environment, and the executable in `dist/Nocturne` is a Linux program.
-It will not run on Windows. The project is not connected to GitHub, so the
-Windows build workflow has not run. See [the Windows build status and
-requirements](docs/BUILDING.md). A Windows release still needs a native Windows
-build, trusted signing, and Windows validation. No batch or PowerShell launchers
-or warning bypass instructions are provided.
+It will not run on Windows. GitHub Actions has now built and smoke-tested the
+Windows GUI and UCI apps, and all CI tests passed. That temporary runner build
+was not published or retained because it is unsigned. See [the Windows build
+status and requirements](docs/BUILDING.md). A downloadable Windows release
+still needs trusted signing and additional Windows validation. No batch or
+PowerShell launchers or warning bypass instructions are provided.
 
 For developers with the source on Windows, the [developer-only Python
 builder](scripts/build_windows.py) validates a local build. It does not create a
