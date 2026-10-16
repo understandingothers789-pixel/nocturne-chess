@@ -1,0 +1,27 @@
+name: Windows desktop validation and build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install validation tools
+        run: python -m pip install -r requirements-dev.txt
+      - name: Install project
+        run: python -m pip install --no-deps -e .
+      - name: Lint
+        run: ruff check src tests scripts
+      - name: Full tests including Qt and independent oracle
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m unittest discover -s tests -v
+      - name: Validate local Windows build (no release archive or unsigned upload)
+        run: python scripts/build_windows.py --build-only
+      # Release distribution is a separate, trusted-signing step. This workflow
+      # deliberately does not publish unsigned executables or developer builds.

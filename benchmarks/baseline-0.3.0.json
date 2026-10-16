@@ -1,0 +1,1357 @@
+{
+  "metadata": {
+    "engine": "Nocturne 0.3.0",
+    "utc": "2026-10-16T16:26:52.218671+00:00",
+    "python": "3.12.14",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "note": "Single process/thread. Wall-clock speed is environment-specific; no Elo inference."
+  },
+  "depth": 3,
+  "time_cap_seconds": 10,
+  "repeats": 3,
+  "positions": {
+    "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    "kiwipete": "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+    "rook_endgame": "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+    "promotion_tactics": "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+    "middlegame": "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"
+  },
+  "results": [
+    {
+      "position": "start",
+      "variant": "default",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 664,
+          "seconds": 0.12989715100002286,
+          "nps": 5111,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 664,
+          "seconds": 0.12542889999986073,
+          "nps": 5293,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 664,
+          "seconds": 0.12582309899971733,
+          "nps": 5277,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.12582309899971733,
+      "median_nps": 5277
+    },
+    {
+      "position": "start",
+      "variant": "no-tt",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 712,
+          "seconds": 0.1340998400000899,
+          "nps": 5309,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 712,
+          "seconds": 0.13524697599996216,
+          "nps": 5264,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 712,
+          "seconds": 0.13350151199983884,
+          "nps": 5333,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.1340998400000899,
+      "median_nps": 5309
+    },
+    {
+      "position": "start",
+      "variant": "no-ordering",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 2169,
+          "seconds": 0.3836329390001083,
+          "nps": 5653,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 1,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 2169,
+          "seconds": 0.37646474499979377,
+          "nps": 5761,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 1,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 2169,
+          "seconds": 0.379272710999885,
+          "nps": 5718,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 1,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.379272710999885,
+      "median_nps": 5718
+    },
+    {
+      "position": "start",
+      "variant": "no-killers",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 664,
+          "seconds": 0.13268012500020632,
+          "nps": 5004,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 664,
+          "seconds": 0.1321445329999733,
+          "nps": 5024,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 664,
+          "seconds": 0.14103248799983703,
+          "nps": 4708,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.13268012500020632,
+      "median_nps": 5004
+    },
+    {
+      "position": "start",
+      "variant": "pvs",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 674,
+          "seconds": 0.13228641100022287,
+          "nps": 5095,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 674,
+          "seconds": 0.12993757399999595,
+          "nps": 5187,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 674,
+          "seconds": 0.12623041200004081,
+          "nps": 5339,
+          "score_cp": 68,
+          "bestmove": "b1c3",
+          "pv": [
+            "b1c3",
+            "b8c6",
+            "g1f3"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.12993757399999595,
+      "median_nps": 5187
+    },
+    {
+      "position": "kiwipete",
+      "variant": "default",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 27421,
+          "seconds": 6.977145280000059,
+          "nps": 3930,
+          "score_cp": 58,
+          "bestmove": "e2a6",
+          "pv": [
+            "e2a6",
+            "e6d5",
+            "c3d5",
+            "b6d5"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 27421,
+          "seconds": 6.780508040999848,
+          "nps": 4044,
+          "score_cp": 58,
+          "bestmove": "e2a6",
+          "pv": [
+            "e2a6",
+            "e6d5",
+            "c3d5",
+            "b6d5"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 27421,
+          "seconds": 6.786860335000256,
+          "nps": 4040,
+          "score_cp": 58,
+          "bestmove": "e2a6",
+          "pv": [
+            "e2a6",
+            "e6d5",
+            "c3d5",
+            "b6d5"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 6.786860335000256,
+      "median_nps": 4040
+    },
+    {
+      "position": "kiwipete",
+      "variant": "no-tt",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 27421,
+          "seconds": 7.113497853999888,
+          "nps": 3854,
+          "score_cp": 58,
+          "bestmove": "e2a6",
+          "pv": [
+            "e2a6",
+            "e6d5",
+            "c3d5",
+            "b6d5"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 27421,
+          "seconds": 6.851517084999614,
+          "nps": 4002,
+          "score_cp": 58,
+          "bestmove": "e2a6",
+          "pv": [
+            "e2a6",
+            "e6d5",
+            "c3d5",
+            "b6d5"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 27421,
+          "seconds": 6.78176485899985,
+          "nps": 4043,
+          "score_cp": 58,
+          "bestmove": "e2a6",
+          "pv": [
+            "e2a6",
+            "e6d5",
+            "c3d5",
+            "b6d5"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 6.851517084999614,
+      "median_nps": 4002
+    },
+    {
+      "position": "kiwipete",
+      "variant": "no-ordering",
+      "runs": [
+        {
+          "depth": 0,
+          "nodes": 44192,
+          "seconds": 10.003339030999996,
+          "nps": 4417,
+          "score_cp": 95,
+          "bestmove": "a1b1",
+          "pv": [
+            "a1b1"
+          ],
+          "hashfull": 0,
+          "stopped": true
+        },
+        {
+          "depth": 0,
+          "nodes": 44608,
+          "seconds": 10.00277415599976,
+          "nps": 4459,
+          "score_cp": 95,
+          "bestmove": "a1b1",
+          "pv": [
+            "a1b1"
+          ],
+          "hashfull": 0,
+          "stopped": true
+        },
+        {
+          "depth": 0,
+          "nodes": 29136,
+          "seconds": 10.033254501000101,
+          "nps": 2903,
+          "score_cp": 95,
+          "bestmove": "a1b1",
+          "pv": [
+            "a1b1"
+          ],
+          "hashfull": 0,
+          "stopped": true
+        }
+      ],
+      "median_seconds": 10.003339030999996,
+      "median_nps": 4417
+    },
+    {
+      "position": "kiwipete",
+      "variant": "no-killers",
+      "runs": [
+        {
+          "depth": 2,
+          "nodes": 23472,
+          "seconds": 10.001993280999613,
+          "nps": 2346,
+          "score_cp": 129,
+          "bestmove": "e2a6",
+          "pv": [
+            "e2a6",
+            "b4c3"
+          ],
+          "hashfull": 0,
+          "stopped": true
+        },
+        {
+          "depth": 3,
+          "nodes": 27421,
+          "seconds": 6.9979274509996685,
+          "nps": 3918,
+          "score_cp": 58,
+          "bestmove": "e2a6",
+          "pv": [
+            "e2a6",
+            "e6d5",
+            "c3d5",
+            "b6d5"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 27421,
+          "seconds": 6.968572415999915,
+          "nps": 3934,
+          "score_cp": 58,
+          "bestmove": "e2a6",
+          "pv": [
+            "e2a6",
+            "e6d5",
+            "c3d5",
+            "b6d5"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 6.9979274509996685,
+      "median_nps": 3918
+    },
+    {
+      "position": "kiwipete",
+      "variant": "pvs",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 22870,
+          "seconds": 5.971720870999889,
+          "nps": 3829,
+          "score_cp": 58,
+          "bestmove": "e2a6",
+          "pv": [
+            "e2a6",
+            "e6d5",
+            "c3d5",
+            "b6d5"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 22870,
+          "seconds": 5.953711833999932,
+          "nps": 3841,
+          "score_cp": 58,
+          "bestmove": "e2a6",
+          "pv": [
+            "e2a6",
+            "e6d5",
+            "c3d5",
+            "b6d5"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 22870,
+          "seconds": 5.9514905640003235,
+          "nps": 3842,
+          "score_cp": 58,
+          "bestmove": "e2a6",
+          "pv": [
+            "e2a6",
+            "e6d5",
+            "c3d5",
+            "b6d5"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 5.953711833999932,
+      "median_nps": 3841
+    },
+    {
+      "position": "rook_endgame",
+      "variant": "default",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 433,
+          "seconds": 0.06044025400024111,
+          "nps": 7164,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 433,
+          "seconds": 0.061673769999742944,
+          "nps": 7020,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 433,
+          "seconds": 0.05902255000000878,
+          "nps": 7336,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.06044025400024111,
+      "median_nps": 7164
+    },
+    {
+      "position": "rook_endgame",
+      "variant": "no-tt",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 523,
+          "seconds": 0.07202555399999255,
+          "nps": 7261,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 523,
+          "seconds": 0.07114894200003619,
+          "nps": 7350,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 523,
+          "seconds": 0.07115202700015288,
+          "nps": 7350,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.07115202700015288,
+      "median_nps": 7350
+    },
+    {
+      "position": "rook_endgame",
+      "variant": "no-ordering",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 1765,
+          "seconds": 0.2237871389997963,
+          "nps": 7886,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 1765,
+          "seconds": 0.2189322560002438,
+          "nps": 8061,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 1765,
+          "seconds": 0.2215183620000971,
+          "nps": 7967,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.2215183620000971,
+      "median_nps": 7967
+    },
+    {
+      "position": "rook_endgame",
+      "variant": "no-killers",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 433,
+          "seconds": 0.0609225210000659,
+          "nps": 7107,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 433,
+          "seconds": 0.06025215099998604,
+          "nps": 7186,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 433,
+          "seconds": 0.06050855900002716,
+          "nps": 7156,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.06050855900002716,
+      "median_nps": 7156
+    },
+    {
+      "position": "rook_endgame",
+      "variant": "pvs",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 461,
+          "seconds": 0.0639929989997654,
+          "nps": 7203,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 461,
+          "seconds": 0.06612424900004044,
+          "nps": 6971,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 461,
+          "seconds": 0.06479502699994555,
+          "nps": 7114,
+          "score_cp": 125,
+          "bestmove": "b4f4",
+          "pv": [
+            "b4f4",
+            "h4g3",
+            "f4f7"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.06479502699994555,
+      "median_nps": 7114
+    },
+    {
+      "position": "promotion_tactics",
+      "variant": "default",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 2521,
+          "seconds": 0.5588422609998815,
+          "nps": 4511,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 2521,
+          "seconds": 0.5559676530001525,
+          "nps": 4534,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 2521,
+          "seconds": 0.5661275639999985,
+          "nps": 4453,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.5588422609998815,
+      "median_nps": 4511
+    },
+    {
+      "position": "promotion_tactics",
+      "variant": "no-tt",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 2653,
+          "seconds": 0.590066766000291,
+          "nps": 4496,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 2653,
+          "seconds": 0.5846099110003706,
+          "nps": 4538,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 2653,
+          "seconds": 0.5930029619999004,
+          "nps": 4473,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.590066766000291,
+      "median_nps": 4496
+    },
+    {
+      "position": "promotion_tactics",
+      "variant": "no-ordering",
+      "runs": [
+        {
+          "depth": 1,
+          "nodes": 43232,
+          "seconds": 10.002568880999661,
+          "nps": 4322,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": true
+        },
+        {
+          "depth": 1,
+          "nodes": 36496,
+          "seconds": 10.00225638000029,
+          "nps": 3648,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": true
+        },
+        {
+          "depth": 1,
+          "nodes": 40512,
+          "seconds": 10.000799467999968,
+          "nps": 4050,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": true
+        }
+      ],
+      "median_seconds": 10.00225638000029,
+      "median_nps": 4050
+    },
+    {
+      "position": "promotion_tactics",
+      "variant": "no-killers",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 2521,
+          "seconds": 0.9661674559997664,
+          "nps": 2609,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 2521,
+          "seconds": 0.7484448000000157,
+          "nps": 3368,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 2521,
+          "seconds": 0.8535506279999936,
+          "nps": 2953,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.8535506279999936,
+      "median_nps": 2953
+    },
+    {
+      "position": "promotion_tactics",
+      "variant": "pvs",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 2524,
+          "seconds": 1.0214550470000177,
+          "nps": 2470,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 2524,
+          "seconds": 0.6162456719998772,
+          "nps": 4095,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 2524,
+          "seconds": 0.8778727819999403,
+          "nps": 2875,
+          "score_cp": 583,
+          "bestmove": "d7c8q",
+          "pv": [
+            "d7c8q",
+            "d8c8",
+            "e1f2"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 0.8778727819999403,
+      "median_nps": 2875
+    },
+    {
+      "position": "middlegame",
+      "variant": "default",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 8918,
+          "seconds": 3.2324852899996586,
+          "nps": 2758,
+          "score_cp": 68,
+          "bestmove": "c3d5",
+          "pv": [
+            "c3d5",
+            "e7d8",
+            "d5f6",
+            "g7f6"
+          ],
+          "hashfull": 1,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 8918,
+          "seconds": 2.5227026689999548,
+          "nps": 3535,
+          "score_cp": 68,
+          "bestmove": "c3d5",
+          "pv": [
+            "c3d5",
+            "e7d8",
+            "d5f6",
+            "g7f6"
+          ],
+          "hashfull": 1,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 8918,
+          "seconds": 2.504422039000019,
+          "nps": 3560,
+          "score_cp": 68,
+          "bestmove": "c3d5",
+          "pv": [
+            "c3d5",
+            "e7d8",
+            "d5f6",
+            "g7f6"
+          ],
+          "hashfull": 1,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 2.5227026689999548,
+      "median_nps": 3535
+    },
+    {
+      "position": "middlegame",
+      "variant": "no-tt",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 7930,
+          "seconds": 2.9185398979998354,
+          "nps": 2717,
+          "score_cp": 68,
+          "bestmove": "c3d5",
+          "pv": [
+            "c3d5",
+            "e7d8",
+            "d5f6",
+            "g7f6"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 7930,
+          "seconds": 2.90797682099992,
+          "nps": 2726,
+          "score_cp": 68,
+          "bestmove": "c3d5",
+          "pv": [
+            "c3d5",
+            "e7d8",
+            "d5f6",
+            "g7f6"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 7930,
+          "seconds": 2.4921711749998394,
+          "nps": 3181,
+          "score_cp": 68,
+          "bestmove": "c3d5",
+          "pv": [
+            "c3d5",
+            "e7d8",
+            "d5f6",
+            "g7f6"
+          ],
+          "hashfull": 0,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 2.90797682099992,
+      "median_nps": 2726
+    },
+    {
+      "position": "middlegame",
+      "variant": "no-ordering",
+      "runs": [
+        {
+          "depth": 1,
+          "nodes": 38528,
+          "seconds": 10.001820300999952,
+          "nps": 3852,
+          "score_cp": 17,
+          "bestmove": "b2b4",
+          "pv": [
+            "b2b4"
+          ],
+          "hashfull": 0,
+          "stopped": true
+        },
+        {
+          "depth": 1,
+          "nodes": 39952,
+          "seconds": 10.000301349999972,
+          "nps": 3995,
+          "score_cp": 17,
+          "bestmove": "b2b4",
+          "pv": [
+            "b2b4"
+          ],
+          "hashfull": 0,
+          "stopped": true
+        },
+        {
+          "depth": 1,
+          "nodes": 40256,
+          "seconds": 10.00124436499982,
+          "nps": 4025,
+          "score_cp": 17,
+          "bestmove": "b2b4",
+          "pv": [
+            "b2b4"
+          ],
+          "hashfull": 0,
+          "stopped": true
+        }
+      ],
+      "median_seconds": 10.00124436499982,
+      "median_nps": 3995
+    },
+    {
+      "position": "middlegame",
+      "variant": "no-killers",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 9001,
+          "seconds": 3.3735359170000265,
+          "nps": 2668,
+          "score_cp": 68,
+          "bestmove": "c3d5",
+          "pv": [
+            "c3d5",
+            "e7d8",
+            "d5f6",
+            "g7f6"
+          ],
+          "hashfull": 1,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 9001,
+          "seconds": 3.08932684399997,
+          "nps": 2913,
+          "score_cp": 68,
+          "bestmove": "c3d5",
+          "pv": [
+            "c3d5",
+            "e7d8",
+            "d5f6",
+            "g7f6"
+          ],
+          "hashfull": 1,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 9001,
+          "seconds": 2.4259387150000293,
+          "nps": 3710,
+          "score_cp": 68,
+          "bestmove": "c3d5",
+          "pv": [
+            "c3d5",
+            "e7d8",
+            "d5f6",
+            "g7f6"
+          ],
+          "hashfull": 1,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 3.08932684399997,
+      "median_nps": 2913
+    },
+    {
+      "position": "middlegame",
+      "variant": "pvs",
+      "runs": [
+        {
+          "depth": 3,
+          "nodes": 9042,
+          "seconds": 3.0863728650001576,
+          "nps": 2929,
+          "score_cp": 68,
+          "bestmove": "c3d5",
+          "pv": [
+            "c3d5",
+            "e7d8",
+            "d5f6",
+            "g7f6"
+          ],
+          "hashfull": 1,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 9042,
+          "seconds": 3.4213997779997953,
+          "nps": 2642,
+          "score_cp": 68,
+          "bestmove": "c3d5",
+          "pv": [
+            "c3d5",
+            "e7d8",
+            "d5f6",
+            "g7f6"
+          ],
+          "hashfull": 1,
+          "stopped": false
+        },
+        {
+          "depth": 3,
+          "nodes": 9042,
+          "seconds": 2.918357671999729,
+          "nps": 3098,
+          "score_cp": 68,
+          "bestmove": "c3d5",
+          "pv": [
+            "c3d5",
+            "e7d8",
+            "d5f6",
+            "g7f6"
+          ],
+          "hashfull": 1,
+          "stopped": false
+        }
+      ],
+      "median_seconds": 3.0863728650001576,
+      "median_nps": 2929
+    }
+  ]
+}

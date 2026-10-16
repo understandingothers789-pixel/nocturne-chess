@@ -1,0 +1,15 @@
+.venv/
+.uv-cache/
+.venv-build/
+.pyinstaller-cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.db
+*.db-wal
+*.db-shm
+.coverage
