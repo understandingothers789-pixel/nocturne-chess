@@ -434,3 +434,17 @@ compact and PGN layouts, plus a history hover preview showing a different board
 while the real current move remains selected. The capture helper asserts the
 actual FEN is unchanged and restored after rendering. Uploading code and
 screenshots for native Windows CI/build verification next.
+
+Final native Windows run 38963603278 succeeded for commit
+c4161f8ed48e4995fbf85a3721b211beaff0f398. Unittest ran 80 tests with OK
+(skipped=2), meaning 78 passed; repeated validation inside the builder also
+passed. Ruff, PyInstaller GUI/UCI builds, packaged smoke checks and artifact
+upload all passed. Artifact 12073553349: Nocturne-0.3.2-Windows-x64-unsigned,
+60881825 bytes, SHA-256 2a2099d4f957f1557c03afeda7e7140b0ab8c0af5f8f8b4400e9190733d5461f.
+Verified artifact metadata reports it unexpired. Download:
+https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38963603278/artifacts/12073553349
+README and BUILDING point to the new download. Refreshed 0.3.2 source/wheel
+archives and checksums; archive integrity and prohibited-launcher exclusions
+are checked. The executable remains an explicitly authorized unsigned test
+build. Single-PV, main-line PGN and manual clean-Windows UI/signing limitations
+remain. No changes to rules/search were needed for this feature.

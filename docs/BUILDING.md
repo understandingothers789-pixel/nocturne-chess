@@ -4,7 +4,7 @@
 
 ### For players
 
-[Previous Windows test artifact (0.3.1)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38960506947/artifacts/12073040643).
+[Download the verified Windows test artifact (0.3.2)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38963603278/artifacts/12073553349).
 GitHub sign-in is required.
 
 The user has opted into an unsigned Windows test executable. Open the latest

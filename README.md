@@ -12,7 +12,7 @@ It does not claim a verified Elo or complete advanced analysis suite.
 
 ## Play
 
-[Previous Windows test ZIP (0.3.1)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38960506947/artifacts/12073040643) (GitHub sign-in required).
+[Download the Windows test ZIP (0.3.2)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38963603278/artifacts/12073553349) (GitHub sign-in required).
 
 Future Windows test builds are available from the latest successful run on the
 [Actions page](https://github.com/understandingothers789-pixel/nocturne-chess/actions).
