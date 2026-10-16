@@ -373,6 +373,9 @@ class MainWindow(QMainWindow):
         add(play, "Pause / continue", self._pause, "Space")
         add(play, "Offer / claim draw…", self._draw)
         add(play, "Resign…", self._resign)
+        # Retain explicit references for menu state and interaction checks.
+        self.menus = {"File": file, "Tree": tree, "Analysis": analysis,
+                      "Display": display, "Engine": engine, "Play": play}
 
     def _set_display(self, key, value):
         self.config[key] = value

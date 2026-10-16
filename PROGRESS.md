@@ -376,3 +376,10 @@ are optional deep perft checks; rules/search code did not change. Rendered and
 inspected updated full-size and compact PGN screenshots using
 scripts/capture_preview.py. The PNGs show the real Qt window. Windows CI build
 and new executable upload are the remaining verification step.
+
+Also inspected the actual File popup visually and added a mouse-driven menu
+opening/clipboard-action regression. Kept explicit menu references in the
+window. The final GUI-only rerun passed all 22 tests; Ruff passed. A menu
+screenshot helper initially failed when using a temporary QAction list; keeping
+the list alive fixed that inspection command. This was not an application
+interaction failure.

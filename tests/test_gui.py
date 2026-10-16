@@ -71,6 +71,17 @@ class GuiTests(unittest.TestCase):
         action.trigger()
         self.assertTrue(self.window.board_view.coordinates)
 
+    def test_file_menu_opens_by_mouse_and_exposes_clipboard_commands(self):
+        bar = self.window.menuBar()
+        QTest.mouseClick(bar, Qt.MouseButton.LeftButton,
+                         pos=bar.actionGeometry(self.window.menus["File"].menuAction()).center())
+        self.app.processEvents()
+        menu = self.window.menus["File"]
+        self.assertTrue(menu.isVisible())
+        self.assertIn(self.window.menu_actions["load_clipboard"], menu.actions())
+        self.assertIn(self.window.menu_actions["copy_pgn"], menu.actions())
+        menu.close()
+
     def test_paste_plain_moves_apply_and_copy_pgn_without_file(self):
         self.window._show_pgn()
         editor = self.window.pgn_editor
