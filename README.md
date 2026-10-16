@@ -12,7 +12,7 @@ It does not claim a verified Elo or complete advanced analysis suite.
 
 ## Play
 
-[Download the previous Windows test ZIP (0.3.0)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38954107896/artifacts/12070336096) (GitHub sign-in required).
+[Download the Windows test ZIP (0.3.1)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38960506947/artifacts/12073040643) (GitHub sign-in required).
 
 Future Windows test builds are available from the latest successful run on the
 [Actions page](https://github.com/understandingothers789-pixel/nocturne-chess/actions).
@@ -76,7 +76,7 @@ organization for supported features. Hover tooltips are removed. In the **PGN**
 tab, paste a full PGN game or plain SAN moves (for example `1. e4 e5 2. Nf3 Nc6 *`)
 and click **Apply PGN**. Invalid text preserves the current game and your draft.
 **Load current** resets the editor to the game on the board. Normal
-Ctrl+C/Ctrl+V work inside the editor. PGN import keeps only the main line.
+Ctrl+C/Ctrl+V work inside the editor. PGN import keeps only the main line. [See the PGN editor](docs/preview-pgn.png).
 
 **File → Load FEN / PGN from clipboard** (Ctrl+Shift+V) imports clipboard text
 directly. **File → Write PGN to clipboard** (Ctrl+Shift+P) copies the current

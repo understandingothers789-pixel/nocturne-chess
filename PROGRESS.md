@@ -387,3 +387,16 @@ interaction failure.
 Final menu review also checked light appearance. Fixed selected-menu text
 contrast and visually verified the actual light File popup. This one-line
 stylesheet adjustment is included in the final Windows build.
+
+Final native Windows verification completed successfully in run 38960506947
+(commit 0ee099158aea3d3056b42fa327b2f2b991fad4cc): Ruff passed; unittest ran
+74 tests with OK (skipped=2), meaning 72 passed. The builder repeated the
+validation successfully, built both Windows apps and passed packaged GUI/UCI
+smoke checks. Artifact 12073040643, Nocturne-0.3.1-Windows-x64-unsigned, uploaded
+successfully (60834165 bytes). SHA-256 reported by GitHub:
+fed2c5a3e425e8e2744b7913345fc55ea04a67704140377416d93cd75af92fc8.
+Download: https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38960506947/artifacts/12073040643
+README and BUILDING now point directly to the verified 0.3.1 artifact. Local
+0.3.1 source/wheel archives and their checksums are refreshed. No Windows
+launcher scripts are included. The test executable remains unsigned with user
+authorization; signing and manual clean-machine UI checks remain outstanding.
