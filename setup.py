@@ -8,5 +8,5 @@ setup(ext_modules=[Extension(
     include_dirs=["native/fathom"],
     define_macros=[("TB_NO_THREADS", "1"), ("TB_NO_HW_POP_COUNT", "1"),
                    ("TB_NO_HELPER_API", "1"), ("_CRT_SECURE_NO_WARNINGS", "1")],
-    extra_compile_args=["/std:c11"] if sys.platform == "win32" else ["-std=c11"],
+    extra_compile_args=["/std:c11", "/experimental:c11atomics"] if sys.platform == "win32" else ["-std=c11"],
 )])

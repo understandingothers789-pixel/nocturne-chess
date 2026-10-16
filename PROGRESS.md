@@ -483,3 +483,11 @@ Only small three-piece tables were available; full five/seven-piece data and
 manual Windows interaction remain unverified. Slow native/disk I/O can overrun
 the calculation budget before returning; the GUI worker can be terminated.
 Windows build/frozen probe validation is next.
+
+Windows attempt 38969963839 failed during native compilation before tests:
+MSVC reported C1189, C atomic support not enabled. Added the required
+/experimental:c11atomics compiler option alongside /std:c11. No runtime
+behavior changed. A second Windows build will validate the correction.
+Local unittest also ran 91 tests, OK (skipped=2), 20.276s; source archive
+integrity/exclusions and Linux wheel native-reader/license inclusion checked.
+Inspected a rendered analysis branch tree showing Bc4 and Nc3 together.

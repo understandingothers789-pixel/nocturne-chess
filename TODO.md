@@ -83,7 +83,7 @@ includes reversible-history context so history-dependent draw scores are not
 reused across different game paths. Python hash memory is approximate. Worker
 startup consumes game-clock time in addition to the calculation budget.
 
-PGN import accepts one game and retains only the main line/tags. FEN cannot
+PGN import accepts one game and retains move variations/tags; comments/NAGs are skipped. FEN cannot
 reconstruct repetition history. Analysis graphs contain sampled positions;
 unsearched moves have no invented score or classification. There is no Elo
 claim, no secret Stockfish use, and no downloaded/bundled external engine.

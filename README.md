@@ -44,7 +44,7 @@ desktop needs the usual Qt/X11/Wayland system libraries. For headless tests set
 ## What works
 
 * **Custom rules:** legal moves, checks and endings, castling, pinned en passant,
-  all promotions, FEN, SAN/UCI notation, main-line PGN, repetition, draw claims
+  all promotions, FEN, SAN/UCI notation, PGN variations, repetition, draw claims
   including intended moves, and automatic fivefold/75-move endings.
 * **Independent AI:** tapered evaluation, iterative negamax alpha-beta,
   quiescence with check evasions, ordered moves, killer/history heuristics,
@@ -84,7 +84,7 @@ organization for supported features. Hover tooltips are removed. In the **PGN**
 tab, paste a full PGN game or plain SAN moves (for example `1. e4 e5 2. Nf3 Nc6 *`)
 and click **Apply PGN**. Invalid text preserves the current game and your draft.
 **Load current** resets the editor to the game on the board. Normal
-Ctrl+C/Ctrl+V work inside the editor. PGN import keeps only the main line. [See the PGN editor](docs/preview-pgn.png).
+Ctrl+C/Ctrl+V work inside the editor. PGN import preserves the main line and nested variations. [See the PGN editor](docs/preview-pgn.png).
 
 **File → Load FEN / PGN from clipboard** (Ctrl+Shift+V) imports clipboard text
 directly. **File → Write PGN to clipboard** (Ctrl+Shift+P) copies the current
