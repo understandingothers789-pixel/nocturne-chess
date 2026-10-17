@@ -1153,3 +1153,27 @@ is denied in this cloud sandbox; five other optional historical checks skip.
 Malformed-PGN diagnostics are expected negative-test input. Final Ruff passed.
 Next: publish the reviewed file changes and run the existing native Windows CI
 validation/PyInstaller/package smoke checks before advertising a 0.5.5 download.
+
+
+## 2026-10-17 — 0.5.5 Windows delivery verified
+
+Published GUI commit c2dc1dcfe33d30d95ef37104576fe6f518e0c41a. Native Windows run
+39070057843/job 117505628036 completed successfully. The full suite ran twice:
+137 total tests each time, 132 passed and 5 optional skips, in 64.011s and
+64.154s. All six HTTP tests executed on Windows. Ruff passed twice; PyInstaller
+produced the windowed executable, and packaged study/save/explorer and external-UCI
+fixture smoke checks passed. No test failures. The optional live check returned
+29 legal ChessDB moves; Lichess reported authentication required, not live data.
+
+Verified artifact 12114389477 is Nocturne-0.5.5-Windows-x64-unsigned, built from the
+same commit, 53,971,786 bytes, retained until 2026-11-16. SHA-256:
+0b1aa2f5b4535c7dbcade36d97b4a53514ee207682c7a4adbd2b7e8ff40ffbb2.
+Download: https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39070057843/artifacts/12114389477
+
+README.md and docs/BUILDING.md now link the verified 0.5.5 ZIP; TODO.md records
+completion and remaining manual Windows/DPI checks. Source ZIP and wheel built
+locally and passed ZIP integrity checks; source contains no EXE/batch/PowerShell
+launcher. Refreshing source/checksums after final documentation changes. These
+final changes are documentation only; application code is unchanged after the
+passing Windows package. Next verification is user desktop/DPI appearance and
+real Stockfish interaction; automated results use a labelled UCI protocol fixture.

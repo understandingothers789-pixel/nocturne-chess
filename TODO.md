@@ -32,5 +32,6 @@ explorer interactions and real Stockfish marker behavior remain to verify.
 Individual database game lists/downloads and Chess960 lookup are deferred.
 
 0.5.5 makes candidate arrows/lines and rank markers much subtler. Four real Qt
-views inspected; focused analysis tests passed. Native Windows build verification
-is pending before updating the download. Manual desktop/DPI review remains open.
+views inspected; focused analysis tests and native Windows build checks passed.
+132 tests passed with 5 optional skips twice; packaged GUI/UCI smoke checks passed.
+Manual desktop/DPI review remains open.
