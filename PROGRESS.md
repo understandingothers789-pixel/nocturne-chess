@@ -624,3 +624,11 @@ rather than a promotion-only menu. External suite: 12 passed in 4.17s; Ruff pass
 Also reset omitted advertised options to engine defaults when switching profiles
 on the same executable; the persistent-process test checks Threads returns to 1
 without restarting the process. UCI_AnalyseMode follows the actual GUI mode.
+
+Windows run 38987840942 ran 103 tests with 4 cleanup errors and 5 skips. Test
+bodies passed, but four new external-GUI tests removed TemporaryDirectory before
+unittest addCleanup closed the window/SQLite connection. Linux permits unlinking
+an open DB; Windows correctly rejected it (WinError 32). Replaced that fixture
+pattern with a context manager that closes/deletes the window and processes Qt
+events before deleting its directory. Product storage behavior was not changed.
+The Windows package was not built/published from this failed run.

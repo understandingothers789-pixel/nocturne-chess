@@ -1,5 +1,6 @@
 """External-only analysis, persistent lifecycle, stale protection and study integration."""
 
+from contextlib import contextmanager
 from pathlib import Path
 import os
 import sys
@@ -57,6 +58,17 @@ class QtIntegration(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
+
+    @contextmanager
+    def workspace(self):
+        with tempfile.TemporaryDirectory() as directory:
+            window = MainWindow(Path(directory))
+            try:
+                yield window
+            finally:
+                window.close()
+                window.deleteLater()
+                self.app.processEvents()
 
     def wait_until(self, predicate, seconds=4):
         deadline = time.monotonic() + seconds
@@ -136,9 +148,7 @@ class QtIntegration(unittest.TestCase):
         self.assertFalse(controller.busy)
 
     def test_window_smart_move_candidates_hover_and_disabled_guard(self):
-        with tempfile.TemporaryDirectory() as directory:
-            window = MainWindow(Path(directory))
-            self.addCleanup(window.close)
+        with self.workspace() as window:
             window.timer.stop()
             window.autosave_timer.stop()
             window.profiles = [self.profile()]
@@ -233,9 +243,7 @@ class QtIntegration(unittest.TestCase):
     def test_game_review_targeted_moves_and_evaluation_export(self):
         from unittest.mock import patch
 
-        with tempfile.TemporaryDirectory() as directory:
-            window = MainWindow(Path(directory))
-            self.addCleanup(window.close)
+        with self.workspace() as window:
             window.timer.stop()
             window.autosave_timer.stop()
             window.profiles = [self.profile()]
@@ -257,9 +265,7 @@ class QtIntegration(unittest.TestCase):
             self.assertEqual(len(restored.evaluations), len(window.game.evaluations))
 
     def test_multiple_games_open_in_tabs_and_preserve_annotations(self):
-        with tempfile.TemporaryDirectory() as directory:
-            window = MainWindow(Path(directory))
-            self.addCleanup(window.close)
+        with self.workspace() as window:
             window._analysis_enabled = False
             text = '[Event "First"]\n\n1.e4 {note} *\n\n[Event "Second"]\n\n1.d4 d5 *'
             self.assertTrue(window._import_text(text))
@@ -345,9 +351,7 @@ class QtIntegration(unittest.TestCase):
     def test_paused_review_preserves_completed_results_and_resumes(self):
         from unittest.mock import patch
 
-        with tempfile.TemporaryDirectory() as directory:
-            window = MainWindow(Path(directory))
-            self.addCleanup(window.close)
+        with self.workspace() as window:
             window.timer.stop()
             window.autosave_timer.stop()
             window.profiles = [self.profile()]
