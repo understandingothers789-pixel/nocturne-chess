@@ -1073,3 +1073,24 @@ OK (skipped=11): 126 passed. Six HTTP tests are sandbox-skipped; the other five
 are existing optional checks. Refreshed/inspected actual wide and compact ChessDB
 captures with explicitly labelled fixture scores. No live authenticated Lichess
 data is represented in screenshots. Final Windows validation is next.
+
+Final GUI code 762de7aee5ff49d11c6becb91f889d23effaa48a passed native Windows run
+39065410510/job 117491914975. Both test runs executed 137 tests: 132 passed,
+5 optional skipped (68.692s / 79.129s). All six HTTP tests ran on Windows and
+passed, including ChessDB's JSON/semantic rate limit and Lichess 401 guidance.
+Ruff, PyInstaller and both frozen explorer/study/save/UCI smoke checks passed.
+Artifact 12112334334 is the verified final GUI, 53,960,583 bytes, SHA-256
+2b41604bdf51d88c5cf831ebb888910e8bbf5ba12fa13e8f420e6fa237fe10e6,
+retained until 2026-11-16:
+https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39065410510/artifacts/12112334334
+
+The optional live-check script hit Windows cp1252 encoding on the arrow in its
+authentication message, before reaching later sources. Fixed that developer-only
+script to print UTF-8 and added a manual connectivity workflow to rerun only these
+checks. The desktop GUI is unaffected and no application code changes follow
+the passing native package. Authenticated Lichess data still needs a user token.
+
+Desktop CI now ignores documentation/connectivity-only edits; the separate
+database workflow can run on probe edits or manual dispatch. This reruns only
+the failed diagnostic instead of repeating the already-passing application
+build/tests. Download docs point to the verified 0.5.4 GUI artifact.

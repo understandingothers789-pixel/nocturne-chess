@@ -13,18 +13,16 @@ analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
 
-[Download the verified Windows 0.5.3 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39011710749/artifacts/12093112925) (GitHub sign-in required).
+[Download the verified Windows 0.5.4 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39065410510/artifacts/12112334334) (GitHub sign-in required).
 
 [All Windows builds](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
-Select **Nocturne-0.5.3-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
-Windows validation passed: 116 tests passed, 5 skipped; packaged app and external-UCI
+Select **Nocturne-0.5.4-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
+Windows validation passed: 132 tests passed, 5 skipped; packaged app and external-UCI
 protocol-fixture smoke checks passed. Real Stockfish/manual interaction verification remains open.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
 change is provided. The ZIP also includes the corresponding source archive.
-
-0.5.4 Windows verification is in progress; the download above remains the verified 0.5.3 build.
 
 ## Your saved PGNs
 
@@ -85,6 +83,9 @@ in Settings or the engine's own SyzygyPath option. The external engine performs 
 probes, and reported TB hits are displayed. Unsupported options are not fabricated.
 
 ## Online databases
+
+![Actual Database menu](docs/database-menu.png)
+
 
 ![Actual Qt opening explorer with explicitly labelled cached test statistics](docs/opening-explorer.png)
 

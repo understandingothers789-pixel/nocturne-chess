@@ -5,6 +5,7 @@ build prerequisite. It sends only a standard opening position, with no user data
 """
 
 from pathlib import Path
+import sys
 import tempfile
 
 from PySide6.QtCore import QCoreApplication, QTimer
@@ -15,6 +16,7 @@ from nocturne.gui.explorer_client import ExplorerClient
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     app = QCoreApplication([])
     with tempfile.TemporaryDirectory() as directory:
         client = ExplorerClient(ExplorerCache(Path(directory) / "cache.db"))

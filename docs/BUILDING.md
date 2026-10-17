@@ -1,21 +1,25 @@
 # Windows 11 desktop builds · 0.5.4
 
-[Download the verified 0.5.3 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39011710749/artifacts/12093112925).
+[Download the verified 0.5.4 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39065410510/artifacts/12112334334).
 
-Alternatively, select the successful **Nocturne-0.5.3-Windows-x64-unsigned** artifact from
+Alternatively, select the successful **Nocturne-0.5.4-Windows-x64-unsigned** artifact from
 [Windows Actions](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
 Sign into GitHub, download, Extract All, then open **Nocturne/Nocturne.exe**.
 Keep the full folder. No Python, compiler or batch launcher is needed to play/analyze.
 You select your own Stockfish executable from the Engine menu.
 
-Windows run 39011710749 succeeded for commit c89cff16102e323920ec738199b3e13a86cc4861.
-Both test runs passed 116 tests with 5 skips (32.330s and 39.629s); Ruff,
-PyInstaller and both packaged smoke checks passed. Native tests verify MultiPV
-menus/limits and wide analysis after mode changes/resizing. The unsigned artifact
-is 53,376,940 bytes, retained until 2026-11-16. SHA-256:
-`1d633e9cf36e3e62c441c1d92ff023bcae2ee45bd17a84ad6756da68627f62d6`.
+Windows run 39065410510 succeeded for GUI commit 762de7aee5ff49d11c6becb91f889d23effaa48a.
+Both test runs passed 132 tests with 5 skips (68.692s / 79.129s). Ruff,
+PyInstaller and both packaged explorer/study/save/UCI smoke checks passed.
+All six loopback HTTP tests ran on native Windows. The unsigned artifact is
+53,960,583 bytes, retained until 2026-11-16. SHA-256:
+`2b41604bdf51d88c5cf831ebb888910e8bbf5ba12fa13e8f420e6fa237fe10e6`.
 
-0.5.4 Windows verification is pending; the link above remains the verified 0.5.3 build.
+Live authenticated Lichess data requires a user session token. Separate live
+connectivity checks distinguish protected responses from actual returned data;
+a green workflow alone is not evidence of successful API data retrieval.
+The diagnostic script was corrected for Windows console UTF-8 after packaging;
+no desktop application code changed after the passing build.
 
 ## Reproducible Windows build
 
@@ -71,3 +75,10 @@ QT_QPA_PLATFORM=offscreen python scripts/capture_preview.py --simulate
 `--simulate` explicitly labels screenshots as UCI transport test data, not measured
 Stockfish analysis. `--engine /path/to/engine` uses a supplied actual engine instead.
 The Linux environment cannot produce a Windows executable; native Windows CI does.
+
+### Standalone database connectivity check
+
+Run `python scripts/check_explorer_api.py` from a source install, or use the
+manual **Live database connectivity** workflow. It queries one fixed opening
+position, reports Lichess authentication requirements without a user token, and
+checks ChessDB independently. It never accepts or logs tokens.

@@ -1,0 +1,21 @@
+name: Live database connectivity
+on:
+  push:
+    paths:
+      - 'scripts/check_explorer_api.py'
+      - '.github/workflows/databases.yml'
+  workflow_dispatch:
+jobs:
+  databases:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install desktop runtime
+        run: python -m pip install -r requirements.txt
+      - name: Install project
+        run: python -m pip install --no-deps -e .
+      - name: Check database HTTPS responses
+        run: python scripts/check_explorer_api.py
