@@ -20,6 +20,8 @@ def main():
     parser.add_argument("--simulate", action="store_true")
     parser.add_argument("--engine", type=Path)
     parser.add_argument("--light", action="store_true")
+    parser.add_argument("--lines", action="store_true")
+    parser.add_argument("--explorer-fixture", action="store_true", help="Clearly labelled cached test statistics; no network")
     parser.add_argument("--pgn", action="store_true")
     parser.add_argument("--preview-ply", type=int)
     parser.add_argument("--width", type=int, default=1440)
@@ -39,10 +41,21 @@ def main():
             engine_id="capture",
             analysis_kind="explore",
             multipv=6,
+            candidate_style="lines" if args.lines else "arrows",
         )
         window.game = Game.from_pgn(
             '[Event "Italian Game study"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bc4 {Develop toward the center.} (3.Nc3 Nf6) Bc5 4.c3 *'
         )
+        if args.explorer_fixture:
+            from nocturne.explorer import ExplorerQuery
+            window.config.update(explorer_enabled=True, explorer_source="lichess", explorer_speed="rapid", explorer_rating=1800)
+            query = ExplorerQuery(window.game.board.fen(), "lichess", "rapid", 1800)
+            window.explorer.client.cache.put(query.key, {
+                "white": 250, "draws": 150, "black": 100,
+                "opening": {"eco": "TEST", "name": "Explorer fixture · not live statistics"},
+                "moves": [{"uci": move.uci(), "white": 10 + i, "draws": 5, "black": 5}
+                          for i, move in enumerate(list(window.game.board.legal_moves())[:8])],
+            })
         if args.engine:
             window.profiles = [
                 {
@@ -80,6 +93,8 @@ def main():
             actual_fen = window.game.board.fen()
             if args.preview_ply is not None:
                 window._preview_history(args.preview_ply)
+            if args.explorer_fixture:
+                window.explorer.status_label.setText("Cached · test data (not live Lichess statistics)")
             assert window.game.board.fen() == actual_fen
             args.output.parent.mkdir(parents=True, exist_ok=True)
             if not window.grab().save(str(args.output)):

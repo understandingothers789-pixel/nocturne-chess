@@ -54,6 +54,8 @@ from .engine import EngineController
 from .engine_manager import EngineManager
 from .engine_resources import EngineResources, validate_resource
 from .candidates import CandidatePanel
+from .explorer_panel import OpeningExplorer
+from ..explorer import RATINGS, SPEEDS
 from .moves import MoveText
 from .theme import ASSETS, stylesheet
 from .widgets import EvaluationBar, EvaluationGraph
@@ -87,6 +89,7 @@ class MainWindow(QMainWindow):
         location = data_dir or Path(
             QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation)
         )
+        self.data_directory = location
         self.store: Store | None = None
         self._storage_message = ""
         try:
@@ -372,7 +375,18 @@ class MainWindow(QMainWindow):
         self.engine_layout.addWidget(self.candidates)
         self.engine_layout.addStretch()
         self.engine_scroll.setWidget(engine_detail)
-        engine_page_layout.addWidget(self.engine_scroll, 1)
+        self.analysis_detail_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.analysis_detail_splitter.setChildrenCollapsible(False)
+        self.analysis_detail_splitter.addWidget(self.engine_scroll)
+        self.explorer = OpeningExplorer(self.data_directory / "opening-cache.sqlite3")
+        self.explorer.move_selected.connect(self._explorer_move)
+        self.explorer.move_hovered.connect(self._preview_explorer)
+        self.explorer.preview_ended.connect(lambda: self._end_preview("explorer"))
+        self.explorer.close_requested.connect(lambda: self._set_explorer_option("explorer_enabled", False))
+        self.analysis_detail_splitter.addWidget(self.explorer)
+        self.explorer.hide()
+        self._explorer_active = False
+        engine_page_layout.addWidget(self.analysis_detail_splitter, 1)
         self.graph = EvaluationGraph()
         self.graph.setMinimumHeight(60)
         self.graph.setMaximumHeight(85)
@@ -565,13 +579,18 @@ class MainWindow(QMainWindow):
         add(display, "Keyboard shortcuts…", self._shortcut_editor)
         for key, text in [
             ("smart_move", "Smart Move · click recommended destinations"),
-            ("smart_all", "Smart Move · allow all displayed candidates"),
             ("branch_arrows", "Show saved continuation arrows"),
             ("details", "Detailed analysis statistics"),
         ]:
             action = add(display, text, lambda checked, k=key: self._set_display(k, checked))
             action.setCheckable(True)
             self.display_actions[key] = action
+        markers = display.addMenu("Candidate markers")
+        self.marker_actions = {}
+        for key, title in (("arrows", "Arrows · Lichess style"), ("lines", "Lines · Nibbler style")):
+            action = add(markers, title, lambda checked=False, k=key: self._set_display("candidate_style", k))
+            action.setCheckable(True)
+            self.marker_actions[key] = action
         for rank in range(1, 4):
             add(
                 analysis,
@@ -596,6 +615,26 @@ class MainWindow(QMainWindow):
         engine.addSeparator()
         add(engine, "Restart selected engine", self._restart_engine)
         add(engine, "Engine diagnostics…", self._diagnostics)
+        database = self.menuBar().addMenu("&Database")
+        self.explorer_enabled_action = add(database, "Show opening explorer", lambda checked: self._set_explorer_option("explorer_enabled", checked))
+        self.explorer_enabled_action.setCheckable(True)
+        self.explorer_actions = {}
+        for source, title in (("masters", "Masters database"), ("lichess", "Lichess players (Amateurs)")):
+            action = add(database, title, lambda checked=False, s=source: self._choose_explorer(s))
+            action.setCheckable(True)
+            self.explorer_actions[("explorer_source", source)] = action
+        speeds = database.addMenu("Lichess game speed")
+        ratings = database.addMenu("Lichess rating groups")
+        for value in ("all", *SPEEDS):
+            action = add(speeds, "All speeds" if value == "all" else value, lambda checked=False, v=value: self._set_explorer_option("explorer_speed", v))
+            action.setCheckable(True)
+            self.explorer_actions[("explorer_speed", value)] = action
+        for value in RATINGS:
+            action = add(ratings, "All ratings" if value == 0 else f"{value}+", lambda checked=False, v=value: self._set_explorer_option("explorer_rating", v))
+            action.setCheckable(True)
+            self.explorer_actions[("explorer_rating", value)] = action
+        self.explorer_filter_menus = (speeds, ratings)
+        add(database, "Refresh opening statistics", self.explorer.refresh)
         play = self.menuBar().addMenu("&Play")
         add(play, "New game…", self._new_game)
         add(play, "Pause / continue", self._pause, "Space")
@@ -612,6 +651,7 @@ class MainWindow(QMainWindow):
             "Analysis": analysis,
             "Display": display,
             "Engine": engine,
+            "Database": database,
             "Play": play,
         }
 
@@ -619,6 +659,64 @@ class MainWindow(QMainWindow):
         self.config[key] = value
         self._apply_settings()
         self._save()
+
+    def _choose_explorer(self, source):
+        self.config["explorer_source"] = source
+        self.config["explorer_enabled"] = True
+        self._workspace(True)
+        self.tabs.setCurrentIndex(1)
+        self._sync_explorer()
+        self._save()
+
+    def _set_explorer_option(self, key, value):
+        self.config[key] = value
+        if key == "explorer_enabled" and value:
+            self._workspace(True)
+            self.tabs.setCurrentIndex(1)
+        self._sync_explorer()
+        self._save()
+
+    def _sync_explorer(self):
+        if not hasattr(self, "explorer") or self._closing:
+            return
+        enabled = bool(self.config.get("explorer_enabled"))
+        active = enabled and self.analysis_mode and self.tabs.currentIndex() == 1
+        if hasattr(self, "explorer_actions"):
+            self.explorer_enabled_action.setChecked(enabled)
+            for (key, value), action in self.explorer_actions.items():
+                action.setChecked(self.config.get(key) == value)
+            for menu in self.explorer_filter_menus:
+                menu.setEnabled(self.config.get("explorer_source") == "lichess")
+        self.explorer.setVisible(active)
+        self.explorer.set_position(self.game.board, self._position_identity(), active,
+                                   self.config.get("explorer_source", "masters"),
+                                   self.config.get("explorer_speed", "all"),
+                                   self.config.get("explorer_rating", 0))
+        if active and not self._explorer_active:
+            self.analysis_detail_splitter.setSizes([500, 220])
+        self._explorer_active = active
+
+    def _explorer_move(self, identity, text):
+        if not self.analysis_mode or not self._explorer_active or identity != self._position_identity():
+            return
+        try:
+            move = self.game.board.parse_uci(text)
+        except ValueError:
+            return
+        self._end_preview("explorer")
+        self._human_move(move)
+
+    def _preview_explorer(self, identity, text):
+        if not self.analysis_mode or not self._explorer_active or identity != self._position_identity():
+            return
+        position = self.game.board.copy()
+        try:
+            move = position.parse_uci(text)
+            position.push(move)
+        except ValueError:
+            return
+        self._preview_source = "explorer"
+        self.board_view.show_preview(position, move, "Opening database · temporary preview")
 
     def eventFilter(self, watched, event):
         if (
@@ -869,8 +967,6 @@ class MainWindow(QMainWindow):
 
     def _execute_rank(self, rank):
         if not self.board_view.smart_move or self.board_view.selected is not None:
-            return
-        if rank > 1 and not self.board_view.smart_all:
             return
         self._insert_candidate(rank, 1)
 
@@ -1397,7 +1493,9 @@ class MainWindow(QMainWindow):
         self.tablebase_label.setVisible(bool(self.config.get("syzygy_path")))
         self.board_view.overlays = self.config.get("overlays", True)
         self.board_view.smart_move = self.config.get("smart_move", True)
-        self.board_view.smart_all = self.config.get("smart_all", False)
+        self.board_view.candidate_style = self.config.get("candidate_style", "arrows")
+        for key, action in self.marker_actions.items():
+            action.setChecked(key == self.board_view.candidate_style)
         self.graph.light = self.config.get("light", False)
         self.eval_bar.setVisible(self.board_view.overlays)
         for key, action in self.display_actions.items():
@@ -1409,6 +1507,8 @@ class MainWindow(QMainWindow):
         if self._pv_root is not None:
             self.pv_label.set_moves(self.pv_label._items, light=self.config.get("light", False))
         self.board_view.update()
+
+        self._sync_explorer()
 
     def _sync_workspace_layout(self):
         analysis = self.analysis_mode
@@ -1458,6 +1558,7 @@ class MainWindow(QMainWindow):
     def _analysis_tab_changed(self, index=None):
         if hasattr(self, "tabs"):
             self.tabs.tabBar().setVisible(not self.analysis_mode or self.tabs.currentIndex() != 1)
+        self._sync_explorer()
 
     def _render_move_history(self):
         tokens = []
@@ -1561,6 +1662,7 @@ class MainWindow(QMainWindow):
         self.board_view.interactive = (
             not outcome and not self.paused and (self.analysis_mode or not self._is_engine_turn())
         )
+        self._sync_explorer()
         turn = "White" if self.game.board.turn == 1 else "Black"
         status = (
             f"{outcome.result} · {outcome.reason}"
@@ -2251,6 +2353,8 @@ class MainWindow(QMainWindow):
         self.board_view.interactive = kind == "analysis"
 
     def _clear_analysis_output(self):
+        self.board_view.best_move = None
+        self.board_view.set_recommendations([])
         self.candidates.clear()
         self.pv_label.set_moves([])
         self._candidate_identity = None
@@ -2322,6 +2426,8 @@ class MainWindow(QMainWindow):
     def _show_info(self, info, job):
         if not info:
             return
+        if "score_type" in info and info.get("multipv", 1) > job.get("multipv", self._effective_multipv()):
+            return
         if info.get("multipv", 1) in self.candidates.pinned:
             return
         if "score_type" in info:
@@ -2331,6 +2437,8 @@ class MainWindow(QMainWindow):
             )
             entries = []
             for rank, line in self.candidates.lines.items():
+                if rank > job.get("multipv", self._effective_multipv()):
+                    continue
                 try:
                     entries.append(
                         (self.game.board.parse_uci(line["pv"][0]), rank, score_label(line, job["turn"]))
@@ -2382,9 +2490,11 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self._closing = True
+        self._explorer_active = False
         self.timer.stop()
         self.autosave_timer.stop()
         self.archive_timer.stop()
+        self.explorer.close_client()
         self.engine.close()
         self.game.pause_clock()
         self._save()

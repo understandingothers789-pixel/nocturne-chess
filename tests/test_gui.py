@@ -143,7 +143,7 @@ class GuiTests(unittest.TestCase):
     def test_nibbler_style_menus_and_no_widget_tooltips(self):
         self.assertEqual(
             [a.text().replace("&", "") for a in self.window.menuBar().actions()],
-            ["File", "Tree", "Analysis", "Display", "Engine", "Play"],
+            ["File", "Tree", "Analysis", "Display", "Engine", "Database", "Play"],
         )
         self.assertTrue(all("custom engine" not in w.toolTip() for w in self.window.findChildren(QWidget)))
         action = self.window.display_actions["coordinates"]

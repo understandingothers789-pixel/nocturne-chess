@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.4 — Ranked destination moves and Lichess opening explorer
+
+- Draw each displayed MultiPV candidate as an arrow or Nibbler-style line. Choose
+  the highest-ranked move on a shared destination; all lower ranks work by default.
+- Clear old markers on MultiPV changes, preserve selected-piece priority, execute
+  exact recommended promotions and retain manual promotion choices.
+- Add an opt-in Masters / Lichess rated-player opening explorer beneath analysis,
+  with speed/rating groups, game counts, White/draw/Black bars and supplied names.
+- Hover database moves without navigating; click to add a legal variation while
+  preserving prior lines. Standard-chess positions only; no game downloads yet.
+- Use cancellable Qt HTTPS, debouncing/pacing, bounded responses, a 256-position
+  persistent cache, explicit offline/empty/error states and 429 cooldown.
+- Add deterministic loopback HTTP tests and a separate optional live API check;
+  no engine strength, speed or database-coverage claims.
+
 ## 0.5.3 — Spacious analysis and menu-based engine controls
 
 - Threads, Hash, MultiPV, engine selection and continuous/bounded limits live in

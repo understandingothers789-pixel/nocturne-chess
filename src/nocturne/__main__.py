@@ -30,6 +30,14 @@ def main():
         window.analysis_mode = True
         window._analysis_enabled = True
         window.game = Game.from_pgn("1.e4 {Smoke annotation} (1.d4 d5) e5 *")
+        from .explorer import ExplorerQuery
+        query = ExplorerQuery(window.game.board.fen())
+        move = next(window.game.board.legal_moves())
+        window.explorer.client.cache.put(query.key, {
+            "white": 1, "draws": 0, "black": 0,
+            "moves": [{"uci": move.uci(), "white": 1, "draws": 0, "black": 0}],
+        })
+        window.config["explorer_enabled"] = True
         if "--smoke-engine" in sys.argv:
             index = sys.argv.index("--smoke-engine")
             executable = sys.argv[index + 1]
@@ -56,6 +64,8 @@ def main():
                     restored.board.fen() == window.game.board.fen()
                     and "Smoke annotation" in restored.pgn()
                     and "(" in restored.pgn()
+                    and len(window.explorer.rows) == 1
+                    and window.explorer.rows[0]["uci"] == move.uci()
                 )
                 pulse.stop()
                 window.close()

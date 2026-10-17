@@ -964,3 +964,61 @@ source archive/wheel/checksums. Only documentation/images change after the passi
 Windows build; no product code changes. The tests use explicit protocol fixtures,
 not installed Stockfish, and make no playing-strength or speed claim. No engine
 or table files are bundled; no batch/PowerShell launcher or security bypass added.
+
+## 2026-10-17 — 0.5.4 ranked destination moves, phase 1
+
+Requested automatic arrows/lines for MultiPV and destination clicks that choose
+the highest-ranked move sharing that square, including lower-ranked candidates.
+Modified gui/board.py, gui/window.py and settings.py: removed the top-only gate
+and shared-destination popup, sorted/deduplicated legal recommendations, kept
+selected-piece priority, stale/preview checks and manual promotion choices.
+Recommended promotions execute the engine's exact choice. Display now offers
+Lichess-style arrows or Nibbler-style lines with rank badges; a shared destination
+shows its best rank. Clearing/changing MultiPV clears old board recommendations.
+Updated the ambiguous-destination regression to verify automatic rank selection,
+fifth-candidate execution and retained manual promotion/Chess960 choices.
+Executed external-analysis/GUI/settings pytest: 55 passed in 25.42s.
+Next: asynchronous Lichess Masters/player explorer, cache and navigation tests.
+Direct live HTTP is blocked by this execution sandbox despite the environment's
+unrestricted network policy; public endpoint checks will run from Windows CI.
+
+## 2026-10-17 — 0.5.4 opening explorer, phase 2
+
+Created explorer.py (validated queries/statistics and isolated bounded SQLite
+cache), gui/explorer_client.py (QtNetwork transport), gui/explorer_panel.py
+(frequency table/result bars/hover), tests/test_explorer.py and the opt-in live
+check scripts/check_explorer_api.py. window.py/settings.py add Database menus,
+source/speed/rating filters and a resizable panel beneath PVs. Network is disabled
+by default and paused outside the active Analysis/Engine view. Standard positions
+only; Chess960 shows an explicit unsupported state. Database clicks preserve
+existing game branches and pass the rules boundary; engine and database rankings
+remain distinct. Counters are not used as engine evaluations.
+
+Checked current official Lichess API endpoint/filter specifications using its
+public GitHub documentation. Both aggregate endpoints now use explorer.lichess.org;
+rating groups match its documented 0/1000/1200/.../2500 bins. Requests are paced,
+debounced, generation-guarded, size/deadline bounded, and honor 429 cooldown with
+no automatic retry loop. A 256-entry, 24-hour cache can display explicitly labelled
+saved data during errors. Individual game downloads and Chess960 lookup deferred.
+
+Executed tests: integration run after adding Database had 52 passed / 1 failed
+because the old exact menu list lacked Database; updated that expectation.
+Initial HTTP fixture tests exposed the sandbox's socket prohibition; corrected
+the fixture's socket-enum/probe handling and skip only denied socket creation.
+Added cached-data GUI tests independent of sockets. Corrected one test's invalid
+Game.from_fen call to the actual Game(fen) constructor. Final explorer-only run:
+5 passed, 5 socket-dependent skipped in 0.45s. Earlier combined focused run:
+59 passed, 5 socket-dependent skipped in 35.82s. Ruff passed.
+
+Full local unittest discovery: 132 tests in 43.992s, OK (skipped=10): 122 passed.
+The ten skips are five HTTP tests blocked by the sandbox plus five existing
+optional deeper-perft/native-reader tests. Desktop smoke with cached explorer
+also exited 0. Packaged smoke now checks explorer rows as well as study/save;
+Windows CI runs deterministic HTTP tests and a separate non-blocking live Qt TLS
+check for both public sources. Documentation/version/workflow updated for 0.5.4.
+Next: capture/inspect actual UI, publish and validate native Windows package.
+
+Captured and inspected the actual wide explorer and Nibbler-line layouts. Refreshed
+dark/light/compact/PGN/hover captures. Explorer screenshots use explicitly labelled
+cached test statistics, not live database results. Ruff passed after capture script
+changes. Publishing source now for native Windows HTTP and optional live TLS checks.

@@ -23,3 +23,7 @@ and real Stockfish allocation remain to verify on a user desktop.
 
 0.5.3 native Windows tests/build and packaged smoke checks passed. Manual real
 Stockfish MultiPV, DPI and desktop interaction verification remains open.
+
+0.5.4: native HTTP/TLS/packaged-explorer verification pending. Manual Windows
+explorer interactions and real Stockfish marker behavior remain to verify.
+Individual database game lists/downloads and Chess960 lookup are deferred.

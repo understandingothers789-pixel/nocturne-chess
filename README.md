@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.3
+# Nocturne Analysis · 0.5.4
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -23,6 +23,8 @@ Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
 change is provided. The ZIP also includes the corresponding source archive.
+
+0.5.4 Windows verification is in progress; the download above remains the verified 0.5.3 build.
 
 ## Your saved PGNs
 
@@ -82,14 +84,52 @@ its path to compatible engines; separate folders can be entered using `;` on Win
 in Settings or the engine's own SyzygyPath option. The external engine performs the
 probes, and reported TB hits are displayed. Unsupported options are not fabricated.
 
+## Lichess opening databases
+
+![Actual Qt opening explorer with explicitly labelled cached test statistics](docs/opening-explorer.png)
+
+
+Choose **Database → Masters database** or **Lichess players (Amateurs)**.
+The optional, resizable explorer opens beneath the engine's PV list. It follows
+the live position; hovering a move previews it, and clicking inserts that move
+as a variation while preserving existing continuations. Database moves are
+ordered by game count, separately from engine rankings. Results show raw game
+counts and a White / Draw / Black results bar, with an opening name when the
+service supplies one. These are historical results, not engine scores.
+
+**Database → Lichess game speed / rating groups** filters player games; Masters
+has its own unfiltered data. The player endpoint aggregates rated Lichess games,
+including strong players; “Amateurs” does not imply an exclusive strength range.
+Standard chess is supported; Chess960 database lookup is explicitly unavailable.
+Game lists/individual game downloads are not included in this release.
+
+The explorer starts disabled. When enabled, it sends the current position and
+chosen filters to the public [Lichess opening explorer](https://lichess.org/api#tag/Opening-Explorer).
+No account/token is required. Close it with **×** or **Database → Show opening
+explorer** to stop requests. Engine analysis and local games work offline.
+
+Up to 256 positions/filter combinations are cached in `opening-cache.sqlite3`
+beside the game library. Cached data is fresh for 24 hours; older saved data is
+clearly labelled when the network fails. Refresh requests new statistics. Requests
+are debounced, limited to one active request and paced at least one second apart;
+rate limits impose a cooldown of at least 60 seconds with no automatic retry loop.
+Late replies cannot change a different position. Network failures never prevent
+moving pieces or using the engine. Service availability and data coverage vary.
+
 ## Explore quickly
 
-- **Smart Move** is enabled by default. Click the numbered destination of the top
-  recommendation without first selecting its piece. Enable **Display → Smart Move
-  · allow all displayed candidates** to execute alternatives too.
-- A selected piece takes priority. Shared destinations open a ranked move chooser;
-  promotions offer a piece chooser. Every execution checks the live position and
-  legal moves. Alt+1/2/3 follow the same Smart Move policy.
+- **Smart Move** is enabled by default for every displayed MultiPV candidate.
+  Click a destination square to play that candidate. If several candidates end
+  on the same square, the highest-ranked one wins automatically. A fifth-ranked
+  destination works just like the first; no extra setting or chooser is needed.
+- A selected piece takes priority. Manual promotions still offer a piece chooser;
+  clicking a recommended promotion uses that exact engine move. Every execution
+  checks the live position and legal moves. Alt+1/2/3 execute those candidates.
+- **Display → Candidate markers** selects **Arrows · Lichess style** or
+  **Lines · Nibbler style**. Markers follow the selected MultiPV count, with a
+  numbered destination badge. A shared square shows its highest rank. Changing
+  MultiPV clears old recommendations while the new lines arrive. Analysis
+  overlays and Smart Move can each be switched off independently.
 - Candidate rows show actual cp/mate/bound scores, depths, nodes and engine WDL
   where supplied. Scores and WDL are oriented to White. No cp-to-probability or
   Leela policy/visit statistics are invented. The evaluation bar uses a display

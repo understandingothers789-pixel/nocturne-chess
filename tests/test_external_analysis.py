@@ -290,6 +290,7 @@ class QtIntegration(unittest.TestCase):
             choice = next(a for a in menu.actions() if a.data() == 3)
             QTest.mouseClick(menu, Qt.MouseButton.LeftButton, pos=menu.actionGeometry(choice).center())
             self.wait_until(lambda: len(window.candidates.lines) == 3)
+            self.assertEqual(len(window.board_view.recommendations), 3)
             self.assertEqual(window.config["analysis_kind"], "infinite")
             self.assertEqual(window.engine.connection.confirmed["MultiPV"], "3")
             self.assertNotIn("nodes", window.engine.connection.running[2])
@@ -309,8 +310,11 @@ class QtIntegration(unittest.TestCase):
                 next(a for a in window.multipv_menu.actions() if a.text() == "Custom…").trigger()
                 self.assertEqual(chooser.call_args.args[-1], 8)
             self.wait_until(lambda: not window.engine.busy and len(window.candidates.lines) == 5)
+            self.assertEqual(len(window.board_view.recommendations), 5)
             window._halt_analysis()
             window._set_multipv(2)
+            self.assertFalse(window.board_view.recommendations)
+            self.assertIsNone(window.board_view.best_move)
             self.assertFalse(window.engine.busy)
             self.assertEqual(window.config["multipv"], 2)
             self.assertEqual(window.store.get("settings")["multipv"], 2)
@@ -366,7 +370,6 @@ class QtIntegration(unittest.TestCase):
                 analysis_kind="explore",
                 multipv=3,
                 smart_move=True,
-                smart_all=True,
             )
             window.analysis_mode = True
             window._analysis_enabled = True
@@ -436,7 +439,6 @@ class QtIntegration(unittest.TestCase):
         game = Game()
         widget.set_position(game.board)
         widget.smart_move = True
-        widget.smart_all = True
         widget.set_recommendations([(game.board.parse_uci("g1f3"), 1, "+0.2")])
         moves = []
         widget.move_requested.connect(moves.append)
@@ -519,7 +521,7 @@ class QtIntegration(unittest.TestCase):
             self.assertEqual(window.game.sans, ["d4", "d5"])
             self.assertIn("note", window._study_games[first].pgn())
 
-    def test_smart_ambiguous_destination_asks_and_promotion_offers_choice(self):
+    def test_smart_shared_destination_uses_highest_rank_and_manual_promotion_asks(self):
         from PySide6.QtCore import QTimer
         from PySide6.QtWidgets import QMenu
         from nocturne.gui.board import BoardWidget
@@ -528,48 +530,34 @@ class QtIntegration(unittest.TestCase):
         self.addCleanup(widget.close)
         widget.resize(650, 650)
         widget.show()
-        widget.set_position(Board("4k3/8/8/8/8/8/3N3N/4K3 w - - 0 1"))
+        widget.set_position(Board("4k3/8/8/8/8/8/3B4/1N2K3 w - - 0 1"))
         widget.smart_move = True
-        widget.smart_all = True
         widget.set_recommendations(
-            [(widget.board.parse_uci("d2f3"), 1, "+0.1"), (widget.board.parse_uci("h2f3"), 2, "0.0")]
+            [(widget.board.parse_uci("d2c3"), 2, "0.0"), (widget.board.parse_uci("b1c3"), 1, "+0.1"),
+             (widget.board.parse_uci("e1f1"), 5, "-0.3")]
         )
         moves = []
         widget.move_requested.connect(moves.append)
+        QTest.mouseClick(widget, Qt.MouseButton.LeftButton,
+                        pos=widget.square_rect(parse_square("c3")).center().toPoint())
+        self.assertEqual(moves[-1].uci(), "b1c3")
+        self.assertIsNone(QApplication.activePopupWidget())
+        QTest.mouseClick(widget, Qt.MouseButton.LeftButton,
+                        pos=widget.square_rect(parse_square("f1")).center().toPoint())
+        self.assertEqual(moves[-1].uci(), "e1f1")
+        count = len(moves)
 
         def choose_last():
             menu = QApplication.activePopupWidget()
             if isinstance(menu, QMenu):
-                QTest.mouseClick(
-                    menu, Qt.MouseButton.LeftButton, pos=menu.actionGeometry(menu.actions()[-1]).center()
-                )
+                QTest.mouseClick(menu, Qt.MouseButton.LeftButton,
+                                pos=menu.actionGeometry(menu.actions()[-1]).center())
 
         def dismiss():
             menu = QApplication.activePopupWidget()
             if menu:
                 menu.close()
 
-        QTimer.singleShot(20, choose_last)
-        QTimer.singleShot(500, dismiss)
-        QTest.mouseClick(
-            widget, Qt.MouseButton.LeftButton, pos=widget.square_rect(parse_square("f3")).center().toPoint()
-        )
-        self.assertEqual(moves[-1].uci(), "h2f3")
-        count = len(moves)
-
-        def change_position_then_choose():
-            updated = widget.board.copy()
-            updated.play_uci("e1f1")
-            updated.play_uci("e8f8")
-            widget.set_position(updated)
-            choose_last()
-
-        QTimer.singleShot(20, change_position_then_choose)
-        QTimer.singleShot(500, dismiss)
-        QTest.mouseClick(
-            widget, Qt.MouseButton.LeftButton, pos=widget.square_rect(parse_square("f3")).center().toPoint()
-        )
-        self.assertEqual(len(moves), count)
         widget.set_position(Board("4k3/8/8/8/8/8/8/R4K1R w HA - 0 1"))
         widget.selected = parse_square("f1")
         QTimer.singleShot(20, choose_last)
@@ -581,12 +569,35 @@ class QtIntegration(unittest.TestCase):
         self.assertEqual(len(moves), count + 1)
         widget.set_position(Board("4k3/P7/8/8/8/8/8/4K3 w - - 0 1"))
         widget.set_recommendations([(widget.board.parse_uci("a7a8q"), 1, "#1")])
+        widget.selected = parse_square("a7")
         QTimer.singleShot(20, choose_last)
         QTimer.singleShot(500, dismiss)
         QTest.mouseClick(
             widget, Qt.MouseButton.LeftButton, pos=widget.square_rect(parse_square("a8")).center().toPoint()
         )
         self.assertEqual(moves[-1].uci(), "a7a8n")
+
+    def test_recommended_promotion_uses_exact_engine_choice_and_both_marker_styles_render(self):
+        from nocturne.gui.board import BoardWidget
+        widget = BoardWidget()
+        self.addCleanup(widget.close)
+        widget.resize(650, 650)
+        widget.show()
+        widget.set_position(Board("4k3/P7/8/8/8/8/8/4K3 w - - 0 1"))
+        widget.smart_move = True
+        widget.set_recommendations([(widget.board.parse_uci("a7a8n"), 1, "0.0"),
+                                    (widget.board.parse_uci("a7a8q"), 2, "-0.2")])
+        before = widget.grab().toImage()
+        widget.candidate_style = "lines"
+        widget.update()
+        self.app.processEvents()
+        self.assertNotEqual(before, widget.grab().toImage())
+        moves = []
+        widget.move_requested.connect(moves.append)
+        QTest.mouseClick(widget, Qt.MouseButton.LeftButton,
+                        pos=widget.square_rect(parse_square("a8")).center().toPoint())
+        self.assertEqual(moves[0].uci(), "a7a8n")
+        self.assertIsNone(QApplication.activePopupWidget())
 
     def test_paused_review_preserves_completed_results_and_resumes(self):
         from unittest.mock import patch

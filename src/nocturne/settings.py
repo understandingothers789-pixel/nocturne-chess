@@ -23,12 +23,16 @@ DEFAULTS = {
     "analysis_seconds": 3.0,
     "details": False,
     "smart_move": True,
-    "smart_all": False,
+    "candidate_style": "arrows",
     "branch_arrows": True,
     "layout": "classic",
     "analysis_kind": "infinite",
     "multipv": 1,
     "analysis_menu_version": 1,
+    "explorer_enabled": False,
+    "explorer_source": "masters",
+    "explorer_speed": "all",
+    "explorer_rating": 0,
     "engine_id": "",
     "analysis_nodes": 0,
     "external_path": "",
@@ -46,11 +50,17 @@ def normalize(data) -> dict:
         "difficulty": ("Beginner", "Casual", "Intermediate", "Advanced", "Expert", "Maximum"),
         "layout": ("classic", "analysis-left"),
         "analysis_kind": ("infinite", "explore", "bounded"),
+        "candidate_style": ("arrows", "lines"),
+        "explorer_source": ("masters", "lichess"),
+        "explorer_speed": ("all", "ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence"),
+        "explorer_rating": (0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500),
         "theme": ("Forest", "Walnut", "Slate", "Midnight"),
         "white_engine": ("custom", "external"),
         "black_engine": ("custom", "external"),
     }
     for key, options in choices.items():
+        if key == "explorer_rating" and type(data.get(key)) is not int:
+            continue
         if data.get(key) in options:
             result[key] = data[key]
     for key in (
@@ -60,9 +70,9 @@ def normalize(data) -> dict:
         "overlays",
         "takebacks",
         "smart_move",
-        "smart_all",
         "branch_arrows",
         "details",
+        "explorer_enabled",
     ):
         if isinstance(data.get(key), bool):
             result[key] = data[key]

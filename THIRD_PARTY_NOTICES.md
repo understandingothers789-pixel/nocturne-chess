@@ -44,3 +44,11 @@ source access when redistributing.
 Nibbler was inspected for behavior and workflow only. Its GPL code/assets were not
 copied. User-selected external engines retain their respective licenses; this
 application does not distribute or modify them.
+
+### Lichess opening explorer service
+
+Optional online integration calls https://explorer.lichess.org/masters and
+/lichess according to https://lichess.org/api#tag/Opening-Explorer. Statistics
+are credited to Lichess in the interface and cached locally on user request.
+No server implementation, database dump or game collection is bundled. The
+Lichess name identifies the service and does not imply endorsement.

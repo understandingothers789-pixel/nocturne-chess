@@ -36,7 +36,7 @@ class BoardWidget(QWidget):
         self.recommendations = []
         self.recommendation_fen = None
         self.smart_move = False
-        self.smart_all = False
+        self.candidate_style = "arrows"
         self.branch_moves = []
         self.selected: int | None = None
         self.legal: list[Move] = []
@@ -105,7 +105,12 @@ class BoardWidget(QWidget):
 
     def set_recommendations(self, entries):
         legal = list(self.board.legal_moves())
-        self.recommendations = [(move, rank, text) for move, rank, text in entries if move in legal]
+        seen = set()
+        self.recommendations = []
+        for move, rank, text in sorted(entries, key=lambda entry: entry[1]):
+            if move in legal and move not in seen and 1 <= rank <= 32:
+                self.recommendations.append((move, rank, text))
+                seen.add(move)
         self.recommendation_fen = self.board.fen()
         self.update()
 
@@ -123,22 +128,11 @@ class BoardWidget(QWidget):
         choices = [
             (m, r, t)
             for m, r, t in self.recommendations
-            if m in legal and self._destination(m) == square and (self.smart_all or r == 1)
+            if m in legal and self._destination(m) == square
         ]
         if not choices:
             return False
-        choices.sort(key=lambda item: item[1])
-        if len(choices) > 1:
-            from ..core.notation import san
-
-            menu = QMenu(self)
-            actions = {menu.addAction(f"#{r} {san(self.board, m)} · {t}"): m for m, r, t in choices}
-            picked = menu.exec(global_pos)
-            if picked is None:
-                return True
-            move = actions[picked]
-        else:
-            move = choices[0][0]
+        move = min(choices, key=lambda item: item[1])[0]
         if (
             self.board.fen() != root_fen
             or self._position_revision != revision
@@ -147,10 +141,9 @@ class BoardWidget(QWidget):
             or move not in list(self.board.legal_moves())
         ):
             return True
-        if move.promotion:
-            self._request(move.from_sq, move.to_sq, global_pos)
-        else:
-            self.move_requested.emit(move)
+        # A recommendation includes its promotion choice. Manual moves still
+        # use the piece chooser in _request.
+        self.move_requested.emit(move)
         return True
 
     @property
@@ -271,10 +264,20 @@ class BoardWidget(QWidget):
                 self._arrow(painter, move.from_sq, self._destination(move), QColor(220, 173, 93, 110), unit)
             entries = self.recommendations or ([(self.best_move, 1, "")] if self.best_move else [])
             colors = ["#5ec0b5", "#a4b8ed", "#d9ac73", "#cc96c8"]
+            best_rank = {}
+            for move, rank, _ in entries:
+                destination = self._destination(move)
+                best_rank[destination] = min(rank, best_rank.get(destination, rank))
             for move, rank, text in reversed(entries):
                 color = QColor(colors[(rank - 1) % len(colors)])
                 color.setAlpha(180)
-                self._arrow(painter, move.from_sq, self._destination(move), color, unit)
+                if self.candidate_style == "lines":
+                    painter.setPen(QPen(color, unit * 0.075, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                    painter.drawLine(self.square_rect(move.from_sq).center(), self.square_rect(self._destination(move)).center())
+                else:
+                    self._arrow(painter, move.from_sq, self._destination(move), color, unit)
+                if best_rank[self._destination(move)] != rank:
+                    continue
                 destination = self.square_rect(self._destination(move))
                 badge = QRectF(
                     destination.right() - unit * 0.38,

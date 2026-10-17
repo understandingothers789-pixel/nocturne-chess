@@ -83,3 +83,25 @@ latency and cold external-engine initialization still require profiling. Manual
 Windows/DPI testing and actual Stockfish builds are pending. Advanced comparison,
 cache/snapshots, rich tree editing and flexible dock layouts are explicit roadmap
 items, not hidden/nonfunctional controls.
+
+## Opening explorer
+
+explorer.py validates standard FEN queries and service statistics, recomputes SAN
+and legal moves locally, and maintains a bounded, isolated SQLite cache.
+gui/explorer_client.py owns QtNetwork transport: one active reply, cancellation
+generations, 350 ms debounce, one-second minimum pacing, 10 s total timeout,
+512 KiB payload limit and a global 429 cooldown without automatic retries.
+The 24-hour cache is keyed by canonical position, source and effective filters;
+stale cache can remain available with an explicit network error. No game library
+records are modified by cache corruption.
+
+gui/explorer_panel.py renders frequency-ordered database statistics beneath the
+PV scroll area in a resizable splitter. Database menu commands own source/filters.
+Queries run only while enabled in the active Analysis/Engine view. Hover/click
+signals carry the study/node identity and pass the same legal rules boundary as
+board moves. Board hover previews never trigger requests or navigate. Explorer
+counts are not mixed with engine evaluation or MultiPV ranking.
+
+Endpoints/filter groups were checked against the official Lichess API specs:
+https://github.com/lichess-org/api/tree/master/doc/specs/tags/openingexplorer
+The online integration does not copy or bundle the AGPL explorer server.
