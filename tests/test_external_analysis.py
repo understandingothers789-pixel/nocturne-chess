@@ -186,6 +186,27 @@ class QtIntegration(unittest.TestCase):
             )
             self.assertEqual(window.game.cursor, 1)
 
+    def test_focus_replaces_candidate_context_instead_of_mixing_old_rows(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            window.autosave_timer.stop()
+            window.profiles = [self.profile()]
+            window.config.update(engine_id="simulator", analysis_kind="explore")
+            window._apply_settings()
+            window.analysis_kind.setCurrentIndex(1)
+            window.analysis_mode = True
+            window._analysis_enabled = True
+            window._refresh()
+            window._schedule_engine()
+            self.wait_until(lambda: len(window.candidates.lines) == 3)
+            target = window.candidates.lines[2]["pv"][0]
+            window._candidate_action(2, "focus")
+            self.assertFalse(window.candidates.lines)
+            self.wait_until(lambda: bool(window.candidates.lines))
+            self.assertEqual(list(window.candidates.lines), [1])
+            self.assertEqual(window.candidates.lines[1]["pv"][0], target)
+            self.assertIn("Targeted analysis", window.tradeoff_label.text())
+
     def test_selected_piece_priority_and_stale_recommendation(self):
         from nocturne.gui.board import BoardWidget
 

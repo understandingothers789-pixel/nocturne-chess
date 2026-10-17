@@ -116,6 +116,7 @@ class MainWindow(QMainWindow):
                 }
             ]
         self._candidate_identity = None
+        self._analysis_context = None
         self._review = None
         self.config.setdefault("mode", "analysis")
         self.config.setdefault("human_color", 1)
@@ -1240,6 +1241,7 @@ class MainWindow(QMainWindow):
             self._save()
 
     def _restart_engine(self):
+        self._analysis_context = None
         if profile := self._profile():
             self._stop_engine()
             try:
@@ -2044,8 +2046,38 @@ class MainWindow(QMainWindow):
         )
         infinite = kind == "analysis" and self.analysis_kind.currentData() != "bounded"
         count = self.multipv.value() if self.analysis_kind.currentData() == "explore" else 1
+        focus = tuple(self.config.get("searchmoves", []))
+        if focus:
+            count = 1
+            self.tradeoff_label.setText("Targeted analysis · " + " ".join(focus) + " · PV 1")
+        else:
+            self.tradeoff_label.setText(
+                f"{count} candidates · search effort divided" if count > 1 else "MultiPV 1 · primary analysis"
+            )
         options = dict(profile.get("values", {}))
         options.setdefault("UCI_ShowWDL", True)
+        context = (
+            self._position_identity(),
+            profile["id"],
+            self.analysis_kind.currentData(),
+            count,
+            focus,
+            tuple(sorted((k, str(v)) for k, v in options.items())),
+            limits.depth,
+            limits.seconds,
+            limits.nodes,
+        )
+        if context != self._analysis_context:
+            self.candidates.clear()
+            self.pv_label.set_moves([])
+            self._candidate_identity = None
+            self._pv_root = None
+            self._pv_moves = []
+            self._last_info = None
+            self._pv_identity = None
+            self.eval_label.setText("—")
+            self.telemetry.setText("Waiting for engine output")
+            self._analysis_context = context
         try:
             generation = self.engine.start(
                 self.game,

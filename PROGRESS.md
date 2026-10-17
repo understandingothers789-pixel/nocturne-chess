@@ -632,3 +632,10 @@ an open DB; Windows correctly rejected it (WinError 32). Replaced that fixture
 pattern with a context manager that closes/deletes the window and processes Qt
 events before deleting its directory. Product storage behavior was not changed.
 The Windows package was not built/published from this failed run.
+
+An added analysis-context regression found that focusing a candidate or changing
+engine settings could leave alternative rows from the previous search visible.
+Candidate/PV state now resets when engine profile, options, limits, MultiPV or
+searchmoves changes; targeted analysis is labelled and uses PV 1. Same-position
+pinned rows remain stable during updates within a context. This prevents mixed
+old/new candidate sets from implying comparable current analysis.
