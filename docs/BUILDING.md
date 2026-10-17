@@ -1,19 +1,19 @@
-# Windows 11 desktop builds · 0.5.5
+# Windows 11 desktop builds · 0.5.6
 
-[Download the verified 0.5.5 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39070057843/artifacts/12114389477).
+[Download the verified 0.5.6 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39076887941/artifacts/12116669238).
 
-Alternatively, select the successful **Nocturne-0.5.5-Windows-x64-unsigned** artifact from
+Alternatively, select the successful **Nocturne-0.5.6-Windows-x64-unsigned** artifact from
 [Windows Actions](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
 Sign into GitHub, download, Extract All, then open **Nocturne/Nocturne.exe**.
 Keep the full folder. No Python, compiler or batch launcher is needed to play/analyze.
 You select your own Stockfish executable from the Engine menu.
 
-Windows run 39070057843 succeeded for GUI commit c2dc1dcfe33d30d95ef37104576fe6f518e0c41a.
-Both test runs passed 132 tests with 5 skips (64.011s / 64.154s). Ruff,
+Windows run 39076887941 succeeded for GUI commit e59980a326306e05080b1a8a55d3255b3e5f3a4c.
+Both test runs passed 137 tests with 5 skips (68.116s / 67.472s). Ruff,
 PyInstaller and both packaged explorer/study/save/UCI smoke checks passed.
 All six loopback HTTP tests ran on native Windows. The unsigned artifact is
-53,971,786 bytes, retained until 2026-11-16. SHA-256:
-`0b1aa2f5b4535c7dbcade36d97b4a53514ee207682c7a4adbd2b7e8ff40ffbb2`.
+53,978,903 bytes, retained until 2026-11-16. SHA-256:
+`bd6912922b667292c14cfacef6069de7d1cc058ea195c8cfcd94b4fa941b46c4`.
 
 Live authenticated Lichess data requires a user session token. Separate live
 connectivity checks distinguish protected responses from actual returned data;
@@ -41,7 +41,7 @@ the installed python-chess Python source and notices.
 Outputs:
 
 - `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
-- `dist/Nocturne-0.5.5-source.zip`: source, tests, documentation, rules-library source.
+- `dist/Nocturne-0.5.6-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI
 executable/native table reader are not part of this distribution. Source installation

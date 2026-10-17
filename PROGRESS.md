@@ -1214,3 +1214,31 @@ Full local validation executed: QT_QPA_PLATFORM=offscreen .venv/bin/python
 optional historical checks also skip. The added visible-history assertion passed.
 The offscreen python -m nocturne --smoke-test exited 0; final Ruff passed.
 Publishing the reviewed changes next for native Windows validation and packaging.
+
+
+## 2026-10-17 — 0.5.6 Windows Backspace release verified
+
+Published application commit e59980a326306e05080b1a8a55d3255b3e5f3a4c. Windows
+run 39076887941/job 117525776947 completed successfully. Full unittest discovery
+ran twice: 142 tests each, 137 passed and 5 optional skips, in 68.116s and 67.472s.
+The five new deletion/Backspace regressions passed in both runs, including actual
+key input, sibling display, save/restore, text-field editing and live UCI
+cancellation/restart/stale reply guards. All six HTTP tests executed on Windows.
+Ruff passed twice. PyInstaller built the windowed GUI; both frozen study/save/
+explorer and external-UCI fixture smoke checks passed. No test failures.
+The optional API check returned 29 legal ChessDB moves and explicit Lichess
+authentication requirements; authenticated Lichess data is not claimed.
+
+Artifact 12116669238 is Nocturne-0.5.6-Windows-x64-unsigned from the tested commit,
+53,978,903 bytes, retained until 2026-11-16. SHA-256:
+bd6912922b667292c14cfacef6069de7d1cc058ea195c8cfcd94b4fa941b46c4.
+Download: https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39076887941/artifacts/12116669238
+
+README.md, docs/BUILDING.md and TODO.md now point to the verified download and
+record completion. Local source ZIP/wheel built and passed archive integrity
+checks; source excludes EXE/batch/PowerShell launchers. Refreshed source/checksums
+after these final documentation edits. No application code changed after the
+passing Windows build. Next is user desktop/DPI/real Stockfish verification;
+automated engine interactions use the labelled protocol fixture. Backspace
+deletes the selected move and descendants, not earlier ancestors; root/Play
+mode remain protected and text fields retain their normal key behavior.
