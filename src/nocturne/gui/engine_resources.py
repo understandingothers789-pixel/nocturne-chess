@@ -2,8 +2,10 @@
 
 import os
 
+from PySide6.QtCore import QObject
+
 from PySide6.QtWidgets import (
-    QHBoxLayout, QInputDialog, QLabel, QMenu, QToolButton, QVBoxLayout, QWidget,
+    QInputDialog, QMenu,
 )
 
 from ..engine.uci_types import UciOption
@@ -63,31 +65,16 @@ def validate_resource(profile, name, value, allocated_mb=0):
     return value
 
 
-class EngineResources(QWidget):
+class EngineResources(QObject):
     def __init__(self, profile, connection, apply, detect, parent=None):
         super().__init__(parent)
         self.profile, self.connection, self.apply = profile, connection, apply
-        self.menus, self.buttons = {}, {}
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(3)
-        row = QHBoxLayout()
+        self.menus = {}
         for name in ("Threads", "Hash"):
-            menu = QMenu(name, self)
+            menu = QMenu(name, parent)
             menu.aboutToShow.connect(self.refresh)
-            button = QToolButton()
-            button.setAccessibleName(f"Engine {name}")
-            button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-            button.setMenu(menu)
-            button.setMinimumHeight(30)
-            row.addWidget(button, 1)
-            self.menus[name], self.buttons[name] = menu, button
-        layout.addLayout(row)
-        self.state = QLabel("Choose an engine to configure Threads and Hash")
-        self.state.setObjectName("muted")
-        self.state.setWordWrap(True)
-        self.state.setAccessibleName("Engine resource settings status")
-        layout.addWidget(self.state)
+            self.menus[name] = menu
+        self.summary = "Choose an engine to configure Threads and Hash"
         self.detect = detect
 
     def allocated_hash(self):
@@ -111,7 +98,6 @@ class EngineResources(QWidget):
                     text = "Detect engine options first"
                     menu.addAction("Detect engine options…", self.detect)
                 menu.addAction(text).setEnabled(False)
-                self.buttons[name].setText(f"{name}: —")
                 menu.setTitle(name)
                 continue
             supported += 1
@@ -121,7 +107,6 @@ class EngineResources(QWidget):
             except ValueError:
                 value = "invalid"
             current = resource_label(name, value)
-            self.buttons[name].setText(f"{name}: {current}")
             menu.setTitle(f"{name} ({current})")
             matches = matches and same_engine and confirmed.get(name) == str(value)
             minimum, maximum = resource_limits(option, self.allocated_hash())
@@ -157,7 +142,7 @@ class EngineResources(QWidget):
             ).setEnabled(False)
             if maximum < option.maximum and name == "Hash":
                 menu.addAction(f"Current memory limit: {format_hash_mb(maximum)}").setEnabled(False)
-        self.state.setText(
+        self.summary = (
             "Choose an engine to configure Threads and Hash" if not profile
             else "Resource options unavailable" if not supported
             else "Applied to engine" if matches
@@ -180,7 +165,7 @@ class EngineResources(QWidget):
         except ValueError:
             value = minimum
         number, accepted = QInputDialog.getInt(
-            self, f"Engine {name}",
+            self.parent(), f"Engine {name}",
             "Hash size in MB (1 GB = 1,024 MB):" if name == "Hash" else "Search threads:",
             min(maximum, max(minimum, value)), minimum, maximum, 1,
         )

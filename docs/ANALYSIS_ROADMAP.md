@@ -7,6 +7,7 @@ The uploaded 2026-10-17 specification is the direction. No custom-engine work.
 - [x] Multiple engine profiles, advertised option editor and hardware presets.
 - [x] Direct Threads/Hash menus, custom values, per-profile persistence and ready acknowledgement.
 - [x] MultiPV with actual scores, bounds, WDL, legal interactive PVs.
+- [x] Engine-menu Threads/Hash/MultiPV and spacious analysis without settings widgets.
 - [x] Smart Move: destination click, ranking, selected-piece priority, stale guard.
 - [x] python-chess rules, standard/Chess960, annotations and PGN round trips.
 - [x] Full-game external analysis, pause/resume/cancel, reliable evaluation export.

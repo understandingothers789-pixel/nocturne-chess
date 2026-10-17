@@ -38,6 +38,7 @@ def main():
             layout=args.layout,
             engine_id="capture",
             analysis_kind="explore",
+            multipv=6,
         )
         window.game = Game.from_pgn(
             '[Event "Italian Game study"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bc4 {Develop toward the center.} (3.Nc3 Nf6) Bc5 4.c3 *'
@@ -67,7 +68,6 @@ def main():
             ]
         window._apply_settings()
         window._workspace(True)
-        window.analysis_kind.setCurrentIndex(1)
         window.tabs.setCurrentIndex(2 if args.pgn else 1)
         window.resize(args.width, args.height)
         window.show()

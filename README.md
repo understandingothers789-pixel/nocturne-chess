@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.2
+# Nocturne Analysis · 0.5.3
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -24,6 +24,9 @@ Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
 change is provided. The ZIP also includes the corresponding source archive.
 
+The 0.5.3 source reorganizes the analysis workspace and engine menus; its Windows
+build is pending verification. The link above is the previously verified build.
+
 ## Your saved PGNs
 
 Every save also writes a complete PGN in the **PGNs** folder beside the local
@@ -46,17 +49,19 @@ PGNs do not contain clocks/profile settings; those remain in the library.
 
 1. **Engine → Choose engine… → Add executable…**. Select your existing engine.
 2. Wait for the reported engine name/options, choose a profile name, then **OK**.
-3. Use **Live · maximum strength** for continuous MultiPV 1, **Explore alternatives**
-   for multiple candidates, or **Bounded analysis** for time/depth/node limits.
+3. Use **Engine → MultiPV** to select analysis lines (presets or Custom). This
+   works in both **Engine → Analysis limits → Continuous** and **Bounded**.
+   **Set limits…** configures bounded depth/time/nodes. The display supports up to
+   32 PVs, within the engine's advertised range.
 4. **Analysis → Go/Halt** starts/stops analysis. Moving or navigating restarts the
    search on the new position while retaining the engine process/hash allocation.
 
-**Engine → Threads** and **Engine → Hash** provide checked presets, custom integer
-values, and an engine-default choice. Hash labels switch to GB at 1,024 MB
+**Engine → Threads**, **Hash**, and **MultiPV** contain the configuration controls.
+Threads/Hash provide checked presets, custom values and engine defaults. Hash labels switch to GB at 1,024 MB
 (1 GB); the Threads menu includes 14 when supported. Custom Hash input remains
-in exact MB, with its conversion shown. The same controls stay visible
-below the engine selector, including with compact statistics. Settings save per
-engine profile. “Applied to engine” appears only after the engine acknowledges
+in exact MB, with its conversion shown. Settings stay in the top Engine menu,
+leaving the right pane for analysis. Threads/Hash save per engine profile;
+MultiPV saves as an analysis preference. **Active engine** switches profiles. “Applied to engine” appears only after the engine acknowledges
 its ready barrier; stopped analysis stays stopped when you change a setting.
 During live analysis, changes stop the old search, apply settings, then resume on
 the same process. Unsupported options are marked unavailable. Hash choices respect
@@ -72,7 +77,7 @@ Threads, Hash, MultiPV, SyzygyPath, UCI_Chess960 and UCI_ShowWDL when advertised
 Other spin/check/string/combo/button options have a generic editor. Values respect
 reported bounds; Hash also respects a conservative current memory budget. Custom
 MB values are supported. Hardware presets for a Ryzen 9800X3D/32 GB are starting
-points: 2 threads/256 MB, 6/1024, or 8/4096 with MultiPV 1. They are not benchmarks
+points: 2 threads/256 MB, 6/1024, or 8/4096. Resource presets leave MultiPV unchanged. They are not benchmarks
 or verified optima. Conventional Stockfish CPU analysis does not use the Radeon GPU.
 
 No engine or table files are downloaded or bundled. **Choose Syzygy folder…** sends
@@ -94,14 +99,18 @@ probes, and reported TB hits are displayed. Unsupported options are not fabricat
   scaling curve, not a claimed win probability.
 - Hover a PV/history move to preview its position. Leaving restores the live board
   without moving the analyzed position. Click a PV move to insert its prefix;
-  **Insert** adds the full line as branches. **Pin** freezes a row for the current
-  position; **SAN/UCI** copy it; **Focus** uses `searchmoves` for that candidate.
+  right-click a line for **Insert line**, **Pin line**, **Copy SAN/UCI**, or
+  **Analyze only this move** (`searchmoves`). Pinning freezes that row for the
+  current position. Selecting MultiPV clears a move focus so the chosen count applies.
   **Analysis → Analyze all legal moves again** clears the focus.
 - Changing a position invalidates every recommendation/preview. Engine stop waits
   for `bestmove` and an `isready` barrier before the next search. Diagnostics are
   available in the Engine menu; logs and output queues are bounded.
 
-The default workspace is board left, analysis right, moves and graph below.
+The default workspace is board left, a wide analysis pane on the right with the
+graph at its foot, and game moves below. PV text wraps to its full height inside
+a single scrolling list. Engine settings and per-line button bars occupy no
+analysis space. The PGN tab bar appears when editing PGN and hides during analysis.
 Splitters resize the panels; **Display → Analysis on the left** preserves the
 previous layout. Light/dark palettes, coordinates, animations, overlay visibility,
 branch arrows and compact/detailed statistics are configurable. Manual annotations

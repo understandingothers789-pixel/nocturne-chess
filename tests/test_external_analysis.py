@@ -168,7 +168,7 @@ class QtIntegration(unittest.TestCase):
             self.wait_until(lambda: bool(window.candidates.lines))
             pid = window.engine.connection.process.processId()
             resources = window.resource_controls
-            self.assertEqual(resources.state.text(), "Applied to engine")
+            self.assertEqual(resources.summary, "Applied to engine")
             window.show()
             resources.menus["Threads"].popup(window.mapToGlobal(window.rect().center()))
             self.app.processEvents()
@@ -184,7 +184,7 @@ class QtIntegration(unittest.TestCase):
             self.wait_until(lambda: window._last_info is not None)
             self.assertEqual(window.engine.connection.process.processId(), pid)
             self.assertEqual(window.profiles[0]["values"], {"Threads": 6, "Hash": 768})
-            self.assertIn("768 MB", resources.buttons["Hash"].text())
+            self.assertIn("768 MB", resources.menus["Hash"].title())
             self.assertTrue(next(a for a in resources.menus["Hash"].actions() if a.data() == 768).isChecked())
             self.assertTrue(all("a1a8" not in info["pv"] for info in window.candidates.lines.values()))
             saved = Store(window.store.path)
@@ -195,7 +195,7 @@ class QtIntegration(unittest.TestCase):
             second = dict(self.profile(), id="second", values={}, options=window.profiles[0]["options"])
             window.profiles.append(second)
             window._apply_settings()
-            window.analysis_source.setCurrentIndex(1)
+            window._select_profile("second")
             record = window.game.nodes[window.game.current_node].analysis
             self.assertEqual(record["profile"], "simulator")
             self.assertEqual(record["options"], {"Threads": 6, "Hash": 768})
@@ -205,7 +205,7 @@ class QtIntegration(unittest.TestCase):
             self.assertEqual(window.engine.connection.confirmed["Threads"], "1")
             self.assertEqual(window.engine.connection.process.processId(), pid)
             self.assertEqual(window.profiles[0]["values"]["Hash"], 768)
-            window.analysis_source.setCurrentIndex(0)
+            window._select_profile("simulator")
             self.wait_until(lambda: window.engine.connection.confirmed.get("Hash") == "768")
             default = next(a for a in resources.menus["Hash"].actions() if a.text().startswith("Engine default"))
             default.trigger()
@@ -215,7 +215,7 @@ class QtIntegration(unittest.TestCase):
             window._set_engine_resource("Threads", 4)
             self.app.processEvents()
             self.assertFalse(window.engine.busy)
-            self.assertIn("next search", resources.state.text())
+            self.assertIn("next search", resources.summary)
             window._start_analysis()
             self.wait_until(lambda: window.engine.connection.confirmed.get("Threads") == "4")
 
@@ -267,11 +267,82 @@ class QtIntegration(unittest.TestCase):
             self.assertEqual(hash_action.text(), "2 GB")
             hash_action.trigger()
             self.wait_until(lambda: window.engine.connection.confirmed.get("Hash") == "2048")
-            self.assertEqual(resources.buttons["Hash"].text(), "Hash: 2 GB")
+            self.assertEqual(resources.menus["Hash"].title(), "Hash (2 GB)")
             log = "\n".join(window.engine.connection.log)
             self.assertIn("> setoption name Threads value 14", log)
             self.assertIn("> setoption name Hash value 2048", log)
             self.assertNotIn("setoption name Hash value 2 GB", log)
+
+    def test_multipv_menu_controls_live_and_bounded_search_without_explore_mode(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            window.profiles = [self.profile()]
+            window.config.update(engine_id="simulator", analysis_kind="infinite", multipv=1, analysis_nodes=500)
+            window._apply_settings()
+            window._schedule_engine()
+            self.wait_until(lambda: bool(window.candidates.lines))
+            window._refresh_engine_menus()
+            window.show()
+            pid = window.engine.connection.process.processId()
+            menu = window.multipv_menu
+            menu.popup(window.mapToGlobal(window.rect().center()))
+            self.app.processEvents()
+            choice = next(a for a in menu.actions() if a.data() == 3)
+            QTest.mouseClick(menu, Qt.MouseButton.LeftButton, pos=menu.actionGeometry(choice).center())
+            self.wait_until(lambda: len(window.candidates.lines) == 3)
+            self.assertEqual(window.config["analysis_kind"], "infinite")
+            self.assertEqual(window.engine.connection.confirmed["MultiPV"], "3")
+            self.assertNotIn("nodes", window.engine.connection.running[2])
+            window._candidate_action(2, "focus")
+            self.wait_until(lambda: len(window.candidates.lines) == 1)
+            self.assertTrue(window.config.get("searchmoves"))
+            window._set_multipv(3)
+            self.wait_until(lambda: len(window.candidates.lines) == 3)
+            self.assertFalse(window.config.get("searchmoves"))
+            window.config.update(analysis_seconds=0.1, analysis_depth=4)
+            window._set_analysis_limit("bounded")
+            self.wait_until(lambda: not window.engine.busy and len(window.candidates.lines) == 3)
+            self.assertEqual(window.engine.connection.process.processId(), pid)
+            self.assertIn("> go depth 4 movetime 100 nodes 500", "\n".join(window.engine.connection.log))
+            from unittest.mock import patch
+            with patch("PySide6.QtWidgets.QInputDialog.getInt", return_value=(5, True)) as chooser:
+                next(a for a in window.multipv_menu.actions() if a.text() == "Custom…").trigger()
+                self.assertEqual(chooser.call_args.args[-1], 8)
+            self.wait_until(lambda: not window.engine.busy and len(window.candidates.lines) == 5)
+            window._halt_analysis()
+            window._set_multipv(2)
+            self.assertFalse(window.engine.busy)
+            self.assertEqual(window.config["multipv"], 2)
+            self.assertEqual(window.store.get("settings")["multipv"], 2)
+
+    def test_multipv_discovery_clamps_and_unsupported_engine_stays_single_pv(self):
+        from unittest.mock import patch
+
+        with self.workspace() as window:
+            window.timer.stop()
+            window.profiles = [self.profile()]
+            window.config.update(engine_id="simulator", multipv=32)
+            window._apply_settings()
+            window._schedule_engine()
+            self.wait_until(lambda: len(window.candidates.lines) == 8)
+            self.assertEqual(window.config["multipv"], 8)
+            self.assertEqual(window.engine.connection.confirmed["MultiPV"], "8")
+            window._halt_analysis()
+            window.engine.close()
+            window._profile()["arguments"] = [SIMULATOR, "single-pv"]
+            window._profile()["options"] = {}
+            window._profile()["options_detected"] = False
+            window.config["multipv"] = 4
+            window._start_analysis()
+            self.wait_until(lambda: bool(window.candidates.lines))
+            self.assertEqual(window.config["multipv"], 1)
+            self.assertEqual(list(window.candidates.lines), [1])
+            window._refresh_engine_menus()
+            self.assertFalse(window.multipv_menu.actions()[0].isEnabled())
+            with patch.object(window, "_error") as error:
+                window._set_multipv(3)
+                error.assert_called_once()
+            self.assertEqual(window.config["multipv"], 1)
 
     def test_engine_crash_reports_error_and_can_restart(self):
         controller = EngineController()
@@ -293,13 +364,13 @@ class QtIntegration(unittest.TestCase):
                 mode="analysis",
                 engine_id="simulator",
                 analysis_kind="explore",
+                multipv=3,
                 smart_move=True,
                 smart_all=True,
             )
             window.analysis_mode = True
             window._analysis_enabled = True
             window._apply_settings()
-            window.analysis_kind.setCurrentIndex(1)
             window.show()
             window._refresh()
             window._schedule_engine()
@@ -328,9 +399,8 @@ class QtIntegration(unittest.TestCase):
             window.timer.stop()
             window.autosave_timer.stop()
             window.profiles = [self.profile()]
-            window.config.update(engine_id="simulator", analysis_kind="explore")
+            window.config.update(engine_id="simulator", analysis_kind="explore", multipv=3)
             window._apply_settings()
-            window.analysis_kind.setCurrentIndex(1)
             window.analysis_mode = True
             window._analysis_enabled = True
             window._refresh()
@@ -342,7 +412,7 @@ class QtIntegration(unittest.TestCase):
             self.wait_until(lambda: bool(window.candidates.lines))
             self.assertEqual(list(window.candidates.lines), [1])
             self.assertEqual(window.candidates.lines[1]["pv"][0], target)
-            self.assertIn("Targeted analysis", window.tradeoff_label.text())
+            self.assertIn("Targeted analysis", window.analysis_scope)
             window._stop_engine()
             window.game = Game.from_pgn("1.Nf3 Nf6 2.g3 g6 *")
             original = window._position_identity()

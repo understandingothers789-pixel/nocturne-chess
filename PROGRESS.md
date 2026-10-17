@@ -853,3 +853,50 @@ Python wheel build passed; no executable or script launcher is in the source
 archive. Final local archives/checksums refreshed after this documentation update.
 No product code changed after the passing native Windows build. No strength or
 speed claims, engine/table downloads, batch launchers or security changes added.
+
+
+## 2026-10-17 — 0.5.3 spacious analysis and working MultiPV menus
+
+Requested: settings belong in the top Engine menu, with MultiPV available, and
+right-side space devoted to analysis like Nibbler. The previous PV spin only
+worked in Explore mode, so other modes silently searched one line. Replaced
+hidden/view-based engine state with authoritative preferences and menu commands.
+Threads/Hash now use a menu-only QObject in gui/engine_resources.py. window.py
+owns MultiPV presets/custom values, active-profile selection and continuous/bounded
+limits. No source/mode/PV spin/resource widgets or duplicate Analyze button remain
+in the analysis pane. MultiPV is independent of search mode; unsupported engines
+stay at one PV, first-discovery limits clamp/requeue safely and selecting MultiPV
+clears searchmoves focus. Continuous searches ignore bounded node settings.
+
+Layout: wider analysis split, smaller margins, compact move tree below, graph at
+the foot of analysis, tab bar hidden during analysis (shown for PGN editing).
+Candidates/moves components fit complete PV text to wrapped document height, use
+one scrolling list, and move insert/pin/copy/focus into a real context menu.
+Primary PV rendering now has one owner, so unchanged lines preserve hover during
+depth updates. Its click connection is established once, avoiding accumulated
+handlers after context changes. Engine profile resource presets leave MultiPV
+unchanged. Existing archives, study tabs, PGN editing and play modes are retained.
+
+Modified gui/window.py, engine_resources.py, candidates.py, moves.py,
+engine_manager.py, settings.py, __main__.py and capture_preview.py. Updated tests
+and the explicit protocol fixture. Tests cover actual MultiPV popup selection,
+custom counts, continuous/bounded searches and node limits, cap discovery,
+unsupported engines, focus clearing, stopped-state persistence, settings migration,
+full wrapped text, context-menu copy, stable hover and single click dispatch.
+
+Executed focused pytest (external/GUI/resources/settings): initially 52 passed
+in 24.01s; extended 55 passed in 25.85s; final 57 passed in 26.51s. Ruff found an
+unused SAN import after removing duplicate rendering; removed it, then Ruff passed.
+Actual Qt captures inspected at 1920×1040 and 1024×660: wide right analysis,
+six candidate rows, no settings controls, moves below. No test failures in this
+phase. Version/build metadata and docs updated for 0.5.3. Next: full suite,
+refreshed screenshots and native Windows build/package smoke validation. Real
+Stockfish/manual Windows/DPI/large-Syzygy checks remain open; no strength claim.
+
+Final local validation: unittest discovery ran 120 tests in 32.297s,
+OK (skipped=5): 115 passed. Skips remain two optional deeper-perft and three
+historical native-reader tests. Ruff passed. Updated actual dark/light/compact,
+PGN-editor and hover screenshots, plus Engine/Threads/Hash/MultiPV menu captures.
+Inspected menu placement, checked MultiPV 6, full wrapped moves, compact viewport
+and absence of right-side settings. No code changed after this passing full run.
+Next: publish source, native Windows tests/package smoke and artifact verification.

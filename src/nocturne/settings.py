@@ -27,7 +27,8 @@ DEFAULTS = {
     "branch_arrows": True,
     "layout": "classic",
     "analysis_kind": "infinite",
-    "multipv": 3,
+    "multipv": 1,
+    "analysis_menu_version": 1,
     "engine_id": "",
     "analysis_nodes": 0,
     "external_path": "",
@@ -88,4 +89,7 @@ def normalize(data) -> dict:
     ):
         if isinstance(data.get(key), str):
             result[key] = data[key].strip()[:limit]
+    # Older Live/Bounded modes always searched one PV despite the stored spin value.
+    if data.get("analysis_menu_version") != 1 and data.get("analysis_kind") in ("infinite", "bounded"):
+        result["multipv"] = 1
     return result

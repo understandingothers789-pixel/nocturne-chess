@@ -550,14 +550,71 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(original.cursor, 1)
         self.assertEqual(self.window.game.cursor, 0)
 
-    def test_compact_engine_controls_remain_accessible(self):
-        self.window.resize(1024, 660)
-        self.window.tabs.setCurrentIndex(1)
+    def test_pv_updates_preserve_hover_and_do_not_accumulate_click_handlers(self):
+        self._analysis_game("1.e4 e5 *")
+        info = {"depth": 3, "seldepth": 4, "score": 15, "nodes": 100, "pv": ["g1f3", "b8c6", "f1b5"]}
+        self._show_external_info(info, {"turn": 1})
+        self._hover_word(self.window.pv_label, "Nc6")
+        before = self.window.game.board.fen()
+        self.assertIsNotNone(self.window.board_view.preview_board)
+        self._show_external_info(dict(info, depth=4, nodes=200), {"turn": 1})
+        self.assertIsNotNone(self.window.board_view.preview_board)
+        self.assertEqual(self.window.game.board.fen(), before)
+        self.window._end_preview("pv")
+        for _ in range(3):
+            self.window._clear_analysis_output()
+            self._show_external_info(info, {"turn": 1})
+            self.app.processEvents()
+        clicks = []
+        self.window.candidates.navigate.connect(lambda rank, ply: clicks.append((rank, ply)))
+        self.window.pv_label.move_clicked.emit(1)
+        self.assertEqual(clicks, [(1, 1)])
+
+    def test_long_pvs_wrap_fully_and_copy_from_context_menu(self):
+        from PySide6.QtGui import QTextDocument
+        self._analysis_game("1.e4 e5 *")
+        info = {"depth": 6, "seldepth": 10, "score": 15, "nodes": 500,
+                "pv": ["g1f3", "g8f6", "f3g1", "f6g8"] * 10}
+        self._show_external_info(info, {"turn": 1})
         self.app.processEvents()
-        page = self.window.tabs.widget(1)
-        for control in (self.window.analysis_source, self.window.analyze_button):
-            self.assertGreaterEqual(control.height(), 30)
-            self.assertTrue(page.rect().contains(control.geometry()))
+        view = self.window.pv_label
+        self.assertEqual(len(view._items), 40)
+        last = view.document().find("Ng8", view.document().characterCount() - 1, QTextDocument.FindFlag.FindBackward)
+        self.assertLessEqual(view.cursorRect(last).bottom(), view.viewport().height())
+        from PySide6.QtWidgets import QPushButton
+        self.assertFalse(self.window.candidates.rows[1][0].findChildren(QPushButton))
+
+        def copy_line():
+            menu = QApplication.activePopupWidget()
+            if isinstance(menu, QMenu):
+                action = next(a for a in menu.actions() if a.text() == "Copy SAN")
+                QTest.mouseClick(menu, Qt.MouseButton.LeftButton, pos=menu.actionGeometry(action).center())
+
+        guard = QTimer(self.window)
+        guard.setSingleShot(True)
+        guard.timeout.connect(lambda: QApplication.activePopupWidget().close() if QApplication.activePopupWidget() else None)
+        guard.start(1000)
+        QTimer.singleShot(20, copy_line)
+        self.window.candidates._menu(1, self.window.mapToGlobal(self.window.rect().center()))
+        guard.stop()
+        self.assertTrue(QApplication.clipboard().text().startswith("Nf3 Nf6"))
+
+    def test_analysis_uses_menu_controls_and_keeps_the_right_pane_for_pvs(self):
+        self._analysis_game()
+        self.window.config["layout"] = "classic"
+        self.window._refresh()
+        self.window.resize(1024, 660)
+        self.app.processEvents()
+        self.assertFalse(self.window.tabs.tabBar().isVisible())
+        self.assertIs(self.window.main_splitter.widget(1), self.window.panel)
+        self.assertGreater(self.window.panel.width(), self.window.arena.width())
+        self.assertTrue(self.window.quick_analysis_button.isVisible())
+        self.assertGreater(self.window.engine_scroll.height(), 250)
+        from PySide6.QtWidgets import QComboBox, QSpinBox, QToolButton
+        for kind in (QComboBox, QSpinBox, QToolButton):
+            self.assertFalse(self.window.tabs.widget(1).findChildren(kind))
+        self.assertIn(self.window.resource_controls.menus["Threads"].menuAction(), self.window.menus["Engine"].actions())
+        self.assertIn(self.window.multipv_menu.menuAction(), self.window.menus["Engine"].actions())
 
     def test_delayed_search_cannot_restart_after_window_close(self):
         self.window.config["mode"] = "ai_ai"

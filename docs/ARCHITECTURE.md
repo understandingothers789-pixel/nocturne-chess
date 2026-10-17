@@ -19,6 +19,9 @@ Qt QProcess supplies asynchronous, safe child-process transport. See the
   barriers, deadlines, 80 ms information batches, 1 MB line bound, 500-line log.
 - `gui/engine.py`: generation IDs, position snapshots, legal PV/bestmove validation.
 - `gui/engine_manager.py`: executable profiles, discovered option editors/presets.
+- `gui/engine_resources.py`: menu-only QObject for advertised Threads/Hash choices;
+  configuration in preferences is authoritative, with no hidden settings widgets.
+  Window menus also manage MultiPV, active profile and bounded/continuous analysis.
 - `gui/candidates.py`, `moves.py`, `board.py`, `widgets.py`: candidate interaction,
   reversible previews, destination execution, rendering and sampled graph.
 - `gui/setup_position.py`: manual position editor with final library validation.
@@ -45,6 +48,12 @@ its snapshot. A second identity guard rejects results for a changed game/cursor/
 Hover positions are separate boards and never become the analyzed position.
 Smart Move requires a matching full FEN and rechecks live legal moves. An ordinary
 selected piece takes priority; ambiguity and promotions require explicit choices.
+
+The analysis pane contains status, actual PVs and a graph. Candidate move views
+fit their complete wrapped document height; one outer scroll handles the list.
+Primary PV rendering has one owner to preserve hover when only depth changes.
+Settings live in the Engine menu and line actions in context menus. The classic
+split gives more width to analysis and keeps a compact move tree below.
 
 ## Data and scoring
 

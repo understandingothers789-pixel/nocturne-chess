@@ -45,7 +45,6 @@ def main():
                 }
             ]
         window._apply_settings()
-        window.analysis_kind.setCurrentIndex(2)
         window._refresh()
         pulse = QTimer()
         pulse.setInterval(25)

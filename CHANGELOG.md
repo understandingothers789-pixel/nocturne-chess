@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.3 — Spacious analysis and menu-based engine controls
+
+- Threads, Hash, MultiPV, engine selection and continuous/bounded limits live in
+  the top Engine menu; remove settings widgets from the analysis pane.
+- MultiPV presets/custom values work in both continuous and bounded modes, honor
+  advertised engine limits and clear a move focus when selecting a new count.
+  Continuous searches ignore saved bounded node limits; halted analysis stays halted.
+- Allocate more width/height to analysis, place the graph beneath the PV list and
+  keep game moves below. Hide the tab bar while analyzing; retain PGN editing.
+- Flowing PV rows show complete wrapped move text without per-row button bars or
+  inner scrolling; insert/pin/copy/focus remain available in a context menu.
+- Preserve hover previews during unchanged-PV depth updates and prevent duplicate
+  primary-line click handlers after search context changes.
+- Migrate old settings using their effective PV count; resource presets no longer
+  imply that they change MultiPV. No engine-strength or speed claim.
+
 ## 0.5.2 — Saved PGNs and resource refinements
 
 - Write complete PGN copies automatically beside the SQLite library, with stable

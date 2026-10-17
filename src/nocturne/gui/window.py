@@ -11,10 +11,13 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QButtonGroup,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
-    QComboBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QInputDialog,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -41,7 +44,7 @@ from .. import __version__
 from ..core.board import Move, SQUARES
 from ..core.rules import Board
 from ..core.game import Game, TimeControl
-from ..core.notation import parse_san, san
+from ..core.notation import parse_san
 from ..engine.uci_types import AnalysisLimits as SearchLimits, score_label, plot_score_label as score_text
 from ..settings import normalize
 from ..storage import Store, StorageError
@@ -49,7 +52,7 @@ from .board import BoardWidget
 from .dialogs import NewGameDialog, SettingsDialog, TextDialog
 from .engine import EngineController
 from .engine_manager import EngineManager
-from .engine_resources import EngineResources, format_hash_mb, validate_resource
+from .engine_resources import EngineResources, validate_resource
 from .candidates import CandidatePanel
 from .moves import MoveText
 from .theme import ASSETS, stylesheet
@@ -220,6 +223,7 @@ class MainWindow(QMainWindow):
         nav.addWidget(label(f"v{__version__}  ·  OFFLINE", "eyebrow"))
         layout.addWidget(sidebar)
         content = QVBoxLayout()
+        self.content_layout = content
         content.setContentsMargins(25, 22, 25, 12)
         content.setSpacing(15)
         top = QHBoxLayout()
@@ -248,7 +252,6 @@ class MainWindow(QMainWindow):
         self.study_tabs.tabCloseRequested.connect(self._close_study)
         study_row.addWidget(self.study_tabs, 1)
         study_row.addWidget(button("＋", self._new_study, "quiet"))
-        study_row.addWidget(button("Engines…", self._manage_engines, "quiet"))
         self.quick_analysis_button = button("Analyze", self._analyze, "primary")
         study_row.addWidget(self.quick_analysis_button)
         content.addLayout(study_row)
@@ -300,6 +303,7 @@ class MainWindow(QMainWindow):
         self.status_label = label("White to move", "subtitle", True)
         side.addWidget(self.status_label)
         self.tabs = QTabWidget()
+        self.tabs.currentChanged.connect(self._analysis_tab_changed)
         moves_page = QWidget()
         moves_layout = QVBoxLayout(moves_page)
         moves_layout.setContentsMargins(0, 10, 0, 0)
@@ -332,28 +336,31 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(moves_page, "Moves")
         engine_page = QWidget()
         engine_page_layout = QVBoxLayout(engine_page)
-        engine_page_layout.setContentsMargins(0, 12, 0, 0)
-        engine_page_layout.setSpacing(8)
-        engine_scroll = QScrollArea()
-        engine_scroll.setWidgetResizable(True)
-        engine_scroll.setMinimumHeight(0)
-        engine_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        engine_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        engine_page_layout.setContentsMargins(0, 0, 0, 0)
+        engine_page_layout.setSpacing(4)
+        self.engine_state = label("Select your UCI engine", "subtitle", True)
+        self.eval_label = label("—")
+        self.eval_label.setStyleSheet("font-size: 20px; font-weight: 600;")
+        headline = QHBoxLayout()
+        headline.addWidget(self.engine_state, 1)
+        headline.addWidget(self.eval_label)
+        engine_page_layout.addLayout(headline)
+        self.telemetry = label("Offline analysis · engine supplied by you", "muted", True)
+        engine_page_layout.addWidget(self.telemetry)
+        self.tablebase_label = label("Syzygy: not configured", "muted", True)
+        engine_page_layout.addWidget(self.tablebase_label)
+        self.analysis_scope = ""
+        self.engine_scroll = QScrollArea()
+        self.engine_scroll.setWidgetResizable(True)
+        self.engine_scroll.setMinimumHeight(0)
+        self.engine_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.engine_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         engine_detail = QWidget()
         self.engine_layout = QVBoxLayout(engine_detail)
-        self.engine_layout.setContentsMargins(0, 15, 0, 0)
-        self.eval_label = label("—", "score")
-        self.engine_layout.addWidget(self.eval_label)
-        self.engine_state = label("Select your UCI engine", "subtitle", True)
-        self.engine_layout.addWidget(self.engine_state)
-        self.telemetry = label("Offline analysis · engine supplied by you", "muted", True)
-        self.engine_layout.addWidget(self.telemetry)
-        self.tablebase_label = label("Syzygy: not configured", "muted", True)
-        self.engine_layout.addWidget(self.tablebase_label)
-        self.engine_layout.addWidget(label("PRINCIPAL VARIATION", "eyebrow"))
-        self.pv_label = MoveText()
+        self.engine_layout.setContentsMargins(0, 0, 0, 0)
+        self.engine_layout.setSpacing(0)
+        self.pv_label = MoveText(auto_fit=True)
         self.pv_label.setAccessibleName("Principal variation moves")
-        self.pv_label.setFixedHeight(100)
         self.pv_label.move_hovered.connect(self._preview_pv)
         self.pv_label.preview_ended.connect(lambda: self._end_preview("pv"))
         self.candidates = CandidatePanel(self.pv_label)
@@ -362,21 +369,14 @@ class MainWindow(QMainWindow):
         self.candidates.navigate.connect(self._insert_candidate)
         self.candidates.action.connect(self._candidate_action)
         self.engine_layout.addWidget(self.candidates)
-
-        self.graph = EvaluationGraph()
-        self.graph.position_requested.connect(self._navigate)
-
         self.engine_layout.addStretch()
-        engine_scroll.setWidget(engine_detail)
-        engine_page_layout.addWidget(engine_scroll, 1)
-        self.analysis_source = QComboBox()
-        self.analysis_source.addItem("No engine configured", "")
-        self.analysis_source.setMinimumHeight(32)
-        engine_page_layout.addWidget(self.analysis_source)
-        self.analysis_source.currentIndexChanged.connect(self._source_changed)
-        self.analysis_source.activated.connect(
-            lambda index: self._manage_engines() if not self._profile() else None
-        )
+        self.engine_scroll.setWidget(engine_detail)
+        engine_page_layout.addWidget(self.engine_scroll, 1)
+        self.graph = EvaluationGraph()
+        self.graph.setMinimumHeight(60)
+        self.graph.setMaximumHeight(85)
+        self.graph.position_requested.connect(self._navigate)
+        engine_page_layout.addWidget(self.graph)
         self.resource_controls = EngineResources(
             self._profile,
             lambda: self.engine.connection if hasattr(self, "engine") else None,
@@ -384,35 +384,6 @@ class MainWindow(QMainWindow):
             self._restart_engine,
             self,
         )
-        engine_page_layout.addWidget(self.resource_controls)
-        options_row = QHBoxLayout()
-        self.analysis_kind = QComboBox()
-        for text, value in [
-            ("Live · maximum strength", "infinite"),
-            ("Explore alternatives", "explore"),
-            ("Bounded analysis", "bounded"),
-        ]:
-            self.analysis_kind.addItem(text, value)
-        self.analysis_kind.setCurrentIndex(
-            max(0, self.analysis_kind.findData(self.config.get("analysis_kind", "infinite")))
-        )
-        self.multipv = QSpinBox()
-        self.multipv.setRange(1, 32)
-        self.multipv.setValue(self.config.get("multipv", 3))
-        self.multipv.setPrefix("PV ")
-        options_row.addWidget(self.analysis_kind, 1)
-        options_row.addWidget(self.multipv)
-        engine_page_layout.addLayout(options_row)
-        self.analysis_kind.currentIndexChanged.connect(self._analysis_control_changed)
-        self.multipv.valueChanged.connect(self._analysis_control_changed)
-        self.tradeoff_label = label(
-            "Maximum strength uses one PV. More candidates divide the search effort.", "muted", True
-        )
-        self.engine_layout.insertWidget(0, self.tradeoff_label)
-
-        self.analyze_button = button("Analyze position", self._analyze, "primary")
-        self.analyze_button.setMinimumHeight(32)
-        engine_page_layout.addWidget(self.analyze_button)
         self.tabs.addTab(engine_page, "Engine")
         pgn_page = QWidget()
         pgn_layout = QVBoxLayout(pgn_page)
@@ -482,7 +453,6 @@ class MainWindow(QMainWindow):
         self.analysis_history.move_clicked.connect(self._navigate_node)
         self.analysis_history.preview_ended.connect(lambda: self._end_preview("history"))
         history_layout.addWidget(self.analysis_history, 1)
-        history_layout.addWidget(self.graph)
         self.workspace_splitter.addWidget(self.analysis_moves_panel)
         self.workspace_splitter.setStretchFactor(0, 1)
         self.workspace_splitter.setStretchFactor(1, 0)
@@ -616,6 +586,12 @@ class MainWindow(QMainWindow):
         engine.addSeparator()
         engine.addMenu(self.resource_controls.menus["Threads"])
         engine.addMenu(self.resource_controls.menus["Hash"])
+        self.multipv_menu = engine.addMenu("MultiPV")
+        self.profile_menu = engine.addMenu("Active engine")
+        self.search_mode_menu = engine.addMenu("Analysis limits")
+        self.resource_status_action = engine.addAction("")
+        self.resource_status_action.setEnabled(False)
+        engine.aboutToShow.connect(self._refresh_engine_menus)
         engine.addSeparator()
         add(engine, "Restart selected engine", self._restart_engine)
         add(engine, "Engine diagnostics…", self._diagnostics)
@@ -1043,7 +1019,6 @@ class MainWindow(QMainWindow):
             return
         if state["index"] >= len(state["line"]):
             self._review = None
-            self.analyze_button.setText("Analyze position")
             self.quick_analysis_button.setText("Analyze")
             self.statusBar().showMessage("Game analysis complete · evaluations and review evidence saved")
             self._save()
@@ -1098,7 +1073,6 @@ class MainWindow(QMainWindow):
         state["turn"] = position.turn
         state["profile"] = profile["id"]
         state["options"] = dict(profile.get("values", {}))
-        self.analyze_button.setText("Pause game analysis")
         self.quick_analysis_button.setText("Pause review")
         self.statusBar().showMessage(
             f"Game analysis {state['index'] + 1}/{len(state['line'])} · {state['stage']} search"
@@ -1181,7 +1155,6 @@ class MainWindow(QMainWindow):
         if self._review["paused"]:
             self.engine.stop()
             self._review["generation"] = None
-            self.analyze_button.setText("Resume game analysis")
             self.quick_analysis_button.setText("Resume review")
             self._save()
         else:
@@ -1191,7 +1164,6 @@ class MainWindow(QMainWindow):
         if self._review:
             self.engine.stop()
             self._review = None
-            self.analyze_button.setText("Analyze position")
             self.quick_analysis_button.setText("Analyze")
             self._save()
 
@@ -1199,12 +1171,7 @@ class MainWindow(QMainWindow):
         self._manage_engines()
 
     def _profile(self):
-        key = (
-            self.analysis_source.currentData()
-            if hasattr(self, "analysis_source")
-            else self.config.get("engine_id", "")
-        )
-        return next((p for p in self.profiles if p["id"] == key), None)
+        return next((p for p in self.profiles if p["id"] == self.config.get("engine_id", "")), None)
 
     def _manage_engines(self):
         self._cancel_review()
@@ -1221,9 +1188,11 @@ class MainWindow(QMainWindow):
         self._save()
         self._schedule_engine()
 
-    def _source_changed(self):
+    def _select_profile(self, profile_id):
+        if profile_id == self.config.get("engine_id"):
+            return
         self._cancel_review()
-        self.config["engine_id"] = self.analysis_source.currentData() or ""
+        self.config["engine_id"] = profile_id
         self.resource_controls.refresh()
         if hasattr(self, "engine"):
             self._stop_engine()
@@ -1252,18 +1221,112 @@ class MainWindow(QMainWindow):
         self.resource_controls.refresh()
         self._schedule_engine()
 
-    def _analysis_control_changed(self):
+    def _effective_multipv(self):
+        profile = self._profile()
+        option = profile.get("options", {}).get("MultiPV") if profile else None
+        maximum = min(32, int(option["maximum"])) if option else (1 if profile and profile.get("options_detected") else 32)
+        return max(1, min(maximum, self.config.get("multipv", 1)))
+
+    def _set_multipv(self, count):
+        profile = self._profile()
+        option = profile.get("options", {}).get("MultiPV") if profile else None
+        maximum = min(32, int(option["maximum"])) if option else 1
+        if not 1 <= count <= maximum:
+            self._error("MultiPV unavailable", f"Choose 1–{maximum} lines for this engine")
+            return
         self._cancel_review()
-        self.config["analysis_kind"] = self.analysis_kind.currentData()
-        self.config["multipv"] = self.multipv.value()
-        self.tradeoff_label.setText(
-            f"{self.multipv.value()} candidates · search effort divided"
-            if self.analysis_kind.currentData() == "explore"
-            else "MultiPV 1 · primary analysis"
-        )
         self._stop_engine()
+        self.config["multipv"] = count
+        self.config.pop("searchmoves", None)
+        self._analysis_context = None
+        self._clear_analysis_output()
         self._save()
+        self._refresh_engine_menus()
         self._schedule_engine()
+
+    def _custom_multipv(self):
+        profile = self._profile()
+        option = profile.get("options", {}).get("MultiPV") if profile else None
+        if not option:
+            return
+        maximum = min(32, int(option["maximum"]))
+        count, accepted = QInputDialog.getInt(self, "MultiPV", "Number of analysis lines:", self._effective_multipv(), 1, maximum)
+        if accepted and self._profile() is profile:
+            self._set_multipv(count)
+
+    def _set_analysis_limit(self, mode):
+        self._cancel_review()
+        self._stop_engine()
+        self.config["analysis_kind"] = mode
+        self._analysis_context = None
+        self._clear_analysis_output()
+        self._save()
+        self._refresh_engine_menus()
+        self._schedule_engine()
+
+    def _edit_analysis_limits(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Analysis limits")
+        form = QFormLayout(dialog)
+        depth, seconds, nodes = QSpinBox(), QDoubleSpinBox(), QSpinBox()
+        depth.setRange(1, 128)
+        depth.setValue(self.config["analysis_depth"])
+        seconds.setRange(0.05, 600)
+        seconds.setDecimals(2)
+        seconds.setValue(self.config["analysis_seconds"])
+        seconds.setSuffix(" seconds")
+        nodes.setRange(0, 2_000_000_000)
+        nodes.setSpecialValueText("Unlimited")
+        nodes.setValue(self.config["analysis_nodes"])
+        form.addRow("Depth", depth)
+        form.addRow("Time", seconds)
+        form.addRow("Nodes", nodes)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        form.addRow(buttons)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.config.update(analysis_depth=depth.value(), analysis_seconds=seconds.value(), analysis_nodes=nodes.value())
+            self._set_analysis_limit("bounded")
+
+    def _refresh_engine_menus(self):
+        self.resource_controls.refresh()
+        self.resource_status_action.setText(self.resource_controls.summary)
+        self.profile_menu.clear()
+        for profile in self.profiles:
+            action = self.profile_menu.addAction(profile.get("label") or profile.get("name", Path(profile["path"]).stem))
+            action.setCheckable(True)
+            action.setChecked(profile["id"] == self.config.get("engine_id"))
+            action.triggered.connect(lambda checked=False, p=profile["id"]: self._select_profile(p))
+        if not self.profiles:
+            self.profile_menu.addAction("Choose an engine first").setEnabled(False)
+        self.search_mode_menu.clear()
+        for title, mode in (("Continuous", "infinite"), ("Bounded", "bounded")):
+            action = self.search_mode_menu.addAction(title)
+            action.setCheckable(True)
+            action.setChecked((self.config.get("analysis_kind") == "bounded") == (mode == "bounded"))
+            action.triggered.connect(lambda checked=False, m=mode: self._set_analysis_limit(m))
+        self.search_mode_menu.addSeparator()
+        self.search_mode_menu.addAction("Set limits…", self._edit_analysis_limits)
+        self.multipv_menu.clear()
+        profile = self._profile()
+        option = profile.get("options", {}).get("MultiPV") if profile else None
+        current = self._effective_multipv()
+        self.multipv_menu.setTitle(f"MultiPV ({current})")
+        if not option:
+            self.multipv_menu.addAction("Not advertised by this engine" if profile and profile.get("options_detected") else "Choose / detect an engine first").setEnabled(False)
+            return
+        maximum = min(32, int(option["maximum"]))
+        for count in sorted({n for n in (1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 24, 32, current) if n <= maximum}):
+            action = self.multipv_menu.addAction(str(count))
+            action.setData(count)
+            action.setCheckable(True)
+            action.setChecked(count == current)
+            action.triggered.connect(lambda checked=False, n=count: self._set_multipv(n))
+        self.multipv_menu.addSeparator()
+        self.multipv_menu.addAction("Custom…", self._custom_multipv)
+        self.multipv_menu.addAction("More lines divide search effort").setEnabled(False)
+        self.multipv_menu.addAction(f"Display range: 1–{maximum}").setEnabled(False)
 
     def _engine_discovered(self, data):
         from dataclasses import asdict
@@ -1274,11 +1337,13 @@ class MainWindow(QMainWindow):
             profile["name"] = data["name"]
             profile["options"] = {n: asdict(o) for n, o in data["options"].items()}
             profile["options_detected"] = True
-            self.analysis_source.setItemText(
-                self.analysis_source.findData(profile["id"]), profile.get("label") or data["name"]
-            )
-            maximum = data["options"].get("MultiPV")
-            self.multipv.setMaximum(min(32, maximum.maximum) if maximum else 1)
+            count = self._effective_multipv()
+            restart = self._job and self._job.get("multipv", 1) != count and not self.config.get("searchmoves")
+            self.config["multipv"] = count
+            if restart:
+                self._stop_engine()
+                self._analysis_context = None
+                QTimer.singleShot(0, self._schedule_engine)
             if self.config.get("syzygy_path"):
                 self.tablebase_label.setText(
                     "Syzygy path sent to engine"
@@ -1286,7 +1351,7 @@ class MainWindow(QMainWindow):
                     else "Engine does not advertise SyzygyPath"
                 )
             self._save()
-            self.resource_controls.refresh()
+            self._refresh_engine_menus()
 
     def _restart_engine(self):
         self._analysis_context = None
@@ -1329,11 +1394,6 @@ class MainWindow(QMainWindow):
         self.board_view.coordinates = self.config.get("coordinates", True)
         self.board_view.animations = self.config.get("animations", True)
         self.tablebase_label.setVisible(bool(self.config.get("syzygy_path")))
-        self.tradeoff_label.setText(
-            f"{self.multipv.value()} candidates · search effort divided"
-            if self.analysis_kind.currentData() == "explore"
-            else "MultiPV 1 · primary analysis"
-        )
         self.board_view.overlays = self.config.get("overlays", True)
         self.board_view.smart_move = self.config.get("smart_move", True)
         self.board_view.smart_all = self.config.get("smart_all", False)
@@ -1341,19 +1401,9 @@ class MainWindow(QMainWindow):
         self.eval_bar.setVisible(self.board_view.overlays)
         for key, action in self.display_actions.items():
             action.setChecked(bool(self.config.get(key, False)))
-        self.analysis_source.blockSignals(True)
-        self.analysis_source.clear()
-        for profile in self.profiles:
-            self.analysis_source.addItem(
-                profile.get("label") or profile.get("name", Path(profile["path"]).stem), profile["id"]
-            )
-        if not self.profiles:
-            self.analysis_source.addItem("Choose your Stockfish executable…", "")
-        self.analysis_source.setCurrentIndex(
-            max(0, self.analysis_source.findData(self.config.get("engine_id", "")))
-        )
-        self.analysis_source.blockSignals(False)
-        self.resource_controls.refresh()
+        if not self._profile() and self.profiles:
+            self.config["engine_id"] = self.profiles[0]["id"]
+        self._refresh_engine_menus()
         self._render_move_history()
         if self._pv_root is not None:
             self.pv_label.set_moves(self.pv_label._items, light=self.config.get("light", False))
@@ -1384,6 +1434,13 @@ class MainWindow(QMainWindow):
         self.io_bar.setVisible(not analysis)
         self.save_label.setVisible(not analysis)
         self.mode_label.setVisible(not analysis)
+        self.status_label.setVisible(not analysis)
+        self.content_layout.setContentsMargins(*( (12, 6, 12, 6) if analysis else (25, 22, 25, 12) ))
+        self.content_layout.setSpacing(6 if analysis else 15)
+        self.panel_body.layout().setContentsMargins(*( (8, 4, 8, 4) if analysis else (20, 16, 20, 12) ))
+        self.panel_body.layout().setSpacing(2 if analysis else 10)
+        self.panel.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff if analysis else Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self._analysis_tab_changed()
         self.panel.setMaximumWidth(16777215 if analysis else 420)
         left = analysis and self.config.get("layout", "classic") == "analysis-left"
         self.main_splitter.insertWidget(0 if left else 1, self.panel)
@@ -1391,10 +1448,14 @@ class MainWindow(QMainWindow):
         self.main_splitter.setStretchFactor(1, 1 if analysis else 0)
         if analysis:
             self.tabs.setCurrentIndex(1)
-            self.main_splitter.setSizes([450, 750] if left else [750, 450])
-            self.workspace_splitter.setSizes([600, 230])
+            self.main_splitter.setSizes([1020, 780] if left else [780, 1020])
+            self.workspace_splitter.setSizes([800, 110])
         else:
             self.main_splitter.setSizes([720, 350])
+
+    def _analysis_tab_changed(self, index=None):
+        if hasattr(self, "tabs"):
+            self.tabs.tabBar().setVisible(not self.analysis_mode or self.tabs.currentIndex() != 1)
 
     def _render_move_history(self):
         tokens = []
@@ -2041,7 +2102,6 @@ class MainWindow(QMainWindow):
             return
         self._analysis_enabled = False
         self._stop_engine()
-        self.analyze_button.setText("Analyze position")
 
     def _start_analysis(self):
         self._workspace(True)
@@ -2094,8 +2154,7 @@ class MainWindow(QMainWindow):
             self.engine.stop()
             self.board_view.set_recommendations([])
         self._job = None
-        if hasattr(self, "analyze_button"):
-            self.analyze_button.setText("Analyze position")
+        if hasattr(self, "quick_analysis_button"):
             self.quick_analysis_button.setText("Analyze")
         if old_job and old_job.get("identity") == self._position_identity() and self._last_info:
             self._store_analysis(self.game, self.game.current_node, self._last_info, old_job["turn"], old_job)
@@ -2130,27 +2189,25 @@ class MainWindow(QMainWindow):
                 "Board and studies are available. Select your UCI engine for analysis."
             )
             return
+        infinite = kind == "analysis" and self.config.get("analysis_kind") != "bounded"
         limits = SearchLimits(
             depth=self.config.get("analysis_depth", 24),
             seconds=self.config.get("analysis_seconds", 3),
-            nodes=self.config.get("analysis_nodes") or None,
+            nodes=None if infinite else (self.config.get("analysis_nodes") or None),
         )
-        infinite = kind == "analysis" and self.analysis_kind.currentData() != "bounded"
-        count = self.multipv.value() if self.analysis_kind.currentData() == "explore" else 1
+        count = self._effective_multipv() if kind == "analysis" else 1
         focus = tuple(self.config.get("searchmoves", []))
         if focus:
             count = 1
-            self.tradeoff_label.setText("Targeted analysis · " + " ".join(focus) + " · PV 1")
+            self.analysis_scope = "Targeted analysis · " + " ".join(focus)
         else:
-            self.tradeoff_label.setText(
-                f"{count} candidates · search effort divided" if count > 1 else "MultiPV 1 · primary analysis"
-            )
+            self.analysis_scope = f"{count} PV" if count > 1 else ""
         options = dict(profile.get("values", {}))
         options.setdefault("UCI_ShowWDL", True)
         context = (
             self._position_identity(),
             profile["id"],
-            self.analysis_kind.currentData(),
+            self.config.get("analysis_kind"),
             count,
             focus,
             tuple(sorted((k, str(v)) for k, v in options.items())),
@@ -2185,9 +2242,9 @@ class MainWindow(QMainWindow):
             "external": True,
             "profile": profile["id"],
             "options": dict(profile.get("values", {})),
+            "multipv": count,
         }
         self.engine_state.setText(profile.get("name", "UCI engine") + " · connecting / analyzing")
-        self.analyze_button.setText("Stop analysis" if kind == "analysis" else "Analyze position")
         self.quick_analysis_button.setText("Stop" if kind == "analysis" else "Analyze")
         self.board_view.interactive = kind == "analysis"
 
@@ -2239,7 +2296,6 @@ class MainWindow(QMainWindow):
             return
         self._job = None
         self.quick_analysis_button.setText("Analyze")
-        self.analyze_button.setText("Analyze position")
         self.engine_state.setText(self.engine.connection.name + " · search complete")
         self.statusBar().showMessage("Search complete · evaluation from White’s perspective")
         if info:
@@ -2295,35 +2351,27 @@ class MainWindow(QMainWindow):
         self.telemetry.setText(
             f"Depth {info['depth']}  ·  selective {info['seldepth']}\n"
             f"{info['nodes']:,} nodes  ·  {info.get('nps', 0):,} nodes/sec\n"
-            f"{duration:.2f} seconds  ·  hash {info.get('hashfull', 0) / 10:.1f}%  ·  TB hits {info.get('tbhits', 0)}\n"
-            f"External UCI · Hash {format_hash_mb(self.engine.connection.applied.get('Hash', 'engine default'))} · Threads {self.engine.connection.applied.get('Threads', 'engine default')}"
+            f"{duration:.2f} seconds  ·  hash full {info.get('hashfull', 0) / 10:.1f}%  ·  TB hits {info.get('tbhits', 0)}"
         )
         if not self.config.get("details", False):
             self.telemetry.setText(
                 f"Depth {info['depth']}/{info['seldepth']} · {info['nodes']:,} nodes · {info.get('nps', 0):,} N/s · TB {info.get('tbhits', 0)}"
+                + (" · " + self.analysis_scope if self.analysis_scope else "")
             )
         position = self.game.board.copy()
         self._pv_root = self.game.board.copy(history=False)
         self._pv_identity = self._position_identity()
         self._pv_moves = []
-        line = []
         first = None
-        for text in info.get("pv", [])[:96]:
+        for text in info.get("pv", [])[:128]:
             try:
                 move = position.parse_uci(text)
                 if first is None:
                     first = move
-                prefix = (
-                    f"{position.fullmove}. "
-                    if position.turn == 1
-                    else (f"{position.fullmove}... " if not line else "")
-                )
-                line.append((prefix + san(position, move), len(line) + 1))
                 self._pv_moves.append(move)
                 position.push(move)
             except ValueError:
                 break
-        self.pv_label.set_moves(line, light=self.config.get("light", False))
         self.board_view.best_move = first
         self.board_view.update()
 

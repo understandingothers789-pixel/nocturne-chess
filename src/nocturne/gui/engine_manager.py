@@ -68,7 +68,7 @@ class EngineManager(QDialog):
         for name, threads, hash_mb in [
             ("Casual", 2, 256),
             ("Balanced", 6, 1024),
-            ("Maximum / PV 1", 8, 4096),
+            ("8 threads / 4 GB", 8, 4096),
         ]:
             b = QPushButton(name)
             b.clicked.connect(lambda checked=False, t=threads, h=hash_mb: self._preset(t, h))
@@ -223,7 +223,7 @@ class EngineManager(QDialog):
         self.diagnostics.setPlainText("\n".join(self.connection.log))
 
     def _preset(self, threads, hash_mb):
-        for name, value in [("Threads", threads), ("Hash", hash_mb), ("MultiPV", 1)]:
+        for name, value in [("Threads", threads), ("Hash", hash_mb)]:
             w = self.widgets.get(name)
             if isinstance(w, QSpinBox):
                 w.setValue(min(w.maximum(), max(w.minimum(), value)))

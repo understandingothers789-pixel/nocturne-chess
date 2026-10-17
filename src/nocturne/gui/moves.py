@@ -1,6 +1,7 @@
 """Flowing move text with reversible hover and explicit click signals."""
 
 from html import escape
+import math
 
 from PySide6.QtCore import QEvent, Signal, Qt
 from PySide6.QtWidgets import QTextBrowser
@@ -11,8 +12,9 @@ class MoveText(QTextBrowser):
     move_clicked = Signal(int)
     preview_ended = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, auto_fit=False):
         super().__init__(parent)
+        self._auto_fit = auto_fit
         self.setOpenLinks(False)
         self.setOpenExternalLinks(False)
         self.setMouseTracking(True)
@@ -24,6 +26,10 @@ class MoveText(QTextBrowser):
         self._current = None
         self._light = False
         self._hovered = None
+        if auto_fit:
+            self.document().setDocumentMargin(2)
+            self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.document().documentLayout().documentSizeChanged.connect(self._fit_height)
         self.highlighted.connect(self._highlight)
         self.anchorClicked.connect(self._click)
 
@@ -78,9 +84,20 @@ class MoveText(QTextBrowser):
                 continue
             style = "color: #19291c; background-color: #b5d99d;" if index == current else f"color: {color};"
             tokens.append(f'<a href="move:{index}" style="{style} text-decoration:none;">{escape(text)}</a>')
-        self.setHtml('<div style="font-family:Consolas,monospace; font-size:14px; line-height:160%;">'
+        size, spacing = (16, 145) if self._auto_fit else (14, 160)
+        self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'
                      + " &nbsp; ".join(tokens) + "</div>")
 
     def cancel_preview(self):
         self._hovered = None
         self.preview_ended.emit()
+
+    def _fit_height(self, *_):
+        if self._auto_fit:
+            height = max(25, math.ceil(self.document().size().height()) + 4)
+            if height != self.height():
+                self.setFixedHeight(height)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._fit_height()

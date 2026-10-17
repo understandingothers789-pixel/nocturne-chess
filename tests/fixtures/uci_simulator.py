@@ -73,6 +73,8 @@ for raw in sys.stdin:
             "Style type combo default Normal var Normal var Very Solid",
             "Clear Hash type button",
         ]:
+            if mode == "single-pv" and option.startswith("MultiPV "):
+                continue
             send("option name " + option)
         send("uciok")
     elif line == "isready":

@@ -91,3 +91,6 @@ study organization are tracked separately. Controls are exposed only when wired.
 
 No claim is made that all Nibbler features are present or that this GUI increases
 Stockfish's chess strength. Screenshots with the simulator are labelled test data.
+
+0.5.3 keeps resource presets independent of MultiPV. Select PV 1 explicitly in
+the Engine menu when evaluating that configuration; no preset claims an optimum.
