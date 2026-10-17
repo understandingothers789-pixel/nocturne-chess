@@ -674,3 +674,49 @@ GPL notices and rules-library source in the ZIP. Original code/assets retain
 MIT. No claim of full Nibbler parity or measured engine strength is made.
 Remaining features and the verified/report/recommendation distinctions are
 listed in docs/ANALYSIS_ROADMAP.md and docs/NIBBLER_RESEARCH.md.
+
+
+## 2026-10-17 — 0.5.1 resource-control implementation
+
+Requested: make Threads and Hash prominent, following the Nibbler Engine menu.
+Created gui/engine_resources.py; changed gui/window.py, engine_manager.py,
+uci_connection.py, hardware.py and theme.py. Direct Engine submenus and matching
+quick controls show configured values, checked presets, custom values and engine
+defaults. Unsupported options are explicit. Values persist in the selected engine
+profile. A ready acknowledgement distinguishes applied settings from saved ones.
+Resource changes stop/reconfigure/resume through the persistent UCI process;
+halted analysis remains halted and stale candidate output is cleared.
+
+Fixed a discovered transport race: replacing a pending request during the ready
+barrier could start the new search with the old request's options. The transport
+now checks the prepared request identity and prepares the latest options first.
+Memory admission credits the engine's acknowledged, replaceable hash allocation
+while still reserving system memory; opening the profile editor uses that budget.
+Selected-profile discovery is preferred when profiles share an executable.
+
+Commands executed: Ruff; pytest tests/test_external_analysis.py tests/test_gui.py
+(initial 42 passed in 26.89s); pytest tests/test_engine_resources.py
+ tests/test_external_analysis.py (18 passed in 6.86s). The first new integration
+run had a test-only TypeError: Store is not a context manager; corrected to
+explicit try/finally close before the successful rerun. No product failure was
+claimed as a passing result. Added actual protocol assertions for custom 768 MB,
+latest settings before go, same PID, separate profile defaults, SQLite persistence,
+unsupported Threads and engine/memory limits. Two memory/validation unit tests
+exercise reserve limits and custom values. Ruff passed.
+
+Rendered and inspected the actual Qt window at 1024×660 with labelled protocol
+test data; Threads/Hash and acknowledgement status are visible in compact mode.
+Version/build metadata, README, changelog, TODO and acceptance checklist updated.
+Next: complete the final regression run, inspect both resource menus, run the full
+suite and publish/verify a native Windows artifact. No real Stockfish executable
+or table files are installed here; no performance/strength claims are made.
+
+Final local verification: pytest resource/external/GUI suites 47 passed in 32.59s;
+full unittest discovery ran 109 tests in 35.596s, OK (5 skipped, 104 passed).
+The five skips remain two optional deeper-perft and three optional historical
+native-reader tests. Ruff passed. Captured and inspected Engine, Threads and Hash
+menus (including checked custom 768 MB), plus updated actual dark/light/compact
+Qt previews. Disabled preset colors were made explicit for readability.
+Actual popup interaction regression: selecting Threads through the visible Qt
+menu (not just QAction.trigger) passed, 1 test in 0.82s. Source ZIP created and
+0.5.1 pure-Python wheel built without a compiler; Ruff passed again.

@@ -27,9 +27,9 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: Nocturne-0.5.0-Windows-x64-unsigned
+          name: Nocturne-0.5.1-Windows-x64-unsigned
           path: |
             dist/Nocturne/
-            dist/Nocturne-0.5.0-source.zip
+            dist/Nocturne-0.5.1-source.zip
           if-no-files-found: error
           retention-days: 30

@@ -3,7 +3,8 @@
 import os
 
 
-def hash_budget_mb():
+def hash_budget_mb(allocated_mb=0):
+    """Include replaceable hash already acknowledged by the running engine."""
     try:
         if os.name == "nt":
             import ctypes
@@ -35,6 +36,6 @@ def hash_budget_mb():
             page = os.sysconf("SC_PAGE_SIZE")
             total = os.sysconf("SC_PHYS_PAGES") * page // 1048576
             available = os.sysconf("SC_AVPHYS_PAGES") * page // 1048576
-        return max(16, min(total - 4096, available - 1024))
+        return max(16, min(total - 4096, available + max(0, allocated_mb) - 1024))
     except (OSError, ValueError, AttributeError):
         return None

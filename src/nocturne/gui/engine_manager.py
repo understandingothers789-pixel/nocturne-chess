@@ -27,12 +27,13 @@ from .uci_connection import UciConnection
 
 
 class EngineManager(QDialog):
-    def __init__(self, profiles, selected="", parent=None):
+    def __init__(self, profiles, selected="", parent=None, allocated_hash=0):
         super().__init__(parent)
         self.setWindowTitle("UCI engine profiles")
         self.resize(720, 650)
         self.profiles = [{**p, "values": dict(p.get("values", {}))} for p in profiles]
         self.selected = selected
+        self.allocated_hash = allocated_hash
         self.connection = UciConnection(self)
         self.connection.discovered.connect(self._discovered)
         self.connection.failed.connect(self._failed)
@@ -146,7 +147,7 @@ class EngineManager(QDialog):
                 if name == "Hash":
                     from .hardware import hash_budget_mb
 
-                    budget = hash_budget_mb()
+                    budget = hash_budget_mb(self.allocated_hash)
                     if budget is not None:
                         w.setMaximum(max(w.minimum(), min(w.maximum(), budget)))
                 w.setValue(int(value))
@@ -206,6 +207,7 @@ class EngineManager(QDialog):
             return
         p["name"] = data["name"]
         p["options"] = {n: asdict(o) for n, o in data["options"].items()}
+        p["options_detected"] = True
         self.status.setText(data["name"] + " · ready · " + str(len(data["options"])) + " advertised options")
         self._render(p["options"])
         self.diagnostics.setPlainText("\n".join(self.connection.log))

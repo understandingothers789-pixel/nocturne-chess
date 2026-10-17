@@ -8,6 +8,9 @@ Sign into GitHub, download, Extract All, then open **Nocturne/Nocturne.exe**.
 Keep the full folder. No Python, compiler or batch launcher is needed to play/analyze.
 You select your own Stockfish executable from the Engine menu.
 
+The 0.5.1 source includes direct Threads/Hash controls. Native Windows verification
+is pending; the link above is the previously verified 0.5.0 build.
+
 ## Reproducible Windows build
 
 Install Python 3.12 x64 with its Python launcher. In a source checkout:
@@ -27,7 +30,7 @@ the installed python-chess Python source and notices.
 Outputs:
 
 - `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
-- `dist/Nocturne-0.5.0-source.zip`: source, tests, documentation, rules-library source.
+- `dist/Nocturne-0.5.1-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI
 executable/native table reader are not part of this distribution. Source installation

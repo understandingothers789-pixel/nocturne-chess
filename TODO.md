@@ -14,3 +14,6 @@ Highest-priority remaining checks:
 - Large-tree profiling, richer branch editing and study collections.
 - Persistent cache/snapshots, independent secondary engine and split-board comparison.
 - WDL graph, figurines/piece sets and fully saved flexible panel layouts.
+
+0.5.1 resource controls: verify the native Windows package and actual Stockfish
+resource allocation; automated UCI fixture validation does not measure strength.

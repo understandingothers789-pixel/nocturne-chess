@@ -15,6 +15,7 @@ class UciConnection(QObject):
     completed = Signal(int, str)
     failed = Signal(str)
     status = Signal(str)
+    configured = Signal()
 
     def __init__(self, parent=None, timeout_ms=5000):
         super().__init__(parent)
@@ -38,6 +39,8 @@ class UciConnection(QObject):
         self.pending = None
         self.running = None
         self.applied = {}
+        self.confirmed = {}
+        self._prepared = None
         self._quitting = False
         self._last_info = {}
         self._flush = QTimer(self)
@@ -56,6 +59,7 @@ class UciConnection(QObject):
         self.close()
         self.path, self.name = path, Path(path).stem
         self.options, self.applied, self.buffer = {}, {}, b""
+        self.confirmed, self._prepared = {}, None
         self._quitting = False
         self.phase = "launch"
         self.process.setProgram(path)
@@ -106,18 +110,18 @@ class UciConnection(QObject):
         if desired.get("UCI_Chess960") and "UCI_Chess960" not in self.options:
             raise ValueError("This engine does not advertise Chess960 support")
         for name, value in desired.items():
-            if name == "Hash":
-                from .hardware import hash_budget_mb
-
-                budget = hash_budget_mb()
-                if budget is not None and int(value) > budget:
-                    raise ValueError(
-                        f"Hash exceeds the current safe memory budget ({budget} MB). Reduce Hash in engine profiles."
-                    )
             option = self.options.get(name)
             if option is None:
                 continue
             value = option.validate(value)
+            if name == "Hash":
+                from .hardware import hash_budget_mb
+
+                budget = hash_budget_mb(int(self.confirmed.get("Hash", 0)))
+                if budget is not None and int(value) > budget:
+                    raise ValueError(
+                        f"Hash exceeds the current memory budget ({budget} MB). Reduce it in Engine → Hash."
+                    )
             if self.applied.get(name) != value:
                 suffix = "" if option.kind == "button" else " value " + (value or "<empty>")
                 self.send("setoption name " + name + suffix)
@@ -127,6 +131,7 @@ class UciConnection(QObject):
             self.send("ucinewgame")
             self.applied["__study"] = study
         self.phase = "ready"
+        self._prepared = self.pending
         self.send("isready")
         self.timer.start(self.timeout_ms)
 
@@ -159,11 +164,15 @@ class UciConnection(QObject):
             self.timer.stop()
             initial = self.phase == "initial-ready"
             prepared = self.phase == "ready"
+            prepared_request, self._prepared = self._prepared, None
             self.phase = "idle"
+            if prepared:
+                self.confirmed = self.applied.copy()
+                self.configured.emit()
             if initial:
                 self.discovered.emit({"path": self.path, "name": self.name, "options": self.options.copy()})
             if self.pending:
-                if prepared:
+                if prepared and self.pending is prepared_request:
                     self.running, self.pending = self.pending, None
                     self.phase = "search"
                     self.send(self.running[1])
@@ -229,6 +238,8 @@ class UciConnection(QObject):
         self._last_info.clear()
         self._quitting = True
         self.process.kill()
+        self.confirmed.clear()
+        self.configured.emit()
         self.failed.emit(message)
         self.status.emit(message)
 
@@ -244,3 +255,5 @@ class UciConnection(QObject):
                 self.process.kill()
                 self.process.waitForFinished(150)
         self.phase = "closed"
+        self.confirmed.clear()
+        self.configured.emit()

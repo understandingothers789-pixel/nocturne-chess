@@ -136,6 +136,115 @@ class QtIntegration(unittest.TestCase):
         connection.request(3, "position fen " + Board().fen(), "go depth 2", {}, "study")
         self.wait_until(lambda: connection.phase == "idle")
 
+    def test_resource_change_during_ready_barrier_applies_latest_options(self):
+        connection = UciConnection()
+        self.addCleanup(connection.close)
+        connection.launch(sys.executable, [SIMULATOR])
+        self.wait_until(lambda: connection.phase == "idle")
+        position = "position fen " + Board().fen()
+        connection.request(1, position, "go infinite", {"Threads": 2, "Hash": 64}, "study")
+        self.assertEqual(connection.phase, "ready")
+        # No event processing: readyok is still outstanding for the old settings.
+        connection.request(2, position, "go infinite", {"Threads": 6, "Hash": 768}, "study")
+        self.wait_until(lambda: connection.phase == "search")
+        self.assertEqual(connection.running[0], 2)
+        self.assertEqual(connection.confirmed["Threads"], "6")
+        self.assertEqual(connection.confirmed["Hash"], "768")
+        log = list(connection.log)
+        self.assertEqual(log.count("> go infinite"), 1)
+        self.assertLess(log.index("> setoption name Hash value 768"), log.index("> go infinite"))
+
+    def test_resource_menu_changes_reuse_process_and_persist_per_profile(self):
+        from unittest.mock import patch
+        from nocturne.storage import Store
+
+        with self.workspace() as window:
+            window.timer.stop()
+            window.autosave_timer.stop()
+            window.profiles = [self.profile()]
+            window.config.update(engine_id="simulator")
+            window._apply_settings()
+            window._schedule_engine()
+            self.wait_until(lambda: bool(window.candidates.lines))
+            pid = window.engine.connection.process.processId()
+            resources = window.resource_controls
+            self.assertEqual(resources.state.text(), "Applied to engine")
+            window.show()
+            resources.menus["Threads"].popup(window.mapToGlobal(window.rect().center()))
+            self.app.processEvents()
+            action = next(a for a in resources.menus["Threads"].actions() if a.data() == 6)
+            QTest.mouseClick(
+                resources.menus["Threads"], Qt.MouseButton.LeftButton,
+                pos=resources.menus["Threads"].actionGeometry(action).center(),
+            )
+            self.wait_until(lambda: window.engine.connection.confirmed.get("Threads") == "6")
+            with patch("PySide6.QtWidgets.QInputDialog.getInt", return_value=(768, True)):
+                resources._custom(window._profile(), "Hash")
+            self.wait_until(lambda: window.engine.connection.confirmed.get("Hash") == "768")
+            self.assertEqual(window.engine.connection.process.processId(), pid)
+            self.assertEqual(window.profiles[0]["values"], {"Threads": 6, "Hash": 768})
+            self.assertIn("768 MB", resources.buttons["Hash"].text())
+            self.assertTrue(next(a for a in resources.menus["Hash"].actions() if a.data() == 768).isChecked())
+            self.assertTrue(all("a1a8" not in info["pv"] for info in window.candidates.lines.values()))
+            saved = Store(window.store.path)
+            try:
+                self.assertEqual(saved.get("engine_profiles")[0]["values"]["Hash"], 768)
+            finally:
+                saved.close()
+            second = dict(self.profile(), id="second", values={}, options=window.profiles[0]["options"])
+            window.profiles.append(second)
+            window._apply_settings()
+            window.analysis_source.setCurrentIndex(1)
+            self.wait_until(lambda: window.engine.connection.confirmed.get("Hash") == "16")
+            self.assertEqual(window.engine.connection.confirmed["Threads"], "1")
+            self.assertEqual(window.engine.connection.process.processId(), pid)
+            self.assertEqual(window.profiles[0]["values"]["Hash"], 768)
+            window.analysis_source.setCurrentIndex(0)
+            self.wait_until(lambda: window.engine.connection.confirmed.get("Hash") == "768")
+            default = next(a for a in resources.menus["Hash"].actions() if a.text().startswith("Engine default"))
+            default.trigger()
+            self.wait_until(lambda: window.engine.connection.confirmed.get("Hash") == "16")
+            self.assertNotIn("Hash", window._profile()["values"])
+            window._halt_analysis()
+            window._set_engine_resource("Threads", 4)
+            self.app.processEvents()
+            self.assertFalse(window.engine.busy)
+            self.assertIn("next search", resources.state.text())
+            window._start_analysis()
+            self.wait_until(lambda: window.engine.connection.confirmed.get("Threads") == "4")
+
+    def test_resource_limits_reject_invalid_settings_without_stopping_analysis(self):
+        from unittest.mock import patch
+
+        with self.workspace() as window:
+            window.timer.stop()
+            window.profiles = [self.profile()]
+            window.config["engine_id"] = "simulator"
+            window._apply_settings()
+            window._schedule_engine()
+            self.wait_until(lambda: bool(window.candidates.lines))
+            generation = window.engine.generation
+            with (
+                patch("nocturne.gui.engine_resources.hash_budget_mb", return_value=512),
+                patch.object(window, "_error") as error,
+            ):
+                window._set_engine_resource("Hash", 768)
+                window._set_engine_resource("Threads", 17)
+                self.assertEqual(error.call_count, 2)
+                self.assertEqual(window.engine.generation, generation)
+                self.assertEqual(window._profile()["values"], {"Threads": 2, "Hash": 64})
+                window.resource_controls.refresh()
+                action = next(a for a in window.resource_controls.menus["Hash"].actions() if a.data() == 1024)
+                self.assertFalse(action.isEnabled())
+            window._halt_analysis()
+            window._profile()["options"].pop("Threads")
+            window.resource_controls.refresh()
+            self.assertIn("Not advertised", window.resource_controls.menus["Threads"].actions()[0].text())
+            with patch.object(window, "_error") as error:
+                window._set_engine_resource("Threads", 4)
+                error.assert_called_once()
+            self.assertEqual(window._profile()["values"]["Threads"], 2)
+
     def test_engine_crash_reports_error_and_can_restart(self):
         controller = EngineController()
         self.addCleanup(controller.close)

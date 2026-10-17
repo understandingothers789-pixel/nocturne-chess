@@ -34,6 +34,8 @@ def stylesheet(light: bool = False) -> str:
     QPushButton:hover {{ border-color: #76956c; background: #334b39; color: #f3f7ed; }}
     QPushButton:pressed {{ background: #46613e; }}
     QPushButton:disabled {{ color: {muted}; background: transparent; border-color: {border}; }}
+    QToolButton {{ background: {raised}; border: 1px solid {border}; border-radius: 6px; padding: 6px 12px; font-weight: 500; }}
+    QToolButton:hover {{ border-color: #76956c; }}
     QPushButton#primary {{ background: #b5d99d; color: #19291c; border: none; font-weight: 700; }}
     QPushButton#primary:hover {{ background: #c6e9af; }}
     QPushButton#nav {{ text-align: left; border: none; background: transparent; padding: 12px 16px; color: {muted}; }}
@@ -62,6 +64,7 @@ def stylesheet(light: bool = False) -> str:
     QMenuBar::item:selected {{ background: {raised}; }}
     QMenu {{ background: {panel}; border: 1px solid {border}; padding: 5px; }}
     QMenu::item {{ padding: 8px 24px; }}
+    QMenu::item:disabled {{ color: {muted}; }}
     QMenu::item:selected {{ background: #344b35; color: #eef2e7; border-radius: 4px; }}
     QStatusBar {{ color: {muted}; font-size: 11px; }}
     QSplitter::handle {{ background: transparent; width: 12px; }}

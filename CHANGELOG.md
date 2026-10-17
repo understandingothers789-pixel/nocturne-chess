@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.1 — Accessible engine resources
+
+- Direct Engine → Threads / Hash submenus and visible quick controls, with presets,
+  custom integer values, engine-default choices and per-profile persistence.
+- Engine-reported limits and conservative memory admission, crediting the running
+  engine's acknowledged hash allocation when it is replaced.
+- Distinguish saved settings from engine-acknowledged settings; changing resources
+  preserves a stopped analysis state and clears stale candidate output.
+- Fix a UCI ready-barrier race: a request replaced during option preparation must
+  apply its latest options before the new position/search commands are sent.
+- Regression coverage for process reuse, profile independence, memory limits,
+  unsupported options and settings changed while waiting for readyok.
+
 ## 0.5.0 — External-engine analysis studio
 
 - Product direction changes to a user-supplied Stockfish/UCI GUI. Custom search,

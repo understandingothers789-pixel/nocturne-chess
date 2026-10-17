@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.0
+# Nocturne Analysis · 0.5.1
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -16,8 +16,9 @@ analysis. The simulator is not bundled in the application.*
 [Download the verified Windows 0.5.0 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38994172390/artifacts/12086018094) (GitHub sign-in required).
 
 [All Windows builds](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
-Choose the latest successful 0.5.0 run and download
-**Nocturne-0.5.0-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
+The 0.5.1 source adds the resource controls below. Its Windows build is pending
+verification; the verified 0.5.0 download above remains available. Choose the
+successful build and download its ZIP under Artifacts (GitHub sign-in required).
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
@@ -31,6 +32,17 @@ change is provided. The ZIP also includes the corresponding source archive.
    for multiple candidates, or **Bounded analysis** for time/depth/node limits.
 4. **Analysis → Go/Halt** starts/stops analysis. Moving or navigating restarts the
    search on the new position while retaining the engine process/hash allocation.
+
+**Engine → Threads** and **Engine → Hash** provide checked presets, custom integer
+values (Hash in MB), and an engine-default choice. The same controls stay visible
+below the engine selector, including with compact statistics. Settings save per
+engine profile. “Applied to engine” appears only after the engine acknowledges
+its ready barrier; stopped analysis stays stopped when you change a setting.
+During live analysis, changes stop the old search, apply settings, then resume on
+the same process. Unsupported options are marked unavailable. Hash choices respect
+both the engine's range and the current memory budget, accounting for an existing
+hash allocation when resizing. A larger hash or more threads is not automatically
+faster or stronger; benchmark your engine and hardware.
 
 Stockfish versions are not hardcoded. Options are discovered via `uci`, including
 Threads, Hash, MultiPV, SyzygyPath, UCI_Chess960 and UCI_ShowWDL when advertised.

@@ -49,6 +49,7 @@ from .board import BoardWidget
 from .dialogs import NewGameDialog, SettingsDialog, TextDialog
 from .engine import EngineController
 from .engine_manager import EngineManager
+from .engine_resources import EngineResources, validate_resource
 from .candidates import CandidatePanel
 from .moves import MoveText
 from .theme import ASSETS, stylesheet
@@ -160,6 +161,7 @@ class MainWindow(QMainWindow):
         self.engine.message.connect(self._engine_message)
         self.engine.discovered.connect(self._engine_discovered)
         self.engine.status.connect(self.engine_state.setText)
+        self.engine.connection.configured.connect(self.resource_controls.refresh)
         self._shortcuts()
         self._apply_settings()
         self.pause_button.setText("Continue" if self.paused else "Pause")
@@ -371,6 +373,14 @@ class MainWindow(QMainWindow):
         self.analysis_source.activated.connect(
             lambda index: self._manage_engines() if not self._profile() else None
         )
+        self.resource_controls = EngineResources(
+            self._profile,
+            lambda: self.engine.connection if hasattr(self, "engine") else None,
+            self._set_engine_resource,
+            self._restart_engine,
+            self,
+        )
+        engine_page_layout.addWidget(self.resource_controls)
         options_row = QHBoxLayout()
         self.analysis_kind = QComboBox()
         for text, value in [
@@ -598,6 +608,10 @@ class MainWindow(QMainWindow):
         add(engine, "Choose engine…", self._choose_engine)
         add(engine, "Choose Syzygy folder…", self._choose_tablebase)
         add(engine, "Engine profiles and options…", self._manage_engines)
+        engine.addSeparator()
+        engine.addMenu(self.resource_controls.menus["Threads"])
+        engine.addMenu(self.resource_controls.menus["Hash"])
+        engine.addSeparator()
         add(engine, "Restart selected engine", self._restart_engine)
         add(engine, "Engine diagnostics…", self._diagnostics)
         play = self.menuBar().addMenu("&Play")
@@ -1188,7 +1202,10 @@ class MainWindow(QMainWindow):
     def _manage_engines(self):
         self._cancel_review()
         self._stop_engine()
-        dialog = EngineManager(self.profiles, self.config.get("engine_id", ""), self)
+        dialog = EngineManager(
+            self.profiles, self.config.get("engine_id", ""), self,
+            allocated_hash=self.resource_controls.allocated_hash(),
+        )
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         self.profiles = dialog.profiles
@@ -1200,10 +1217,33 @@ class MainWindow(QMainWindow):
     def _source_changed(self):
         self._cancel_review()
         self.config["engine_id"] = self.analysis_source.currentData() or ""
+        self.resource_controls.refresh()
         if hasattr(self, "engine"):
             self._stop_engine()
             self._save()
             self._schedule_engine()
+
+    def _set_engine_resource(self, name, value):
+        profile = self._profile()
+        try:
+            number = validate_resource(profile, name, value, self.resource_controls.allocated_hash())
+        except (TypeError, ValueError) as exc:
+            self._error("Cannot apply engine setting", str(exc))
+            return
+        if value is not None and profile["values"].get(name) == number:
+            self.resource_controls.refresh()
+            return
+        self._cancel_review()
+        self._stop_engine()
+        if value is None:
+            profile["values"].pop(name, None)
+        else:
+            profile["values"][name] = number
+        self._analysis_context = None
+        self._clear_analysis_output()
+        self._save()
+        self.resource_controls.refresh()
+        self._schedule_engine()
 
     def _analysis_control_changed(self):
         self._cancel_review()
@@ -1221,12 +1261,12 @@ class MainWindow(QMainWindow):
     def _engine_discovered(self, data):
         from dataclasses import asdict
 
-        profile = next(
-            (p for p in self.profiles if Path(p["path"]).resolve() == Path(data["path"]).resolve()), None
-        )
+        matching = [p for p in self.profiles if Path(p["path"]).resolve() == Path(data["path"]).resolve()]
+        profile = next((p for p in matching if p is self._profile()), next(iter(matching), None))
         if profile:
             profile["name"] = data["name"]
             profile["options"] = {n: asdict(o) for n, o in data["options"].items()}
+            profile["options_detected"] = True
             self.analysis_source.setItemText(
                 self.analysis_source.findData(profile["id"]), profile.get("label") or data["name"]
             )
@@ -1239,6 +1279,7 @@ class MainWindow(QMainWindow):
                     else "Engine does not advertise SyzygyPath"
                 )
             self._save()
+            self.resource_controls.refresh()
 
     def _restart_engine(self):
         self._analysis_context = None
@@ -1305,6 +1346,7 @@ class MainWindow(QMainWindow):
             max(0, self.analysis_source.findData(self.config.get("engine_id", "")))
         )
         self.analysis_source.blockSignals(False)
+        self.resource_controls.refresh()
         self._render_move_history()
         if self._pv_root is not None:
             self.pv_label.set_moves(self.pv_label._items, light=self.config.get("light", False))
@@ -2068,15 +2110,7 @@ class MainWindow(QMainWindow):
             limits.nodes,
         )
         if context != self._analysis_context:
-            self.candidates.clear()
-            self.pv_label.set_moves([])
-            self._candidate_identity = None
-            self._pv_root = None
-            self._pv_moves = []
-            self._last_info = None
-            self._pv_identity = None
-            self.eval_label.setText("—")
-            self.telemetry.setText("Waiting for engine output")
+            self._clear_analysis_output()
             self._analysis_context = context
         try:
             generation = self.engine.start(
@@ -2105,6 +2139,17 @@ class MainWindow(QMainWindow):
         self.analyze_button.setText("Stop analysis" if kind == "analysis" else "Analyze position")
         self.quick_analysis_button.setText("Stop" if kind == "analysis" else "Analyze")
         self.board_view.interactive = kind == "analysis"
+
+    def _clear_analysis_output(self):
+        self.candidates.clear()
+        self.pv_label.set_moves([])
+        self._candidate_identity = None
+        self._pv_root = None
+        self._pv_moves = []
+        self._last_info = None
+        self._pv_identity = None
+        self.eval_label.setText("—")
+        self.telemetry.setText("Waiting for engine output")
 
     def _engine_message(self, generation: int, kind: str, payload: dict):
         if self._closing:
