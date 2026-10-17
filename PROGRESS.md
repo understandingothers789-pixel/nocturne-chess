@@ -762,3 +762,24 @@ Threads/Hash, including engine defaults. Extended the regression to check both
 profile ownership and actual acknowledged Threads=6, Hash=768. A fresh Windows
 build is required before final delivery of this correction.
 Post-fix resource/external/GUI run: 47 passed in 33.46s; Ruff passed. No failures.
+
+
+## 0.5.1 — Final corrected Windows package
+
+Source commit c053f15ed8b6ed692416767ed92b0c297a95b1dc passed native Windows
+run 39007159403 / job 117321857514. Each unittest run executed 109 tests, OK
+(skipped=5): 104 passed in 52.977s, then 104 passed in 51.485s inside the clean
+builder. Ruff, PyInstaller, frozen study/save and external-UCI fixture smoke,
+source creation and upload passed. The extended regression confirms saved score
+ownership stays with its originating profile and acknowledged Threads/Hash.
+
+Final artifact 12091413076: Nocturne-0.5.1-Windows-x64-unsigned, 53,200,607 bytes.
+SHA-256 ee9c8ee2ad6edbc43185a86e72cd1170185e524c6694bd62ceb43024b93d8ed8.
+Metadata reports unexpired, retained until 2026-11-16. This supersedes the earlier
+0.5.1 test package above. Final download:
+https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39007159403/artifacts/12091413076
+
+README/BUILDING now point to this corrected package. Final local source/wheel and
+checksums refreshed; source ZIP integrity verified. No further product code was
+changed after the passing Windows run. Real Stockfish allocation, manual Windows
+interaction/DPI and larger Syzygy collections remain follow-up verification.

@@ -13,7 +13,7 @@ analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
 
-[Download the verified Windows 0.5.1 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39006678168/artifacts/12091382461) (GitHub sign-in required).
+[Download the verified Windows 0.5.1 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39007159403/artifacts/12091413076) (GitHub sign-in required).
 
 [All Windows builds](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
 Select **Nocturne-0.5.1-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
