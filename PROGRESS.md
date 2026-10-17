@@ -1022,3 +1022,12 @@ Captured and inspected the actual wide explorer and Nibbler-line layouts. Refres
 dark/light/compact/PGN/hover captures. Explorer screenshots use explicitly labelled
 cached test statistics, not live database results. Ruff passed after capture script
 changes. Publishing source now for native Windows HTTP and optional live TLS checks.
+
+Published code 40a5480c68fb9828d4847d6a50f2883664c98f9a. Native Windows run
+39064485252 executed all five HTTP tests; cancellation/stale results, response
+limits/errors/timeouts, live/cache responses and pacing passed. Its 429 test
+found a Qt binding type bug: QNetworkReply.rawHeader expects a string header
+name, not bytes. Fixed the Retry-After call. The run had 132 tests in 63.210s:
+126 passed, 1 failed, 5 skipped; packaging/live checks were correctly blocked.
+Source ZIP and wheel built locally and passed integrity checks; source excludes
+executables/script launchers. Next: rerun Windows with the header fix.

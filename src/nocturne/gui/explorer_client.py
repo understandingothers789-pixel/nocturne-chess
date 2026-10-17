@@ -104,7 +104,7 @@ class ExplorerClient(QObject):
         code = reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute)
         if code == 429:
             try:
-                seconds = int(bytes(reply.rawHeader(b"Retry-After")))
+                seconds = int(bytes(reply.rawHeader("Retry-After")))
             except ValueError:
                 seconds = 60
             seconds = max(60, min(3600, seconds))
