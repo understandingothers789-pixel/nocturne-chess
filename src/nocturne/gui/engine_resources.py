@@ -10,6 +10,22 @@ from ..engine.uci_types import UciOption
 from .hardware import hash_budget_mb
 
 
+def format_hash_mb(value):
+    """UCI uses integer MB; display familiar GB units from 1,024 MB upward."""
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if number < 1024:
+        return f"{number:,} MB"
+    size = f"{number / 1024:,.3f}".rstrip("0").rstrip(".")
+    return size + " GB"
+
+
+def resource_label(name, value):
+    return format_hash_mb(value) if name == "Hash" else (f"{value:,}" if isinstance(value, int) else str(value))
+
+
 def resource_option(profile, name):
     raw = profile.get("options", {}).get(name) if profile else None
     if not isinstance(raw, dict):
@@ -99,19 +115,18 @@ class EngineResources(QWidget):
                 menu.setTitle(name)
                 continue
             supported += 1
-            unit = " MB" if name == "Hash" else ""
             value = profile["values"].get(name, option.default)
             try:
                 value = int(option.validate(value))
             except ValueError:
                 value = "invalid"
-            current = f"{value:,}" if isinstance(value, int) else value
-            self.buttons[name].setText(f"{name}: {current}{unit}")
-            menu.setTitle(f"{name} ({current}{unit})")
+            current = resource_label(name, value)
+            self.buttons[name].setText(f"{name}: {current}")
+            menu.setTitle(f"{name} ({current})")
             matches = matches and same_engine and confirmed.get(name) == str(value)
             minimum, maximum = resource_limits(option, self.allocated_hash())
             presets = (
-                (1, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128)
+                (1, 2, 4, 6, 8, 12, 14, 16, 24, 32, 48, 64, 96, 128)
                 if name == "Threads"
                 else (16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536)
             )
@@ -119,7 +134,7 @@ class EngineResources(QWidget):
             if isinstance(value, int):
                 choices.add(value)
             for preset in sorted(choices):
-                action = menu.addAction(f"{preset:,}{unit}")
+                action = menu.addAction(resource_label(name, preset))
                 action.setCheckable(True)
                 action.setChecked(value == preset and name in profile["values"])
                 action.setEnabled(minimum <= preset <= maximum)
@@ -131,17 +146,17 @@ class EngineResources(QWidget):
             custom = menu.addAction("Custom…")
             custom.setEnabled(minimum <= maximum)
             custom.triggered.connect(lambda checked=False, n=name, p=profile: self._custom(p, n))
-            default = menu.addAction(f"Engine default ({int(option.default):,}{unit})")
+            default = menu.addAction(f"Engine default ({resource_label(name, int(option.default))})")
             default.setCheckable(True)
             default.setChecked(name not in profile["values"])
             default.setEnabled(minimum <= int(option.default) <= maximum)
             default.triggered.connect(lambda checked=False, n=name, p=profile: self._choose(p, n, None))
             menu.addSeparator()
             menu.addAction(
-                f"Engine range: {option.minimum:,}–{option.maximum:,}{unit}"
+                f"Engine range: {resource_label(name, option.minimum)}–{resource_label(name, option.maximum)}"
             ).setEnabled(False)
             if maximum < option.maximum and name == "Hash":
-                menu.addAction(f"Current memory limit: {maximum:,} MB").setEnabled(False)
+                menu.addAction(f"Current memory limit: {format_hash_mb(maximum)}").setEnabled(False)
         self.state.setText(
             "Choose an engine to configure Threads and Hash" if not profile
             else "Resource options unavailable" if not supported
@@ -166,7 +181,7 @@ class EngineResources(QWidget):
             value = minimum
         number, accepted = QInputDialog.getInt(
             self, f"Engine {name}",
-            "Hash size in MB:" if name == "Hash" else "Search threads:",
+            "Hash size in MB (1 GB = 1,024 MB):" if name == "Hash" else "Search threads:",
             min(maximum, max(minimum, value)), minimum, maximum, 1,
         )
         if accepted:

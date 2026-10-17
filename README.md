@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.1
+# Nocturne Analysis · 0.5.2
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -24,6 +24,27 @@ Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
 change is provided. The ZIP also includes the corresponding source archive.
 
+The 0.5.2 source adds automatic PGN archives and resource-label improvements;
+its Windows build is pending verification. The link above is the prior verified build.
+
+## Your saved PGNs
+
+Every save also writes a complete PGN in the **PGNs** folder beside the local
+SQLite library. Copies include variations, comments and evaluation annotations.
+Each study keeps its own file; starting/importing another game preserves previous
+PGNs. Autosaves run every 15 seconds and at study changes/close. Repeated saves
+update that study's file atomically and leave an unchanged PGN untouched.
+
+Use **File → Saved PGNs / game library…** to reopen prior games, or **File → Open
+saved PGN folder** to see the files in Windows Explorer. The folder lives in your
+per-user Nocturne data directory, so keep it when upgrading the application.
+Earlier library games are exported in the background on startup, without changing
+your resume game. Corrupt library records are reported and retained. If a PGN
+write fails, the SQLite save remains available and the status bar reports it.
+PGNs do not contain clocks/profile settings; those remain in the library.
+
+![Saved PGNs and game library](docs/saved-pgn-library.png)
+
 ## Connect your Stockfish
 
 1. **Engine → Choose engine… → Add executable…**. Select your existing engine.
@@ -34,7 +55,9 @@ change is provided. The ZIP also includes the corresponding source archive.
    search on the new position while retaining the engine process/hash allocation.
 
 **Engine → Threads** and **Engine → Hash** provide checked presets, custom integer
-values (Hash in MB), and an engine-default choice. The same controls stay visible
+values, and an engine-default choice. Hash labels switch to GB at 1,024 MB
+(1 GB); the Threads menu includes 14 when supported. Custom Hash input remains
+in exact MB, with its conversion shown. The same controls stay visible
 below the engine selector, including with compact statistics. Settings save per
 engine profile. “Applied to engine” appears only after the engine acknowledges
 its ready barrier; stopped analysis stays stopped when you change a setting.

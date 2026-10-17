@@ -251,6 +251,28 @@ class QtIntegration(unittest.TestCase):
                 error.assert_called_once()
             self.assertEqual(window._profile()["values"]["Threads"], 2)
 
+    def test_fourteen_threads_and_gb_labels_send_exact_uci_mb(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            window.profiles = [self.profile()]
+            window.config["engine_id"] = "simulator"
+            window._apply_settings()
+            window._schedule_engine()
+            self.wait_until(lambda: bool(window.candidates.lines))
+            resources = window.resource_controls
+            threads = next(a for a in resources.menus["Threads"].actions() if a.data() == 14)
+            threads.trigger()
+            self.wait_until(lambda: window.engine.connection.confirmed.get("Threads") == "14")
+            hash_action = next(a for a in resources.menus["Hash"].actions() if a.data() == 2048)
+            self.assertEqual(hash_action.text(), "2 GB")
+            hash_action.trigger()
+            self.wait_until(lambda: window.engine.connection.confirmed.get("Hash") == "2048")
+            self.assertEqual(resources.buttons["Hash"].text(), "Hash: 2 GB")
+            log = "\n".join(window.engine.connection.log)
+            self.assertIn("> setoption name Threads value 14", log)
+            self.assertIn("> setoption name Hash value 2048", log)
+            self.assertNotIn("setoption name Hash value 2 GB", log)
+
     def test_engine_crash_reports_error_and_can_restart(self):
         controller = EngineController()
         self.addCleanup(controller.close)

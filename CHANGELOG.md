@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.2 — Saved PGNs and resource refinements
+
+- Write complete PGN copies automatically beside the SQLite library, with stable
+  per-study filenames, atomic replacement and unchanged-file detection.
+- Reopen previous studies through Saved PGNs / game library; open the archive
+  folder directly from File or the library. Export older saved games in small
+  background batches without changing the resume target or deleting corrupt data.
+- Show Hash in GB from 1,024 MB across menus, quick controls and detailed stats;
+  keep exact MB for engine commands/custom input. Add a 14-thread menu preset.
+- Preserve the SQLite game and previous PGN if writing a new copy fails; repair
+  invalid UTF-8 copies on the next save. Include event names in library entries.
+
 ## 0.5.1 — Accessible engine resources
 
 - Direct Engine → Threads / Hash submenus and visible quick controls, with presets,

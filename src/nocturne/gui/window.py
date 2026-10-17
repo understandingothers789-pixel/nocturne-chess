@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 import random
 
-from PySide6.QtCore import QEvent, QStandardPaths, Qt, QTimer
-from PySide6.QtGui import QAction, QIcon, QKeySequence
+from PySide6.QtCore import QEvent, QStandardPaths, Qt, QTimer, QUrl
+from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -49,7 +49,7 @@ from .board import BoardWidget
 from .dialogs import NewGameDialog, SettingsDialog, TextDialog
 from .engine import EngineController
 from .engine_manager import EngineManager
-from .engine_resources import EngineResources, validate_resource
+from .engine_resources import EngineResources, format_hash_mb, validate_resource
 from .candidates import CandidatePanel
 from .moves import MoveText
 from .theme import ASSETS, stylesheet
@@ -172,6 +172,10 @@ class MainWindow(QMainWindow):
         self.autosave_timer = QTimer(self)
         self.autosave_timer.timeout.connect(self._save)
         self.autosave_timer.start(15000)
+        self.archive_timer = QTimer(self)
+        self.archive_timer.setInterval(40)
+        self.archive_timer.timeout.connect(self._archive_previous_pgn)
+        self._start_pgn_archive_migration()
         if self._storage_message:
             QTimer.singleShot(0, lambda: self._error("Library unavailable", self._storage_message))
         QTimer.singleShot(100, self._schedule_engine)
@@ -539,7 +543,8 @@ class MainWindow(QMainWindow):
         add(file, "Write PGN to clipboard", self._copy_pgn, "Ctrl+Shift+P", "copy_pgn")
         add(file, "Write FEN to clipboard", self._copy_fen, "Ctrl+Shift+C")
         add(file, "Save to library", self._save, "Ctrl+S")
-        add(file, "Game library…", self._library)
+        add(file, "Saved PGNs / game library…", self._library, name="Game library…")
+        add(file, "Open saved PGN folder", self._open_pgn_folder)
         file.addSeparator()
         add(file, "Quit", self.close, "Ctrl+Q")
 
@@ -1878,7 +1883,10 @@ class MainWindow(QMainWindow):
             imported.metadata["mode"] = "analysis"
             self._study_games[imported.id] = imported
             if self.store:
-                self.store.save(imported, autosave=False)
+                try:
+                    self.store.save(imported, autosave=False)
+                except StorageError as exc:
+                    self.statusBar().showMessage(str(exc))
         self.game = game
         self.game.metadata["mode"] = "analysis"
         self._history_signature = None
@@ -1901,10 +1909,10 @@ class MainWindow(QMainWindow):
         if not self.store:
             return
         try:
-            self.store.save(self.game)
             self.store.set("settings", self.config)
             self.store.set("engine_profiles", self.profiles)
             self.store.set("open_studies", list(self._study_games)[-20:])
+            self.store.save(self.game)
             self.save_label.setText("SAVED ON THIS DEVICE")
         except StorageError as exc:
             self.save_label.setText("SAVE FAILED · SEE STATUS")
@@ -1915,10 +1923,13 @@ class MainWindow(QMainWindow):
             self._error("Library unavailable", self._storage_message)
             return
         dialog = QDialog(self)
-        dialog.setWindowTitle("Your library")
+        self._save()
+        dialog.setWindowTitle("Saved PGNs and games")
         dialog.resize(640, 430)
         layout = QVBoxLayout(dialog)
-        layout.addWidget(label("Every game has a story.", "title"))
+        layout.addWidget(label("Saved PGNs & games", "title"))
+        layout.addWidget(label("Games and studies are saved automatically on this device.", "muted", True))
+        layout.addWidget(button("Open PGN folder", self._open_pgn_folder))
         listing = QListWidget()
         try:
             games = self.store.list_games()
@@ -1964,6 +1975,42 @@ class MainWindow(QMainWindow):
             self.pause_button.setText("Continue" if self.paused else "Pause")
             self._refresh()
             self._schedule_engine()
+
+    def _start_pgn_archive_migration(self):
+        if not self.store:
+            return
+        try:
+            self._archive_pending = iter(self.store.game_ids())
+            self.archive_timer.start()
+        except StorageError as exc:
+            self.statusBar().showMessage(str(exc))
+
+    def _archive_previous_pgn(self):
+        if self._closing or not self.store:
+            self.archive_timer.stop()
+            return
+        game_id = next(self._archive_pending, None)
+        if game_id is None:
+            self.archive_timer.stop()
+            return
+        try:
+            if not self.store.pgn_path(game_id).exists():
+                self.store.archive_pgn(self.store.load(game_id))
+        except StorageError as exc:
+            self.statusBar().showMessage(str(exc))
+
+    def _open_pgn_folder(self):
+        if not self.store:
+            self._error("PGN folder unavailable", self._storage_message)
+            return
+        self._save()
+        try:
+            directory = self.store.pgn_directory
+            directory.mkdir(parents=True, exist_ok=True)
+            if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(directory.absolute()))):
+                self._error("Cannot open PGN folder", str(directory))
+        except OSError as exc:
+            self._error("Cannot open PGN folder", str(exc))
 
     def _settings(self):
         dialog = SettingsDialog(self.config, self)
@@ -2249,7 +2296,7 @@ class MainWindow(QMainWindow):
             f"Depth {info['depth']}  ·  selective {info['seldepth']}\n"
             f"{info['nodes']:,} nodes  ·  {info.get('nps', 0):,} nodes/sec\n"
             f"{duration:.2f} seconds  ·  hash {info.get('hashfull', 0) / 10:.1f}%  ·  TB hits {info.get('tbhits', 0)}\n"
-            f"External UCI · Hash {self.engine.connection.applied.get('Hash', 'engine default')} MB · Threads {self.engine.connection.applied.get('Threads', 'engine default')}"
+            f"External UCI · Hash {format_hash_mb(self.engine.connection.applied.get('Hash', 'engine default'))} · Threads {self.engine.connection.applied.get('Threads', 'engine default')}"
         )
         if not self.config.get("details", False):
             self.telemetry.setText(
@@ -2287,6 +2334,7 @@ class MainWindow(QMainWindow):
         self._closing = True
         self.timer.stop()
         self.autosave_timer.stop()
+        self.archive_timer.stop()
         self.engine.close()
         self.game.pause_clock()
         self._save()

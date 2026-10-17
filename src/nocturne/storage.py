@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import hashlib
+import os
 from pathlib import Path
 import sqlite3
+import tempfile
+from uuid import UUID
 
 from .core.game import Game
 
@@ -41,6 +45,9 @@ class Store:
         try:
             payload = json.dumps(game.to_dict(), ensure_ascii=False, allow_nan=False)
             title = f"{game.headers.get('White', 'White')} · {game.headers.get('Black', 'Black')}"
+            event = game.headers.get("Event", "").strip()
+            if event and event != "?":
+                title = event + " · " + title
             result = game.outcome.result if game.outcome else "*"
             now = datetime.now(timezone.utc).isoformat(timespec="seconds")
             with self.db:
@@ -53,6 +60,57 @@ class Store:
                                     (json.dumps(game.id),))
         except (sqlite3.Error, ValueError, TypeError) as exc:
             raise StorageError(f"Cannot save game: {exc}") from exc
+        self.archive_pgn(game)
+
+    @property
+    def pgn_directory(self) -> Path:
+        return self.path.parent / "PGNs"
+
+    def pgn_path(self, game_id: str) -> Path:
+        # Imported save IDs are untrusted; never use them directly as file paths.
+        try:
+            name = str(UUID(game_id))
+        except (ValueError, AttributeError):
+            name = hashlib.sha256(str(game_id).encode("utf-8", errors="surrogatepass")).hexdigest()
+        return self.pgn_directory / f"game-{name}.pgn"
+
+    def archive_pgn(self, game: Game) -> Path:
+        """One atomic, readable PGN per study; the SQLite copy remains authoritative."""
+        temporary = None
+        try:
+            destination = self.pgn_path(game.id)
+            text = game.pgn()
+            self.pgn_directory.mkdir(parents=True, exist_ok=True)
+            if destination.exists():
+                try:
+                    if destination.read_text(encoding="utf-8") == text:
+                        return destination
+                except UnicodeError:
+                    pass  # Repair an incomplete/non-UTF-8 copy from the validated library.
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", newline="\n", dir=self.pgn_directory,
+                prefix=".nocturne-", suffix=".tmp", delete=False,
+            ) as stream:
+                temporary = Path(stream.name)
+                stream.write(text)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, destination)
+            return destination
+        except (OSError, ValueError, TypeError) as exc:
+            raise StorageError(f"Game retained in the library; cannot write its PGN backup: {exc}") from exc
+        finally:
+            if temporary is not None:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+    def game_ids(self) -> list[str]:
+        try:
+            return [row[0] for row in self.db.execute("SELECT id FROM games ORDER BY updated DESC")]
+        except sqlite3.Error as exc:
+            raise StorageError(f"Cannot read saved games: {exc}") from exc
 
     def load(self, game_id: str) -> Game:
         try:

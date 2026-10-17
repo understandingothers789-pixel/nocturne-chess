@@ -15,6 +15,7 @@ The uploaded 2026-10-17 specification is the direction. No custom-engine work.
 - [x] Windows build, simulated UCI tests, GUI and visual validation.
 - [ ] Real Stockfish 19/development, manual Windows/DPI and large Syzygy verification.
 - [x] Multiple game tabs and drag-and-drop PGN import.
+- [x] Automatic PGN archive, saved-game access and background export of earlier library entries.
 - [ ] Named multi-study collections.
 - [ ] Rich tree collapse/search/bookmarks/delete/restore controls.
 - [ ] Cache/snapshots, split-board comparison, independent secondary engine.

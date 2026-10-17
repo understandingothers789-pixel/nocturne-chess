@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from nocturne.core.board import Move, START_FEN
 from nocturne.core.game import Game, TimeControl
@@ -101,6 +102,53 @@ class GameTests(unittest.TestCase):
 
 
 class StorageTests(unittest.TestCase):
+    def test_automatic_pgn_archives_preserve_prior_games_and_full_variations(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Store(Path(tmp) / "games.db")
+            try:
+                first = Game.from_pgn('1.e4 {Keep this note} (1.d4 d5) e5 *')
+                second = Game.from_pgn("1.Nf3 d5 *")
+                store.save(first)
+                store.save(second)
+                original = store.pgn_path(first.id).read_text(encoding="utf-8")
+                self.assertIn("Keep this note", original)
+                self.assertIn("(", original)
+                first.play(first.board.parse_uci("g1f3"))
+                store.save(first)
+                self.assertEqual(len(list(store.pgn_directory.glob("*.pgn"))), 2)
+                self.assertEqual(Game.from_pgn(store.pgn_path(first.id).read_text()).sans, ["e4", "e5", "Nf3"])
+                self.assertEqual(Game.from_pgn(store.pgn_path(second.id).read_text()).sans, ["Nf3", "d5"])
+                store.pgn_path(first.id).write_bytes(b"\xffbroken")
+                store.save(first)
+                self.assertEqual(Game.from_pgn(store.pgn_path(first.id).read_text()).sans[-1], "Nf3")
+                unchanged = store.pgn_path(first.id).stat().st_mtime_ns
+                store.save(first)
+                self.assertEqual(store.pgn_path(first.id).stat().st_mtime_ns, unchanged)
+            finally:
+                store.close()
+
+    def test_pgn_write_failure_retains_database_and_previous_copy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Store(Path(tmp) / "games.db")
+            try:
+                game = Game.from_pgn("1.e4 *")
+                store.save(game)
+                path = store.pgn_path(game.id)
+                prior = path.read_bytes()
+                game.play(game.board.parse_uci("e7e5"))
+                with patch("nocturne.storage.os.replace", side_effect=OSError("disk write failed")):
+                    with self.assertRaisesRegex(StorageError, "retained in the library"):
+                        store.save(game)
+                self.assertEqual(path.read_bytes(), prior)
+                self.assertEqual(store.resume().sans, ["e4", "e5"])
+                self.assertFalse(list(store.pgn_directory.glob("*.tmp")))
+                store.save(game)
+                self.assertEqual(Game.from_pgn(path.read_text()).sans, ["e4", "e5"])
+                escaped = store.pgn_path("../../outside.pgn")
+                self.assertEqual(escaped.parent, store.pgn_directory)
+            finally:
+                store.close()
+
     def test_saved_match_stats_exclude_analysis(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(Path(tmp) / "games.db")

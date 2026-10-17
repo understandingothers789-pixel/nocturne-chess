@@ -103,6 +103,43 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(self.window.game.board.cells[parse_square("e4")], 1)
         self.assertIs(self.window.board_view.board, self.window.game.board)
 
+    def test_prior_pgns_are_retained_and_folder_is_accessible(self):
+        window = self.window
+        window._import_text("1.e4 {prior study} (1.d4 d5) e5 *")
+        first_id = window.game.id
+        window._import_text("1.Nf3 d5 *")
+        second_id = window.game.id
+        window._new_study()
+        first = window.store.pgn_path(first_id)
+        second = window.store.pgn_path(second_id)
+        self.assertIn("prior study", first.read_text(encoding="utf-8"))
+        self.assertIn("(", first.read_text(encoding="utf-8"))
+        self.assertEqual(Game.from_pgn(second.read_text()).sans, ["Nf3", "d5"])
+        with patch("nocturne.gui.window.QDesktopServices.openUrl", return_value=True) as opened:
+            window.menu_actions["Open saved PGN folder"].trigger()
+            self.assertEqual(Path(opened.call_args.args[0].toLocalFile()), window.store.pgn_directory)
+
+    def test_older_library_pgns_backfill_without_changing_resume_or_removing_corrupt_games(self):
+        window = self.window
+        window._save()
+        resume = window.store.get("resume_id")
+        old = Game.from_pgn("1.e4 c5 *")
+        broken = Game.from_pgn("1.d4 *")
+        window.store.save(old, autosave=False)
+        window.store.save(broken, autosave=False)
+        window.store.pgn_path(old.id).unlink()
+        window.store.pgn_path(broken.id).unlink()
+        with window.store.db:
+            window.store.db.execute("UPDATE games SET payload='broken' WHERE id=?", (broken.id,))
+        window._start_pgn_archive_migration()
+        deadline = time.monotonic() + 3
+        while window.archive_timer.isActive() and time.monotonic() < deadline:
+            QTest.qWait(20)
+        self.assertFalse(window.archive_timer.isActive())
+        self.assertEqual(Game.from_pgn(window.store.pgn_path(old.id).read_text()).sans, ["e4", "c5"])
+        self.assertEqual(window.store.get("resume_id"), resume)
+        self.assertIn(broken.id, window.store.game_ids())
+
     def test_nibbler_style_menus_and_no_widget_tooltips(self):
         self.assertEqual(
             [a.text().replace("&", "") for a in self.window.menuBar().actions()],

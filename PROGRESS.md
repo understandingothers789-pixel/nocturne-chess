@@ -783,3 +783,48 @@ README/BUILDING now point to this corrected package. Final local source/wheel an
 checksums refreshed; source ZIP integrity verified. No further product code was
 changed after the passing Windows run. Real Stockfish allocation, manual Windows
 interaction/DPI and larger Syzygy collections remain follow-up verification.
+
+
+## 2026-10-17 — 0.5.2 default PGN archives and resource refinements
+
+Requested: restore default retention/access to prior PGNs, display larger Hash
+sizes in GB, and add a 14-thread choice. SQLite games were still retained, but
+Analysis hid the sidebar and there were no automatic PGN files. Implemented
+Store.archive_pgn/pgn_path and atomic per-study copies in the data directory's
+PGNs folder. Store.save commits the SQLite game before writing the file. A failed
+replace retains the previous PGN and the DB game, removes temporary files and
+reports an error. Unchanged copies keep their timestamps; invalid UTF-8 copies
+are repaired on a later save. Filenames sanitize untrusted save IDs. Event names
+appear in new library titles.
+
+Modified storage.py and gui/window.py: File → Saved PGNs / game library… and
+Open saved PGN folder; folder access in the library; incremental startup export
+of older missing PGNs with a 40 ms timer, no resume-ID changes and no deletion of
+corrupt records. Import/save failures are reported. Preferences save independently
+before the PGN backup attempt; the archive timer stops before closing SQLite.
+
+Modified gui/engine_resources.py, engine_manager.py and window.py: MB below 1,024;
+GB from 1,024 MB (including 1.5 GB); exact MB retained for UCI/custom input. Hash
+menu/default/bounds/current-memory labels, quick controls and detailed telemetry
+share the conversion; generic option editor shows an additional GB readout.
+14 threads is offered only within advertised engine limits.
+
+Tests added/extended in test_game_storage.py, test_gui.py,
+test_engine_resources.py and test_external_analysis.py. Executed focused pytest
+on those four modules: 64 passed in 32.21s; Ruff passed. Coverage includes prior
+study retention, comments/branches, atomic failure/retry and UTF-8 repair, startup
+export/corrupt-record retention/resume stability, folder action, unit boundaries,
+and actual setoption Threads=14 / Hash=2048 while the UI reads 2 GB.
+Earlier storage/external run: 27 passed in 7.38s. No test failures in this phase.
+
+Updated version, Windows build metadata/workflow, README, CHANGELOG, TODO and
+acceptance checklist. Next: actual Qt menu/library inspection, full regression
+suite and native Windows build. Real Stockfish allocation/manual Windows/DPI and
+large Syzygy verification remain open; no strength or speed claim is made.
+
+Full local verification: unittest discovery ran 115 tests in 40.012s,
+OK (skipped=5): 110 passed. Skips remain two optional deep-perft and three
+historical optional native-reader tests. Ruff passed. Rendered and inspected
+actual Qt File/Engine/Hash/Threads menus and the saved-PGN library. Confirmed
+2 GB and checked 14 threads, clear folder access and titled prior studies.
+No failing tests or new implementation blockers. Native Windows CI is next.

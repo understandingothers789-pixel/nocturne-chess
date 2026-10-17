@@ -5,11 +5,17 @@ import unittest
 from unittest.mock import patch
 
 from nocturne.engine.uci_types import parse_option
-from nocturne.gui.engine_resources import validate_resource
+from nocturne.gui.engine_resources import format_hash_mb, validate_resource
 from nocturne.gui.hardware import hash_budget_mb
 
 
 class ResourceTests(unittest.TestCase):
+    def test_hash_units_at_gigabyte_boundary_and_fractional_values(self):
+        for amount, expected in ((512, "512 MB"), (1023, "1,023 MB"), (1024, "1 GB"),
+                                 (1536, "1.5 GB"), (4096, "4 GB"), (1025, "1.001 GB")):
+            with self.subTest(amount=amount):
+                self.assertEqual(format_hash_mb(amount), expected)
+
     def test_custom_hash_uses_engine_bounds_and_memory_budget(self):
         option = parse_option("option name Hash type spin default 16 min 1 max 8192")
         profile = {"options": {"Hash": asdict(option)}, "values": {}}

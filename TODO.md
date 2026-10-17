@@ -17,3 +17,5 @@ Highest-priority remaining checks:
 
 0.5.1 automated Windows package checks passed. Verify actual Stockfish resource
 allocation and manual Windows/DPI behavior; protocol fixture tests do not measure strength.
+
+0.5.2: verify native Windows build and manual Explorer access to saved PGNs.

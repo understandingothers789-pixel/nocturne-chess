@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from .uci_connection import UciConnection
+from .engine_resources import format_hash_mb
 
 
 class EngineManager(QDialog):
@@ -164,6 +165,11 @@ class EngineManager(QDialog):
             else:
                 name_label = name
             self.form.addRow(name_label, w)
+            if name == "Hash" and isinstance(w, QSpinBox):
+                w.setSuffix(" MB")
+                readable = QLabel(format_hash_mb(w.value()))
+                w.valueChanged.connect(lambda value, display=readable: display.setText(format_hash_mb(value)))
+                self.form.addRow("Hash size", readable)
 
     def _add(self):
         path, _ = QFileDialog.getOpenFileName(

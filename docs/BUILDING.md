@@ -1,4 +1,4 @@
-# Windows 11 desktop builds · 0.5.1
+# Windows 11 desktop builds · 0.5.2
 
 [Download the verified 0.5.1 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39007159403/artifacts/12091413076).
 
@@ -13,6 +13,9 @@ Both test runs passed 104 tests with 5 skips; Ruff, PyInstaller and both package
 smoke checks passed. The unsigned artifact is 53,200,607 bytes, retained until
 2026-11-16. SHA-256:
 `ee9c8ee2ad6edbc43185a86e72cd1170185e524c6694bd62ceb43024b93d8ed8`.
+
+0.5.2 Windows validation is pending; the link above remains the prior verified
+build. The new source includes default PGN archives, GB labels and 14 threads.
 
 ## Reproducible Windows build
 
@@ -33,7 +36,7 @@ the installed python-chess Python source and notices.
 Outputs:
 
 - `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
-- `dist/Nocturne-0.5.1-source.zip`: source, tests, documentation, rules-library source.
+- `dist/Nocturne-0.5.2-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI
 executable/native table reader are not part of this distribution. Source installation
