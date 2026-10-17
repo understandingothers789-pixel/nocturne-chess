@@ -51,7 +51,7 @@ def normalize(data) -> dict:
         "layout": ("classic", "analysis-left"),
         "analysis_kind": ("infinite", "explore", "bounded"),
         "candidate_style": ("arrows", "lines"),
-        "explorer_source": ("masters", "lichess"),
+        "explorer_source": ("masters", "lichess", "chessdb"),
         "explorer_speed": ("all", "ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence"),
         "explorer_rating": (0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500),
         "theme": ("Forest", "Walnut", "Slate", "Midnight"),

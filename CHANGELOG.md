@@ -10,6 +10,10 @@
   with speed/rating groups, game counts, White/draw/Black bars and supplied names.
 - Hover database moves without navigating; click to add a legal variation while
   preserving prior lines. Standard-chess positions only; no game downloads yet.
+- Add ChessDB cloud analysis as a third source, with service scores/notes, legal
+  moves, explicit unknown states and learning disabled; no fabricated game counts.
+- Support the current Lichess authentication requirement with masked, session-only
+  token entry, official-host scoping and explicit 401 guidance. Tokens never save.
 - Use cancellable Qt HTTPS, debouncing/pacing, bounded responses, a 256-position
   persistent cache, explicit offline/empty/error states and 429 cooldown.
 - Add deterministic loopback HTTP tests and a separate optional live API check;

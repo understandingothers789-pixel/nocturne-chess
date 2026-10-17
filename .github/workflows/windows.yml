@@ -33,6 +33,6 @@ jobs:
             dist/Nocturne-0.5.4-source.zip
           if-no-files-found: error
           retention-days: 30
-      - name: Live Lichess Masters and player API check
+      - name: Live Masters, Lichess player and ChessDB API check
         continue-on-error: true
         run: python scripts/check_explorer_api.py

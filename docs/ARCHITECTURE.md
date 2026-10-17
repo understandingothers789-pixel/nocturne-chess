@@ -105,3 +105,18 @@ counts are not mixed with engine evaluation or MultiPV ranking.
 Endpoints/filter groups were checked against the official Lichess API specs:
 https://github.com/lichess-org/api/tree/master/doc/specs/tags/openingexplorer
 The online integration does not copy or bundle the AGPL explorer server.
+
+ChessDB is a separate queryall JSON adapter using learn=0 and showall=0. Its
+service score/note rows contain no invented WDL/counts. Normal cp scores are
+oriented to White; large mate/DTZ codes retain an explicit DB prefix. The cache
+key retains the fifty-move clock for this source. Unknown/checkmate/stalemate
+states and semantic rate limits are handled explicitly. Terminal responses are
+checked against local rules. Source: https://chessdb.cn/cloudbookc_api_en.html
+
+Lichess's current official host requires authentication. A masked Database-menu
+dialog sets a session-only Bearer token; it is never persisted or included in
+cache URLs/game records. Authorization is added only to HTTPS port 443 on
+explorer.lichess.org and same-origin redirect policy applies. ChessDB and custom
+test endpoints never receive it. HTTP 401/403 explains the native token menu.
+The optional live check reports unauthenticated sources as protected, separately
+from successful data queries; it never substitutes a fabricated response.

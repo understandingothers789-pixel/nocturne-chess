@@ -52,3 +52,10 @@ Optional online integration calls https://explorer.lichess.org/masters and
 are credited to Lichess in the interface and cached locally on user request.
 No server implementation, database dump or game collection is bundled. The
 Lichess name identifies the service and does not imply endorsement.
+
+### ChessDB cloud database service
+
+Optional queries use https://www.chessdb.cn/cdb.php according to
+https://chessdb.cn/cloudbookc_api_en.html. The interface credits ChessDB; no
+server code or database dump is bundled. Lookups use queryall with learning
+disabled. Service results are kept separate from local engine evaluations.

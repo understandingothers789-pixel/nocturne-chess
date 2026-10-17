@@ -84,12 +84,13 @@ its path to compatible engines; separate folders can be entered using `;` on Win
 in Settings or the engine's own SyzygyPath option. The external engine performs the
 probes, and reported TB hits are displayed. Unsupported options are not fabricated.
 
-## Lichess opening databases
+## Online databases
 
 ![Actual Qt opening explorer with explicitly labelled cached test statistics](docs/opening-explorer.png)
 
 
-Choose **Database → Masters database** or **Lichess players (Amateurs)**.
+Choose **Database → Masters database**, **Lichess players (Amateurs)**, or
+**ChessDB · cloud analysis**.
 The optional, resizable explorer opens beneath the engine's PV list. It follows
 the live position; hovering a move previews it, and clicking inserts that move
 as a variation while preserving existing continuations. Database moves are
@@ -104,9 +105,26 @@ Standard chess is supported; Chess960 database lookup is explicitly unavailable.
 Game lists/individual game downloads are not included in this release.
 
 The explorer starts disabled. When enabled, it sends the current position and
-chosen filters to the public [Lichess opening explorer](https://lichess.org/api#tag/Opening-Explorer).
-No account/token is required. Close it with **×** or **Database → Show opening
-explorer** to stop requests. Engine analysis and local games work offline.
+chosen filters to the selected online database, including the [Lichess opening explorer](https://lichess.org/api#tag/Opening-Explorer).
+Lichess now requires authentication. Use **Database → Create a Lichess access
+token…**, create a personal token with no extra permissions, then paste it into
+**Lichess access token…**. The masked token stays in memory for this session;
+it is never written into settings, games, PGNs or cache. It is sent only to
+`https://explorer.lichess.org`; cross-origin redirects cannot forward it.
+**Clear session access token** removes it. Enter it again after restarting.
+
+Close the panel with **×** or **Database → Show database explorer** to stop
+requests. Engine analysis and local games work offline.
+
+**ChessDB** uses its official JSON `queryall` API with learning disabled. It shows
+known move scores and service notes, with scores oriented to White. Normal scores
+are shown in pawns; large mate/tablebase encodings are labelled `DB` and retained
+as raw codes, rather than guessing a mate distance. Unknown moves/positions are
+explicit. These are remote analysis records, separate from local engine scores
+and Lichess game statistics. Lichess speed/rating filters do not apply. A Lichess
+token is never sent to ChessDB; no ChessDB login is needed.
+
+![Actual Qt ChessDB view with explicitly labelled cached test scores](docs/chessdb-explorer.png)
 
 Up to 256 positions/filter combinations are cached in `opening-cache.sqlite3`
 beside the game library. Cached data is fresh for 24 hours; older saved data is

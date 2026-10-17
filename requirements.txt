@@ -1,4 +1,4 @@
-# Reproducible desktop runtime. No network is used after installation.
+# Reproducible desktop runtime. Offline core; optional databases use HTTPS.
 PySide6==6.8.3
 PySide6_Addons==6.8.3
 PySide6_Essentials==6.8.3

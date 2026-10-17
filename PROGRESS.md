@@ -1031,3 +1031,45 @@ name, not bytes. Fixed the Retry-After call. The run had 132 tests in 63.210s:
 126 passed, 1 failed, 5 skipped; packaging/live checks were correctly blocked.
 Source ZIP and wheel built locally and passed integrity checks; source excludes
 executables/script launchers. Next: rerun Windows with the header fix.
+
+
+## 2026-10-17 — 0.5.4 ChessDB and current Lichess authentication
+
+User added ChessDB during Windows validation. Read its official web/API docs and
+source format. Added queryall JSON requests with learn=0/showall=0, a distinct
+score/note view and no fabricated game counts/WDL. Normal cp scores orient to
+White; large mate/tablebase codes are labelled DB and retained raw. Queries keep
+the fifty-move clock. Validate all moves/SAN, terminal states and numeric scores;
+handle unknown positions and the service's HTTP-200 rate-limit status explicitly.
+The same cache, cancellation, preview and variation-preserving click paths apply.
+Files: explorer.py, explorer_client.py, explorer_panel.py, window.py, settings.py,
+HTTP/data/GUI tests, live-check script, captures, workflow and docs.
+
+Prior header-fix run 39064687693/job 117489747050 succeeded in packaging code
+ac65db318cedcb660bbb8cb1b67ec976079c7873. Both native test runs passed 127 tests
+with 5 skips (132 total, 76.554s / 54.334s). All HTTP regressions including 429
+passed; frozen explorer/study/save and external-UCI smoke checks passed. Its live
+API step returned HTTP 401 for Masters. Although continue-on-error marked the
+workflow green, that is NOT successful live data verification. No such claim.
+
+Current official Lichess docs declare OAuth authentication, and its first-party
+mobile issue #3161 documents this 2026 change. Added a masked Database-menu token
+dialog and token-creation link. Credentials remain in memory only, never in
+settings/PGN/cache, and go only to HTTPS explorer.lichess.org:443 with same-origin
+redirects. ChessDB/test/other hosts never receive them; 401/403 gives a clear
+instruction. A real user token is not available here; authenticated live data
+remains a manual check. The live script now distinguishes protected endpoints
+from data success and continues to independently check ChessDB.
+
+After ChessDB: explorer tests 8 passed / 6 socket-dependent skipped in 0.74s;
+full local suite ran 136 tests in 45.021s, OK (11 skipped): 125 passed.
+After session-token tests: explorer pytest 9 passed / 6 skipped in 0.98s; Ruff and
+desktop smoke passed. Tests cover scoped Authorization, masked entry and absence
+from saved data as well as ChessDB schema/scores/cache/branches. Full final suite
+and native Windows run follow. Updated docs to remove the obsolete no-token claim.
+
+Final local full suite after ChessDB and token support: 137 tests in 45.150s,
+OK (skipped=11): 126 passed. Six HTTP tests are sandbox-skipped; the other five
+are existing optional checks. Refreshed/inspected actual wide and compact ChessDB
+captures with explicitly labelled fixture scores. No live authenticated Lichess
+data is represented in screenshots. Final Windows validation is next.

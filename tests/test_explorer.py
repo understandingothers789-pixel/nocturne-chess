@@ -8,6 +8,7 @@ import tempfile
 import time
 import unittest
 from urllib.parse import parse_qs, urlsplit
+from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtCore import QTimer, Qt
@@ -17,7 +18,7 @@ from PySide6.QtWidgets import QApplication
 
 from nocturne.core.game import Game
 from nocturne.core.rules import Board
-from nocturne.explorer import ExplorerCache, ExplorerQuery, RATINGS, parse_statistics
+from nocturne.explorer import ExplorerCache, ExplorerQuery, RATINGS, chessdb_score, parse_statistics
 from nocturne.gui.explorer_client import ExplorerClient
 from nocturne.gui.window import MainWindow
 
@@ -68,7 +69,8 @@ class HttpFixture(QTcpServer):
         peer._handled = True
         path = peer._request.split(b" ")[1].decode()
         self.requests.append((time.monotonic(), path))
-        fen = parse_qs(urlsplit(path).query)["fen"][0]
+        params = parse_qs(urlsplit(path).query)
+        fen = params.get("fen", params.get("board"))[0]
         body = self.body if self.body is not None else json.dumps(statistics(fen)).encode()
         response = (f"HTTP/1.1 {self.code} Response\r\nContent-Type: application/json\r\n"
                     f"Content-Length: {len(body)}\r\nRetry-After: 2\r\nConnection: close\r\n\r\n").encode() + body
@@ -94,6 +96,38 @@ class HttpFixture(QTcpServer):
 
 
 class DataTests(unittest.TestCase):
+    def test_chessdb_query_is_read_only_and_scores_remain_distinct_from_game_counts(self):
+        query = ExplorerQuery(Game().board.fen(), "chessdb")
+        params = parse_qs(urlsplit(query.url()).query)
+        self.assertEqual(urlsplit(query.url()).netloc, "www.chessdb.cn")
+        self.assertEqual(params["action"], ["queryall"])
+        self.assertEqual(params["learn"], ["0"])
+        self.assertEqual(params["json"], ["1"])
+        data = {"status": "ok", "moves": [
+            {"uci": "d2d4", "score": "??"}, {"uci": "e2e4", "score": 28, "note": "service note"}]}
+        result = parse_statistics(data, query)
+        self.assertEqual(result["moves"][0]["uci"], "e2e4")
+        self.assertNotIn("total", result)
+        self.assertNotIn("white", result["moves"][0])
+        self.assertEqual(chessdb_score(28, query.fen), "+0.28")
+        board = Game().board
+        board.play_uci("e2e4")
+        self.assertEqual(chessdb_score(28, board.fen()), "-0.28")
+        self.assertEqual(chessdb_score(29999, board.fen()), "DB -29999")
+        self.assertEqual(chessdb_score("??", query.fen), "Unscored")
+        changed_clock = query.fen.rsplit(" ", 2)[0] + " 80 1"
+        self.assertNotEqual(query.key, ExplorerQuery(changed_clock, "chessdb").key)
+
+    def test_chessdb_unknown_terminal_and_illegal_data_handling(self):
+        query = ExplorerQuery(Game().board.fen(), "chessdb")
+        self.assertEqual(parse_statistics({"status": "unknown"}, query)["moves"], [])
+        for payload in ({"status": "error"}, {"status": "checkmate"},
+                        {"status": "ok", "moves": [{"uci": "e2e5", "score": 10}]},
+                        {"status": "ok", "moves": [{"uci": "e2e4", "score": True}]}):
+            with self.assertRaises(ValueError):
+                parse_statistics(payload, query)
+        mate = ExplorerQuery("7k/6Q1/5K2/8/8/8/8/8 b - - 0 1", "chessdb")
+        self.assertEqual(parse_statistics({"status": "checkmate"}, mate)["status"], "checkmate")
     def test_url_filters_counters_and_source_isolation(self):
         root = Game().board.fen()
         q = ExplorerQuery(root, "lichess", "rapid", 1800)
@@ -185,6 +219,19 @@ class NetworkTests(unittest.TestCase):
         QTest.qWait(30)
         self.assertEqual(len(self.server.requests), 1)
 
+    def test_chessdb_json_adapter_and_semantic_rate_limit(self):
+        query = ExplorerQuery(self.query.fen, "chessdb")
+        self.server.body = json.dumps({"status": "ok", "moves": [{"uci": "e2e4", "score": 28}]}).encode()
+        self.client.load(query)
+        self.wait_for(lambda: bool(self.results))
+        self.assertEqual(self.results[-1][1]["moves"][0]["score"], 28)
+        self.assertIn("/cdb.php?", self.server.requests[0][1])
+        self.server.body = b'{"status":"rate limit exceeded"}'
+        self.client.load(query, force=True)
+        self.wait_for(lambda: "ChessDB rate limit" in self.status[-1])
+        self.assertIn("showing saved statistics", self.status[-1])
+        self.assertGreater(self.client.blocked_until - time.monotonic(), 59)
+
     def test_debounce_cancellation_and_late_results_do_not_change_current_position(self):
         self.client.debounce_ms = 30
         self.client.load(self.query)
@@ -216,7 +263,7 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(len(self.server.requests), 1)
 
     def test_errors_invalid_payload_size_limit_timeout_and_close(self):
-        for code, body, expected in ((503, b"unavailable", "HTTP 503"), (200, b"{broken", "invalid"),
+        for code, body, expected in ((503, b"unavailable", "HTTP 503"), (401, b"unauthorized", "access token required"), (200, b"{broken", "invalid"),
                                       (200, b" " * (512 * 1024 + 1), "size limit")):
             self.server.code, self.server.body = code, body
             self.client.load(self.query, force=True)
@@ -245,6 +292,62 @@ class CachedGuiTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
+
+    def test_lichess_session_token_is_host_scoped_and_never_saved(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        window = MainWindow(Path(directory.name))
+        self.addCleanup(window.deleteLater)
+        self.addCleanup(window.close)
+        window._analysis_enabled = False
+        client = window.explorer.client
+        with patch("PySide6.QtWidgets.QInputDialog.getText", return_value=("lip_unit_test_only", True)) as dialog:
+            window._lichess_token_dialog()
+        from PySide6.QtWidgets import QLineEdit
+        self.assertEqual(dialog.call_args.args[-1], QLineEdit.EchoMode.Password)
+        query = ExplorerQuery(window.game.board.fen())
+        self.assertEqual(bytes(client.request_for(query).rawHeader("Authorization")), b"Bearer lip_unit_test_only")
+        self.assertEqual(bytes(client.request_for(ExplorerQuery(query.fen, "chessdb")).rawHeader("Authorization")), b"")
+        for other in ("https://example.test", "http://explorer.lichess.org", "https://explorer.lichess.org:444"):
+            client.base_url = other
+            self.assertEqual(bytes(client.request_for(query).rawHeader("Authorization")), b"")
+        client.base_url = None
+        with self.assertRaises(ValueError):
+            client.set_lichess_token("bad\r\nheader")
+        window._save()
+        self.assertFalse(any("lip_unit_test_only" in line for line in window.store.db.iterdump()))
+        self.assertTrue(window.clear_lichess_token_action.isEnabled())
+        window._clear_lichess_token()
+        self.assertFalse(client.has_lichess_token)
+        self.assertFalse(window.clear_lichess_token_action.isEnabled())
+
+    def test_chessdb_menu_uses_score_columns_and_clicks_create_variations(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        window = MainWindow(Path(directory.name))
+        self.addCleanup(window.deleteLater)
+        self.addCleanup(window.close)
+        window._analysis_enabled = False
+        window.timer.stop()
+        window.autosave_timer.stop()
+        window.game = Game.from_pgn("1.d4 d5 *")
+        window.game.navigate(0)
+        query = ExplorerQuery(window.game.board.fen(), "chessdb")
+        window.explorer.client.cache.put(query.key, {"status": "ok", "moves": [
+            {"uci": "e2e4", "score": 28, "note": "Fixture"}, {"uci": "g1f3", "score": "??"}]})
+        window._refresh()
+        window.show()
+        window.explorer_actions[("explorer_source", "chessdb")].trigger()
+        self.app.processEvents()
+        self.assertEqual(window.explorer.table.horizontalHeaderItem(1).text(), "Score · White")
+        self.assertEqual(window.explorer.table.item(0, 1).text(), "+0.28")
+        self.assertFalse(window.explorer_filter_menus[0].isEnabled())
+        self.assertEqual(window.explorer.table.item(1, 1).text(), "Unscored")
+        window.explorer._click(0, 0)
+        self.assertEqual(window.game.sans, ["e4"])
+        self.assertIn("d4", window.game.pgn())
+        self.assertIn("(", window.game.pgn())
+        window._set_explorer_option("explorer_enabled", False)
 
     def test_source_filters_pause_in_pgn_and_reopen_from_cache(self):
         directory = tempfile.TemporaryDirectory()

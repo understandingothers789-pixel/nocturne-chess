@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFormLayout,
     QInputDialog,
+    QLineEdit,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -616,10 +617,11 @@ class MainWindow(QMainWindow):
         add(engine, "Restart selected engine", self._restart_engine)
         add(engine, "Engine diagnostics…", self._diagnostics)
         database = self.menuBar().addMenu("&Database")
-        self.explorer_enabled_action = add(database, "Show opening explorer", lambda checked: self._set_explorer_option("explorer_enabled", checked))
+        self.explorer_enabled_action = add(database, "Show database explorer", lambda checked: self._set_explorer_option("explorer_enabled", checked))
         self.explorer_enabled_action.setCheckable(True)
         self.explorer_actions = {}
-        for source, title in (("masters", "Masters database"), ("lichess", "Lichess players (Amateurs)")):
+        for source, title in (("masters", "Masters database"), ("lichess", "Lichess players (Amateurs)"),
+                              ("chessdb", "ChessDB · cloud analysis")):
             action = add(database, title, lambda checked=False, s=source: self._choose_explorer(s))
             action.setCheckable(True)
             self.explorer_actions[("explorer_source", source)] = action
@@ -634,7 +636,12 @@ class MainWindow(QMainWindow):
             action.setCheckable(True)
             self.explorer_actions[("explorer_rating", value)] = action
         self.explorer_filter_menus = (speeds, ratings)
-        add(database, "Refresh opening statistics", self.explorer.refresh)
+        database.addSeparator()
+        add(database, "Lichess access token…", self._lichess_token_dialog)
+        add(database, "Create a Lichess access token…", lambda: QDesktopServices.openUrl(
+            QUrl("https://lichess.org/account/oauth/token/create?description=Nocturne%20database%20explorer")))
+        self.clear_lichess_token_action = add(database, "Clear session access token", self._clear_lichess_token)
+        add(database, "Refresh database results", self.explorer.refresh)
         play = self.menuBar().addMenu("&Play")
         add(play, "New game…", self._new_game)
         add(play, "Pause / continue", self._pause, "Space")
@@ -668,6 +675,28 @@ class MainWindow(QMainWindow):
         self._sync_explorer()
         self._save()
 
+    def _lichess_token_dialog(self):
+        token, accepted = QInputDialog.getText(
+            self, "Lichess access token", "Paste a personal access token with no extra permissions.\n"
+            "It stays in memory until you close Nocturne; it is never saved in games or settings.",
+            QLineEdit.EchoMode.Password)
+        if accepted:
+            try:
+                self.explorer.client.set_lichess_token(token)
+            except ValueError as exc:
+                self._error("Invalid access token", str(exc))
+                return
+            self._sync_explorer()
+            if self.explorer.query and self.explorer.query.source != "chessdb":
+                self.explorer.refresh()
+
+    def _clear_lichess_token(self):
+        self.explorer.client.set_lichess_token("")
+        if self.explorer.query and self.explorer.query.source != "chessdb":
+            self.explorer.client.cancel()
+            self.explorer.status_label.setText("Session token cleared · cached results remain available")
+        self._sync_explorer()
+
     def _set_explorer_option(self, key, value):
         self.config[key] = value
         if key == "explorer_enabled" and value:
@@ -682,6 +711,7 @@ class MainWindow(QMainWindow):
         enabled = bool(self.config.get("explorer_enabled"))
         active = enabled and self.analysis_mode and self.tabs.currentIndex() == 1
         if hasattr(self, "explorer_actions"):
+            self.clear_lichess_token_action.setEnabled(self.explorer.client.has_lichess_token)
             self.explorer_enabled_action.setChecked(enabled)
             for (key, value), action in self.explorer_actions.items():
                 action.setChecked(self.config.get(key) == value)

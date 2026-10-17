@@ -24,6 +24,7 @@ and real Stockfish allocation remain to verify on a user desktop.
 0.5.3 native Windows tests/build and packaged smoke checks passed. Manual real
 Stockfish MultiPV, DPI and desktop interaction verification remains open.
 
-0.5.4: native HTTP/TLS/packaged-explorer verification pending. Manual Windows
+0.5.4: final ChessDB/authenticated-explorer HTTP/TLS/package verification pending.
+Verify live Lichess data using a user-provided session token. Manual Windows
 explorer interactions and real Stockfish marker behavior remain to verify.
 Individual database game lists/downloads and Chess960 lookup are deferred.

@@ -1,4 +1,4 @@
-"""Lichess opening-explorer queries, validated statistics and a bounded local cache."""
+"""Online chess databases: validated queries/results and a bounded local cache."""
 
 from dataclasses import dataclass
 import hashlib
@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 import chess
 
 EXPLORER_URL = "https://explorer.lichess.org"
+CHESSDB_URL = "https://www.chessdb.cn"
 SPEEDS = ("ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence")
 RATINGS = (0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500)
 MAX_RESPONSE = 512 * 1024
@@ -25,17 +26,28 @@ class ExplorerQuery:
     rating: int = 0
 
     def __post_init__(self):
-        if self.source not in ("masters", "lichess") or self.speed not in ("all", *SPEEDS):
+        if self.source not in ("masters", "lichess", "chessdb") or self.speed not in ("all", *SPEEDS):
             raise ValueError("Unsupported explorer source or speed")
         if type(self.rating) is not int or self.rating not in RATINGS:
             raise ValueError("Unsupported rating group")
         board = chess.Board(self.fen)
         if not board.is_valid() or any(c not in "KQkq-" for c in self.fen.split()[2]):
             raise ValueError("Opening explorer supports standard chess positions")
-        # Counters do not affect opening statistics; retain legal en passant rights.
-        object.__setattr__(self, "fen", " ".join(board.fen(en_passant="legal").split()[:4]) + " 0 1")
+        # Opening counts ignore counters; cloud analysis retains the fifty-move clock.
+        fields = board.fen(en_passant="legal").split()
+        canonical = fields[:5] + ["1"] if self.source == "chessdb" else fields[:4] + ["0", "1"]
+        object.__setattr__(self, "fen", " ".join(canonical))
 
-    def url(self, base=EXPLORER_URL):
+    @property
+    def label(self):
+        return {"masters": "Lichess Masters", "lichess": "Lichess players", "chessdb": "ChessDB"}[self.source]
+
+    def url(self, base=None):
+        base = base or (CHESSDB_URL if self.source == "chessdb" else EXPLORER_URL)
+        if self.source == "chessdb":
+            return base.rstrip("/") + "/cdb.php?" + urlencode({
+                "action": "queryall", "board": self.fen, "json": 1, "learn": 0, "showall": 0,
+            })
         params = {"fen": self.fen, "moves": 12, "topGames": 0}
         if self.source == "lichess":
             params.update(variant="standard", recentGames=0,
@@ -50,6 +62,8 @@ class ExplorerQuery:
 
 def parse_statistics(payload, query):
     """Never trust a remote SAN string or allow a database move to bypass rules."""
+    if query.source == "chessdb":
+        return parse_chessdb(payload, query)
     if not isinstance(payload, dict) or not isinstance(payload.get("moves"), list):
         raise ValueError("Invalid opening statistics")
 
@@ -79,6 +93,45 @@ def parse_statistics(payload, query):
         if isinstance(opening, dict) else None
     )
     return result
+
+
+def parse_chessdb(payload, query):
+    if not isinstance(payload, dict) or payload.get("status") not in ("ok", "unknown", "checkmate", "stalemate"):
+        raise ValueError("Invalid ChessDB response")
+    status = payload["status"]
+    board = chess.Board(query.fen)
+    if (status == "checkmate" and not board.is_checkmate()) or (status == "stalemate" and not board.is_stalemate()):
+        raise ValueError("ChessDB terminal status disagrees with legal rules")
+    if status != "ok":
+        return {"status": status, "moves": []}
+    rows = payload.get("moves")
+    if not isinstance(rows, list) or len(rows) > 256:
+        raise ValueError("Invalid ChessDB move list")
+    moves, seen = [], set()
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("uci"), str):
+            raise ValueError("Invalid ChessDB move")
+        move = board.parse_uci(row["uci"])
+        score = row.get("score")
+        if not move or move not in board.legal_moves or move in seen:
+            raise ValueError("Illegal or duplicate ChessDB move")
+        if not ((type(score) is int and -40000 <= score <= 40000) or score == "??"):
+            raise ValueError("Invalid ChessDB score")
+        seen.add(move)
+        moves.append({"uci": move.uci(), "san": board.san(move), "score": score,
+                      "note": " ".join(str(row.get("note", "")).split())[:120]})
+    # These are service scores for the side to move, independent of local MultiPV.
+    moves.sort(key=lambda row: -(row["score"] if type(row["score"]) is int else -100000))
+    return {"status": status, "moves": moves}
+
+
+def chessdb_score(score, fen):
+    if score == "??":
+        return "Unscored"
+    white = score * (1 if chess.Board(fen).turn else -1)
+    # ChessDB encodes tablebase/mate values above the normal cp range. Preserve
+    # those codes instead of inventing a mate distance or a giant pawn score.
+    return f"{white / 100:+.2f}" if abs(white) < 10000 else f"DB {white:+}"
 
 
 class ExplorerCache:

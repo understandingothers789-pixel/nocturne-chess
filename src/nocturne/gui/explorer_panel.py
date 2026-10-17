@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from ..explorer import ExplorerCache, ExplorerQuery
+from ..explorer import ExplorerCache, ExplorerQuery, chessdb_score
 from .explorer_client import ExplorerClient
 
 
@@ -51,15 +51,15 @@ class OpeningExplorer(QWidget):
         layout.setContentsMargins(0, 4, 0, 0)
         layout.setSpacing(3)
         header = QHBoxLayout()
-        self.title = QLabel("Opening explorer")
+        self.title = QLabel("Database explorer")
         self.title.setTextFormat(Qt.TextFormat.PlainText)
         header.addWidget(self.title, 1)
         refresh = QPushButton("↻")
-        refresh.setAccessibleName("Refresh opening explorer")
+        refresh.setAccessibleName("Refresh database explorer")
         refresh.setFixedWidth(36)
         refresh.clicked.connect(self.refresh)
         close = QPushButton("×")
-        close.setAccessibleName("Close opening explorer")
+        close.setAccessibleName("Close database explorer")
         close.setFixedWidth(36)
         close.clicked.connect(self.close_requested)
         header.addWidget(refresh)
@@ -87,7 +87,7 @@ class OpeningExplorer(QWidget):
         self.table.cellClicked.connect(self._click)
         self.table.cellEntered.connect(self._preview)
         layout.addWidget(self.table, 1)
-        self.status_label = QLabel("Online when enabled · statistics, not engine scores")
+        self.status_label = QLabel("Online when enabled · service data")
         self.status_label.setTextFormat(Qt.TextFormat.PlainText)
         self.status_label.setWordWrap(True)
         self.status_label.setObjectName("muted")
@@ -122,9 +122,11 @@ class OpeningExplorer(QWidget):
         self.query = query
         self.rows = []
         self.table.setRowCount(0)
-        self.title.setText("Masters" if source == "masters" else
+        self.title.setText("ChessDB · cloud analysis" if source == "chessdb" else "Masters" if source == "masters" else
                            f"Lichess players · {speed} · " + (f"{rating}+" if rating else "all ratings"))
-        self.summary.setText("Opening statistics · " + (
+        self.table.setHorizontalHeaderLabels(["Move", "Score · White", "Database note"] if source == "chessdb" else
+                                            ["Move", "Games", "White / Draw / Black"])
+        self.summary.setText("Cloud analysis · White's perspective" if source == "chessdb" else "Opening statistics · " + (
             "master games" if source == "masters" else f"{speed} speeds · " + (f"{rating}+" if rating else "all ratings")))
         self.client.load(query)
 
@@ -138,6 +140,16 @@ class OpeningExplorer(QWidget):
         self._end_preview()
         self.rows = data["moves"]
         self.table.setRowCount(len(self.rows))
+        if self.query.source == "chessdb":
+            for i, row in enumerate(self.rows):
+                for column, value in enumerate((row["san"], chessdb_score(row["score"], self.query.fen), row["note"])):
+                    self.table.setItem(i, column, QTableWidgetItem(value))
+            self.summary.setText(f"{len(self.rows)} moves · service scores, White's perspective" if self.rows else {
+                "unknown": "Position not yet known to ChessDB", "checkmate": "Checkmate · no moves",
+                "stalemate": "Stalemate · no moves", "ok": "No scored moves available",
+            }[data["status"]])
+            self.status_label.setText(origin)
+            return
         for i, row in enumerate(self.rows):
             self.table.setItem(i, 0, QTableWidgetItem(row["san"]))
             self.table.setItem(i, 1, QTableWidgetItem(f"{row['total']:,}"))
