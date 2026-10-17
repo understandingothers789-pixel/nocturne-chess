@@ -639,3 +639,15 @@ Candidate/PV state now resets when engine profile, options, limits, MultiPV or
 searchmoves changes; targeted analysis is labelled and uses PV 1. Same-position
 pinned rows remain stable during updates within a context. This prevents mixed
 old/new candidate sets from implying comparable current analysis.
+
+Position identities also include the variation node ID: transposed branches can
+share board/hash/ply while carrying different repetition or halfmove history.
+The context regression now builds two such branches and verifies a recommendation
+from the other branch cannot execute.
+
+Native Windows run 38993814111 succeeded: validation, PyInstaller GUI build,
+packaged study/save smoke, packaged external-UCI fixture smoke, source archive
+and upload all passed. Subsequent analysis-context checks add branch node IDs
+and board-render revisions to reject stale choices even across transpositions
+or a board replacement with identical FEN. External suite 13 passed in 5.03s;
+Ruff passed. A final Windows build will validate those additional guards.

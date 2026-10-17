@@ -206,6 +206,18 @@ class QtIntegration(unittest.TestCase):
             self.assertEqual(list(window.candidates.lines), [1])
             self.assertEqual(window.candidates.lines[1]["pv"][0], target)
             self.assertIn("Targeted analysis", window.tradeoff_label.text())
+            window._stop_engine()
+            window.game = Game.from_pgn("1.Nf3 Nf6 2.g3 g6 *")
+            original = window._position_identity()
+            window.game.navigate(0)
+            for text in ("g2g3", "g7g6", "g1f3", "g8f6"):
+                window.game.play(window.game.board.parse_uci(text))
+            self.assertEqual(original[2], window.game.board.key)
+            self.assertNotEqual(original, window._position_identity())
+            window._candidate_identity = original
+            cursor = window.game.cursor
+            window._execute_rank(1)
+            self.assertEqual(window.game.cursor, cursor)
 
     def test_selected_piece_priority_and_stale_recommendation(self):
         from nocturne.gui.board import BoardWidget

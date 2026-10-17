@@ -1992,7 +1992,7 @@ class MainWindow(QMainWindow):
         )
 
     def _position_identity(self):
-        return self.game.id, self.game.cursor, self.game.board.key
+        return self.game.id, self.game.cursor, self.game.board.key, self.game.current_node
 
     def _stop_engine(self):
         if self._review and not self._review.get("paused") and self._job is None:

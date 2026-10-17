@@ -32,6 +32,7 @@ class BoardWidget(QWidget):
         self.overlays = True
         self.last_move: Move | None = None
         self.best_move: Move | None = None
+        self._position_revision = 0
         self.recommendations = []
         self.recommendation_fen = None
         self.smart_move = False
@@ -85,6 +86,7 @@ class BoardWidget(QWidget):
         return rank * 16 + file
 
     def set_position(self, board: Board, last_move: Move | None = None, animate=False):
+        self._position_revision += 1
         self.clear_preview()
         self._animation.stop()
         self._anim_move = None
@@ -114,6 +116,7 @@ class BoardWidget(QWidget):
 
     def _smart_request(self, square, global_pos):
         root_fen = self.board.fen()
+        revision = self._position_revision
         if not self.smart_move or self.recommendation_fen != self.board.fen():
             return False
         legal = list(self.board.legal_moves())
@@ -138,6 +141,7 @@ class BoardWidget(QWidget):
             move = choices[0][0]
         if (
             self.board.fen() != root_fen
+            or self._position_revision != revision
             or not self.interactive
             or self.preview_board is not None
             or move not in list(self.board.legal_moves())
@@ -322,6 +326,7 @@ class BoardWidget(QWidget):
 
     def _request(self, src: int, dst: int, global_pos) -> bool:
         root_fen = self.board.fen()
+        revision = self._position_revision
         candidates = [
             m for m in self.legal if m.from_sq == src and (m.to_sq == dst or self._destination(m) == dst)
         ]
@@ -349,6 +354,7 @@ class BoardWidget(QWidget):
             move = candidates[0]
         if (
             self.board.fen() != root_fen
+            or self._position_revision != revision
             or not self.interactive
             or self.preview_board is not None
             or move not in list(self.board.legal_moves())
