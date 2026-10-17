@@ -828,3 +828,28 @@ historical optional native-reader tests. Ruff passed. Rendered and inspected
 actual Qt File/Engine/Hash/Threads menus and the saved-PGN library. Confirmed
 2 GB and checked 14 threads, clear folder access and titled prior studies.
 No failing tests or new implementation blockers. Native Windows CI is next.
+
+
+## 0.5.2 — Verified Windows delivery
+
+Published source bb12d4b1010a9638d795eb66f6012ff4f35c0c21 to nocturne-chess.
+Windows run 39008543023 / job 117325913201 succeeded. Full unittest discovery
+executed 115 tests, OK (skipped=5): 110 passed in 57.325s. The clean builder
+repeated the suite: 110 passed / 5 skipped in 58.544s. Ruff, PyInstaller,
+frozen study/save and external-UCI fixture smoke checks, source archive creation
+and upload all passed. Native file tests cover PGN replacement failure/recovery,
+UTF-8 repair, full variation retention and old-library background export.
+The engine fixture verifies 14 threads and 2,048 MB commands with a 2 GB label.
+
+Artifact 12092370151: Nocturne-0.5.2-Windows-x64-unsigned, 53,268,918 bytes.
+SHA-256 8bfe7e11fbde2f9446ffa55659e09c07ac82b1d307725dd6595dc9d6ff22d7e5.
+Metadata reports unexpired, retained until 2026-11-16. Download:
+https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39008543023/artifacts/12092370151
+
+README and BUILDING link to the verified download; TODO keeps manual Explorer,
+real-engine allocation, DPI and large-Syzygy checks open. Actual Qt File, resource
+menus and saved-library screenshots are in docs. Source ZIP integrity and pure
+Python wheel build passed; no executable or script launcher is in the source
+archive. Final local archives/checksums refreshed after this documentation update.
+No product code changed after the passing native Windows build. No strength or
+speed claims, engine/table downloads, batch launchers or security changes added.
