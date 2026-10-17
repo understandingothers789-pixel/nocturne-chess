@@ -1,6 +1,8 @@
 # Windows 11 desktop builds · 0.5
 
-Download the latest successful **Nocturne-0.5.0-Windows-x64-unsigned** artifact from
+[Download the verified 0.5.0 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38994172390/artifacts/12086018094).
+
+Alternatively, select the successful **Nocturne-0.5.0-Windows-x64-unsigned** artifact from
 [Windows Actions](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
 Sign into GitHub, download, Extract All, then open **Nocturne/Nocturne.exe**.
 Keep the full folder. No Python, compiler or batch launcher is needed to play/analyze.

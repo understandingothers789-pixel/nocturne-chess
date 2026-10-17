@@ -41,7 +41,7 @@ Failed processes can be explicitly restarted. Executable/arguments are separate;
 there is no shell or web content. UTF-8 is used with replacement for diagnostics.
 
 Only the GUI thread mutates a study. PV prefixes and bestmove are checked against
-its snapshot. A second identity guard rejects results for a changed game/cursor/key.
+its snapshot. A second identity guard rejects results for a changed game/cursor/key/variation node.
 Hover positions are separate boards and never become the analyzed position.
 Smart Move requires a matching full FEN and rechecks live legal moves. An ordinary
 selected piece takes priority; ambiguity and promotions require explicit choices.

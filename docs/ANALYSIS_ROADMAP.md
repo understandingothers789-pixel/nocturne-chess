@@ -11,7 +11,8 @@ The uploaded 2026-10-17 specification is the direction. No custom-engine work.
 - [x] Full-game external analysis, pause/resume/cancel, reliable evaluation export.
 - [x] Graph navigation and resizable classic/analysis-left workspaces.
 - [x] Command palette, shortcuts, position setup and image export.
-- [ ] Windows build, simulated UCI tests, GUI and visual validation.
+- [x] Windows build, simulated UCI tests, GUI and visual validation.
+- [ ] Real Stockfish 19/development, manual Windows/DPI and large Syzygy verification.
 - [x] Multiple game tabs and drag-and-drop PGN import.
 - [ ] Named multi-study collections.
 - [ ] Rich tree collapse/search/bookmarks/delete/restore controls.

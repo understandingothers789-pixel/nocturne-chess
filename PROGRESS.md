@@ -651,3 +651,26 @@ and upload all passed. Subsequent analysis-context checks add branch node IDs
 and board-render revisions to reject stale choices even across transpositions
 or a board replacement with identical FEN. External suite 13 passed in 5.03s;
 Ruff passed. A final Windows build will validate those additional guards.
+
+## 0.5.0 — Verified Windows delivery
+
+Final run 38994172390 succeeded for commit
+0f9040a578ff610231dcc3fc65503a61538a3fa7. Windows unittest discovery ran
+104 tests, OK (skipped=5): 99 passed in 52.754s. The builder repeated all
+104 tests, again 99 passed/5 skipped in 45.241s. Ruff, dependency installation,
+PyInstaller GUI build, frozen study/save smoke, frozen external-UCI fixture
+smoke, corresponding source archive and upload all passed. No custom engine
+executable or test simulator was bundled in the desktop application.
+
+Artifact 12086018094: Nocturne-0.5.0-Windows-x64-unsigned, 53150138 bytes,
+SHA-256 1dd785857e4edd6ca2a77d3eb9507cf37133451658ed6857a084d75f9f95e113.
+Metadata reports unexpired, retained until 2026-11-16. Download:
+https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38994172390/artifacts/12086018094
+
+README/BUILDING now link to the verified download. Roadmap marks automated
+Windows delivery complete while preserving real-engine/manual verification
+as outstanding. Source ZIP and pure-Python wheel are refreshed locally with
+GPL notices and rules-library source in the ZIP. Original code/assets retain
+MIT. No claim of full Nibbler parity or measured engine strength is made.
+Remaining features and the verified/report/recommendation distinctions are
+listed in docs/ANALYSIS_ROADMAP.md and docs/NIBBLER_RESEARCH.md.
