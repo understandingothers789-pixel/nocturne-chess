@@ -607,7 +607,7 @@ class GuiTests(unittest.TestCase):
         self.app.processEvents()
         self.assertFalse(self.window.tabs.tabBar().isVisible())
         self.assertIs(self.window.main_splitter.widget(1), self.window.panel)
-        self.assertGreater(self.window.panel.width(), self.window.arena.width())
+        self.assertGreater(self.window.panel.width(), self.window.arena.width(), self._split_diagnostics())
         self.assertTrue(self.window.quick_analysis_button.isVisible())
         self.assertGreater(self.window.engine_scroll.height(), 250)
         from PySide6.QtWidgets import QComboBox, QSpinBox, QToolButton
@@ -627,18 +627,30 @@ class GuiTests(unittest.TestCase):
             for layout in ("classic", "analysis-left"):
                 self.window._workspace(False)
                 self.app.processEvents()
-                self.window.config["layout"] = layout
                 self._analysis_game()
+                self.window.config["layout"] = layout
+                self.window._refresh()
                 self.window.resize(*size)
                 self.app.processEvents()
                 QTest.qWait(10)
-                self.assertGreater(self.window.panel.width(), self.window.arena.width())
+                self.assertGreater(self.window.panel.width(), self.window.arena.width(), self._split_diagnostics())
                 self.window.main_splitter.setSizes([500, 500])
                 self.app.processEvents()
                 chosen = self.window.main_splitter.sizes()
                 self.window._refresh()
                 self.app.processEvents()
                 self.assertEqual(self.window.main_splitter.sizes(), chosen)
+
+    def _split_diagnostics(self):
+        widgets = {"arena": self.window.arena, "panel": self.window.panel,
+                   "board": self.window.board_view, "top_card": self.window.top_card,
+                   "bottom_card": self.window.bottom_card}
+        widgets.update({f"arena_child_{i}": w for i, w in enumerate(self.window.arena.findChildren(QWidget))
+                        if w.minimumSizeHint().width() > 400})
+        return repr({name: {"width": w.width(), "min": w.minimumWidth(),
+                            "min_hint": w.minimumSizeHint().width(), "hint": w.sizeHint().width(),
+                            "max": w.maximumWidth(), "visible": w.isVisible()}
+                     for name, w in widgets.items()})
 
     def test_custom_player_names_are_respected_in_ai_mode(self):
         self.window.config.update({"mode": "human_ai", "human_color": 1, "white_name": "Ada"})

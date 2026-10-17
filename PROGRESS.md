@@ -911,3 +911,17 @@ subsequent user splitter drags. Added a regression covering both analysis orders
 compact/desktop sizes, repeated mode changes and preservation of custom splits.
 Executed GUI pytest: 34 passed in 16.73s; Ruff passed. Next: full local suite and
 a new native Windows build. The earlier 0.5.2 download remains until verification.
+
+After the layout fix, full local unittest discovery ran 121 tests in 32.986s:
+116 passed, 5 skipped. Both layout regressions also passed with
+QT_STYLE_OVERRIDE=windows (2 passed in 0.69s). Captured and inspected a fresh
+1024×660 actual Qt screenshot: wider analysis, moves below, no settings widgets.
+Published fix commit 2f68528594595b0354ebf43210b71aebe7fd2430; replacement Windows
+run 39011345291 is validating it. No further product changes after these tests.
+
+Run 39011345291 still failed both width regressions (121 tests, 41.314s;
+114 passed, 2 failed, 5 skipped). Deferred sizing alone is insufficient on native
+Windows. Added widget minimum/hint/maximum diagnostics to the existing assertions
+to identify the constraint rather than weakening the checks. Corrected the resize
+regression setup so its classic and analysis-left cases actually use both orders.
+No executable was produced from either failed run.
