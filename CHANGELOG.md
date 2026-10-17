@@ -9,6 +9,8 @@
   Continuous searches ignore saved bounded node limits; halted analysis stays halted.
 - Allocate more width/height to analysis, place the graph beneath the PV list and
   keep game moves below. Hide the tab bar while analyzing; retain PGN editing.
+- Hide the Play instruction caption in Analysis and let it wrap in Play, avoiding
+  an oversized board minimum width with native Windows font metrics.
 - Flowing PV rows show complete wrapped move text without per-row button bars or
   inner scrolling; insert/pin/copy/focus remain available in a context menu.
 - Preserve hover previews during unchanged-PV depth updates and prevent duplicate

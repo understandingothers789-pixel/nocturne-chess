@@ -623,6 +623,7 @@ class GuiTests(unittest.TestCase):
         self.assertFalse(self.window.engine.busy)
 
     def test_analysis_split_settles_after_mode_changes_and_preserves_user_resize(self):
+        self.window.board_hint.setText("Instructions " * 12)
         for size in ((1024, 660), (1920, 1040)):
             for layout in ("classic", "analysis-left"):
                 self.window._workspace(False)
@@ -633,6 +634,7 @@ class GuiTests(unittest.TestCase):
                 self.window.resize(*size)
                 self.app.processEvents()
                 QTest.qWait(10)
+                self.assertFalse(self.window.board_hint.isVisible())
                 self.assertGreater(self.window.panel.width(), self.window.arena.width(), self._split_diagnostics())
                 self.window.main_splitter.setSizes([500, 500])
                 self.app.processEvents()

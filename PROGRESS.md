@@ -925,3 +925,11 @@ Windows. Added widget minimum/hint/maximum diagnostics to the existing assertion
 to identify the constraint rather than weakening the checks. Corrected the resize
 regression setup so its classic and analysis-left cases actually use both orders.
 No executable was produced from either failed run.
+
+Diagnostic run 39011529709 reproduced the two width failures (121 tests,
+31.433s; 114 passed, 2 failed, 5 skipped). Its widget measurements identify the
+actual cause: the single-line board instruction label is 403 px wide with native
+Windows font metrics, forcing the board arena minimum to 654 px. Wrapped that
+caption in Play and hid it in Analysis; Flip/Copy FEN remain available. Removed
+the unnecessary deferred resize timer. The regression now includes a long caption
+and checks it is hidden while both layouts retain wider analysis/custom splits.
