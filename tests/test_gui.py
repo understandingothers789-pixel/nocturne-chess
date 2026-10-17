@@ -622,6 +622,24 @@ class GuiTests(unittest.TestCase):
         self.window._schedule_engine()
         self.assertFalse(self.window.engine.busy)
 
+    def test_analysis_split_settles_after_mode_changes_and_preserves_user_resize(self):
+        for size in ((1024, 660), (1920, 1040)):
+            for layout in ("classic", "analysis-left"):
+                self.window._workspace(False)
+                self.app.processEvents()
+                self.window.config["layout"] = layout
+                self._analysis_game()
+                self.window.resize(*size)
+                self.app.processEvents()
+                QTest.qWait(10)
+                self.assertGreater(self.window.panel.width(), self.window.arena.width())
+                self.window.main_splitter.setSizes([500, 500])
+                self.app.processEvents()
+                chosen = self.window.main_splitter.sizes()
+                self.window._refresh()
+                self.app.processEvents()
+                self.assertEqual(self.window.main_splitter.sizes(), chosen)
+
     def test_custom_player_names_are_respected_in_ai_mode(self):
         self.window.config.update({"mode": "human_ai", "human_color": 1, "white_name": "Ada"})
         self.window._create_game()

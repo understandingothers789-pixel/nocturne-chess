@@ -900,3 +900,14 @@ PGN-editor and hover screenshots, plus Engine/Threads/Hash/MultiPV menu captures
 Inspected menu placement, checked MultiPV 6, full wrapped moves, compact viewport
 and absence of right-side settings. No code changed after this passing full run.
 Next: publish source, native Windows tests/package smoke and artifact verification.
+
+Native Windows run 39011077020 caught one failure: after switching Play → Analysis
+and resizing to 1024×660, the analysis pane retained the old narrow sidebar split
+(347 px versus 654 px for the board). 120 tests ran in 56.844s: 114 passed,
+1 failed, 5 skipped; packaging was correctly blocked. Fixed window.py to reapply
+the default split with a parent-owned single-shot timer after Qt's posted layout
+requests settle. The timer runs only on workspace/layout changes, preserving
+subsequent user splitter drags. Added a regression covering both analysis orders,
+compact/desktop sizes, repeated mode changes and preservation of custom splits.
+Executed GUI pytest: 34 passed in 16.73s; Ruff passed. Next: full local suite and
+a new native Windows build. The earlier 0.5.2 download remains until verification.

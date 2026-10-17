@@ -155,6 +155,9 @@ class MainWindow(QMainWindow):
         self._last_info = None
         self._history_signature = None
         self._analysis_layout_active = None
+        self._workspace_layout_timer = QTimer(self)
+        self._workspace_layout_timer.setSingleShot(True)
+        self._workspace_layout_timer.timeout.connect(self._settle_workspace_layout)
         self._pv_root = None
         self._pv_moves = []
         self._pv_identity = None
@@ -1448,6 +1451,22 @@ class MainWindow(QMainWindow):
         self.main_splitter.setStretchFactor(1, 1 if analysis else 0)
         if analysis:
             self.tabs.setCurrentIndex(1)
+            self.main_splitter.setSizes([1020, 780] if left else [780, 1020])
+            self.workspace_splitter.setSizes([800, 110])
+        else:
+            self.main_splitter.setSizes([720, 350])
+        # Reparenting and removing the play sidebar's maximum width posts layout
+        # requests. On Windows the immediate split can still use the old limits.
+        # Apply the default once those requests settle; later user drags stay put.
+        self._workspace_layout_timer.start(0)
+
+    def _settle_workspace_layout(self):
+        if self._closing:
+            return
+        self.centralWidget().layout().activate()
+        self.main_splitter.refresh()
+        if self.analysis_mode:
+            left = self.config.get("layout", "classic") == "analysis-left"
             self.main_splitter.setSizes([1020, 780] if left else [780, 1020])
             self.workspace_splitter.setSizes([800, 110])
         else:
