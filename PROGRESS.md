@@ -1118,3 +1118,38 @@ Refreshed local source ZIP, wheel and checksums after final docs. ZIP/wheel
 integrity checked; source has no executable or batch/PowerShell launcher.
 No application code changed after the passing native Windows package. All online
 lookups remain optional; no external engine or table files were downloaded/bundled.
+
+
+## 2026-10-17 — 0.5.5 subtle analysis markers
+
+The requested visual adjustment is confined to gui/board.py: candidate strokes
+now use muted colors at 29–37% opacity, 1–2 logical-pixel arrow shafts and 1–1.6
+logical-pixel lines. Arrowheads are roughly one third of their previous dimensions;
+rank badges become small translucent circles with quiet numerals. Saved continuation
+arrows share the subtle geometry. Manual annotations and candidate click/rank/
+promotion behavior are unchanged. No new controls or tooltips were added.
+
+Executed real Qt captures via scripts/capture_preview.py --simulate at 1920×1040
+(arrows and lines), 1024×660 (arrows), and 1440×1040 (light mode), and visually
+inspected all four. Updated docs/preview.png, preview-lines.png, preview-compact.png
+and preview-light.png; the simulator is explicitly labelled test data.
+
+Executed QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests
+-p test_external_analysis.py -q: all 20 tests passed in 12.612s, including
+ranked destination clicks, exact promotion, hover restoration and both marker
+styles rendering. Ruff check src tests scripts passed. The offscreen
+python -m nocturne --smoke-test exited 0. No functional bugs were found. Fontconfig
+cache and offscreen popup capability notices remain environment limitations.
+
+Version metadata and the Windows artifact/source paths are 0.5.5. The full local
+suite and native Windows package are next; the prior verified download remains
+linked until the new artifact is actually built. Manual Windows/DPI/real Stockfish
+verification remains open.
+
+Full local release validation executed: QT_QPA_PLATFORM=offscreen
+.venv/bin/python -m unittest discover -s tests -q ran 137 tests in 44.985s:
+126 passed, 11 skipped, no failures. Six HTTP tests skip because socket creation
+is denied in this cloud sandbox; five other optional historical checks skip.
+Malformed-PGN diagnostics are expected negative-test input. Final Ruff passed.
+Next: publish the reviewed file changes and run the existing native Windows CI
+validation/PyInstaller/package smoke checks before advertising a 0.5.5 download.

@@ -183,20 +183,25 @@ class BoardWidget(QWidget):
         inset = rect.width() * 0.045
         self._renderers[piece].render(painter, rect.adjusted(inset, inset, -inset, -inset))
 
-    def _arrow(self, painter: QPainter, src: int, dst: int, color: QColor, unit: float):
+    def _arrow(self, painter: QPainter, src: int, dst: int, color: QColor, unit: float, *, subtle=False):
         if src == dst:
             return
         a, b = self.square_rect(src).center(), self.square_rect(dst).center()
         dx, dy = b.x() - a.x(), b.y() - a.y()
         distance = math.hypot(dx, dy)
         dx, dy = dx / distance, dy / distance
-        end = b - QPointF(dx, dy) * (unit * 0.20)
-        painter.setPen(QPen(color, unit * 0.115, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        # Engine hints should sit quietly over the pieces. Manual annotations
+        # keep their larger geometry, while hint strokes stay thin on large boards.
+        width = max(1.0, min(2.0, unit * 0.022)) if subtle else unit * 0.115
+        head_length = unit * (0.13 if subtle else 0.37)
+        head_width = unit * (0.065 if subtle else 0.20)
+        end = b - QPointF(dx, dy) * (head_length * 0.85 if subtle else unit * 0.20)
+        painter.setPen(QPen(color, width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         painter.drawLine(a, end)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(color)
-        base = b - QPointF(dx, dy) * (unit * 0.37)
-        normal = QPointF(-dy, dx) * (unit * 0.20)
+        base = b - QPointF(dx, dy) * head_length
+        normal = QPointF(-dy, dx) * head_width
         painter.drawPolygon(QPolygonF([b, base + normal, base - normal]))
 
     def paintEvent(self, event):
@@ -261,35 +266,34 @@ class BoardWidget(QWidget):
             self._arrow(painter, src, dst, QColor(232, 175, 79, 200), unit)
         if not preview and self.overlays:
             for move in self.branch_moves:
-                self._arrow(painter, move.from_sq, self._destination(move), QColor(220, 173, 93, 110), unit)
+                self._arrow(painter, move.from_sq, self._destination(move), QColor(153, 137, 106, 65), unit, subtle=True)
             entries = self.recommendations or ([(self.best_move, 1, "")] if self.best_move else [])
-            colors = ["#5ec0b5", "#a4b8ed", "#d9ac73", "#cc96c8"]
+            colors = ["#66897f", "#7a879c", "#9a886f", "#967e91"]
             best_rank = {}
             for move, rank, _ in entries:
                 destination = self._destination(move)
                 best_rank[destination] = min(rank, best_rank.get(destination, rank))
             for move, rank, text in reversed(entries):
                 color = QColor(colors[(rank - 1) % len(colors)])
-                color.setAlpha(180)
+                color.setAlpha(95 if rank == 1 else 75)
                 if self.candidate_style == "lines":
-                    painter.setPen(QPen(color, unit * 0.075, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                    painter.setPen(QPen(color, max(1.0, min(1.6, unit * 0.018)), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
                     painter.drawLine(self.square_rect(move.from_sq).center(), self.square_rect(self._destination(move)).center())
                 else:
-                    self._arrow(painter, move.from_sq, self._destination(move), color, unit)
+                    self._arrow(painter, move.from_sq, self._destination(move), color, unit, subtle=True)
                 if best_rank[self._destination(move)] != rank:
                     continue
                 destination = self.square_rect(self._destination(move))
-                badge = QRectF(
-                    destination.right() - unit * 0.38,
-                    destination.top() + unit * 0.03,
-                    unit * 0.35,
-                    unit * 0.30,
-                )
-                painter.setBrush(QColor(colors[(rank - 1) % len(colors)]))
+                diameter = max(12.0, unit * 0.19)
+                badge = QRectF(destination.right() - diameter - unit * 0.06,
+                               destination.top() + unit * 0.06, diameter, diameter)
+                painter.setBrush(QColor(28, 48, 40, 75))
                 painter.setPen(Qt.PenStyle.NoPen)
-                painter.drawRoundedRect(badge, 4, 4)
-                painter.setPen(QColor("#18271f"))
-                painter.setFont(QFont("Segoe UI", max(8, int(unit * 0.12)), QFont.Weight.Bold))
+                painter.drawEllipse(badge)
+                painter.setPen(QColor(242, 243, 229, 175))
+                font = QFont("Segoe UI")
+                font.setPixelSize(max(8, int(unit * 0.115)))
+                painter.setFont(font)
                 painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, str(rank))
         if not preview and self._drag_pos is not None and self._pressed is not None:
             piece = self.board.cells[self._pressed]

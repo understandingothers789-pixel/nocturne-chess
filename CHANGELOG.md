@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.5 — Subtle analysis markers
+
+- Reduce candidate arrow/line thickness and opacity with a muted palette and much
+  smaller arrowheads. Stroke widths stay thin as the board grows.
+- Replace bright rank badges with small translucent circles and quiet numerals.
+- Apply the same subtle arrow geometry to saved continuations. MultiPV destination
+  clicks, rank priority, promotion choices and manual annotations retain their behavior.
+
 ## 0.5.4 — Ranked destination moves and Lichess opening explorer
 
 - Draw each displayed MultiPV candidate as an arrow or Nibbler-style line. Choose

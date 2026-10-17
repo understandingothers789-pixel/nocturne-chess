@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.4
+# Nocturne Analysis · 0.5.5
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -150,7 +150,8 @@ moving pieces or using the engine. Service availability and data coverage vary.
   checks the live position and legal moves. Alt+1/2/3 execute those candidates.
 - **Display → Candidate markers** selects **Arrows · Lichess style** or
   **Lines · Nibbler style**. Markers follow the selected MultiPV count, with a
-  numbered destination badge. A shared square shows its highest rank. Changing
+  small translucent rank marker. Thin, muted strokes and small arrowheads keep
+  the pieces clear, including on compact boards. A shared square shows its highest rank. Changing
   MultiPV clears old recommendations while the new lines arrive. Analysis
   overlays and Smart Move can each be switched off independently.
 - Candidate rows show actual cp/mate/bound scores, depths, nodes and engine WDL
