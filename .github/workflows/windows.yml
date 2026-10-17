@@ -1,6 +1,11 @@
 name: Windows desktop validation and build
 on:
   push:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/databases.yml'
+      - 'scripts/check_explorer_api.py'
   pull_request:
   workflow_dispatch:
 jobs:
