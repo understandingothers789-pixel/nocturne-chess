@@ -15,5 +15,5 @@ Highest-priority remaining checks:
 - Persistent cache/snapshots, independent secondary engine and split-board comparison.
 - WDL graph, figurines/piece sets and fully saved flexible panel layouts.
 
-0.5.1 resource controls: verify the native Windows package and actual Stockfish
-resource allocation; automated UCI fixture validation does not measure strength.
+0.5.1 automated Windows package checks passed. Verify actual Stockfish resource
+allocation and manual Windows/DPI behavior; protocol fixture tests do not measure strength.

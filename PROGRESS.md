@@ -720,3 +720,45 @@ Qt previews. Disabled preset colors were made explicit for readability.
 Actual popup interaction regression: selecting Threads through the visible Qt
 menu (not just QAction.trigger) passed, 1 test in 0.82s. Source ZIP created and
 0.5.1 pure-Python wheel built without a compiler; Ruff passed again.
+
+
+## 0.5.1 — Verified Windows resource-control delivery
+
+Published source commit 9738d99e2cd76213a3f2b34e7e4654d77959f551 to the user's
+nocturne-chess repository. Native Windows run 39006678168 / job 117320454714
+succeeded. Full unittest discovery ran 109 tests, OK (skipped=5): 104 passed in
+59.351s. The build repeated all 109 tests: 104 passed/5 skipped in 50.576s.
+Ruff, PyInstaller, frozen study/save smoke, frozen external-UCI protocol-fixture
+smoke, corresponding source archive and artifact upload all passed. The builder
+runs both frozen smoke commands with checked exit codes before making its archive.
+
+Artifact 12091382461: Nocturne-0.5.1-Windows-x64-unsigned, 53,198,474 bytes,
+SHA-256 1a21c02251d5d1da894cd6ee2752f519cc20044388fdaf80ef412c5a8967e39c.
+GitHub metadata reports unexpired and retained until 2026-11-16. Download:
+https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39006678168/artifacts/12091382461
+
+README and BUILDING link to the verified Windows ZIP; TODO records remaining
+real-engine/manual checks. Updated actual Qt previews and resource-menu images
+are checked into the repository. Local source ZIP integrity passed, resource
+component/tests and rules-library source included, executables and script
+launchers excluded. Final source ZIP and pure-Python wheel refreshed.
+
+No engine binary or table files are bundled. Tests used an explicitly labelled
+protocol fixture; actual Stockfish resource allocation, manual Windows/DPI,
+large Syzygy collections and playing strength remain unverified. No performance
+or strength improvement is claimed. No batch/PowerShell launcher or Windows
+security-policy change was added. Future work remains in ANALYSIS_ROADMAP.md.
+
+### Final profile-metadata regression
+
+A final static review identified that stopping a search after the source selector
+changed could label the old score with the new profile/options. Added an assertion
+to the real resource/profile-switch integration test and reproduced the failure:
+`second != simulator` (1 failed). This was a product bug, not a fixture error.
+Changed gui/window.py to freeze profile ID/configured values in each search/review
+context and use that snapshot for every score save, including stop. gui/engine.py
+also attaches acknowledged UCI options to info so saved analysis records actual
+Threads/Hash, including engine defaults. Extended the regression to check both
+profile ownership and actual acknowledged Threads=6, Hash=768. A fresh Windows
+build is required before final delivery of this correction.
+Post-fix resource/external/GUI run: 47 passed in 33.46s; Ruff passed. No failures.

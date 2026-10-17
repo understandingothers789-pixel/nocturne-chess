@@ -92,7 +92,10 @@ class EngineController(QObject):
                 break
         if not pv:
             return
-        info = dict(info, pv=pv, san=texts, engine=self.connection.name)
+        info = dict(
+            info, pv=pv, san=texts, engine=self.connection.name,
+            applied_options={k: v for k, v in self.connection.confirmed.items() if k != "__study"},
+        )
         self.lines[info["multipv"]] = info
         self.message.emit(generation, "info", info)
 

@@ -181,6 +181,7 @@ class QtIntegration(unittest.TestCase):
             with patch("PySide6.QtWidgets.QInputDialog.getInt", return_value=(768, True)):
                 resources._custom(window._profile(), "Hash")
             self.wait_until(lambda: window.engine.connection.confirmed.get("Hash") == "768")
+            self.wait_until(lambda: window._last_info is not None)
             self.assertEqual(window.engine.connection.process.processId(), pid)
             self.assertEqual(window.profiles[0]["values"], {"Threads": 6, "Hash": 768})
             self.assertIn("768 MB", resources.buttons["Hash"].text())
@@ -195,6 +196,11 @@ class QtIntegration(unittest.TestCase):
             window.profiles.append(second)
             window._apply_settings()
             window.analysis_source.setCurrentIndex(1)
+            record = window.game.nodes[window.game.current_node].analysis
+            self.assertEqual(record["profile"], "simulator")
+            self.assertEqual(record["options"], {"Threads": 6, "Hash": 768})
+            self.assertEqual(record["applied_options"]["Threads"], "6")
+            self.assertEqual(record["applied_options"]["Hash"], "768")
             self.wait_until(lambda: window.engine.connection.confirmed.get("Hash") == "16")
             self.assertEqual(window.engine.connection.confirmed["Threads"], "1")
             self.assertEqual(window.engine.connection.process.processId(), pid)

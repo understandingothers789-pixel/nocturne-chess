@@ -1,15 +1,18 @@
-# Windows 11 desktop builds · 0.5
+# Windows 11 desktop builds · 0.5.1
 
-[Download the verified 0.5.0 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38994172390/artifacts/12086018094).
+[Download the verified 0.5.1 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39006678168/artifacts/12091382461).
 
-Alternatively, select the successful **Nocturne-0.5.0-Windows-x64-unsigned** artifact from
+Alternatively, select the successful **Nocturne-0.5.1-Windows-x64-unsigned** artifact from
 [Windows Actions](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
 Sign into GitHub, download, Extract All, then open **Nocturne/Nocturne.exe**.
 Keep the full folder. No Python, compiler or batch launcher is needed to play/analyze.
 You select your own Stockfish executable from the Engine menu.
 
-The 0.5.1 source includes direct Threads/Hash controls. Native Windows verification
-is pending; the link above is the previously verified 0.5.0 build.
+Windows run 39006678168 succeeded for commit 9738d99e2cd76213a3f2b34e7e4654d77959f551.
+Both test runs passed 104 tests with 5 skips; Ruff, PyInstaller and both packaged
+smoke checks passed. The unsigned artifact is 53,198,474 bytes, retained until
+2026-11-16. SHA-256:
+`1a21c02251d5d1da894cd6ee2752f519cc20044388fdaf80ef412c5a8967e39c`.
 
 ## Reproducible Windows build
 

@@ -892,7 +892,7 @@ class MainWindow(QMainWindow):
             return
         self._insert_candidate(rank, 1)
 
-    def _store_analysis(self, game, node_id, info, turn):
+    def _store_analysis(self, game, node_id, info, turn, context):
         if not info or info.get("bound", "exact") != "exact":
             return
         value = info["score"] * turn
@@ -904,8 +904,8 @@ class MainWindow(QMainWindow):
             **info,
             "white_value": info.get("score_value", info["score"]) * turn,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "profile": self._profile().get("id", "") if self._profile() else "",
-            "options": dict(self._profile().get("values", {})) if self._profile() else {},
+            "profile": context.get("profile", ""),
+            "options": dict(context.get("options", {})),
         }
         if node_id in game._line_nodes:
             game.evaluations[game._line_nodes.index(node_id)] = value
@@ -1091,6 +1091,8 @@ class MainWindow(QMainWindow):
         state["generation"] = generation
         state["info"] = None
         state["turn"] = position.turn
+        state["profile"] = profile["id"]
+        state["options"] = dict(profile.get("values", {}))
         self.analyze_button.setText("Pause game analysis")
         self.quick_analysis_button.setText("Pause review")
         self.statusBar().showMessage(
@@ -1123,7 +1125,7 @@ class MainWindow(QMainWindow):
         line = state["line"]
         node_id = line[index]
         if state["stage"] == "best":
-            self._store_analysis(self.game, node_id, info, state["turn"])
+            self._store_analysis(self.game, node_id, info, state["turn"], state)
             state["best"] = info.copy()
             if index + 1 < len(line):
                 played = self.game.nodes[line[index + 1]].move.uci()
@@ -2049,7 +2051,7 @@ class MainWindow(QMainWindow):
             self.analyze_button.setText("Analyze position")
             self.quick_analysis_button.setText("Analyze")
         if old_job and old_job.get("identity") == self._position_identity() and self._last_info:
-            self._store_analysis(self.game, self.game.current_node, self._last_info, old_job["turn"])
+            self._store_analysis(self.game, self.game.current_node, self._last_info, old_job["turn"], old_job)
         if old_job and old_job["kind"] != "benchmark":
             self.engine_state.setText("Search canceled")
             self.statusBar().showMessage("Search canceled", 3000)
@@ -2134,6 +2136,8 @@ class MainWindow(QMainWindow):
             "identity": self._position_identity(),
             "turn": self.game.board.turn,
             "external": True,
+            "profile": profile["id"],
+            "options": dict(profile.get("values", {})),
         }
         self.engine_state.setText(profile.get("name", "UCI engine") + " · connecting / analyzing")
         self.analyze_button.setText("Stop analysis" if kind == "analysis" else "Analyze position")
@@ -2192,7 +2196,7 @@ class MainWindow(QMainWindow):
         self.engine_state.setText(self.engine.connection.name + " · search complete")
         self.statusBar().showMessage("Search complete · evaluation from White’s perspective")
         if info:
-            self._store_analysis(self.game, self.game.current_node, info, job["turn"])
+            self._store_analysis(self.game, self.game.current_node, info, job["turn"], job)
         self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
         if job["kind"] == "play" and not self.paused:
             try:
@@ -2233,7 +2237,7 @@ class MainWindow(QMainWindow):
                 return
         self._last_info = info.copy()
         if "score_type" in info:
-            self._store_analysis(self.game, self.game.current_node, info, job["turn"])
+            self._store_analysis(self.game, self.game.current_node, info, job["turn"], job)
             self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
         white_score = info["score"] * job["turn"]
         self.eval_label.setText(

@@ -10,6 +10,8 @@
   preserves a stopped analysis state and clears stale candidate output.
 - Fix a UCI ready-barrier race: a request replaced during option preparation must
   apply its latest options before the new position/search commands are sent.
+- Freeze the originating profile/settings in saved analysis, including actual
+  acknowledged UCI values; switching profiles cannot relabel the previous score.
 - Regression coverage for process reuse, profile independence, memory limits,
   unsupported options and settings changed while waiting for readyok.
 

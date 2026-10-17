@@ -13,12 +13,12 @@ analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
 
-[Download the verified Windows 0.5.0 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38994172390/artifacts/12086018094) (GitHub sign-in required).
+[Download the verified Windows 0.5.1 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39006678168/artifacts/12091382461) (GitHub sign-in required).
 
 [All Windows builds](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
-The 0.5.1 source adds the resource controls below. Its Windows build is pending
-verification; the verified 0.5.0 download above remains available. Choose the
-successful build and download its ZIP under Artifacts (GitHub sign-in required).
+Select **Nocturne-0.5.1-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
+Windows validation passed: 104 tests passed, 5 skipped; packaged app and external-UCI
+protocol-fixture smoke checks passed. Real Stockfish/manual interaction verification remains open.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
@@ -42,7 +42,10 @@ During live analysis, changes stop the old search, apply settings, then resume o
 the same process. Unsupported options are marked unavailable. Hash choices respect
 both the engine's range and the current memory budget, accounting for an existing
 hash allocation when resizing. A larger hash or more threads is not automatically
-faster or stronger; benchmark your engine and hardware.
+faster or stronger; benchmark your engine and hardware. Saved scores retain the
+originating profile and acknowledged UCI settings, including resource defaults.
+
+![Engine menu with direct resource controls; protocol test profile](docs/engine-menu.png)
 
 Stockfish versions are not hardcoded. Options are discovered via `uci`, including
 Threads, Hash, MultiPV, SyzygyPath, UCI_Chess960 and UCI_ShowWDL when advertised.
