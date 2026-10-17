@@ -1,47 +1,46 @@
-# Distribution notices
+# Distribution notices · Nocturne Analysis 0.5
 
-The custom Nocturne rules, engine, interface, SVG chess pieces and application
-icon are original project code/assets, distributed under the MIT license in
-`LICENSE`. No external engine or chess book is bundled.
+The combined analysis application is distributed under GPL-3.0-or-later (COPYING)
+because of its runtime python-chess dependency. Original Nocturne code and SVG
+pieces/icon retain their MIT license grant (LICENSE). No Nibbler implementation
+or assets, and no Stockfish executable/neural network/table files are bundled.
 
 ## Runtime
 
-* **Fathom**: MIT-licensed Syzygy reader, pinned to
-  `c9c6fef0dddc05d2e242c183acf5833149ab676d` from
-  https://github.com/jdart1/Fathom. See `licenses/FATHOM-LICENSE.txt`.
-  Local Unicode-path patch is documented in `native/fathom/README.nocturne.md`.
-  No tablebase files are distributed in the application.
-
-* **Python**: Python Software Foundation License. The actual Python runtime's
-  license text is retained in `licenses/PYTHON-LICENSE.txt`.
+- **python-chess / chess 1.11.2**, Nikolaus Fiekas and contributors:
+  GPL-3.0-or-later. `licenses/PYTHON-CHESS-LICENSE.txt`, `COPYING`.
+  https://github.com/niklasf/python-chess/tree/v1.11.2
+  https://pypi.org/project/chess/1.11.2/#files
+  The corresponding Python modules are included in the release source archive
+  under `dependencies/python-chess/chess/`. This is a rules/PGN library; the GUI
+  supplies no search engine through it.
+- **Python 3.12**: Python Software Foundation License. Retain
+  `licenses/PYTHON-LICENSE.txt` and PyInstaller-collected runtime notices.
   https://www.python.org/psf/license/
-* **PySide6 / Shiboken6 6.8.3**: Qt for Python, LGPL-3.0-only, GPL-3.0-only, or a
-  commercial license, according to the component. https://doc.qt.io/qtforpython-6/licenses.html
-* **Qt 6.8.3**: Qt Core, GUI, Widgets and SVG, with platform plugins and their
-  dependencies. Preserve the applicable module and third-party notices from
-  the installed distribution. https://doc.qt.io/qt-6/licensing.html
+- **PySide6 / Shiboken6 6.8.3, Qt 6.8.3**: LGPL-3.0-only/GPL-3.0-only or commercial
+  terms according to component. Binding and module third-party notices from the
+  installed distribution are retained when present, along with GPL/LGPL texts.
+  https://doc.qt.io/qtforpython-6/licenses.html
+  https://download.qt.io/official_releases/QtForPython/pyside6/
+  https://code.qt.io/pyside/pyside-setup.git/ (v6.8.3)
+  https://download.qt.io/official_releases/qt/6.8/6.8.3/single/
 
-The packaging configuration uses a directory distribution with shared Qt
-libraries, excludes unused Qt modules, includes the installed binding's license
-directory when present, and includes LGPLv3/GPLv3 texts in `licenses/`.
-Recipients can replace shared libraries and may exercise their rights under
-the applicable licenses. For a distributed release, retain the exact version,
-source availability information, Qt third-party notices, and the PSF notices
-collected by PyInstaller. Qt/PySide source: https://download.qt.io/official_releases/
-and https://code.qt.io/pyside/pyside-setup.git/ (tag `v6.8.3`).
+The directory distribution retains shared Qt libraries; recipients can replace
+them and exercise their rights under the applicable licenses. Application source
+is in the repository and accompanying source ZIP. Preserve notices and equivalent
+source access when redistributing.
 
-## Build and development only
+## Development and historical source only
 
-* **PyInstaller**: GPL-2.0-or-later with a bootloader exception permitting
-  distribution of built applications under their own license. https://pyinstaller.org/en/stable/license.html
-* **pytest / pytest-qt / Ruff**: MIT licensed developer tools, not bundled.
-* **python-chess / chess**: GPL-3.0-or-later, used only as an optional independent
-  testing oracle. Not imported by the app and explicitly excluded from bundles.
-  https://python-chess.readthedocs.io/
+- PyInstaller: GPL-2.0-or-later with its bootloader exception.
+  https://pyinstaller.org/en/stable/license.html
+- pytest, pytest-qt, Ruff, setuptools: development/build tooling, not runtime engines.
+- Historical 0.4 native Fathom reader: MIT, pinned commit
+  c9c6fef0dddc05d2e242c183acf5833149ab676d, https://github.com/jdart1/Fathom.
+  Its source/license remain in the source archive; it is excluded from the 0.5 GUI.
+- The UCI simulator is explicitly a development/test fixture, not a playing engine.
+  It is not included in the application bundle.
 
-## Optional external engines
-
-Stockfish or another UCI executable must be selected from the user's own local
-installation. No binary is downloaded or redistributed by Nocturne. Stockfish
-is GPLv3; see https://stockfishchess.org/about/ and preserve its notices if you
-separately distribute it. Nocturne's custom engine remains independent.
+Nibbler was inspected for behavior and workflow only. Its GPL code/assets were not
+copied. User-selected external engines retain their respective licenses; this
+application does not distribute or modify them.

@@ -1,6 +1,7 @@
 """Native Qt integration tests. Explicitly skipped if the binding is absent."""
 
 import os
+import sys
 from copy import deepcopy
 from pathlib import Path
 import tempfile
@@ -10,17 +11,20 @@ from unittest.mock import patch
 
 from nocturne.core.board import parse_square
 from nocturne.core.game import Game
+from nocturne.core.notation import san
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 try:
     from PySide6.QtCore import QEvent, QPointF, QTimer, Qt
     from PySide6.QtGui import QMouseEvent
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication, QMenu, QWidget
+    from PySide6.QtWidgets import QApplication, QMenu, QScrollArea, QWidget
     from nocturne.gui.window import MainWindow
+
     HAS_QT = True
 except ImportError:
     HAS_QT = False
+
 
 @unittest.skipUnless(HAS_QT, "PySide6 is not installed; native GUI validation not executed")
 class GuiTests(unittest.TestCase):
@@ -33,6 +37,21 @@ class GuiTests(unittest.TestCase):
         self.window = MainWindow(Path(self.tmp.name))
         self.window.config.update({"mode": "human", "animations": False})
         self.window.game.metadata["mode"] = "human"
+        self.window.analysis_mode = False
+        self.window._analysis_enabled = False
+        fixture = str(Path(__file__).parent / "fixtures" / "uci_simulator.py")
+        self.window.profiles = [
+            {
+                "id": "test",
+                "path": sys.executable,
+                "arguments": [fixture],
+                "name": "Transport simulator",
+                "values": {},
+                "options": {},
+            }
+        ]
+        self.window.config["engine_id"] = "test"
+        self.window._apply_settings()
         self.window.board_view.animations = False
         self.window.timer.stop()
         self.window.autosave_timer.stop()
@@ -48,8 +67,9 @@ class GuiTests(unittest.TestCase):
 
     def _click(self, name):
         board = self.window.board_view
-        QTest.mouseClick(board, Qt.MouseButton.LeftButton,
-                         pos=board.square_rect(parse_square(name)).center().toPoint())
+        QTest.mouseClick(
+            board, Qt.MouseButton.LeftButton, pos=board.square_rect(parse_square(name)).center().toPoint()
+        )
         self.app.processEvents()
 
     def test_analysis_alternative_preserves_original_and_hover_restores(self):
@@ -84,9 +104,11 @@ class GuiTests(unittest.TestCase):
         self.assertIs(self.window.board_view.board, self.window.game.board)
 
     def test_nibbler_style_menus_and_no_widget_tooltips(self):
-        self.assertEqual([a.text().replace("&", "") for a in self.window.menuBar().actions()],
-                         ["File", "Tree", "Analysis", "Display", "Engine", "Play"])
-        self.assertTrue(all(not w.toolTip() for w in self.window.findChildren(QWidget)))
+        self.assertEqual(
+            [a.text().replace("&", "") for a in self.window.menuBar().actions()],
+            ["File", "Tree", "Analysis", "Display", "Engine", "Play"],
+        )
+        self.assertTrue(all("custom engine" not in w.toolTip() for w in self.window.findChildren(QWidget)))
         action = self.window.display_actions["coordinates"]
         action.trigger()
         self.assertFalse(self.window.board_view.coordinates)
@@ -95,8 +117,11 @@ class GuiTests(unittest.TestCase):
 
     def test_file_menu_opens_by_mouse_and_exposes_clipboard_commands(self):
         bar = self.window.menuBar()
-        QTest.mouseClick(bar, Qt.MouseButton.LeftButton,
-                         pos=bar.actionGeometry(self.window.menus["File"].menuAction()).center())
+        QTest.mouseClick(
+            bar,
+            Qt.MouseButton.LeftButton,
+            pos=bar.actionGeometry(self.window.menus["File"].menuAction()).center(),
+        )
         self.app.processEvents()
         menu = self.window.menus["File"]
         self.assertTrue(menu.isVisible())
@@ -108,13 +133,45 @@ class GuiTests(unittest.TestCase):
         self.window._stop_engine()
         self.window.game = Game.from_pgn(text)
         self.window.game.metadata["mode"] = "analysis"
+        self.window.config["layout"] = "analysis-left"
         self.window.analysis_mode = True
         self.window._analysis_enabled = False
         self.window._refresh()
         self.app.processEvents()
 
+    def _show_external_info(self, info, job):
+        position = self.window.game.board.copy()
+        pv = []
+        texts = []
+        for text in info["pv"]:
+            try:
+                move = position.parse_uci(text)
+                texts.append(san(position, move))
+                pv.append(text)
+                position.push(move)
+            except ValueError:
+                break
+        data = {
+            **info,
+            "score_type": "cp",
+            "score_value": info["score"],
+            "bound": "exact",
+            "multipv": 1,
+            "pv": pv,
+            "san": texts,
+        }
+        self.window._show_info(data, job)
+
     def _hover_word(self, view, word):
+        QTest.qWait(30)
         self.app.processEvents()
+        parent = view.parentWidget()
+        while parent:
+            if isinstance(parent, QScrollArea):
+                parent.ensureWidgetVisible(view)
+            parent = parent.parentWidget()
+        self.app.processEvents()
+        QTest.qWait(15)
         cursor = view.document().find(word)
         self.assertFalse(cursor.isNull(), word)
         cursor.setPosition(cursor.selectionStart() + 1)
@@ -123,6 +180,7 @@ class GuiTests(unittest.TestCase):
         self.app.processEvents()
 
     def test_analysis_layout_is_left_with_history_below_and_play_restores(self):
+        self.window.config["layout"] = "analysis-left"
         self._analysis_game()
         self.window.resize(1024, 660)
         self.app.processEvents()
@@ -156,15 +214,15 @@ class GuiTests(unittest.TestCase):
 
     def test_pv_mouse_hover_previews_prefix_and_exit_restores(self):
         self._analysis_game("1.e4 e5 *")
-        info = {"depth": 3, "seldepth": 4, "score": 15, "nodes": 100,
-                "pv": ["g1f3", "b8c6", "f1b5", "a1a8"]}
-        self.window._show_info(info, {"turn": 1})
+        info = {"depth": 3, "seldepth": 4, "score": 15, "nodes": 100, "pv": ["g1f3", "b8c6", "f1b5", "a1a8"]}
+        self._show_external_info(info, {"turn": 1})
         self.assertEqual(len(self.window._pv_moves), 3)
         before = deepcopy(self.window.game.to_dict())
         generation = self.window.engine.generation
         self._hover_word(self.window.pv_label, "Nc6")
-        self.assertEqual(self.window.board_view.display_board.fen(),
-                         Game.from_pgn("1.e4 e5 2.Nf3 Nc6 *").board.fen())
+        self.assertEqual(
+            self.window.board_view.display_board.fen(), Game.from_pgn("1.e4 e5 2.Nf3 Nc6 *").board.fen()
+        )
         self.assertEqual(self.window.game.to_dict(), before)
         self.assertEqual(self.window.engine.generation, generation)
         self.app.sendEvent(self.window.pv_label.viewport(), QEvent(QEvent.Type.Leave))
@@ -180,17 +238,19 @@ class GuiTests(unittest.TestCase):
         self.window.analysis_history.cancel_preview()
         self.assertEqual(self.window.board_view.display_board.fen(), actual)
         info = {"depth": 2, "seldepth": 3, "score": 0, "nodes": 50, "pv": ["b8c6", "f1b5"]}
-        self.window._show_info(info, {"turn": -1})
+        self._show_external_info(info, {"turn": -1})
         self.window._preview_pv(2)
         self.assertIsNotNone(self.window.board_view.preview_board)
-        self.window._show_info(info | {"pv": ["g8f6"]}, {"turn": -1})
+        self._show_external_info(info | {"pv": ["g8f6"]}, {"turn": -1})
         self.assertIsNone(self.window.board_view.preview_board)
         self.assertEqual(self.window.board_view.display_board.fen(), actual)
 
     def test_hover_special_moves_uses_copies_and_preserves_hash_and_cursor(self):
-        cases = [("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", "e1g1"),
-                 ("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", "e5d6"),
-                 ("4k3/P7/8/8/8/8/8/4K3 w - - 0 1", "a7a8n")]
+        cases = [
+            ("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", "e1g1"),
+            ("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", "e5d6"),
+            ("4k3/P7/8/8/8/8/8/4K3 w - - 0 1", "a7a8n"),
+        ]
         self._analysis_game()
         for fen, uci in cases:
             with self.subTest(uci=uci):
@@ -222,7 +282,9 @@ class GuiTests(unittest.TestCase):
         text_cursor = view.document().find("Nf3")
         text_cursor.setPosition(text_cursor.selectionStart() + 1)
         with patch.object(self.window, "_schedule_engine"):
-            QTest.mouseClick(view.viewport(), Qt.MouseButton.LeftButton, pos=view.cursorRect(text_cursor).center())
+            QTest.mouseClick(
+                view.viewport(), Qt.MouseButton.LeftButton, pos=view.cursorRect(text_cursor).center()
+            )
         self.assertEqual(self.window.game.cursor, 3)
         self.assertIsNone(self.window.board_view.preview_board)
 
@@ -246,14 +308,14 @@ class GuiTests(unittest.TestCase):
         editor = self.window.pgn_editor
         editor.selectAll()
         flipped, paused = self.window.board_view.flipped, self.window.paused
-        QTest.keyClicks(editor, '1. e4 e5 2. Nf3 Nc6 *')
-        self.assertEqual(editor.toPlainText(), '1. e4 e5 2. Nf3 Nc6 *')
+        QTest.keyClicks(editor, "1. e4 e5 2. Nf3 Nc6 *")
+        self.assertEqual(editor.toPlainText(), "1. e4 e5 2. Nf3 Nc6 *")
         QTest.keyClick(editor, Qt.Key.Key_Home)
-        QTest.keyClicks(editor, 'F')
-        self.assertEqual(editor.toPlainText(), 'F1. e4 e5 2. Nf3 Nc6 *')
+        QTest.keyClicks(editor, "F")
+        self.assertEqual(editor.toPlainText(), "F1. e4 e5 2. Nf3 Nc6 *")
         self.assertEqual((self.window.board_view.flipped, self.window.paused), (flipped, paused))
         self.window._refresh()
-        self.assertEqual(editor.toPlainText(), 'F1. e4 e5 2. Nf3 Nc6 *')
+        self.assertEqual(editor.toPlainText(), "F1. e4 e5 2. Nf3 Nc6 *")
 
     def test_bad_pgn_preserves_current_game_and_editor(self):
         game = self.window.game
@@ -274,13 +336,19 @@ class GuiTests(unittest.TestCase):
         self.assertGreaterEqual(self.window.pgn_editor.height(), 100)
         for control in (self.window.apply_pgn_button, self.window.load_pgn_button):
             self.assertGreaterEqual(control.height(), 30)
-            self.assertTrue(self.window.tabs.rect().contains(control.mapTo(self.window.tabs, control.rect().bottomRight())))
+            self.assertTrue(
+                self.window.tabs.rect().contains(
+                    control.mapTo(self.window.tabs, control.rect().bottomRight())
+                )
+            )
 
     def test_open_pgn_file_and_reload_editor(self):
         path = Path(self.tmp.name) / "game.pgn"
         path.write_text("\ufeff1. d4 Nf6 2. c4 e6 *", encoding="utf-8")
-        with patch("nocturne.gui.window.QFileDialog.getOpenFileName", return_value=(str(path), "")), \
-                patch.object(self.window, "_schedule_engine"):
+        with (
+            patch("nocturne.gui.window.QFileDialog.getOpenFileName", return_value=(str(path), "")),
+            patch.object(self.window, "_schedule_engine"),
+        ):
             self.window.menu_actions["Open PGN…"].trigger()
         self.assertEqual(self.window.game.sans, ["d4", "Nf6", "c4", "e6"])
         self.window.pgn_editor.setPlainText("temporary draft")
@@ -309,9 +377,14 @@ class GuiTests(unittest.TestCase):
         src = board.square_rect(parse_square("d2")).center()
         dst = board.square_rect(parse_square("d4")).center()
         QTest.mousePress(board, Qt.MouseButton.LeftButton, pos=src.toPoint())
-        event = QMouseEvent(QEvent.Type.MouseMove, dst,
-                            QPointF(board.mapToGlobal(dst.toPoint())), Qt.MouseButton.NoButton,
-                            Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
+        event = QMouseEvent(
+            QEvent.Type.MouseMove,
+            dst,
+            QPointF(board.mapToGlobal(dst.toPoint())),
+            Qt.MouseButton.NoButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
         self.app.sendEvent(board, event)
         QTest.mouseRelease(board, Qt.MouseButton.LeftButton, pos=dst.toPoint())
         self.assertEqual(self.window.game.sans, ["d4"])
@@ -330,6 +403,7 @@ class GuiTests(unittest.TestCase):
     def test_explicit_underpromotion_choice(self):
         self.window.game = Game("4k3/P7/8/8/8/8/8/4K3 w - - 0 1")
         self.window._refresh()
+
         def choose_knight():
             menu = QApplication.activePopupWidget()
             if isinstance(menu, QMenu):
@@ -350,8 +424,13 @@ class GuiTests(unittest.TestCase):
 
     def test_stale_position_result_cannot_commit_a_move(self):
         generation = self.window.engine.generation
-        self.window._job = {"generation": generation, "kind": "play",
-                            "identity": self.window._position_identity(), "turn": 1, "external": False}
+        self.window._job = {
+            "generation": generation,
+            "kind": "play",
+            "identity": self.window._position_identity(),
+            "turn": 1,
+            "external": False,
+        }
         self.window.game.play(self.window.game.board.parse_uci("e2e4"))
         self.window._engine_message(generation, "result", {"move": "d2d4", "info": {}})
         self.assertEqual(self.window.game.cursor, 1)

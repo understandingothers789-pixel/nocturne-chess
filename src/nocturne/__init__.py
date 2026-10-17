@@ -1,3 +1,3 @@
-"""Nocturne Chess: independent rules, search, and native desktop presentation."""
+"""Nocturne: native, offline chess analysis with user-supplied UCI engines."""
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"

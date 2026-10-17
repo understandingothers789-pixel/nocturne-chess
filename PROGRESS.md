@@ -535,3 +535,92 @@ seven-piece collections and manual Windows desktop interaction are unverified.
 PGN comments/NAGs and Multi-PV remain deferred. Native/disk probe I/O is not
 hard-interruptible inside the standalone UCI thread; GUI worker processes are
 killable. No signed-release claim or playing-strength estimate is made.
+
+## 0.5.0 direction — Stockfish analysis GUI
+
+Read the user's new full specification. It supersedes custom-engine development:
+external engines only in the desktop analysis/play path. Inspected Nibbler source
+(master 6eb0f066), README, 30 issue entries and 15 pull requests via GitHub.
+Created docs/NIBBLER_RESEARCH.md with source evidence, reported vs verified
+limitations, license boundary and a justified native Qt migration decision.
+Created docs/ANALYSIS_ROADMAP.md with explicit acceptance/deferred checkboxes.
+No Nibbler implementation/assets copied. No Stockfish binary is installed here.
+Next: persistent asynchronous UCI sessions, engine profiles, MultiPV and Smart Move.
+
+### 0.5 implementation phases — external sessions, rules and study UI
+
+Created engine/uci_types.py (options, score/bound/WDL types, external limits),
+gui/uci_connection.py (persistent asynchronous QProcess), engine.py controller,
+engine_manager.py (profiles and advertised editors), hardware.py (Hash admission),
+candidates.py (interactive MultiPV rows), core/rules.py (python-chess adapter),
+and gui/setup_position.py (validated manual editor). Modified window/board/moves/
+widgets, game/variation/notation/settings/dialogs, source/build configuration,
+license notices and documentation. No custom search algorithm was developed.
+
+Implemented direct Smart Move with selected-piece priority, live-FEN/legal guards,
+ranked ambiguous destination and promotion selectors, candidate arrows, hover,
+PV insertion/copy/pin and searchmoves. Persistent processes retain a single newest
+pending request, stop/bestmove/ready barriers, deadline/error handling, bounded
+output/logs and 80ms information batches. Unsupported Chess960 is rejected.
+Generic options honor engine bounds; Hash also uses detected memory headroom.
+
+Migrated desktop rules/PGN to python-chess. Original perft-tested engine source
+remains historical and excluded from the desktop. Preserved nested branches,
+comments/NAGs/tags/evaluations; added multi-game study tabs, manual setup, Chess960,
+command search, shortcut editing/import/export, image export, classic/analysis-left
+layouts and graph hover/zoom/pan. Full-line review uses bounded normal and targeted
+played-move searches with immutable node IDs and preserves completed exact scores.
+It stores source scores/depths behind estimated 50/100/200 cp loss thresholds.
+
+Discovered/fixed during executed tests: permissive library PGN structure handling;
+intended-move draw claim semantics; executable symlink resolution escaping a Python
+venv; root PGN evaluation overwritten during selection; compressed compact controls;
+PV hover test attempted before nested Qt layouts settled; Unicode/quoted PGN tag
+export; interrupted review/navigation lifecycle. Regression checks cover these.
+The earliest migration GUI run had 7 failures (old built-in-engine/default layout
+assumptions plus hover). Subsequent runs reduced this to 3, then 1 hover-layout
+failure; the mouse helper now waits for layout and scrolls the actual PV into view.
+The dedicated external suite progressed from 4 pass/3 failure to 7, then 10 and
+12 passes as lifecycle/review/smart ambiguity regressions were added.
+
+Executed: 31 rules/storage/notation/variation tests passed; focused study/packaging
+run 31 passed in 2.36s; external suite 12 passed in 4.33s, including crash recovery,
+ambiguous Smart Move, underpromotion and review pause/resume. Full pytest run:
+95 passed, 5 skipped in 39.47s. Full unittest discovery then ran 103 tests,
+OK (skipped=5), 59.894s: 98 passed. Skips are 2 optional deep-perft and 3 optional
+legacy native-tablebase cases; current Syzygy probes belong to the supplied engine.
+Ruff passed. Source GUI --smoke-test and --smoke-engine fixture both ran successfully.
+Inspected real rendered dark/light/compact Qt screens with explicitly labelled
+simulated UCI data; no real Stockfish binary was available or bundled.
+
+New distribution terms are GPL-3.0-or-later due to python-chess; original code/assets
+retain MIT. COPYING/notice files and rules-library Python source accompany the
+source ZIP. PyInstaller produces only the external-analysis GUI, excluding the
+custom search/evaluation/UCI worker and native table reader. No Windows script
+launchers, external engines or table files are bundled. README/architecture/build
+instructions and research comparison reflect implemented/deferred scope.
+
+Remaining: real Stockfish 19/development and large-tablebase integration; manual
+Windows/DPI/suspend review; richer tree editing, collections, comparison, persistent
+cache/snapshots and flexible saved docking. The release is not full Nibbler parity.
+Final code verification and native Windows CI/package checks are next.
+
+Final local release checks: full pytest 98 passed, 5 skipped in 47.03s;
+post-lifecycle/toolbar GUI plus external suite 41 passed in 27.12s; Ruff passed.
+Additional rules/notation/external run 32 passed in 7.20s after escaping quoted
+PGN tags and preserving string-option values with reserved-looking words.
+Verified source ZIP integrity, GPL notices and included rules-library source,
+with binaries/table files/script launchers excluded. Built 0.5.0 pure-Python
+wheel without a compiler. Added an always-visible Analyze/Stop/engine selector
+entry to keep engine control accessible at compact window sizes. Native Windows
+CI, frozen app/external-fixture smoke and artifact upload are next.
+
+Pre-publish Smart Move review found/fixed another stale-menu edge: after a chooser
+opens, recheck the original full FEN, current legality, preview and interaction
+state before emitting a move. The regression changes the board while the menu is
+open, leaving the old suggested move coincidentally legal, and verifies no move
+is emitted. Chess960 king-step/castling shared destinations now use SAN choices
+rather than a promotion-only menu. External suite: 12 passed in 4.17s; Ruff passed.
+Also reset omitted advertised options to engine defaults when switching profiles
+on the same executable; the persistent-process test checks Threads returns to 1
+without restarting the process. UCI_AnalyseMode follows the actual GUI mode.

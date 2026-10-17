@@ -3,29 +3,53 @@
 from __future__ import annotations
 
 from pathlib import Path
-import json
 import random
 
 from PySide6.QtCore import QEvent, QStandardPaths, Qt, QTimer
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (
-    QAbstractItemView, QApplication, QButtonGroup, QDialog, QDialogButtonBox, QFileDialog,
-    QComboBox, QFrame, QHBoxLayout, QHeaderView, QLabel, QListWidget, QListWidgetItem, QMainWindow,
-    QMenu, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSpinBox, QSplitter, QTableWidget, QTableWidgetItem,
-    QTabWidget, QVBoxLayout, QWidget,
+    QAbstractItemView,
+    QApplication,
+    QButtonGroup,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QScrollArea,
+    QSpinBox,
+    QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabBar,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 from .. import __version__
-from ..core.board import Board, Move, SQUARES
+from ..core.board import Move, SQUARES
+from ..core.rules import Board
 from ..core.game import Game, TimeControl
 from ..core.notation import parse_san, san
-from ..engine.evaluate import evaluate
-from ..engine.search import SearchLimits, difficulty_limits, score_text
+from ..engine.uci_types import AnalysisLimits as SearchLimits, score_label, plot_score_label as score_text
 from ..settings import normalize
 from ..storage import Store, StorageError
 from .board import BoardWidget
 from .dialogs import NewGameDialog, SettingsDialog, TextDialog
 from .engine import EngineController
+from .engine_manager import EngineManager
+from .candidates import CandidatePanel
 from .moves import MoveText
 from .theme import ASSETS, stylesheet
 from .widgets import EvaluationBar, EvaluationGraph
@@ -55,7 +79,10 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(str(ASSETS / "icon.svg")))
         self.resize(1340, 920)
         self.setMinimumSize(1024, 660)
-        location = data_dir or Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation))
+        self.setAcceptDrops(True)
+        location = data_dir or Path(
+            QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation)
+        )
         self.store: Store | None = None
         self._storage_message = ""
         try:
@@ -63,7 +90,34 @@ class MainWindow(QMainWindow):
         except (StorageError, OSError) as exc:
             self._storage_message = str(exc)
         self.config = normalize(self.store.get("settings", {}) if self.store else {})
-        self.config.setdefault("mode", "human_ai")
+        self.profiles = self.store.get("engine_profiles", []) if self.store else []
+        if not isinstance(self.profiles, list):
+            self.profiles = []
+        self.profiles = [
+            p
+            for p in self.profiles
+            if isinstance(p, dict)
+            and all(k in p for k in ("id", "path", "values"))
+            and isinstance(p["id"], str)
+            and isinstance(p["path"], str)
+            and isinstance(p["values"], dict)
+            and isinstance(p.get("options", {}), dict)
+            and isinstance(p.get("arguments", []), list)
+            and all(isinstance(a, str) and "\0" not in a for a in p.get("arguments", []))
+        ]
+        if not self.profiles and self.config.get("external_path"):
+            self.profiles = [
+                {
+                    "id": "migrated",
+                    "path": self.config["external_path"],
+                    "name": "External UCI engine",
+                    "values": {},
+                    "options": {},
+                }
+            ]
+        self._candidate_identity = None
+        self._review = None
+        self.config.setdefault("mode", "analysis")
         self.config.setdefault("human_color", 1)
         self.game = Game()
         self.game.metadata = self.config.copy()
@@ -77,6 +131,15 @@ class MainWindow(QMainWindow):
                     self.paused = True
             except StorageError as exc:
                 self._storage_message = str(exc)
+        self._study_games = {self.game.id: self.game}
+        if self.store:
+            open_ids = self.store.get("open_studies", [])
+            for key in (open_ids if isinstance(open_ids, list) else [])[:20]:
+                if key not in self._study_games:
+                    try:
+                        self._study_games[key] = self.store.load(key)
+                    except StorageError:
+                        pass
         self.analysis_mode = self.config.get("mode") == "analysis"
         if self.analysis_mode:
             self.paused = False
@@ -94,6 +157,8 @@ class MainWindow(QMainWindow):
         self._build()
         self.engine = EngineController(self)
         self.engine.message.connect(self._engine_message)
+        self.engine.discovered.connect(self._engine_discovered)
+        self.engine.status.connect(self.engine_state.setText)
         self._shortcuts()
         self._apply_settings()
         self.pause_button.setText("Continue" if self.paused else "Pause")
@@ -140,7 +205,7 @@ class MainWindow(QMainWindow):
         nav.addWidget(self.play_nav)
         nav.addWidget(self.analysis_nav)
         nav.addWidget(button("▤   Library", self._library, "nav"))
-        nav.addWidget(button("◷   Engine lab", self._engine_lab, "nav"))
+        nav.addWidget(button("◷   Engine log", self._diagnostics, "nav"))
         nav.addStretch()
         nav.addWidget(label("A quieter place\nto think.", "muted"))
         nav.addSpacing(18)
@@ -162,6 +227,24 @@ class MainWindow(QMainWindow):
         self.workspace_header = QWidget()
         self.workspace_header.setLayout(top)
         content.addWidget(self.workspace_header)
+        study_row = QHBoxLayout()
+        self.study_tabs = QTabBar()
+        self.study_tabs.setTabsClosable(True)
+        self.study_tabs.setExpanding(False)
+        for study in self._study_games.values():
+            index = self.study_tabs.addTab(study.headers.get("Event") or "Study")
+            self.study_tabs.setTabData(index, study.id)
+        self.study_tabs.setCurrentIndex(
+            next(i for i in range(self.study_tabs.count()) if self.study_tabs.tabData(i) == self.game.id)
+        )
+        self.study_tabs.currentChanged.connect(self._switch_study)
+        self.study_tabs.tabCloseRequested.connect(self._close_study)
+        study_row.addWidget(self.study_tabs, 1)
+        study_row.addWidget(button("＋", self._new_study, "quiet"))
+        study_row.addWidget(button("Engines…", self._manage_engines, "quiet"))
+        self.quick_analysis_button = button("Analyze", self._analyze, "primary")
+        study_row.addWidget(self.quick_analysis_button)
+        content.addLayout(study_row)
         splitter = QSplitter(Qt.Orientation.Horizontal)
         self.main_splitter = splitter
         splitter.setChildrenCollapsible(False)
@@ -191,11 +274,16 @@ class MainWindow(QMainWindow):
         board_tools.addWidget(button("Copy FEN", self._copy_fen, "quiet"))
         board_layout.addLayout(board_tools)
         splitter.addWidget(arena)
-        self.panel = QFrame()
-        self.panel.setObjectName("panel")
+        self.panel = QScrollArea()
+        self.panel.setWidgetResizable(True)
+        self.panel.setFrameShape(QFrame.Shape.NoFrame)
+        self.panel.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.panel_body = QFrame()
+        self.panel_body.setObjectName("panel")
+        self.panel.setWidget(self.panel_body)
         self.panel.setMinimumWidth(310)
         self.panel.setMaximumWidth(420)
-        side = QVBoxLayout(self.panel)
+        side = QVBoxLayout(self.panel_body)
         side.setContentsMargins(20, 16, 20, 12)
         side.setSpacing(10)
         self.panel_caption = label("THE GAME", "eyebrow")
@@ -224,8 +312,12 @@ class MainWindow(QMainWindow):
         self.undo_button = button("‹", self._undo)
         self.redo_button = button("›", self._redo)
         self.last_button = button("›|", lambda: self._navigate(len(self.game.moves)))
-        for widget, name in ((self.first_button, "First position"), (self.undo_button, "Take back"),
-                             (self.redo_button, "Next move"), (self.last_button, "Latest position")):
+        for widget, name in (
+            (self.first_button, "First position"),
+            (self.undo_button, "Take back"),
+            (self.redo_button, "Next move"),
+            (self.last_button, "Latest position"),
+        ):
             widget.setAccessibleName(name)
         for widget in (self.first_button, self.undo_button, self.redo_button, self.last_button):
             navigation.addWidget(widget)
@@ -237,6 +329,7 @@ class MainWindow(QMainWindow):
         engine_page_layout.setSpacing(8)
         engine_scroll = QScrollArea()
         engine_scroll.setWidgetResizable(True)
+        engine_scroll.setMinimumHeight(0)
         engine_scroll.setFrameShape(QFrame.Shape.NoFrame)
         engine_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         engine_detail = QWidget()
@@ -244,9 +337,9 @@ class MainWindow(QMainWindow):
         self.engine_layout.setContentsMargins(0, 15, 0, 0)
         self.eval_label = label("—", "score")
         self.engine_layout.addWidget(self.eval_label)
-        self.engine_state = label("Nocturne engine", "subtitle", True)
+        self.engine_state = label("Select your UCI engine", "subtitle", True)
         self.engine_layout.addWidget(self.engine_state)
-        self.telemetry = label("Independent rules · native desktop", "muted", True)
+        self.telemetry = label("Offline analysis · engine supplied by you", "muted", True)
         self.engine_layout.addWidget(self.telemetry)
         self.tablebase_label = label("Syzygy: not configured", "muted", True)
         self.engine_layout.addWidget(self.tablebase_label)
@@ -256,18 +349,54 @@ class MainWindow(QMainWindow):
         self.pv_label.setFixedHeight(100)
         self.pv_label.move_hovered.connect(self._preview_pv)
         self.pv_label.preview_ended.connect(lambda: self._end_preview("pv"))
-        self.engine_layout.addWidget(self.pv_label)
-        self.engine_layout.addWidget(label("SAMPLED EVALUATION · WHITE", "eyebrow"))
+        self.candidates = CandidatePanel(self.pv_label)
+        self.candidates.preview.connect(self._preview_candidate)
+        self.candidates.preview_end.connect(lambda: self._end_preview("candidate"))
+        self.candidates.navigate.connect(self._insert_candidate)
+        self.candidates.action.connect(self._candidate_action)
+        self.engine_layout.addWidget(self.candidates)
+
         self.graph = EvaluationGraph()
         self.graph.position_requested.connect(self._navigate)
-        self.engine_layout.addWidget(self.graph)
+
         self.engine_layout.addStretch()
         engine_scroll.setWidget(engine_detail)
         engine_page_layout.addWidget(engine_scroll, 1)
         self.analysis_source = QComboBox()
-        self.analysis_source.addItem("Nocturne · independent engine", "custom")
+        self.analysis_source.addItem("No engine configured", "")
+        self.analysis_source.setMinimumHeight(32)
         engine_page_layout.addWidget(self.analysis_source)
+        self.analysis_source.currentIndexChanged.connect(self._source_changed)
+        self.analysis_source.activated.connect(
+            lambda index: self._manage_engines() if not self._profile() else None
+        )
+        options_row = QHBoxLayout()
+        self.analysis_kind = QComboBox()
+        for text, value in [
+            ("Live · maximum strength", "infinite"),
+            ("Explore alternatives", "explore"),
+            ("Bounded analysis", "bounded"),
+        ]:
+            self.analysis_kind.addItem(text, value)
+        self.analysis_kind.setCurrentIndex(
+            max(0, self.analysis_kind.findData(self.config.get("analysis_kind", "infinite")))
+        )
+        self.multipv = QSpinBox()
+        self.multipv.setRange(1, 32)
+        self.multipv.setValue(self.config.get("multipv", 3))
+        self.multipv.setPrefix("PV ")
+        options_row.addWidget(self.analysis_kind, 1)
+        options_row.addWidget(self.multipv)
+        engine_page_layout.addLayout(options_row)
+        self.analysis_kind.currentIndexChanged.connect(self._analysis_control_changed)
+        self.multipv.valueChanged.connect(self._analysis_control_changed)
+        self.tradeoff_label = label(
+            "Maximum strength uses one PV. More candidates divide the search effort.", "muted", True
+        )
+        self.engine_layout.insertWidget(0, self.tradeoff_label)
+
         self.analyze_button = button("Analyze position", self._analyze, "primary")
+        self.analyze_button.setMinimumHeight(32)
         engine_page_layout.addWidget(self.analyze_button)
         self.tabs.addTab(engine_page, "Engine")
         pgn_page = QWidget()
@@ -301,7 +430,9 @@ class MainWindow(QMainWindow):
         io = QHBoxLayout()
         io.addWidget(button("Paste FEN / PGN", self._load_clipboard, "quiet"))
         io.addWidget(button("Copy PGN", self._copy_pgn, "quiet"))
-        side.addLayout(io)
+        self.io_bar = QWidget()
+        self.io_bar.setLayout(io)
+        side.addWidget(self.io_bar)
         self.save_label = label("Games stay on this device", "eyebrow")
         self.save_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         side.addWidget(self.save_label)
@@ -321,8 +452,12 @@ class MainWindow(QMainWindow):
         history_tools = QHBoxLayout()
         history_tools.addWidget(label("GAME MOVES", "eyebrow"))
         history_tools.addStretch()
-        for text, callback in (("|‹", lambda: self._navigate(0)), ("‹", self._undo),
-                               ("›", self._redo), ("›|", lambda: self._navigate(len(self.game.moves)))):
+        for text, callback in (
+            ("|‹", lambda: self._navigate(0)),
+            ("‹", self._undo),
+            ("›", self._redo),
+            ("›|", lambda: self._navigate(len(self.game.moves))),
+        ):
             history_tools.addWidget(button(text, callback, "quiet"))
         history_layout.addLayout(history_tools)
         self.analysis_history = MoveText()
@@ -332,6 +467,7 @@ class MainWindow(QMainWindow):
         self.analysis_history.move_clicked.connect(self._navigate_node)
         self.analysis_history.preview_ended.connect(lambda: self._end_preview("history"))
         history_layout.addWidget(self.analysis_history, 1)
+        history_layout.addWidget(self.graph)
         self.workspace_splitter.addWidget(self.analysis_moves_panel)
         self.workspace_splitter.setStretchFactor(0, 1)
         self.workspace_splitter.setStretchFactor(1, 0)
@@ -371,12 +507,19 @@ class MainWindow(QMainWindow):
                 action.setShortcut(QKeySequence(keys))
             action.triggered.connect(callback)
             menu.addAction(action)
-            self.menu_actions[name or text] = action
+            key = name or text
+            if key in self.menu_actions:
+                key = menu.title().replace("&", "") + "/" + key
+            self.menu_actions[key] = action
             return action
 
         file = self.menuBar().addMenu("&File")
         add(file, "New game…", self._new_game, "Ctrl+N")
         add(file, "Open PGN…", self._open_pgn, "Ctrl+O")
+        add(file, "New study tab", self._new_study, "Ctrl+T")
+        add(file, "Rename study…", self._rename_study)
+        add(file, "Set up position…", self._setup_position)
+        add(file, "New Chess960 position…", self._new_chess960)
         add(file, "Load FEN / PGN from clipboard", self._load_clipboard, "Ctrl+Shift+V", "load_clipboard")
         add(file, "Edit / paste PGN…", self._show_pgn, "Ctrl+I")
         add(file, "Enter FEN / PGN…", self._import_menu)
@@ -395,39 +538,85 @@ class MainWindow(QMainWindow):
         add(tree, "Backward", self._undo, "Left")
         add(tree, "Forward", self._redo, "Right")
         tree.addSeparator()
-        add(tree, "Return to main line", lambda: self._navigate_node(self.game.mainline_node(self.game.cursor)))
+        add(
+            tree,
+            "Return to main line",
+            lambda: self._navigate_node(self.game.mainline_node(self.game.cursor)),
+        )
         add(tree, "Previous variation", lambda: self._sibling(-1))
         add(tree, "Next variation", lambda: self._sibling(1))
         add(tree, "Promote variation to main line", self._promote_line)
+        add(tree, "Edit comment / annotations…", self._edit_annotation, "Ctrl+M")
 
         analysis = self.menuBar().addMenu("&Analysis")
         add(analysis, "Go", self._start_analysis, "Ctrl+G")
         add(analysis, "Halt", self._halt_analysis, "Ctrl+H")
-        add(analysis, "Engine performance…", self._engine_lab)
+        add(analysis, "Analyze entire line…", self._analyze_game, "F12")
+        add(analysis, "Pause / resume game analysis", self._pause_review)
+        add(analysis, "Cancel game analysis", self._cancel_review)
+        add(analysis, "Analyze all legal moves again", self._clear_focus)
+        add(analysis, "Engine diagnostics…", self._diagnostics)
 
         display = self.menuBar().addMenu("&Display")
         add(display, "Flip board", self._flip, "F")
         add(display, "Clear arrows and marks", self.board_view.clear_annotations, "Escape")
         display.addSeparator()
-        for key, text in (("coordinates", "Coordinates"), ("overlays", "Analysis overlays"),
-                          ("animations", "Move animations"), ("light", "Light appearance")):
+        for key, text in (
+            ("coordinates", "Coordinates"),
+            ("overlays", "Analysis overlays"),
+            ("animations", "Move animations"),
+            ("light", "Light appearance"),
+        ):
             action = add(display, text, lambda checked, k=key: self._set_display(k, checked))
             action.setCheckable(True)
             self.display_actions[key] = action
         add(display, "Board appearance…", self._settings)
+        add(display, "Classic Nibbler layout", lambda: self._set_layout("classic"))
+        add(display, "Analysis on the left", lambda: self._set_layout("analysis-left"))
+        add(display, "Save board image…", self._save_board_image)
+        add(display, "Command palette…", self._command_palette, "Ctrl+K")
+        add(display, "Keyboard shortcuts…", self._shortcut_editor)
+        for key, text in [
+            ("smart_move", "Smart Move · click recommended destinations"),
+            ("smart_all", "Smart Move · allow all displayed candidates"),
+            ("branch_arrows", "Show saved continuation arrows"),
+            ("details", "Detailed analysis statistics"),
+        ]:
+            action = add(display, text, lambda checked, k=key: self._set_display(k, checked))
+            action.setCheckable(True)
+            self.display_actions[key] = action
+        for rank in range(1, 4):
+            add(
+                analysis,
+                f"Execute candidate {rank}",
+                lambda checked=False, r=rank: self._execute_rank(r),
+                f"Alt+{rank}",
+            )
 
         engine = self.menuBar().addMenu("&Engine")
         add(engine, "Choose engine…", self._choose_engine)
         add(engine, "Choose Syzygy folder…", self._choose_tablebase)
-        add(engine, "Engine settings…", self._settings)
+        add(engine, "Engine profiles and options…", self._manage_engines)
+        add(engine, "Restart selected engine", self._restart_engine)
+        add(engine, "Engine diagnostics…", self._diagnostics)
         play = self.menuBar().addMenu("&Play")
         add(play, "New game…", self._new_game)
         add(play, "Pause / continue", self._pause, "Space")
         add(play, "Offer / claim draw…", self._draw)
         add(play, "Resign…", self._resign)
         # Retain explicit references for menu state and interaction checks.
-        self.menus = {"File": file, "Tree": tree, "Analysis": analysis,
-                      "Display": display, "Engine": engine, "Play": play}
+        self.shortcut_overrides = self.store.get("shortcuts", {}) if self.store else {}
+        for name, value in self.shortcut_overrides.items():
+            if name in self.menu_actions and isinstance(value, str):
+                self.menu_actions[name].setShortcut(QKeySequence(value))
+        self.menus = {
+            "File": file,
+            "Tree": tree,
+            "Analysis": analysis,
+            "Display": display,
+            "Engine": engine,
+            "Play": play,
+        }
 
     def _set_display(self, key, value):
         self.config[key] = value
@@ -435,25 +624,648 @@ class MainWindow(QMainWindow):
         self._save()
 
     def eventFilter(self, watched, event):
-        if (watched is getattr(self, "pgn_editor", None)
-                and event.type() == QEvent.Type.ShortcutOverride
-                and event.modifiers() in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.ShiftModifier)):
+        if (
+            watched is getattr(self, "pgn_editor", None)
+            and event.type() == QEvent.Type.ShortcutOverride
+            and event.modifiers() in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.ShiftModifier)
+        ):
             event.accept()
             return True
         return super().eventFilter(watched, event)
 
-    def _choose_engine(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Choose UCI engine", "", "Executables (*.exe);;All files (*)")
-        if path:
+    def _register_study(self):
+        if not hasattr(self, "study_tabs"):
+            return
+        self._study_games[self.game.id] = self.game
+        self.study_tabs.blockSignals(True)
+        existing = {self.study_tabs.tabData(i): i for i in range(self.study_tabs.count())}
+        for key, game in self._study_games.items():
+            if key not in existing:
+                index = self.study_tabs.addTab(game.headers.get("Event") or "Study")
+                self.study_tabs.setTabData(index, key)
+                existing[key] = index
+        self.study_tabs.setCurrentIndex(existing[self.game.id])
+        self.study_tabs.setTabText(existing[self.game.id], (self.game.headers.get("Event") or "Study")[:32])
+        self.study_tabs.blockSignals(False)
+
+    def _switch_study(self, index):
+        if index < 0 or not hasattr(self, "engine"):
+            return
+        key = self.study_tabs.tabData(index)
+        if key == self.game.id or key not in self._study_games:
+            return
+        self._cancel_review()
+        self._stop_engine()
+        self.game.pause_clock()
+        self._save()
+        self.game = self._study_games[key]
+        self.analysis_mode = True
+        self._analysis_enabled = True
+        self._history_signature = None
+        self.paused = False
+        self._refresh()
+        self._save()
+        self._schedule_engine()
+
+    def _new_study(self):
+        self._cancel_review()
+        self._stop_engine()
+        self._save()
+        self.game = Game()
+        self.game.metadata["mode"] = "analysis"
+        self._workspace(True)
+        self._refresh()
+        self._save()
+
+    def _close_study(self, index):
+        key = self.study_tabs.tabData(index)
+        if self.study_tabs.count() == 1:
+            return
+        if key == self.game.id:
+            other = 0 if index else 1
+            self._switch_study(other)
+        self._study_games.pop(key, None)
+        self.study_tabs.blockSignals(True)
+        self.study_tabs.removeTab(index)
+        self.study_tabs.blockSignals(False)
+        self._save()
+
+    def _rename_study(self):
+        from PySide6.QtWidgets import QInputDialog
+
+        text, ok = QInputDialog.getText(self, "Study name", "Name", text=self.game.headers.get("Event", ""))
+        if ok:
+            self.game.headers["Event"] = text[:200]
+            self._register_study()
+            self._save()
+
+    def _setup_position(self):
+        from .setup_position import PositionDialog
+
+        dialog = PositionDialog(self.game.board.fen(), self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._import_text(dialog.result_fen)
+
+    def _new_chess960(self):
+        import chess
+        from PySide6.QtWidgets import QInputDialog
+
+        index, ok = QInputDialog.getInt(self, "Chess960", "Starting position number (0–959)", 518, 0, 959)
+        if ok:
+            self._import_text(chess.Board.from_chess960_pos(index).fen(shredder=True))
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls() or event.mimeData().hasText():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                path = Path(url.toLocalFile())
+                if path.suffix.lower() == ".pgn":
+                    try:
+                        self._import_text(path.read_text(encoding="utf-8-sig"))
+                    except (OSError, UnicodeError) as exc:
+                        self._error("Cannot open PGN", str(exc))
+        else:
+            self._import_text(event.mimeData().text())
+        event.acceptProposedAction()
+
+    def _shortcut_editor(self):
+        from PySide6.QtWidgets import QKeySequenceEdit
+        import json
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Keyboard shortcuts")
+        dialog.resize(700, 550)
+        layout = QVBoxLayout(dialog)
+        table = QTableWidget(0, 2)
+        table.setHorizontalHeaderLabels(["Command", "Shortcut"])
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        layout.addWidget(table)
+        edits = {}
+        for name, action in self.menu_actions.items():
+            row = table.rowCount()
+            table.insertRow(row)
+            table.setItem(row, 0, QTableWidgetItem(action.text()))
+            edit = QKeySequenceEdit(action.shortcut())
+            table.setCellWidget(row, 1, edit)
+            edits[name] = edit
+
+        def values():
+            return {
+                name: edit.keySequence().toString(QKeySequence.SequenceFormat.PortableText)
+                for name, edit in edits.items()
+            }
+
+        def export():
+            file, _ = QFileDialog.getSaveFileName(
+                dialog, "Export shortcuts", "nocturne-shortcuts.json", "JSON (*.json)"
+            )
+            if file:
+                Path(file).write_text(json.dumps(values(), indent=2), encoding="utf-8")
+
+        def load():
+            file, _ = QFileDialog.getOpenFileName(dialog, "Import shortcuts", "", "JSON (*.json)")
+            if not file:
+                return
+            try:
+                data = json.loads(Path(file).read_text(encoding="utf-8"))
+                if not isinstance(data, dict):
+                    raise ValueError("Expected shortcut object")
+                for name, value in data.items():
+                    if name in edits and isinstance(value, str):
+                        edits[name].setKeySequence(QKeySequence(value))
+            except (OSError, ValueError) as exc:
+                QMessageBox.warning(dialog, "Invalid shortcut file", str(exc))
+
+        row = QHBoxLayout()
+        row.addWidget(button("Import…", load))
+        row.addWidget(button("Export…", export))
+        layout.addLayout(row)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
+        layout.addWidget(buttons)
+
+        def accept():
+            data = values()
+            used = {}
+            for name, value in data.items():
+                if not value:
+                    continue
+                if value.casefold() in used:
+                    QMessageBox.warning(
+                        dialog,
+                        "Shortcut conflict",
+                        value + " is used by both " + used[value.casefold()] + " and " + name,
+                    )
+                    return
+                used[value.casefold()] = name
+            for name, value in data.items():
+                self.menu_actions[name].setShortcut(QKeySequence(value))
+            if self.store:
+                self.store.set("shortcuts", data)
+            dialog.accept()
+
+        buttons.accepted.connect(accept)
+        buttons.rejected.connect(dialog.reject)
+        dialog.exec()
+
+    def _set_layout(self, value):
+        self.config["layout"] = value
+        self._sync_workspace_layout()
+        self._save()
+
+    def _preview_candidate(self, rank, ply):
+        if self._candidate_identity != self._position_identity() or rank not in self.candidates.lines:
+            return
+        board = self.game.board.copy()
+        try:
+            for text in self.candidates.lines[rank]["pv"][:ply]:
+                board.push(board.parse_uci(text))
+        except ValueError:
+            return
+        self._preview_source = "candidate"
+        self.board_view.show_preview(board, caption=f"Temporary candidate #{rank} · ply {ply}")
+
+    def _insert_candidate(self, rank, ply=None):
+        if self._candidate_identity != self._position_identity() or rank not in self.candidates.lines:
+            return
+        moves = self.candidates.lines[rank]["pv"][:ply]
+        board = self.game.board.copy()
+        try:
+            parsed = []
+            for text in moves:
+                move = board.parse_uci(text)
+                parsed.append(move)
+                board.push(move)
+                if board.outcome():
+                    break
+        except ValueError:
+            return
+        self._stop_engine()
+        for move in parsed:
+            self.game.play(move)
+        self._refresh(animate=len(parsed) == 1)
+        self._save()
+        self._schedule_engine()
+
+    def _candidate_action(self, rank, action):
+        if self._candidate_identity != self._position_identity() or rank not in self.candidates.lines:
+            return
+        line = self.candidates.lines[rank]
+        if action == "insert":
+            self._insert_candidate(rank)
+        elif action == "focus":
             self._stop_engine()
-            self.config["external_path"] = path
-            self._apply_settings()
-            self.analysis_source.setCurrentIndex(1)
+            self.config["searchmoves"] = [line["pv"][0]]
+            self.statusBar().showMessage("Targeted analysis: " + line["san"][0])
+            self._schedule_engine()
+        elif action in ("san", "uci"):
+            QApplication.clipboard().setText(" ".join(line[action if action == "san" else "pv"]))
+
+    def _clear_focus(self):
+        self.config["searchmoves"] = []
+        self._stop_engine()
+        self._schedule_engine()
+
+    def _execute_rank(self, rank):
+        if not self.board_view.smart_move or self.board_view.selected is not None:
+            return
+        if rank > 1 and not self.board_view.smart_all:
+            return
+        self._insert_candidate(rank, 1)
+
+    def _store_analysis(self, game, node_id, info, turn):
+        if not info or info.get("bound", "exact") != "exact":
+            return
+        value = info["score"] * turn
+        node = game.nodes[node_id]
+        node.evaluation = value
+        from datetime import datetime, timezone
+
+        node.analysis = {
+            **info,
+            "white_value": info.get("score_value", info["score"]) * turn,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "profile": self._profile().get("id", "") if self._profile() else "",
+            "options": dict(self._profile().get("values", {})) if self._profile() else {},
+        }
+        if node_id in game._line_nodes:
+            game.evaluations[game._line_nodes.index(node_id)] = value
+
+    def _edit_annotation(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Move comment and annotations")
+        dialog.resize(580, 380)
+        layout = QVBoxLayout(dialog)
+        node = self.game.nodes[self.game.current_node]
+        comment = QPlainTextEdit(node.comment)
+        layout.addWidget(comment, 1)
+        symbols = QComboBox()
+        for title, value in [
+            ("No glyph", 0),
+            ("! good move", 1),
+            ("? mistake", 2),
+            ("!! brilliant", 3),
+            ("?? blunder", 4),
+            ("!? interesting", 5),
+            ("?! dubious", 6),
+        ]:
+            symbols.addItem(title, value)
+        symbols.setCurrentIndex(
+            next((i for i in range(symbols.count()) if symbols.itemData(i) in node.nags), 0)
+        )
+        layout.addWidget(symbols)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            node.comment = comment.toPlainText()
+            node.nags = [n for n in node.nags if n not in range(1, 7)]
+            if symbols.currentData():
+                node.nags.append(symbols.currentData())
+            self._refresh()
+            self._save()
+
+    def _save_board_image(self):
+        file, _ = QFileDialog.getSaveFileName(
+            self, "Save board image", "nocturne-position.png", "PNG (*.png)"
+        )
+        if file and not self.board_view.grab().save(file, "PNG"):
+            self._error("Cannot save image", "Choose a writable PNG file path.")
+
+    def _command_palette(self):
+        from PySide6.QtWidgets import QLineEdit
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Commands")
+        dialog.resize(580, 420)
+        layout = QVBoxLayout(dialog)
+        query = QLineEdit()
+        query.setPlaceholderText("Type a command…")
+        layout.addWidget(query)
+        results = QListWidget()
+        layout.addWidget(results)
+        actions = [
+            a for menu in self.menus.values() for a in menu.actions() if not a.isSeparator() and a.isEnabled()
+        ]
+
+        def update(text):
+            results.clear()
+            for action in actions:
+                if text.casefold() in action.text().casefold():
+                    item = QListWidgetItem(action.text() + "   " + action.shortcut().toString())
+                    item.setData(Qt.ItemDataRole.UserRole, action)
+                    results.addItem(item)
+            results.setCurrentRow(0)
+
+        def run(item=None):
+            item = item or results.currentItem()
+            if item:
+                action = item.data(Qt.ItemDataRole.UserRole)
+                dialog.accept()
+                action.trigger()
+
+        query.textChanged.connect(update)
+        query.returnPressed.connect(lambda: run())
+        results.itemActivated.connect(run)
+        update("")
+        dialog.exec()
+
+    def _analyze_game(self):
+        from PySide6.QtWidgets import QInputDialog
+
+        if not self._profile():
+            self._manage_engines()
+            return
+        seconds, ok = QInputDialog.getDouble(
+            self,
+            "Analyze entire line",
+            "Seconds per position / targeted move",
+            self.config.get("analysis_seconds", 3),
+            0.05,
+            600,
+            2,
+        )
+        if not ok:
+            return
+        self._cancel_review()
+        self._stop_engine()
+        self._analysis_enabled = False
+        # Freeze the line and node identities; the displayed position is free to move.
+        self.game._sync_tree_state()
+        self._review = {
+            "game_id": self.game.id,
+            "line": self.game._line_nodes.copy(),
+            "index": 0,
+            "stage": "best",
+            "seconds": seconds,
+            "paused": False,
+            "info": None,
+            "generation": None,
+        }
+        self._review_next()
+
+    def _review_next(self):
+        if self._closing:
+            self._review = None
+            return
+        state = self._review
+        if not state or state["paused"]:
+            return
+        if state["game_id"] != self.game.id:
+            self._cancel_review()
+            return
+        if state["index"] >= len(state["line"]):
+            self._review = None
+            self.analyze_button.setText("Analyze position")
+            self.quick_analysis_button.setText("Analyze")
+            self.statusBar().showMessage("Game analysis complete · evaluations and review evidence saved")
+            self._save()
+            return
+        node_id = state["line"][state["index"]]
+        position = self.game.position_at_node(node_id)
+        if position.outcome():
+            state["index"] += 1
+            state["stage"] = "best"
+            QTimer.singleShot(0, self._review_next)
+            return
+        from types import SimpleNamespace
+
+        path = self.game.node_path(node_id)
+        temporary = SimpleNamespace(
+            initial_fen=self.game.initial_fen,
+            id=self.game.id,
+            moves=[self.game.nodes[i].move for i in path[1:]],
+            cursor=len(path) - 1,
+            board=position,
+        )
+        profile = self._profile()
+        if not profile:
+            self._cancel_review()
+            return
+        searchmoves = None
+        if state["stage"] == "played":
+            searchmoves = [self.game.nodes[state["line"][state["index"] + 1]].move.uci()]
+        limits = SearchLimits(
+            depth=self.config.get("analysis_depth", 24),
+            seconds=state["seconds"],
+            nodes=self.config.get("analysis_nodes") or None,
+        )
+        try:
+            generation = self.engine.start(
+                temporary,
+                limits,
+                profile["path"],
+                options=profile.get("values", {}),
+                multipv=1,
+                kind="analysis",
+                searchmoves=searchmoves,
+                arguments=profile.get("arguments", []),
+                tablebase_path=self.config.get("syzygy_path", ""),
+            )
+        except (OSError, ValueError, RuntimeError) as exc:
+            self._error("Game analysis stopped", str(exc))
+            self._cancel_review()
+            return
+        state["generation"] = generation
+        state["info"] = None
+        state["turn"] = position.turn
+        self.analyze_button.setText("Pause game analysis")
+        self.quick_analysis_button.setText("Pause review")
+        self.statusBar().showMessage(
+            f"Game analysis {state['index'] + 1}/{len(state['line'])} · {state['stage']} search"
+        )
+
+    def _review_message(self, generation, kind, payload):
+        state = self._review
+        if state and state["game_id"] != self.game.id:
+            self.engine.stop()
+            self._review = None
+            return True
+        if not state or generation != state.get("generation"):
+            return False
+        if kind == "error":
+            state["paused"] = True
+            self.statusBar().showMessage(payload["message"])
+            return True
+        if kind == "info":
+            state["info"] = payload.copy()
+            return True
+        if kind != "result":
+            return True
+        info = payload.get("info") or state["info"]
+        if not info or info.get("bound", "exact") != "exact":
+            state["paused"] = True
+            self.statusBar().showMessage("No exact engine score received; review paused.")
+            return True
+        index = state["index"]
+        line = state["line"]
+        node_id = line[index]
+        if state["stage"] == "best":
+            self._store_analysis(self.game, node_id, info, state["turn"])
+            state["best"] = info.copy()
+            if index + 1 < len(line):
+                played = self.game.nodes[line[index + 1]].move.uci()
+                if info["pv"][0] != played:
+                    state["stage"] = "played"
+                    QTimer.singleShot(0, self._review_next)
+                    self._save()
+                    return True
+                self._classify_review(line[index + 1], info, info)
+        else:
+            self._classify_review(line[index + 1], state["best"], info)
+        state["index"] += 1
+        state["stage"] = "best"
+        self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
+        self._save()
+        QTimer.singleShot(0, self._review_next)
+        return True
+
+    def _classify_review(self, node_id, best, played):
+        record = {
+            "best": best,
+            "played": played,
+            "criteria": "cp loss: 50 inaccuracy, 100 mistake, 200 blunder; equal-limit estimates, depths may differ",
+        }
+        if best["pv"][0] == self.game.nodes[node_id].move.uci():
+            record.update(label="Best", loss_cp=0)
+        elif best.get("score_type") == played.get("score_type") == "cp":
+            loss = max(0, best["score_value"] - played["score_value"])
+            record.update(
+                loss_cp=loss,
+                label="Blunder"
+                if loss >= 200
+                else "Mistake"
+                if loss >= 100
+                else "Inaccuracy"
+                if loss >= 50
+                else "Within 0.50",
+            )
+        else:
+            record["label"] = "Mate score · inspect lines"
+        self.game.metadata.setdefault("review", {})[str(node_id)] = record
+        self.statusBar().showMessage(self.game.nodes[node_id].san + " · " + record["label"])
+
+    def _pause_review(self):
+        if not self._review:
+            return
+        self._review["paused"] = not self._review["paused"]
+        if self._review["paused"]:
+            self.engine.stop()
+            self._review["generation"] = None
+            self.analyze_button.setText("Resume game analysis")
+            self.quick_analysis_button.setText("Resume review")
+            self._save()
+        else:
+            self._review_next()
+
+    def _cancel_review(self):
+        if self._review:
+            self.engine.stop()
+            self._review = None
+            self.analyze_button.setText("Analyze position")
+            self.quick_analysis_button.setText("Analyze")
+            self._save()
+
+    def _choose_engine(self):
+        self._manage_engines()
+
+    def _profile(self):
+        key = (
+            self.analysis_source.currentData()
+            if hasattr(self, "analysis_source")
+            else self.config.get("engine_id", "")
+        )
+        return next((p for p in self.profiles if p["id"] == key), None)
+
+    def _manage_engines(self):
+        self._cancel_review()
+        self._stop_engine()
+        dialog = EngineManager(self.profiles, self.config.get("engine_id", ""), self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        self.profiles = dialog.profiles
+        self.config["engine_id"] = dialog.selected
+        self._apply_settings()
+        self._save()
+        self._schedule_engine()
+
+    def _source_changed(self):
+        self._cancel_review()
+        self.config["engine_id"] = self.analysis_source.currentData() or ""
+        if hasattr(self, "engine"):
+            self._stop_engine()
             self._save()
             self._schedule_engine()
 
+    def _analysis_control_changed(self):
+        self._cancel_review()
+        self.config["analysis_kind"] = self.analysis_kind.currentData()
+        self.config["multipv"] = self.multipv.value()
+        self.tradeoff_label.setText(
+            f"{self.multipv.value()} candidates · search effort divided"
+            if self.analysis_kind.currentData() == "explore"
+            else "MultiPV 1 · primary analysis"
+        )
+        self._stop_engine()
+        self._save()
+        self._schedule_engine()
+
+    def _engine_discovered(self, data):
+        from dataclasses import asdict
+
+        profile = next(
+            (p for p in self.profiles if Path(p["path"]).resolve() == Path(data["path"]).resolve()), None
+        )
+        if profile:
+            profile["name"] = data["name"]
+            profile["options"] = {n: asdict(o) for n, o in data["options"].items()}
+            self.analysis_source.setItemText(
+                self.analysis_source.findData(profile["id"]), profile.get("label") or data["name"]
+            )
+            maximum = data["options"].get("MultiPV")
+            self.multipv.setMaximum(min(32, maximum.maximum) if maximum else 1)
+            if self.config.get("syzygy_path"):
+                self.tablebase_label.setText(
+                    "Syzygy path sent to engine"
+                    if "SyzygyPath" in data["options"]
+                    else "Engine does not advertise SyzygyPath"
+                )
+            self._save()
+
+    def _restart_engine(self):
+        if profile := self._profile():
+            self._stop_engine()
+            try:
+                self.engine.connect_engine(profile["path"], profile.get("arguments", []))
+            except ValueError as exc:
+                self._error("Cannot connect engine", str(exc))
+            self._schedule_engine()
+
+    def _diagnostics(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Engine diagnostics")
+        dialog.resize(850, 550)
+        layout = QVBoxLayout(dialog)
+        text = QPlainTextEdit()
+        text.setReadOnly(True)
+        text.setPlainText("\n".join(self.engine.connection.log))
+        layout.addWidget(text)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        dialog.exec()
+
     def _choose_tablebase(self):
-        path = QFileDialog.getExistingDirectory(self, "Choose Syzygy tablebase folder", self.config.get("syzygy_path", ""))
+        path = QFileDialog.getExistingDirectory(
+            self, "Choose Syzygy tablebase folder", self.config.get("syzygy_path", "")
+        )
         if path:
             self._stop_engine()
             self.config["syzygy_path"] = path
@@ -466,15 +1278,31 @@ class MainWindow(QMainWindow):
         self.board_view.theme = self.config.get("theme", "Forest")
         self.board_view.coordinates = self.config.get("coordinates", True)
         self.board_view.animations = self.config.get("animations", True)
+        self.tablebase_label.setVisible(bool(self.config.get("syzygy_path")))
+        self.tradeoff_label.setText(
+            f"{self.multipv.value()} candidates · search effort divided"
+            if self.analysis_kind.currentData() == "explore"
+            else "MultiPV 1 · primary analysis"
+        )
         self.board_view.overlays = self.config.get("overlays", True)
+        self.board_view.smart_move = self.config.get("smart_move", True)
+        self.board_view.smart_all = self.config.get("smart_all", False)
         self.graph.light = self.config.get("light", False)
         self.eval_bar.setVisible(self.board_view.overlays)
         for key, action in self.display_actions.items():
             action.setChecked(bool(self.config.get(key, False)))
+        self.analysis_source.blockSignals(True)
         self.analysis_source.clear()
-        self.analysis_source.addItem("Nocturne · independent engine", "custom")
-        if self.config.get("external_path"):
-            self.analysis_source.addItem("External UCI engine", "external")
+        for profile in self.profiles:
+            self.analysis_source.addItem(
+                profile.get("label") or profile.get("name", Path(profile["path"]).stem), profile["id"]
+            )
+        if not self.profiles:
+            self.analysis_source.addItem("Choose your Stockfish executable…", "")
+        self.analysis_source.setCurrentIndex(
+            max(0, self.analysis_source.findData(self.config.get("engine_id", "")))
+        )
+        self.analysis_source.blockSignals(False)
         self._render_move_history()
         if self._pv_root is not None:
             self.pv_label.set_moves(self.pv_label._items, light=self.config.get("light", False))
@@ -482,31 +1310,58 @@ class MainWindow(QMainWindow):
 
     def _sync_workspace_layout(self):
         analysis = self.analysis_mode
-        if self._analysis_layout_active == analysis:
+        signature = (analysis, self.config.get("layout", "classic"))
+        if self._analysis_layout_active == signature:
             return
-        self._analysis_layout_active = analysis
+        self._analysis_layout_active = signature
         self.board_view.clear_preview()
         self._preview_source = None
-        for widget in (self.sidebar, self.workspace_header, self.top_card, self.bottom_card,
-                       self.pause_button, self.draw_button, self.resign_button):
+        for widget in (
+            self.sidebar,
+            self.workspace_header,
+            self.top_card,
+            self.bottom_card,
+            self.pause_button,
+            self.draw_button,
+            self.resign_button,
+        ):
             widget.setVisible(not analysis)
         self.analysis_moves_panel.setVisible(analysis)
         self.tabs.setTabVisible(0, not analysis)
         self.panel_caption.setText("ENGINE ANALYSIS" if analysis else "THE GAME")
-        self.panel.setMaximumWidth(480 if analysis else 420)
-        self.main_splitter.insertWidget(0 if analysis else 1, self.panel)
-        self.main_splitter.setStretchFactor(0, 0 if analysis else 1)
+        self.panel_caption.setVisible(not analysis)
+        self.io_bar.setVisible(not analysis)
+        self.save_label.setVisible(not analysis)
+        self.mode_label.setVisible(not analysis)
+        self.panel.setMaximumWidth(16777215 if analysis else 420)
+        left = analysis and self.config.get("layout", "classic") == "analysis-left"
+        self.main_splitter.insertWidget(0 if left else 1, self.panel)
+        self.main_splitter.setStretchFactor(0, 1)
         self.main_splitter.setStretchFactor(1, 1 if analysis else 0)
         if analysis:
             self.tabs.setCurrentIndex(1)
-            self.main_splitter.setSizes([390, 800])
-            self.workspace_splitter.setSizes([620, 150])
+            self.main_splitter.setSizes([450, 750] if left else [750, 450])
+            self.workspace_splitter.setSizes([600, 230])
         else:
             self.main_splitter.setSizes([720, 350])
 
     def _render_move_history(self):
-        self.analysis_history.set_moves(self.game.tree_tokens(), self.game.current_node,
-                                        self.config.get("light", False))
+        tokens = []
+        for text, index in self.game.tree_tokens():
+            if index is not None:
+                node = self.game.nodes[index]
+                if node.nags:
+                    text += " " + "".join(
+                        {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}.get(n, f" ${n}")
+                        for n in node.nags
+                    )
+                if node.comment:
+                    text += " {" + node.comment[:100] + ("…" if len(node.comment) > 100 else "") + "}"
+                review = self.game.metadata.get("review", {}).get(str(index))
+                if review:
+                    text += " [" + review["label"] + "]"
+            tokens.append((text, index))
+        self.analysis_history.set_moves(tokens, self.game.current_node, self.config.get("light", False))
 
     def _end_preview(self, source):
         if self._preview_source == source:
@@ -522,8 +1377,12 @@ class MainWindow(QMainWindow):
         self.board_view.show_preview(position, node.move, f"History preview · {node.san}")
 
     def _preview_pv(self, ply):
-        if (not self.analysis_mode or self._pv_root is None
-                or self._pv_identity != self._position_identity() or not 1 <= ply <= len(self._pv_moves)):
+        if (
+            not self.analysis_mode
+            or self._pv_root is None
+            or self._pv_identity != self._position_identity()
+            or not 1 <= ply <= len(self._pv_moves)
+        ):
             return
         position = self._pv_root.copy(history=False)
         for move in self._pv_moves[:ply]:
@@ -532,7 +1391,11 @@ class MainWindow(QMainWindow):
         self.board_view.show_preview(position, self._pv_moves[ply - 1], f"Suggested line preview · ply {ply}")
 
     def changeEvent(self, event):
-        if event.type() == QEvent.Type.ActivationChange and not self.isActiveWindow() and hasattr(self, "board_view"):
+        if (
+            event.type() == QEvent.Type.ActivationChange
+            and not self.isActiveWindow()
+            and hasattr(self, "board_view")
+        ):
             self._preview_source = None
             self.board_view.clear_preview()
         super().changeEvent(event)
@@ -553,6 +1416,7 @@ class MainWindow(QMainWindow):
         self._schedule_engine()
 
     def _refresh(self, animate=False):
+        self._register_study()
         self._sync_workspace_layout()
         self._preview_source = None
         if self._pgn_game_id != self.game.id or not self.pgn_editor.document().isModified():
@@ -568,16 +1432,41 @@ class MainWindow(QMainWindow):
             self._pv_root = None
             self._pv_moves = []
             self.pv_label.set_moves([])
-            self.tablebase_label.setText("Syzygy: awaiting probe" if self.config.get("syzygy_path") else "Syzygy: not configured")
+            self.candidates.clear()
+            self._candidate_identity = None
+            self.config["searchmoves"] = []
+            self.tablebase_label.setText(
+                "Syzygy: awaiting probe" if self.config.get("syzygy_path") else "Syzygy: not configured"
+            )
         outcome = self.game.outcome
-        self.board_view.interactive = not outcome and not self.paused and (self.analysis_mode or not self._is_engine_turn())
+        self.board_view.branch_moves = (
+            [self.game.nodes[c].move for c in self.game.nodes[self.game.current_node].children]
+            if self.config.get("branch_arrows", True)
+            else []
+        )
+        self.board_view.interactive = (
+            not outcome and not self.paused and (self.analysis_mode or not self._is_engine_turn())
+        )
         turn = "White" if self.game.board.turn == 1 else "Black"
-        status = f"{outcome.result} · {outcome.reason}" if outcome else f"{turn} to move" + (" · Check" if self.game.board.in_check() else "")
+        status = (
+            f"{outcome.result} · {outcome.reason}"
+            if outcome
+            else f"{turn} to move" + (" · Check" if self.game.board.in_check() else "")
+        )
         self.status_label.setText(status)
         mode = self.config.get("mode", "human_ai")
-        self.mode_label.setText("Analysis" if self.analysis_mode else {
-            "human_ai": "Play Nocturne" if self.config.get("black_engine", "custom") == "custom" else "Play UCI engine",
-            "human": "Two players", "ai_ai": "Engine theatre", "analysis": "Analysis"}.get(mode, "Two players"))
+        self.mode_label.setText(
+            "Analysis"
+            if self.analysis_mode
+            else {
+                "human_ai": "Play Nocturne"
+                if self.config.get("black_engine", "custom") == "custom"
+                else "Play UCI engine",
+                "human": "Two players",
+                "ai_ai": "Engine theatre",
+                "analysis": "Analysis",
+            }.get(mode, "Two players")
+        )
         if self.paused and not outcome:
             self.status_label.setText("Paused · Continue when you're ready")
         self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
@@ -617,13 +1506,21 @@ class MainWindow(QMainWindow):
     def _update_players(self):
         top_color = 1 if self.board_view.flipped else -1
         values = self.game.clock_values()
-        material = sum((1 if self.game.board.cells[s] > 0 else -1) * (0, 1, 3, 3, 5, 9, 0)[abs(self.game.board.cells[s])]
-                       for s in SQUARES if self.game.board.cells[s])
-        for color, name, detail, clock in ((top_color, self.top_name, self.top_detail, self.top_clock),
-                                            (-top_color, self.bottom_name, self.bottom_detail, self.bottom_clock)):
+        material = sum(
+            (1 if self.game.board.cells[s] > 0 else -1) * (0, 1, 3, 3, 5, 9, 0)[abs(self.game.board.cells[s])]
+            for s in SQUARES
+            if self.game.board.cells[s]
+        )
+        for color, name, detail, clock in (
+            (top_color, self.top_name, self.top_detail, self.top_clock),
+            (-top_color, self.bottom_name, self.bottom_detail, self.bottom_clock),
+        ):
             name.setText(self.game.headers.get("White" if color == 1 else "Black", "Player"))
             balance = material * color
-            detail.setText(("White pieces" if color == 1 else "Black pieces") + (f"  ·  +{balance}" if balance > 0 else ""))
+            detail.setText(
+                ("White pieces" if color == 1 else "Black pieces")
+                + (f"  ·  +{balance}" if balance > 0 else "")
+            )
             clock.setText(self._clock_text(values[color]) if self.game.time_control.seconds else "∞")
             active = self.game.running and self.game.board.turn == color
             style = "activeClock" if active else "clock"
@@ -658,11 +1555,16 @@ class MainWindow(QMainWindow):
         self._create_game()
 
     def _create_game(self):
+        self._cancel_review()
         self._stop_engine()
         mode = self.config.get("mode", "human_ai")
         if self.config.get("human_color", 1) == 0:
             self.config["human_color"] = random.choice((1, -1))
-        control = TimeControl() if mode == "analysis" else TimeControl(self.config.get("seconds", 0), self.config.get("increment", 0))
+        control = (
+            TimeControl()
+            if mode == "analysis"
+            else TimeControl(self.config.get("seconds", 0), self.config.get("increment", 0))
+        )
         self.game = Game(time_control=control)
         names = {1: self.config.get("white_name", "White"), -1: self.config.get("black_name", "Black")}
         if mode == "human_ai":
@@ -670,7 +1572,9 @@ class MainWindow(QMainWindow):
             if names[human] in ("White", "Black", ""):
                 names[human] = "You"
             if names[-human] in ("White", "Black", ""):
-                names[-human] = "Nocturne" if self.config.get("black_engine", "custom") == "custom" else "UCI engine"
+                names[-human] = (
+                    "Nocturne" if self.config.get("black_engine", "custom") == "custom" else "UCI engine"
+                )
         elif mode == "ai_ai":
             for color in (1, -1):
                 if names[color] in ("White", "Black", ""):
@@ -691,6 +1595,8 @@ class MainWindow(QMainWindow):
         self._schedule_engine()
 
     def _workspace(self, analysis):
+        if not analysis:
+            self._cancel_review()
         self._stop_engine()
         if analysis:
             self._ensure_analysis_copy()
@@ -708,7 +1614,9 @@ class MainWindow(QMainWindow):
         self.analysis_nav.setChecked(analysis)
         self.play_nav.setChecked(not analysis)
         self.title_label.setText("Room to explore." if analysis else "Your next move.")
-        self.subtitle_label.setText("Follow an idea. Try another line." if analysis else "Find your focus. Enjoy the game.")
+        self.subtitle_label.setText(
+            "Follow an idea. Try another line." if analysis else "Find your focus. Enjoy the game."
+        )
         self._refresh()
         self._schedule_engine()
 
@@ -814,7 +1722,11 @@ class MainWindow(QMainWindow):
             offer = menu.addAction("Offer a draw")
             action = menu.exec(self.draw_button.mapToGlobal(self.draw_button.rect().bottomLeft()))
             if action == claim:
-                dialog = TextDialog("Claim a draw", "Enter the intended legal move in SAN or UCI. A valid claim ends the game without playing the move.", parent=self)
+                dialog = TextDialog(
+                    "Claim a draw",
+                    "Enter the intended legal move in SAN or UCI. A valid claim ends the game without playing the move.",
+                    parent=self,
+                )
                 if dialog.exec() != QDialog.DialogCode.Accepted:
                     return
                 text = dialog.editor.toPlainText().strip()
@@ -829,15 +1741,15 @@ class MainWindow(QMainWindow):
                     return
                 self._stop_engine()
             elif action == offer:
-                if self.config.get("mode") == "human_ai":
-                    if self.config.get("black_engine", "custom") == "external":
-                        self.statusBar().showMessage("UCI has no draw-offer protocol. Valid draw claims remain available.", 5000)
-                        return
-                    engine_color = -self.config.get("human_color", 1)
-                    if evaluate(self.game.board) * self.game.board.turn * engine_color > 20:
-                        self.statusBar().showMessage("Nocturne declines the draw offer", 4000)
-                        return
-                elif QMessageBox.question(self, "Offer a draw", "Does the other player accept a draw?") != QMessageBox.StandardButton.Yes:
+                if self.config.get("mode") in ("human_ai", "ai_ai"):
+                    self.statusBar().showMessage(
+                        "UCI has no draw-offer protocol. Valid draw claims remain available.", 5000
+                    )
+                    return
+                if (
+                    QMessageBox.question(self, "Offer a draw", "Does the other player accept a draw?")
+                    != QMessageBox.StandardButton.Yes
+                ):
                     return
                 self._stop_engine()
                 self.game.agree_draw()
@@ -849,7 +1761,9 @@ class MainWindow(QMainWindow):
     def _resign(self):
         if QMessageBox.question(self, "Resign", "Resign this game?") == QMessageBox.StandardButton.Yes:
             self._stop_engine()
-            self.game.resign(self.config.get("human_color", 1) if self.config.get("mode") == "human_ai" else None)
+            self.game.resign(
+                self.config.get("human_color", 1) if self.config.get("mode") == "human_ai" else None
+            )
             self._refresh()
             self._save()
 
@@ -888,7 +1802,9 @@ class MainWindow(QMainWindow):
             self._import_text(text)
 
     def _import_menu(self):
-        dialog = TextDialog("Import position or game", "Paste a six-field FEN or a single PGN game.", parent=self)
+        dialog = TextDialog(
+            "Import position or game", "Paste a six-field FEN or a single PGN game.", parent=self
+        )
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         self._import_text(dialog.editor.toPlainText())
@@ -899,12 +1815,24 @@ class MainWindow(QMainWindow):
             if not text:
                 raise ValueError("Paste a PGN game, SAN moves, or a six-field FEN first.")
             first = text.split()[0] if text else ""
-            game = Game(text) if first.count("/") == 7 else Game.from_pgn(text)
+            if first.count("/") == 7:
+                games = [Game(text)]
+            else:
+                from ..core.notation import read_pgns, write_pgn
+
+                games = [Game.from_pgn(write_pgn(parsed)) for parsed in read_pgns(text)]
+            game = games[0]
         except ValueError as exc:
             self._error("Cannot import", str(exc))
             return False
         self._save()
         self._stop_engine()
+        self._cancel_review()
+        for imported in games:
+            imported.metadata["mode"] = "analysis"
+            self._study_games[imported.id] = imported
+            if self.store:
+                self.store.save(imported, autosave=False)
         self.game = game
         self.game.metadata["mode"] = "analysis"
         self._history_signature = None
@@ -929,6 +1857,8 @@ class MainWindow(QMainWindow):
         try:
             self.store.save(self.game)
             self.store.set("settings", self.config)
+            self.store.set("engine_profiles", self.profiles)
+            self.store.set("open_studies", list(self._study_games)[-20:])
             self.save_label.setText("SAVED ON THIS DEVICE")
         except StorageError as exc:
             self.save_label.setText("SAVE FAILED · SEE STATUS")
@@ -950,11 +1880,15 @@ class MainWindow(QMainWindow):
             self._error("Library unavailable", str(exc))
             return
         for record in games:
-            item = QListWidgetItem(f"{record['title']}\n{record['updated'][:16].replace('T', ' ')} UTC · {record['plies']} plies · {record['result']}")
+            item = QListWidgetItem(
+                f"{record['title']}\n{record['updated'][:16].replace('T', ' ')} UTC · {record['plies']} plies · {record['result']}"
+            )
             item.setData(Qt.ItemDataRole.UserRole, record["id"])
             listing.addItem(item)
         layout.addWidget(listing)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Open | QDialogButtonBox.StandardButton.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Open | QDialogButtonBox.StandardButton.Cancel
+        )
         open_button = buttons.button(QDialogButtonBox.StandardButton.Open)
         open_button.setEnabled(False)
         listing.currentItemChanged.connect(lambda current, _: open_button.setEnabled(current is not None))
@@ -971,6 +1905,7 @@ class MainWindow(QMainWindow):
                 self._error("Cannot restore", str(exc))
                 return
             self._save()
+            self._cancel_review()
             self._stop_engine()
             self.game = game
             self._load_game_config()
@@ -987,6 +1922,7 @@ class MainWindow(QMainWindow):
     def _settings(self):
         dialog = SettingsDialog(self.config, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._cancel_review()
             self._stop_engine()
             self.config.update(dialog.config())
             self._apply_settings()
@@ -994,12 +1930,22 @@ class MainWindow(QMainWindow):
             self._schedule_engine()
 
     def _analyze(self):
+        if not self._profile():
+            self._manage_engines()
+            return
+        if self._review:
+            self._pause_review()
+            return
         if self._job and self._job["kind"] == "analysis":
             self._halt_analysis()
             return
         self._start_analysis()
 
     def _halt_analysis(self):
+        if self._review:
+            if not self._review["paused"]:
+                self._pause_review()
+            return
         self._analysis_enabled = False
         self._stop_engine()
         self.analyze_button.setText("Analyze position")
@@ -1011,11 +1957,21 @@ class MainWindow(QMainWindow):
         self._schedule_engine()
 
     def _engine_lab(self):
-        self._open_engine_lab()
+        self._diagnostics()
 
     def _load_game_config(self):
-        for key in ("mode", "human_color", "difficulty", "seconds", "increment", "takebacks",
-                    "white_engine", "black_engine", "white_name", "black_name"):
+        for key in (
+            "mode",
+            "human_color",
+            "difficulty",
+            "seconds",
+            "increment",
+            "takebacks",
+            "white_engine",
+            "black_engine",
+            "white_name",
+            "black_name",
+        ):
             if key in self.game.metadata:
                 self.config[key] = self.game.metadata[key]
         self.config = normalize(self.config)
@@ -1029,67 +1985,99 @@ class MainWindow(QMainWindow):
 
     def _is_engine_turn(self):
         mode = self.config.get("mode", "human_ai")
-        return mode == "ai_ai" or (mode == "human_ai" and self.game.board.turn != self.config.get("human_color", 1))
+        return mode == "ai_ai" or (
+            mode == "human_ai" and self.game.board.turn != self.config.get("human_color", 1)
+        )
 
     def _position_identity(self):
         return self.game.id, self.game.cursor, self.game.board.key
 
     def _stop_engine(self):
+        if self._review and not self._review.get("paused") and self._job is None:
+            self.board_view.set_recommendations([])
+            return
         old_job = self._job
         if hasattr(self, "engine"):
             self.engine.stop()
+            self.board_view.set_recommendations([])
         self._job = None
         if hasattr(self, "analyze_button"):
             self.analyze_button.setText("Analyze position")
+            self.quick_analysis_button.setText("Analyze")
+        if old_job and old_job.get("identity") == self._position_identity() and self._last_info:
+            self._store_analysis(self.game, self.game.current_node, self._last_info, old_job["turn"])
         if old_job and old_job["kind"] != "benchmark":
             self.engine_state.setText("Search canceled")
             self.statusBar().showMessage("Search canceled", 3000)
 
     def _schedule_engine(self):
-        if self._closing or not hasattr(self, "engine") or self.engine.busy or self.paused or self.game.outcome:
+        if (
+            self._closing
+            or not hasattr(self, "engine")
+            or self.engine.busy
+            or self.paused
+            or self.game.outcome
+        ):
+            return
+        if self._review:
             return
         if self.analysis_mode:
             if not self._analysis_enabled:
                 return
             kind = "analysis"
-            limits = SearchLimits(depth=self.config.get("analysis_depth", 8),
-                                  seconds=self.config.get("analysis_seconds", 3),
-                                  hash_mb=self.config.get("hash_mb", 32))
-            external = self.config.get("external_path", "") if self.analysis_source.currentData() == "external" else ""
         elif self._is_engine_turn():
             kind = "play"
             self.game.start_clock()
-            available = self.game.clock_values()[self.game.board.turn] if self.game.time_control.seconds else None
-            limits = difficulty_limits(self.config.get("difficulty", "Intermediate"),
-                                       self.config.get("hash_mb", 32), available, self.game.time_control.increment)
-            key = "black_engine" if self.config.get("mode") == "human_ai" else (
-                "white_engine" if self.game.board.turn == 1 else "black_engine")
-            external = self.config.get("external_path", "") if self.config.get(key) == "external" else ""
-            if self.config.get(key) == "external" and not external:
-                self.paused = True
-                self.game.pause_clock()
-                self.pause_button.setText("Continue")
-                self.statusBar().showMessage("Select the installed UCI engine in Settings before continuing.")
-                self._refresh()
-                return
         else:
             return
-        try:
-            generation = self.engine.start(self.game, limits, external, tablebase_path=self.config.get("syzygy_path", ""))
-        except (OSError, RuntimeError) as exc:
-            self._error("Cannot start engine", str(exc))
-            self.paused = True
-            self.game.pause_clock()
+        profile = self._profile()
+        if not profile:
+            self.engine_state.setText("No engine selected · Engine → Choose engine…")
+            self.statusBar().showMessage(
+                "Board and studies are available. Select your UCI engine for analysis."
+            )
             return
-        self._job = {"generation": generation, "kind": kind, "identity": self._position_identity(),
-                     "turn": self.game.board.turn, "external": bool(external)}
-        self.engine_state.setText(("External UCI engine" if external else f"Nocturne {__version__}") + " · thinking")
-        self.statusBar().showMessage("Analyzing position…" if kind == "analysis" else "Engine is thinking…")
+        limits = SearchLimits(
+            depth=self.config.get("analysis_depth", 24),
+            seconds=self.config.get("analysis_seconds", 3),
+            nodes=self.config.get("analysis_nodes") or None,
+        )
+        infinite = kind == "analysis" and self.analysis_kind.currentData() != "bounded"
+        count = self.multipv.value() if self.analysis_kind.currentData() == "explore" else 1
+        options = dict(profile.get("values", {}))
+        options.setdefault("UCI_ShowWDL", True)
+        try:
+            generation = self.engine.start(
+                self.game,
+                limits,
+                profile["path"],
+                options=options,
+                kind=kind,
+                infinite=infinite,
+                arguments=profile.get("arguments", []),
+                multipv=count,
+                searchmoves=self.config.get("searchmoves", []),
+                tablebase_path=self.config.get("syzygy_path", ""),
+            )
+        except (OSError, RuntimeError, ValueError) as exc:
+            self._error("Cannot start engine", str(exc))
+            return
+        self._job = {
+            "generation": generation,
+            "kind": kind,
+            "identity": self._position_identity(),
+            "turn": self.game.board.turn,
+            "external": True,
+        }
+        self.engine_state.setText(profile.get("name", "UCI engine") + " · connecting / analyzing")
         self.analyze_button.setText("Stop analysis" if kind == "analysis" else "Analyze position")
+        self.quick_analysis_button.setText("Stop" if kind == "analysis" else "Analyze")
         self.board_view.interactive = kind == "analysis"
 
     def _engine_message(self, generation: int, kind: str, payload: dict):
         if self._closing:
+            return
+        if self._review and self._review_message(generation, kind, payload):
             return
         job = self._job
         if not job or generation != job["generation"] or generation != self.engine.generation:
@@ -1099,24 +2087,6 @@ class MainWindow(QMainWindow):
             return
         if kind == "tablebase":
             self.tablebase_label.setText(payload["message"])
-            return
-        if kind == "benchmark_progress":
-            if self._lab:
-                self._lab["text"].appendPlainText(self._benchmark_line(payload))
-            return
-        if kind == "benchmark":
-            self._benchmark_report = payload
-            self._job = None
-            if self._lab:
-                self._lab["run"].setEnabled(True)
-                self._lab["stop"].setEnabled(False)
-                self._lab["export"].setEnabled(True)
-                self._lab["text"].appendPlainText("\nFinished. Time-capped rows are not fixed-depth comparisons.")
-            if self.store:
-                try:
-                    self.store.set("last_benchmark", payload)
-                except StorageError as exc:
-                    self.statusBar().showMessage(str(exc), 5000)
             return
         if kind == "error":
             self._job = None
@@ -1135,13 +2105,17 @@ class MainWindow(QMainWindow):
             return
         info = payload if kind == "info" else payload.get("info", {})
         self._show_info(info, job)
+        if kind == "info" and info.get("multipv", 1) != 1:
+            return
         if kind != "result":
             return
         self._job = None
+        self.quick_analysis_button.setText("Analyze")
         self.analyze_button.setText("Analyze position")
-        self.engine_state.setText(("External UCI engine" if job["external"] else f"Nocturne {__version__}") + " · search complete")
-        self.statusBar().showMessage(f"Search complete · depth {info['depth']} · {info['nodes']:,} nodes · evaluation from White's perspective")
-        self.game.evaluations[self.game.cursor] = info["score"] * job["turn"]
+        self.engine_state.setText(self.engine.connection.name + " · search complete")
+        self.statusBar().showMessage("Search complete · evaluation from White’s perspective")
+        if info:
+            self._store_analysis(self.game, self.game.current_node, info, job["turn"])
         self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
         if job["kind"] == "play" and not self.paused:
             try:
@@ -1162,18 +2136,44 @@ class MainWindow(QMainWindow):
     def _show_info(self, info, job):
         if not info:
             return
+        if info.get("multipv", 1) in self.candidates.pinned:
+            return
+        if "score_type" in info:
+            self._candidate_identity = self._position_identity()
+            self.candidates.update_line(
+                info, job["turn"], self.config.get("light", False), self.config.get("details", False)
+            )
+            entries = []
+            for rank, line in self.candidates.lines.items():
+                try:
+                    entries.append(
+                        (self.game.board.parse_uci(line["pv"][0]), rank, score_label(line, job["turn"]))
+                    )
+                except (ValueError, IndexError):
+                    pass
+            self.board_view.set_recommendations(entries)
+            if info.get("multipv", 1) != 1:
+                return
         self._last_info = info.copy()
+        if "score_type" in info:
+            self._store_analysis(self.game, self.game.current_node, info, job["turn"])
+            self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
         white_score = info["score"] * job["turn"]
-        self.eval_label.setText(score_text(white_score))
-        if info.get("tbhits") and abs(info["score"]) in (0, 20000):
-            self.eval_label.setText("TB · White wins" if white_score > 0 else "TB · Black wins" if white_score < 0 else "TB · Draw")
+        self.eval_label.setText(
+            score_label(info, job["turn"]) if "score_type" in info else score_text(white_score)
+        )
         self.eval_bar.set_score(white_score)
         duration = info.get("seconds", 0)
         self.telemetry.setText(
             f"Depth {info['depth']}  ·  selective {info['seldepth']}\n"
             f"{info['nodes']:,} nodes  ·  {info.get('nps', 0):,} nodes/sec\n"
             f"{duration:.2f} seconds  ·  hash {info.get('hashfull', 0) / 10:.1f}%  ·  TB hits {info.get('tbhits', 0)}\n"
-            f"Hash budget {self.config.get('hash_mb', 32)} MB  ·  1 thread")
+            f"External UCI · Hash {self.engine.connection.applied.get('Hash', 'engine default')} MB · Threads {self.engine.connection.applied.get('Threads', 'engine default')}"
+        )
+        if not self.config.get("details", False):
+            self.telemetry.setText(
+                f"Depth {info['depth']}/{info['seldepth']} · {info['nodes']:,} nodes · {info.get('nps', 0):,} N/s · TB {info.get('tbhits', 0)}"
+            )
         position = self.game.board.copy()
         self._pv_root = self.game.board.copy(history=False)
         self._pv_identity = self._position_identity()
@@ -1185,7 +2185,11 @@ class MainWindow(QMainWindow):
                 move = position.parse_uci(text)
                 if first is None:
                     first = move
-                prefix = f"{position.fullmove}. " if position.turn == 1 else (f"{position.fullmove}... " if not line else "")
+                prefix = (
+                    f"{position.fullmove}. "
+                    if position.turn == 1
+                    else (f"{position.fullmove}... " if not line else "")
+                )
                 line.append((prefix + san(position, move), len(line) + 1))
                 self._pv_moves.append(move)
                 position.push(move)
@@ -1194,95 +2198,6 @@ class MainWindow(QMainWindow):
         self.pv_label.set_moves(line, light=self.config.get("light", False))
         self.board_view.best_move = first
         self.board_view.update()
-        if self._lab:
-            self._lab["current"].setText(self.telemetry.text() + f"\nEvaluation {score_text(white_score)} · White's perspective")
-
-    @staticmethod
-    def _benchmark_line(row):
-        cap = " [time cap]" if row.get("stopped") else ""
-        return (f"{row['position']:<19} d{row['depth']}  {row['nodes']:>8,} nodes  "
-                f"{row['seconds']:>6.3f}s  {row.get('nps', 0):>7,} nps{cap}")
-
-    def _open_engine_lab(self):
-        self._stop_engine()
-        self.game.pause_clock()
-        self.paused = True
-        self.pause_button.setText("Continue")
-        self._refresh()
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Nocturne · Engine lab")
-        dialog.resize(750, 590)
-        layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(26, 24, 26, 24)
-        layout.addWidget(label("Measure. Compare. Improve.", "title"))
-        layout.addWidget(label(f"NOCTURNE {__version__} · INDEPENDENT ENGINE · 1 THREAD", "eyebrow"))
-        current = label(self.telemetry.text(), "muted", True)
-        layout.addWidget(current)
-        if self.store:
-            try:
-                stats = self.store.match_stats()
-                layout.addWidget(label(f"Saved engine games · White {stats['white_wins']} wins · Black {stats['black_wins']} wins · "
-                                       f"{stats['draws']} draws · {stats['unfinished']} unfinished", "muted", True))
-            except StorageError:
-                pass
-        layout.addWidget(label("Five reproducible positions · fresh hash each run · 5 sec cap per position", "subtitle", True))
-        options = QHBoxLayout()
-        options.addWidget(label("Target depth"))
-        depth = QSpinBox()
-        depth.setRange(1, 6)
-        depth.setValue(3)
-        options.addWidget(depth)
-        options.addStretch()
-        run = QPushButton("Run benchmark")
-        run.setObjectName("primary")
-        options.addWidget(run)
-        stop = QPushButton("Stop")
-        stop.setEnabled(False)
-        options.addWidget(stop)
-        export = QPushButton("Export JSON")
-        export.setEnabled(self._benchmark_report is not None)
-        options.addWidget(export)
-        layout.addLayout(options)
-        text = QPlainTextEdit()
-        text.setReadOnly(True)
-        text.setStyleSheet("font-family: 'Cascadia Mono', 'Consolas', monospace; font-size: 12px;")
-        text.setPlainText("Search speed alone does not establish playing strength.\nUse the CLI match harness to compare engine variants.\n")
-        layout.addWidget(text, 1)
-        self._lab = {"text": text, "current": current, "run": run, "stop": stop, "export": export}
-
-        def start_benchmark():
-            self._stop_engine()
-            run.setEnabled(False)
-            stop.setEnabled(True)
-            text.setPlainText("Benchmark started. Exact FENs and environment are included in the JSON.\n")
-            limits = SearchLimits(depth=depth.value(), seconds=5, hash_mb=self.config.get("hash_mb", 32))
-            generation = self.engine.start(self.game, limits, kind="benchmark")
-            self._job = {"generation": generation, "kind": "benchmark", "identity": self._position_identity(),
-                         "turn": self.game.board.turn, "external": False}
-
-        def stop_benchmark():
-            self._stop_engine()
-            run.setEnabled(True)
-            stop.setEnabled(False)
-            text.appendPlainText("Stopped. A partial run is not saved as a completed benchmark.")
-
-        def export_benchmark():
-            path, _ = QFileDialog.getSaveFileName(dialog, "Export benchmark", "nocturne-benchmark.json", "JSON (*.json)")
-            if path and self._benchmark_report:
-                try:
-                    Path(path).write_text(json.dumps(self._benchmark_report, indent=2) + "\n", encoding="utf-8")
-                except OSError as exc:
-                    self._error("Export failed", str(exc))
-
-        run.clicked.connect(start_benchmark)
-        stop.clicked.connect(stop_benchmark)
-        export.clicked.connect(export_benchmark)
-        close = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        close.rejected.connect(dialog.reject)
-        layout.addWidget(close)
-        dialog.exec()
-        self._stop_engine()
-        self._lab = None
 
     def _error(self, title, text):
         QMessageBox.warning(self, title, text)

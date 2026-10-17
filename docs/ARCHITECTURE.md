@@ -1,70 +1,76 @@
-# Architecture and acceptance plan
+# Native analysis architecture · 0.5
 
-Nocturne is a Python 3.12 / PySide6 desktop application. All normal operation is
-offline. The custom rules and search packages do not import Qt, python-chess, or
-an external engine. python-chess is a development-only differential test oracle.
+The desktop product is an external-UCI GUI. Retaining Python/PySide6 preserves
+working native board rendering, local libraries and a tested Windows distribution;
+Qt QProcess supplies asynchronous, safe child-process transport. See the
+[Nibbler research](NIBBLER_RESEARCH.md) for the technology decision and evidence.
 
 ## Boundaries
 
-* `core/board.py`: 0x88 representation, reversible moves, incremental Zobrist
-  keys, legal moves, draw rules and FEN. A1 = 0, H8 = 119; White = +1.
-* `core/notation.py`: SAN and PGN; validation occurs at the rules boundary.
-* `core/game.py`: selected-line history, clocks, outcomes, undo/redo and draw claims.
-* `core/variation.py`: ordered validated move tree; child zero is the main line.
-  PGN and schema-2 saves preserve all branches, clocks and evaluation samples.
-* `engine/`: tapered evaluation, bounded search, UCI transport and benchmarks.
-* `storage.py`: versioned SQLite records and preferences, no GUI dependency.
-* `gui/`: Qt painting, input, dialogs and process-backed engine coordination.
+- `core/rules.py`: python-chess adapter, legal moves, FEN/Chess960, draw rules;
+  converts 64-square library positions to the board widget's 0x88 coordinates.
+- `core/game.py`, `variation.py`: authoritative study/clock state, ordered branches,
+  node annotations/evaluations, validated schema-2 saves with schema-1 migration.
+- `core/notation.py`: SAN and python-chess PGN import/export, strict structure
+  checks, multi-game parsing, comments/NAGs/evaluation annotation preservation.
+- `engine/uci_types.py`: typed advertised options, score/bound/WDL parsing and limits.
+  It contains no search or position evaluation.
+- `gui/uci_connection.py`: persistent QProcess, asynchronous lifecycle, stop/ready
+  barriers, deadlines, 80 ms information batches, 1 MB line bound, 500-line log.
+- `gui/engine.py`: generation IDs, position snapshots, legal PV/bestmove validation.
+- `gui/engine_manager.py`: executable profiles, discovered option editors/presets.
+- `gui/candidates.py`, `moves.py`, `board.py`, `widgets.py`: candidate interaction,
+  reversible previews, destination execution, rendering and sampled graph.
+- `gui/setup_position.py`: manual position editor with final library validation.
+- `gui/window.py`: native menus, study tabs, analysis/review orchestration and saves.
+- `storage.py`: transactional SQLite records/preferences, no Qt dependency.
 
-Only the GUI thread mutates the displayed game. Engine workers receive immutable
-position snapshots (FEN plus replayable history); results carry a generation ID.
-Canceled or outdated results cannot be committed to a changed game. Engines run
-in separate processes so the Python GIL cannot freeze the interface.
+Historical custom rules/search/UCI/Fathom modules remain as 0.4-era source. The
+new GUI does not invoke them. PyInstaller excludes the custom search/evaluation,
+worker/UCI entry point and native table reader. SyzygyPath goes to the supplied engine.
 
-## Ordered milestones
+## Engine state contract
 
-1. **Foundation**: exact start-position and established tricky-position perft;
-   special moves and discovered-check regressions; make/unmake and hash
-   integrity; notation round trips; playable two-human Qt window.
-2. **Working engine**: legal deterministic negamax, alpha-beta, iterative
-   deepening, check-aware quiescence, tapered evaluation, measured timing and
-   cancellation; human vs AI.
-3. **Application**: polished native board, all primary play modes, clocks,
-   autosave/resume, library, settings and robust background search.
-4. **Engine development**: UCI, optional local external UCI engine, reproducible
-   benchmark. Advanced pruning is gated on measured improvements, not feature
-   count.
-5. **Analysis**: position import, history exploration, graph and engine telemetry;
-   persistent variation trees are implemented; Multi-PV and automated full-game
-   review remain deferred.
-6. **Release**: comprehensive integrated checks, Windows build configuration,
-   licenses and honest known limitations. A Linux build is not a Windows build.
+`launch → uci → initial-ready → idle → ready → search`.
+On replacement/navigation: immediately invalidate the generation, send `stop`,
+discard old info, await `bestmove`, then an `isready` barrier. Keep only the newest
+pending position. Unknown options are not sent. Invalid supported values or
+unsupported Chess960 requests produce an explicit error. Finite searches have
+an additional response deadline; stop/ready/handshake phases have deadlines.
+Failed processes can be explicitly restarted. Executable/arguments are separate;
+there is no shell or web content. UTF-8 is used with replacement for diagnostics.
 
-## Rules and safety contracts
+Only the GUI thread mutates a study. PV prefixes and bestmove are checked against
+its snapshot. A second identity guard rejects results for a changed game/cursor/key.
+Hover positions are separate boards and never become the analyzed position.
+Smart Move requires a matching full FEN and rechecks live legal moves. An ordinary
+selected piece takes priority; ambiguity and promotions require explicit choices.
 
-`Board.push()` is an internal fast operation for generated pseudo-legal moves.
-Public moves go through `parse_uci`, SAN parsing, or `Game.play`, all of which
-validate legality. Legal generation filters king exposure after make/unmake;
-castling separately checks origin, transit and destination attacks. En passant
-is included in repetition keys only if a legal en passant capture exists.
+## Data and scoring
 
-Automatic endings and claimable draws are distinct. Checkmate has precedence
-over the 75-move rule. Claims can include an intended legal move. Insufficient
-material is detected conservatively: bare kings, king plus a single minor,
-and positions with only bishops all on one color. General dead-position proof
-(including blocked-pawn fortresses) is an explicitly deferred rules limitation.
+Raw UCI scores retain cp/mate, value and exact/lower/upper bound. Plot coordinates
+are separate from mate values; UI WDL is reversed for Black to move and only shown
+when reported. No conversion is presented as an engine win probability.
 
-Search scores are centipawns from the side to move internally; UI and UCI
-conversions are explicit. Mate scores encode distance. Search draws depend on
-history, so transposition scores must not bypass repetition adjudication.
+Analysis is stored by node, including engine name, options, timestamp, raw score,
+depths and PV. Full-line review freezes node IDs and uses position snapshots,
+not a full-tree clone per position. A separate targeted root search supplies the
+played-move comparison. Completed exact scores and review evidence survive
+cancellation/autosave and PGN export. Achieved depths remain available because
+time-equal comparisons can still differ in depth. Live and review results are
+separate from temporary board previews. One external process analyzes the selected
+tab; other tabs retain positions and saved samples.
 
-## Syzygy boundary
+## Distribution and limits
 
-`engine/tablebase.py` maps the custom board to bitboards and probes only at the
-root via the MIT Fathom CPython wrapper (`native/`). Legal move validation stays
-in the custom core. Native initialization/probing is serialized and releases
-the GIL. GUI probes are isolated in killable worker processes. Local files are
-header/size checked; missing tables produce diagnostics and normal search.
-Exact DTZ root selection is disabled for repetition-sensitive/claimable positions.
-No table-derived results automatically terminate games. Source and binary
-distributions retain Fathom's license; table files are user supplied.
+PyInstaller produces one native windowed Nocturne application. No engine binary,
+network service or Windows script launcher is bundled. Source installation uses
+Python 3.12+, PySide6 and chess 1.11.2. python-chess changes combined distribution
+terms to GPL-3.0-or-later; original code/assets remain MIT-licensed. Source archives
+include the runtime rules library's Python source and all notices.
+
+Imports are bounded to 4 MB, 20,000 nodes and 1,000 PGN games. Very large-tree UI
+latency and cold external-engine initialization still require profiling. Manual
+Windows/DPI testing and actual Stockfish builds are pending. Advanced comparison,
+cache/snapshots, rich tree editing and flexible dock layouts are explicit roadmap
+items, not hidden/nonfunctional controls.

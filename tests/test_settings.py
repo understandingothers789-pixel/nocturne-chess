@@ -9,8 +9,8 @@ class SettingsTests(unittest.TestCase):
         result = normalize({"mode": "broken", "hash_mb": 100000, "analysis_depth": -5,
                             "analysis_seconds": float("nan"), "coordinates": "yes", "light": True,
                             "external_path": ["not a string"]})
-        self.assertEqual(result["mode"], "human_ai")
-        self.assertEqual(result["hash_mb"], 256)
+        self.assertEqual(result["mode"], "analysis")
+        self.assertEqual(result["hash_mb"], 65536)
         self.assertEqual(result["analysis_depth"], 1)
         self.assertEqual(result["analysis_seconds"], 3.0)
         self.assertIs(result["coordinates"], True)

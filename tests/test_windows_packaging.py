@@ -42,12 +42,12 @@ class WindowsPackagingTests(unittest.TestCase):
         with patch.object(build_windows, "run") as run, patch.object(build_windows, "smoke_test") as smoke:
             output = build_windows.package_signed(self.dist, "0.3.0", "signtool.exe")
         checked = {call.args[0][-1].name for call in run.call_args_list}
-        self.assertEqual(checked, {"Nocturne.exe", "Nocturne-UCI.exe", "runtime.dll"})
+        self.assertEqual(checked, {"Nocturne.exe", "runtime.dll"})
         self.assertTrue(all(call.args[0][1:5] == ["verify", "/pa", "/all", "/v"] for call in run.call_args_list))
         self.assertTrue(all("/tw" in call.args[0] for call in run.call_args_list))
         smoke.assert_called_once_with(self.dist)
         with zipfile.ZipFile(output) as archive:
-            self.assertEqual(len(archive.namelist()), 3)
+            self.assertEqual(len(archive.namelist()), 2)
             self.assertIsNone(archive.testzip())
 
     def test_failed_smoke_check_prevents_release_archive(self):
@@ -57,6 +57,6 @@ class WindowsPackagingTests(unittest.TestCase):
         self.assertEqual(list(self.dist.glob("*.zip")), [])
 
     def test_missing_entry_point_prevents_release(self):
-        (self.dist / "Nocturne-UCI" / "Nocturne-UCI.exe").unlink()
+        (self.dist / "Nocturne" / "Nocturne.exe").unlink()
         with self.assertRaisesRegex(build_windows.BuildError, "Missing application executable"):
             build_windows.verify_release_files(self.dist, "signtool.exe")

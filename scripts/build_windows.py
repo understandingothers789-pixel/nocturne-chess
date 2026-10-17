@@ -1,8 +1,6 @@
 """Developer-only Windows builds; release archives require trusted native signatures."""
 
 import argparse
-import os
-import threading
 from pathlib import Path
 import shutil
 import subprocess
@@ -12,9 +10,11 @@ import tomllib
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-APPLICATIONS = ("Nocturne", "Nocturne-UCI")
+APPLICATIONS = ("Nocturne",)
 NATIVE_SUFFIXES = frozenset((".exe", ".dll", ".pyd"))
-LAUNCHER_SUFFIXES = frozenset((".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".wsf", ".wsh", ".hta", ".scr", ".com"))
+LAUNCHER_SUFFIXES = frozenset(
+    (".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".wsf", ".wsh", ".hta", ".scr", ".com")
+)
 
 
 class BuildError(RuntimeError):
@@ -27,39 +27,20 @@ def run(arguments, **kwargs):
 
 def smoke_test(dist: Path):
     run([dist / "Nocturne" / "Nocturne.exe", "--smoke-test"], timeout=30)
-    result = run([dist / "Nocturne-UCI" / "Nocturne-UCI.exe"], input="uci\nisready\nquit\n",
-                 capture_output=True, text=True, encoding="utf-8", timeout=15)
-    if not {"uciok", "readyok"}.issubset(result.stdout.splitlines()):
-        raise BuildError("The packaged UCI handshake failed")
-    fixtures = os.environ.get("NOCTURNE_TEST_SYZYGY")
-    if fixtures:
-        process = subprocess.Popen([str(dist / "Nocturne-UCI" / "Nocturne-UCI.exe")],
-                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE, text=True, encoding="utf-8")
-        # Give the frozen engine time to answer before quit cancels its search.
-        def finish():
-            try:
-                process.stdin.write("quit\n")
-                process.stdin.flush()
-            except (OSError, ValueError):
-                pass
-        timer = threading.Timer(3, finish)
-        timer.start()
-        try:
-            commands = ("setoption name SyzygyPath value " + fixtures + "\n"
-                        "position fen 8/8/8/8/8/2K5/4Q3/k7 w - - 0 1\ngo depth 2\n")
-            process.stdin.write(commands)
-            process.stdin.flush()
-            process.wait(timeout=15)
-            output = process.stdout.read()
-            if "tbhits 1" not in output or "bestmove " not in output:
-                raise BuildError("Packaged Syzygy probe failed: " + output)
-        finally:
-            timer.cancel()
-            if process.poll() is None:
-                process.kill()
-                process.wait()
-
+    fixture = ROOT / "tests" / "fixtures" / "uci_simulator.py"
+    if fixture.is_file():
+        run(
+            [
+                dist / "Nocturne" / "Nocturne.exe",
+                "--smoke-test",
+                "--smoke-engine",
+                (ROOT / ".venv-build" / "Scripts" / "python.exe")
+                if (ROOT / ".venv-build" / "Scripts" / "python.exe").exists()
+                else sys.executable,
+                fixture,
+            ],
+            timeout=30,
+        )
 
 
 def build_only(skip_tests=False):
@@ -76,6 +57,7 @@ def build_only(skip_tests=False):
     run([python, "scripts/make_icon.py"])
     run([python, "-m", "PyInstaller", "--noconfirm", "--clean", "Nocturne.spec"])
     smoke_test(ROOT / "dist")
+    run([python, "scripts/package_source.py"])
     print("Local validation build completed. A signed release archive requires --package-signed.")
 
 
@@ -101,10 +83,18 @@ def verify_release_files(dist: Path, signtool: str) -> list[Path]:
             try:
                 # /pa selects Authenticode trust policy; /all checks every signature.
                 # No certificate is imported and no Windows security setting changes.
-                run([signtool, "verify", "/pa", "/all", "/v", "/tw", path],
-                    capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+                run(
+                    [signtool, "verify", "/pa", "/all", "/v", "/tw", path],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=60,
+                )
             except (OSError, subprocess.SubprocessError) as exc:
-                raise BuildError(f"Trusted Authenticode verification failed: {path.relative_to(dist)}") from exc
+                raise BuildError(
+                    f"Trusted Authenticode verification failed: {path.relative_to(dist)}"
+                ) from exc
     return files
 
 
@@ -129,10 +119,16 @@ def package_signed(dist: Path, version: str, signtool: str) -> Path:
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--build-only", action="store_true", help="Compile/test locally; do not create a release ZIP")
-    mode.add_argument("--package-signed", action="store_true", help="Verify signed native files and package them")
+    mode.add_argument(
+        "--build-only", action="store_true", help="Compile/test locally; do not create a release ZIP"
+    )
+    mode.add_argument(
+        "--package-signed", action="store_true", help="Verify signed native files and package them"
+    )
     parser.add_argument("--signtool", help="Installed Windows SDK signtool.exe path; otherwise use PATH")
-    parser.add_argument("--skip-tests", action="store_true", help="Developer builds only; smoke checks still run")
+    parser.add_argument(
+        "--skip-tests", action="store_true", help="Developer builds only; smoke checks still run"
+    )
     args = parser.parse_args(argv)
     if sys.platform != "win32":
         parser.error("Windows builds and Authenticode verification must run on Windows")
@@ -144,7 +140,9 @@ def main(argv=None):
                 parser.error("--skip-tests is only supported with --build-only")
             signtool = args.signtool or shutil.which("signtool.exe")
             if not signtool:
-                raise BuildError("Install Windows SDK SignTool or provide --signtool; signing verification is required")
+                raise BuildError(
+                    "Install Windows SDK SignTool or provide --signtool; signing verification is required"
+                )
             with (ROOT / "pyproject.toml").open("rb") as stream:
                 version = tomllib.load(stream)["project"]["version"]
             output = package_signed(ROOT / "dist", version, signtool)

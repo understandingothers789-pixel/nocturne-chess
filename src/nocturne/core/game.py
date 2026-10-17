@@ -9,7 +9,8 @@ import time
 from typing import Any
 from uuid import uuid4
 
-from .board import Board, Move, Outcome, START_FEN, SQUARES, KING, PAWN, ROOK, QUEEN, BISHOP, KNIGHT
+from .rules import Board
+from .board import Move, Outcome, START_FEN, SQUARES, KING, PAWN, ROOK, QUEEN, BISHOP, KNIGHT
 from .notation import PgnGame, read_pgn, san, write_pgn
 from .variation import Node, build_nodes, mainline, ordered_edges, tree_tokens
 
@@ -88,7 +89,9 @@ class Game:
             return False
         if all(p == BISHOP for p in minors):
             bishops = [s for s in SQUARES if abs(self.board.cells[s]) == BISHOP]
-            if len({((s >> 4) + (s & 7)) % 2 for s in bishops}) == 1 and all(p in (KING, BISHOP) for p in enemy):
+            if len({((s >> 4) + (s & 7)) % 2 for s in bishops}) == 1 and all(
+                p in (KING, BISHOP) for p in enemy
+            ):
                 return False
         return True
 
@@ -113,14 +116,14 @@ class Game:
         self._remaining = self.clock_values(now)
         if self.time_control.seconds:
             self._remaining[self.board.turn] += self.time_control.increment
-        self.moves[self.cursor:] = [move]
-        self.sans[self.cursor:] = [notation]
-        self._clock_history[self.cursor + 1:] = [self._remaining.copy()]
+        self.moves[self.cursor :] = [move]
+        self.sans[self.cursor :] = [notation]
+        self._clock_history[self.cursor + 1 :] = [self._remaining.copy()]
         self.evaluations = {k: v for k, v in self.evaluations.items() if k <= self.cursor}
         index = len(self.nodes)
         self.nodes.append(Node(parent, move, notation, self.cursor + 1, clock=self._remaining.copy()))
         self.nodes[parent].children.append(index)
-        self._line_nodes[self.cursor + 1:] = [index]
+        self._line_nodes[self.cursor + 1 :] = [index]
         self.board.push(move)
         self.cursor += 1
         self._anchor = time.monotonic() if now is None else now
@@ -162,8 +165,11 @@ class Game:
         self.moves = [self.nodes[i].move for i in self._line_nodes[1:]]
         self.sans = [self.nodes[i].san for i in self._line_nodes[1:]]
         self._clock_history = [self.nodes[i].clock.copy() for i in self._line_nodes]
-        self.evaluations = {p: self.nodes[i].evaluation for p, i in enumerate(self._line_nodes)
-                            if self.nodes[i].evaluation is not None}
+        self.evaluations = {
+            p: self.nodes[i].evaluation
+            for p, i in enumerate(self._line_nodes)
+            if self.nodes[i].evaluation is not None
+        }
         self.board = self.position_at_node(index)
         self.cursor = len(path) - 1
         self._remaining = self._clock_history[self.cursor].copy()
@@ -173,7 +179,7 @@ class Game:
         return tree_tokens(self.nodes, self.initial_fen)
 
     def promote_current_line(self):
-        for parent, child in zip(self._line_nodes[:self.cursor], self._line_nodes[1:self.cursor + 1]):
+        for parent, child in zip(self._line_nodes[: self.cursor], self._line_nodes[1 : self.cursor + 1]):
             children = self.nodes[parent].children
             children.remove(child)
             children.insert(0, child)
@@ -238,8 +244,38 @@ class Game:
         path = mainline(self.nodes)
         outcome = self.outcome if self.current_node == path[-1] else self.position_at_node(path[-1]).outcome()
         result = outcome.result if outcome else self._main_result
-        return write_pgn(PgnGame(self.headers.copy(), self.initial_fen,
-                                 result=result, edges=ordered_edges(self.nodes)))
+        return write_pgn(
+            PgnGame(
+                self.headers.copy(),
+                self.initial_fen,
+                result=result,
+                edges=ordered_edges(self.nodes),
+                annotations=self._pgn_annotations(),
+            )
+        )
+
+    def _pgn_annotations(self):
+        result = {}
+        stack = [0]
+        while stack:
+            index = stack.pop()
+            node = self.nodes[index]
+            review = self.metadata.get("review", {}).get(str(index))
+            comment = node.comment
+            if review:
+                comment += " [Nocturne review: " + review["label"]
+                if "loss_cp" in review:
+                    comment += f"; estimated loss {review['loss_cp'] / 100:.2f} pawns"
+                comment += "; " + review["criteria"] + "]"
+            result[len(result)] = {
+                "comment": comment,
+                "starting_comment": node.starting_comment,
+                "nags": node.nags.copy(),
+                "evaluation": node.evaluation,
+                "analysis": node.analysis.copy(),
+            }
+            stack.extend(reversed(node.children))
+        return result
 
     def fork_for_analysis(self) -> Game:
         fork = Game.from_dict(self.to_dict())
@@ -253,6 +289,23 @@ class Game:
         game = cls(parsed.initial_fen)
         game.headers.update(parsed.headers)
         game.nodes = build_nodes(parsed.initial_fen, parsed.edges)
+        for index, data in parsed.annotations.items():
+            node = game.nodes[index]
+            node.comment = data.get("comment", "")
+            node.starting_comment = data.get("starting_comment", "")
+            node.nags = data.get("nags", [])
+            import re
+
+            match = re.search(r"\[%eval ([#]?[+-]?\d+(?:\.\d+)?)", node.comment)
+            if match:
+                value = match[1]
+                if value.startswith("#"):
+                    mate = int(value[1:])
+                    node.evaluation = (30000 - min(abs(mate), 999)) * (1 if mate >= 0 else -1)
+                    node.analysis = {"score_type": "mate", "white_value": mate}
+                else:
+                    node.evaluation = round(float(value) * 100)
+        game.evaluations = {0: game.nodes[0].evaluation} if game.nodes[0].evaluation is not None else {}
         game._line_nodes = [0]
         game.select_node(mainline(game.nodes)[-1])
         game._main_result = parsed.result
@@ -265,17 +318,42 @@ class Game:
 
     def to_dict(self) -> dict:
         self._sync_tree_state()
-        return {"schema": 2, "id": self.id, "initial_fen": self.initial_fen,
-                "moves": [m.uci() for m in self.moves], "cursor": self.cursor,
-                "headers": self.headers.copy(), "time_control": [self.time_control.seconds, self.time_control.increment],
-                "remaining": self.clock_values(), "clock_history": self._clock_history,
-                "declared": {"result": self.declared.result, "reason": self.declared.reason,
-                             "winner": self.declared.winner} if self.declared else None,
-                "evaluations": self.evaluations.copy(), "metadata": self.metadata.copy(),
-                "tree": [{"parent": n.parent, "move": n.move.uci() if n.move else None,
-                          "clock": n.clock.copy(), "evaluation": n.evaluation,
-                          "children": n.children.copy()} for n in self.nodes],
-                "line": self._line_nodes.copy(), "main_result": self._main_result}
+        return {
+            "schema": 2,
+            "id": self.id,
+            "initial_fen": self.initial_fen,
+            "moves": [m.uci() for m in self.moves],
+            "cursor": self.cursor,
+            "headers": self.headers.copy(),
+            "time_control": [self.time_control.seconds, self.time_control.increment],
+            "remaining": self.clock_values(),
+            "clock_history": self._clock_history,
+            "declared": {
+                "result": self.declared.result,
+                "reason": self.declared.reason,
+                "winner": self.declared.winner,
+            }
+            if self.declared
+            else None,
+            "evaluations": self.evaluations.copy(),
+            "metadata": self.metadata.copy(),
+            "tree": [
+                {
+                    "parent": n.parent,
+                    "move": n.move.uci() if n.move else None,
+                    "clock": n.clock.copy(),
+                    "evaluation": n.evaluation,
+                    "children": n.children.copy(),
+                    "comment": n.comment,
+                    "starting_comment": n.starting_comment,
+                    "nags": n.nags.copy(),
+                    "analysis": n.analysis.copy(),
+                }
+                for n in self.nodes
+            ],
+            "line": self._line_nodes.copy(),
+            "main_result": self._main_result,
+        }
 
     @classmethod
     def from_dict(cls, data: dict) -> Game:
@@ -311,12 +389,16 @@ class Game:
                     raise ValueError("Invalid saved variation tree")
                 if raw[0].get("parent") is not None or raw[0].get("move") is not None:
                     raise ValueError("Invalid saved tree root")
-                nodes = build_nodes(game.initial_fen,
-                                    [(n["parent"], Move.from_uci(n["move"])) for n in raw[1:]])
+                nodes = build_nodes(
+                    game.initial_fen, [(n["parent"], Move.from_uci(n["move"])) for n in raw[1:]]
+                )
                 for node, record in zip(nodes, raw):
                     children = record.get("children", node.children)
-                    if (not isinstance(children, list) or any(type(c) is not int for c in children)
-                            or sorted(children) != sorted(node.children)):
+                    if (
+                        not isinstance(children, list)
+                        or any(type(c) is not int for c in children)
+                        or sorted(children) != sorted(node.children)
+                    ):
                         raise ValueError("Invalid variation child order")
                     node.children = children.copy()
                     node.clock = _clock_record(record["clock"])
@@ -324,13 +406,32 @@ class Game:
                     if value is not None and type(value) is not int:
                         raise ValueError("Invalid variation evaluation")
                     node.evaluation = value
+                    for field in ("comment", "starting_comment"):
+                        text = record.get(field, "")
+                        if not isinstance(text, str) or len(text) > 100_000:
+                            raise ValueError("Invalid saved annotation")
+                        setattr(node, field, text)
+                    nags = record.get("nags", [])
+                    if not isinstance(nags, list) or any(
+                        type(n) is not int or not 0 <= n <= 65535 for n in nags
+                    ):
+                        raise ValueError("Invalid saved NAGs")
+                    node.nags = nags.copy()
+                    analysis = record.get("analysis", {})
+                    if not isinstance(analysis, dict):
+                        raise ValueError("Invalid analysis data")
+                    node.analysis = analysis.copy()
                 line = data.get("line")
-                if (not isinstance(line, list) or not line or line[0] != 0
-                        or any(type(i) is not int or not 0 <= i < len(nodes) for i in line)
-                        or any(nodes[c].parent != p for p, c in zip(line, line[1:]))
-                        or nodes[line[-1]].children
-                        or [nodes[i].move for i in line[1:]] != game.moves
-                        or [nodes[i].clock for i in line] != game._clock_history):
+                if (
+                    not isinstance(line, list)
+                    or not line
+                    or line[0] != 0
+                    or any(type(i) is not int or not 0 <= i < len(nodes) for i in line)
+                    or any(nodes[c].parent != p for p, c in zip(line, line[1:]))
+                    or nodes[line[-1]].children
+                    or [nodes[i].move for i in line[1:]] != game.moves
+                    or [nodes[i].clock for i in line] != game._clock_history
+                ):
                     raise ValueError("Invalid saved selected line")
                 game.nodes, game._line_nodes = nodes, line.copy()
                 game._main_result = data.get("main_result", "*")
@@ -344,8 +445,11 @@ class Game:
                     raise ValueError("Invalid saved result")
                 winner = {"1-0": 1, "0-1": -1, "1/2-1/2": None}[declared["result"]]
                 game.declared = Outcome(declared["result"], str(declared["reason"]), winner)
-            game.evaluations = {int(k): int(v) for k, v in data.get("evaluations", {}).items()
-                                if 0 <= int(k) <= len(game.moves)}
+            game.evaluations = {
+                int(k): int(v)
+                for k, v in data.get("evaluations", {}).items()
+                if 0 <= int(k) <= len(game.moves)
+            }
             game.metadata = dict(data.get("metadata", {}))
             game._sync_tree_state()
             return game

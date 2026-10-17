@@ -1,121 +1,62 @@
-# Reproducible desktop builds
+# Windows 11 desktop builds · 0.5
 
-## Windows 11 / Python 3.12 x64
+Download the latest successful **Nocturne-0.5.0-Windows-x64-unsigned** artifact from
+[Windows Actions](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
+Sign into GitHub, download, Extract All, then open **Nocturne/Nocturne.exe**.
+Keep the full folder. No Python, compiler or batch launcher is needed to play/analyze.
+You select your own Stockfish executable from the Engine menu.
 
-### For players
+## Reproducible Windows build
 
-[Download the verified Windows test artifact (0.4.0)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38970560841/artifacts/12076786361).
-GitHub sign-in is required.
-
-The user has opted into an unsigned Windows test executable. Open the latest
-successful [Windows workflow run](https://github.com/understandingothers789-pixel/nocturne-chess/actions),
-then download **Nocturne-0.4.0-Windows-x64-unsigned** under Artifacts. GitHub
-requires you to be signed in. Extract the whole ZIP, then open
-`Nocturne/Nocturne.exe`. Keep the accompanying `_internal` directory in place.
-No Python installation or launcher scripts are required.
-
-This is an unsigned test build and Windows may display a SmartScreen warning.
-It is not a signed release. Artifacts expire after 30 days; rerun the workflow
-to generate another. The signed release verification procedure below remains
-available for future distribution.
-
-### For developers building on Windows
-
-The command below is for a developer who has the project source on a Windows
-machine. It validates the build locally; it does not create a signed release.
-
-Install Python 3.12 x64 with the Python launcher. To compile and test locally:
+Install Python 3.12 x64 with its Python launcher. In a source checkout:
 
 ```text
 py -3.12 scripts/build_windows.py --build-only
 ```
 
-The tool creates `.venv-build`, installs pinned build/validation dependencies,
-runs Ruff and the test suite, renders the application icon, and runs
-`Nocturne.spec`. It smoke-tests the packaged GUI and UCI endpoint. This mode
-creates local validation directories; it does not create a Windows release ZIP.
-The CI workflow uses this mode and uploads successful unsigned test builds.
+The Python build creates `.venv-build`, installs pinned runtime/build/validation
+dependencies, installs the project, runs Ruff and full unittest discovery,
+renders the icon, runs PyInstaller and launches the packaged app for smoke checks.
+A second smoke connects the packaged GUI to the development-only protocol fixture
+using the build environment's Python. Neither that interpreter nor the fixture
+is a bundled chess engine. A failing check stops the build. The source ZIP includes
+the installed python-chess Python source and notices.
 
-Before distribution, sign all `.exe`, `.dll` and `.pyd` files in the two
-application directories using a legitimately issued, trusted code-signing
-certificate or signing service, with trusted timestamps. No signing certificate
-is generated/imported by Nocturne and no Windows protection is disabled.
-After signing, use the installed Windows SDK SignTool to verify and package:
+Outputs:
 
-```text
-py -3.12 scripts/build_windows.py --package-signed --signtool "C:\path\to\signtool.exe"
-```
+- `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
+- `dist/Nocturne-0.5.0-source.zip`: source, tests, documentation, rules-library source.
 
-SignTool must accept every native file under the Authenticode trust policy;
-missing/untrusted signatures and timestamp warnings stop packaging. Smoke
-checks must also pass. The resulting `dist/Nocturne-0.4.0-win64-signed.zip`
-contains the windowed `Nocturne/Nocturne.exe` and console
-`Nocturne-UCI/Nocturne-UCI.exe`, plus their runtime directories and notices.
-No launcher scripts are included. Unsigned or failed builds are not packaged
-as Windows releases.
+No C compiler is required for the new external-only GUI. The prior custom UCI
+executable/native table reader are not part of this distribution. Source installation
+also supports `python -m nocturne` after installing runtime requirements.
 
-Valid signing does not guarantee the absence of Windows SmartScreen prompts:
-Windows also applies publisher/file reputation and local policies. No signing
-or warning-free Windows launch has been established in this environment.
+Build dependencies need network access once unless a matching wheelhouse is prepared.
+The application uses local data and local UCI processes during normal operation.
+No Stockfish executable or table file is downloaded by the application/build.
 
-The app uses shared Qt libraries in a directory bundle. Do not copy the `.exe`
-alone. Libraries and notices must remain with it. No Stockfish executable is
-downloaded or included. Build requirements need internet access once; playing
-does not. For an air-gapped build, prepare a wheelhouse on a matching Windows
-Python/architecture and set pip's `PIP_NO_INDEX` / `PIP_FIND_LINKS` accordingly.
+## CI and release status
 
-The checked-in GitHub Actions workflow completed successfully on Windows in
-run [#1](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/38952576627).
-It installed dependencies, passed Ruff and the full automated suite, built both
-PyInstaller apps, and passed GUI/UCI smoke checks. That first run did not retain an artifact; subsequent runs now retain unsigned
-test builds with user authorization. Signed distribution requires trusted signing and the separate
-verification/packaging step above.
+The checked-in Windows workflow performs validation, builds the actual Windows
+executable, runs the packaged smoke checks and uploads the portable directory plus
+source archive for 30 days. Creating a workflow file is not evidence it ran: actual
+run IDs/results are recorded in PROGRESS.md and the README download link.
+Unsigned test builds are explicitly authorized for this project; they may trigger
+Windows publisher/reputation prompts. No bypass or Windows policy change is supplied.
 
-## Linux validation performed here
+For a separately signed release, sign the native files using your legitimate
+certificate, then run the Python builder's `--package-signed --signtool PATH` mode.
+It verifies signatures with the Windows SDK before making a signed-release ZIP.
+Signing credentials/certificates are not bundled. Never copy the EXE alone.
+
+## Linux development checks
 
 ```sh
-QT_QPA_PLATFORM=offscreen python scripts/make_icon.py
-PYINSTALLER_CONFIG_DIR=/workspace/.pyinstaller-cache python -m PyInstaller --noconfirm --clean Nocturne.spec
-QT_QPA_PLATFORM=offscreen dist/Nocturne/Nocturne --smoke-test
+QT_QPA_PLATFORM=offscreen python -m pytest -q
+python -m ruff check src tests scripts
+QT_QPA_PLATFORM=offscreen python scripts/capture_preview.py --simulate
 ```
 
-Both Linux executables were built; the packaged GUI played a legal human/AI
-pair and exited 0. The packaged UCI executable completed handshake, depth-2
-search and returned a move validated by the custom rules core. This validates
-the build graph/assets and frozen process spawning on Linux. It is not a
-Windows executable, a Windows test, or a cross-compiled release.
-
-The pure Python wheel can also be built without fetching dependencies:
-
-```sh
-python -m pip wheel --no-deps --no-build-isolation --wheel-dir dist .
-```
-
-Setuptools must already be installed for `--no-build-isolation`.
-
-## Release checks still requiring Windows
-
-Manually check drag/drop and promotion, board resize at 100/150/200% DPI, clocks
-through suspend/resume, cancellation on close/new game, library permissions,
-and an explicitly installed UCI engine. Check the signed archive on a clean
-Windows 11 machine without Python. Trusted signing is a release requirement. A
-conventional installer remains future release work.
-
-Preserve Qt's applicable license/source-availability notices and the supplied
-license texts. Review the exact platform libraries collected by PyInstaller
-before distribution. The pinned build describes dependency versions and steps;
-byte-identical binaries across machines are not promised.
-
-## Native Syzygy reader (0.4.0+)
-
-Source installation compiles the bundled MIT Fathom C extension. On Windows,
-install Visual Studio Build Tools with Desktop development with C++ (MSVC and
-Windows SDK), then use the documented Python build. GitHub Windows runners
-provide this compiler. Linux developers can use `CC=gcc LDSHARED='gcc -shared'`
-if their Python configuration names an unavailable compiler. No python-chess
-runtime dependency is introduced.
-
-CI explicitly downloads checksum-pinned, small development-only Syzygy fixtures,
-runs real probes and independent comparisons, and probes again through the frozen
-UCI executable. Fixtures are excluded from source/release bundles. The native
-reader and its license are included in both Windows application bundles.
+`--simulate` explicitly labels screenshots as UCI transport test data, not measured
+Stockfish analysis. `--engine /path/to/engine` uses a supplied actual engine instead.
+The Linux environment cannot produce a Windows executable; native Windows CI does.

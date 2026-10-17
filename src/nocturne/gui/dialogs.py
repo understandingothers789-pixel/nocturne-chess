@@ -1,9 +1,20 @@
 """Compact native dialogs; each exposed setting has a real consumer."""
 
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
-    QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPlainTextEdit, QPushButton, QSpinBox, QVBoxLayout,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPlainTextEdit,
+    QPushButton,
+    QSpinBox,
+    QVBoxLayout,
 )
 
 from .theme import BOARD_THEMES
@@ -26,8 +37,12 @@ class NewGameDialog(QDialog):
         form = QFormLayout()
         form.setSpacing(15)
         self.mode = QComboBox()
-        for label, value in (("Play Nocturne", "human_ai"), ("Two players · local", "human"),
-                             ("Watch engines", "ai_ai"), ("Analysis board", "analysis")):
+        for label, value in (
+            ("Play selected UCI engine", "human_ai"),
+            ("Two players · local", "human"),
+            ("Watch engines", "ai_ai"),
+            ("Analysis board", "analysis"),
+        ):
             self.mode.addItem(label, value)
         self.mode.setCurrentIndex(max(0, self.mode.findData(config.get("mode", "human_ai"))))
         self.side = QComboBox()
@@ -38,8 +53,15 @@ class NewGameDialog(QDialog):
         self.difficulty.addItems(["Beginner", "Casual", "Intermediate", "Advanced", "Expert", "Maximum"])
         self.difficulty.setCurrentText(config.get("difficulty", "Intermediate"))
         self.minutes = QComboBox()
-        for label, seconds in (("No clock", 0), ("1 minute", 60), ("3 minutes", 180), ("5 minutes", 300),
-                               ("10 minutes", 600), ("15 minutes", 900), ("30 minutes", 1800)):
+        for label, seconds in (
+            ("No clock", 0),
+            ("1 minute", 60),
+            ("3 minutes", 180),
+            ("5 minutes", 300),
+            ("10 minutes", 600),
+            ("15 minutes", 900),
+            ("30 minutes", 1800),
+        ):
             self.minutes.addItem(label, seconds)
         self.minutes.setCurrentIndex(max(0, self.minutes.findData(config.get("seconds", 0))))
         self.increment = QSpinBox()
@@ -53,14 +75,15 @@ class NewGameDialog(QDialog):
         self.white_engine = QComboBox()
         self.black_engine = QComboBox()
         for combo in (self.white_engine, self.black_engine):
-            combo.addItem("Nocturne · custom engine", "custom")
-            if config.get("external_path"):
-                combo.addItem("External UCI engine", "external")
-        self.white_engine.setCurrentIndex(max(0, self.white_engine.findData(config.get("white_engine", "custom"))))
-        self.black_engine.setCurrentIndex(max(0, self.black_engine.findData(config.get("black_engine", "custom"))))
+            combo.addItem("Selected external UCI profile", "external")
+        self.white_engine.setCurrentIndex(
+            max(0, self.white_engine.findData(config.get("white_engine", "custom")))
+        )
+        self.black_engine.setCurrentIndex(
+            max(0, self.black_engine.findData(config.get("black_engine", "custom")))
+        )
         form.addRow("Mode", self.mode)
         form.addRow("Your pieces", self.side)
-        form.addRow("Difficulty", self.difficulty)
         form.addRow("Clock", self.minutes)
         form.addRow("Increment", self.increment)
         form.addRow("White player", self.white)
@@ -69,11 +92,15 @@ class NewGameDialog(QDialog):
         form.addRow("Black / opponent engine", self.black_engine)
         form.addRow("", self.takebacks)
         layout.addLayout(form)
-        note = QLabel("Difficulty levels are search limits, not verified Elo ratings.\nExternal engines are selected in Settings; nothing is downloaded.")
+        note = QLabel(
+            "Uses your selected UCI engine profile and bounded search settings.\nNo engine is downloaded or bundled."
+        )
         note.setObjectName("muted")
         note.setWordWrap(True)
         layout.addWidget(note)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Start game")
         buttons.button(QDialogButtonBox.StandardButton.Ok).setObjectName("primary")
         buttons.accepted.connect(self.accept)
@@ -92,11 +119,18 @@ class NewGameDialog(QDialog):
             widget.setEnabled(mode != "analysis")
 
     def config(self) -> dict:
-        return {"mode": self.mode.currentData(), "human_color": self.side.currentData(),
-                "difficulty": self.difficulty.currentText(), "seconds": self.minutes.currentData(),
-                "increment": self.increment.value(), "takebacks": self.takebacks.isChecked(),
-                "white_name": self.white.text().strip() or "White", "black_name": self.black.text().strip() or "Black",
-                "white_engine": self.white_engine.currentData(), "black_engine": self.black_engine.currentData()}
+        return {
+            "mode": self.mode.currentData(),
+            "human_color": self.side.currentData(),
+            "difficulty": self.difficulty.currentText(),
+            "seconds": self.minutes.currentData(),
+            "increment": self.increment.value(),
+            "takebacks": self.takebacks.isChecked(),
+            "white_name": self.white.text().strip() or "White",
+            "black_name": self.black.text().strip() or "Black",
+            "white_engine": self.white_engine.currentData(),
+            "black_engine": self.black_engine.currentData(),
+        }
 
 
 class SettingsDialog(QDialog):
@@ -116,29 +150,35 @@ class SettingsDialog(QDialog):
         self.theme.setCurrentText(config.get("theme", "Forest"))
         form.addRow("Board palette", self.theme)
         self.checks = {}
-        for key, label, default in (("light", "Light appearance", False),
-                                    ("coordinates", "Show coordinates", True),
-                                    ("animations", "Animate moves", True),
-                                    ("overlays", "Show analysis arrows and evaluation", True)):
+        for key, label, default in (
+            ("light", "Light appearance", False),
+            ("coordinates", "Show coordinates", True),
+            ("animations", "Animate moves", True),
+            ("overlays", "Show analysis arrows and evaluation", True),
+        ):
             check = QCheckBox(label)
             check.setChecked(config.get(key, default))
             self.checks[key] = check
             form.addRow("", check)
         self.hash = QSpinBox()
-        self.hash.setRange(1, 256)
+        self.hash.setRange(1, 65536)
         self.hash.setValue(config.get("hash_mb", 32))
         self.hash.setSuffix(" MB · budget")
-        form.addRow("Transposition table", self.hash)
         self.depth = QSpinBox()
-        self.depth.setRange(1, 20)
+        self.depth.setRange(1, 128)
         self.depth.setValue(config.get("analysis_depth", 8))
         form.addRow("Analysis depth limit", self.depth)
         self.seconds = QDoubleSpinBox()
-        self.seconds.setRange(.1, 30)
-        self.seconds.setSingleStep(.5)
+        self.seconds.setRange(0.05, 600)
+        self.seconds.setSingleStep(0.5)
         self.seconds.setValue(config.get("analysis_seconds", 3.0))
         self.seconds.setSuffix(" sec")
-        form.addRow("Analysis time budget", self.seconds)
+        form.addRow("Bounded analysis time", self.seconds)
+        self.nodes = QSpinBox()
+        self.nodes.setRange(0, 2_000_000_000)
+        self.nodes.setSpecialValueText("No node cap")
+        self.nodes.setValue(config.get("analysis_nodes", 0))
+        form.addRow("Analysis nodes", self.nodes)
         self.delay = QSpinBox()
         self.delay.setRange(0, 3000)
         self.delay.setSingleStep(100)
@@ -152,7 +192,6 @@ class SettingsDialog(QDialog):
         browse.clicked.connect(self._browse)
         engine_row.addWidget(self.external)
         engine_row.addWidget(browse)
-        form.addRow("External engine", engine_row)
         tb_row = QHBoxLayout()
         self.syzygy = QLineEdit(config.get("syzygy_path", ""))
         self.syzygy.setPlaceholderText("Folder with .rtbw and .rtbz files")
@@ -162,29 +201,43 @@ class SettingsDialog(QDialog):
         tb_row.addWidget(tb_browse)
         form.addRow("Syzygy tablebases", tb_row)
         layout.addLayout(form)
-        note = QLabel("Custom engine: one search process, one search thread.\nHash size is an approximate Python memory budget. No engine is bundled.")
+        note = QLabel(
+            "Threads, Hash and other engine options are in Engine profiles.\nTime/depth/node limits apply to bounded analysis and game review."
+        )
         note.setObjectName("muted")
         layout.addWidget(note)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
     def _browse(self):
-        file, _ = QFileDialog.getOpenFileName(self, "Select a trusted UCI engine executable", "", "Executables (*.exe);;All files (*)")
+        file, _ = QFileDialog.getOpenFileName(
+            self, "Select a trusted UCI engine executable", "", "Executables (*.exe);;All files (*)"
+        )
         if file:
             self.external.setText(file)
 
     def _browse_syzygy(self):
-        directory = QFileDialog.getExistingDirectory(self, "Choose Syzygy tablebase folder", self.syzygy.text())
+        directory = QFileDialog.getExistingDirectory(
+            self, "Choose Syzygy tablebase folder", self.syzygy.text()
+        )
         if directory:
             self.syzygy.setText(directory)
 
     def config(self):
-        return {"theme": self.theme.currentText(), **{k: c.isChecked() for k, c in self.checks.items()},
-                "hash_mb": self.hash.value(), "analysis_depth": self.depth.value(),
-                "analysis_seconds": self.seconds.value(), "external_path": self.external.text().strip(),
-                "watch_delay_ms": self.delay.value(), "syzygy_path": self.syzygy.text().strip()}
+        return {
+            "theme": self.theme.currentText(),
+            **{k: c.isChecked() for k, c in self.checks.items()},
+            "analysis_nodes": self.nodes.value(),
+            "analysis_depth": self.depth.value(),
+            "analysis_seconds": self.seconds.value(),
+            "external_path": self.external.text().strip(),
+            "watch_delay_ms": self.delay.value(),
+            "syzygy_path": self.syzygy.text().strip(),
+        }
 
 
 class TextDialog(QDialog):
@@ -200,7 +253,9 @@ class TextDialog(QDialog):
         self.editor = QPlainTextEdit(text)
         self.editor.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         layout.addWidget(self.editor)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)

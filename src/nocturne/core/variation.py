@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass, field
 
-from .board import Board, Move
+from .board import Move
+from .rules import Board
 
 
 @dataclass(slots=True)
@@ -14,11 +15,16 @@ class Node:
     children: list[int] = field(default_factory=list)
     clock: dict[int, float] = field(default_factory=lambda: {1: 0, -1: 0})
     evaluation: int | None = None
+    comment: str = ""
+    starting_comment: str = ""
+    nags: list[int] = field(default_factory=list)
+    analysis: dict = field(default_factory=dict)
 
 
 def build_nodes(initial_fen, edges):
     """Validate every variation with reversible DFS, without recursive depth limits."""
     from .notation import san
+
     if len(edges) > 20_000:
         raise ValueError("Move tree exceeds 20,000 nodes")
     nodes = [Node(None, None)]

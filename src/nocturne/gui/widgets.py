@@ -31,11 +31,13 @@ class EvaluationBar(QWidget):
         path.addRoundedRect(rect, 5, 5)
         p.setClipPath(path)
         p.fillRect(rect, QColor("#2b3e33"))
-        fraction = .5 if self.score is None else 1 / (1 + math.exp(-max(-2000, min(2000, self.score)) / 250))
+        fraction = 0.5 if self.score is None else 1 / (1 + math.exp(-max(-2000, min(2000, self.score)) / 250))
         if self.flipped:
             white = QRectF(rect.x(), rect.y(), rect.width(), rect.height() * fraction)
         else:
-            white = QRectF(rect.x(), rect.bottom() - rect.height() * fraction, rect.width(), rect.height() * fraction)
+            white = QRectF(
+                rect.x(), rect.bottom() - rect.height() * fraction, rect.width(), rect.height() * fraction
+            )
         p.fillRect(white, QColor("#e6ebd9") if self.score is not None else QColor("#7d9081"))
         p.setClipping(False)
         p.setPen(QPen(QColor("#91b37d"), 1))
@@ -53,15 +55,26 @@ class EvaluationGraph(QWidget):
         self.cursor = 0
         self.total = 0
         self.light = False
+        self.setMouseTracking(True)
+        self.view_start = 0.0
+        self.view_end = None
+        self.hover_ply = None
+        self._pan_x = None
 
     def set_samples(self, samples: dict[int, int], cursor: int, total: int):
         self.samples = samples.copy()
+        if total != self.total:
+            self.view_start = 0.0
+            self.view_end = None
         self.cursor, self.total = cursor, total
         self.update()
 
     def _point(self, ply, score):
-        return QPointF(8 + (self.width() - 16) * ply / max(1, self.total),
-                       self.height() / 2 - math.tanh(score / 500) * (self.height() / 2 - 12))
+        end = self.total if self.view_end is None else self.view_end
+        return QPointF(
+            8 + (self.width() - 16) * (ply - self.view_start) / max(1, end - self.view_start),
+            self.height() / 2 - math.tanh(score / 500) * (self.height() / 2 - 12),
+        )
 
     def paintEvent(self, event):
         p = QPainter(self)
@@ -88,8 +101,61 @@ class EvaluationGraph(QWidget):
         x = self._point(self.cursor, 0).x()
         p.setPen(QPen(QColor("#7b9a78"), 1))
         p.drawLine(QPointF(x, 8), QPointF(x, self.height() - 8))
+        if self.hover_ply is not None and self.hover_ply in self.samples:
+            value = self.samples[self.hover_ply]
+            text = (
+                f"Ply {self.hover_ply} · White {value / 100:+.2f}"
+                if abs(value) < 29000
+                else f"Ply {self.hover_ply} · mate score"
+            )
+            p.setFont(QFont("Segoe UI", 9))
+            p.setPen(accent)
+            p.drawText(QRectF(8, 0, self.width() - 16, 20), Qt.AlignmentFlag.AlignRight, text)
 
     def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self._pan_x = event.position().x()
+            return
         if self.samples and event.button() == Qt.MouseButton.LeftButton:
             nearest = min(self.samples, key=lambda ply: abs(self._point(ply, 0).x() - event.position().x()))
             self.position_requested.emit(nearest)
+
+    def mouseMoveEvent(self, event):
+        if self._pan_x is not None:
+            end = self.total if self.view_end is None else self.view_end
+            span = max(1, end - self.view_start)
+            delta = (self._pan_x - event.position().x()) * span / max(1, self.width() - 16)
+            start = min(max(0, self.view_start + delta), max(0, self.total - span))
+            self.view_start, self.view_end = start, start + span
+            self._pan_x = event.position().x()
+        if self.samples:
+            self.hover_ply = min(
+                self.samples, key=lambda ply: abs(self._point(ply, 0).x() - event.position().x())
+            )
+        self.update()
+
+    def mouseReleaseEvent(self, event):
+        self._pan_x = None
+
+    def leaveEvent(self, event):
+        self.hover_ply = None
+        self._pan_x = None
+        self.update()
+
+    def wheelEvent(self, event):
+        if self.total < 2:
+            return
+        end = self.total if self.view_end is None else self.view_end
+        span = max(1, end - self.view_start)
+        fraction = min(1, max(0, (event.position().x() - 8) / max(1, self.width() - 16)))
+        center = self.view_start + fraction * span
+        span = min(self.total, max(2, span * (0.75 if event.angleDelta().y() > 0 else 1.33)))
+        self.view_start = min(max(0, center - fraction * span), self.total - span)
+        self.view_end = self.view_start + span
+        self.update()
+        event.accept()
+
+    def mouseDoubleClickEvent(self, event):
+        self.view_start = 0
+        self.view_end = None
+        self.update()

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.0 — External-engine analysis studio
+
+- Product direction changes to a user-supplied Stockfish/UCI GUI. Custom search,
+  evaluation, UCI executable and native table reader are excluded from the desktop.
+- Persistent asynchronous UCI sessions, advertised option profiles, stop/ready
+  barriers, deadlines, bounded diagnostics and restart handling.
+- Actual MultiPV scores/bounds/WDL, candidate arrows and guarded Smart Move,
+  PV hover/click/insert/pin/copy/targeted-search interactions.
+- Runtime python-chess rules/PGN with Chess960, comments, NAGs and evaluation
+  annotations; multi-game study tabs and manual position setup.
+- Full-line review with targeted played-move searches, pause/resume/cancel,
+  node-associated exact scores and reliable evaluation export.
+- Classic/analysis-left split layouts, graph zoom/pan/hover, command palette,
+  shortcut editing/import/export and PNG board export.
+- Combined application distribution is GPL-3.0-or-later; original code/assets
+  retain MIT. Corresponding rules-library source accompanies release source ZIP.
+- Real Stockfish/Windows interaction and advanced comparison/cache/snapshots remain
+  explicit follow-up work. No playing-strength or performance improvement claim.
+
 ## 0.4.0 — Persistent variations and offline Syzygy
 
 - Alternate moves preserve the main continuation as ordered branches. Nested

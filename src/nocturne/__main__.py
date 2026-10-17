@@ -8,17 +8,12 @@ import tempfile
 
 def main():
     multiprocessing.freeze_support()
-    if "--uci" in sys.argv:
-        from .engine.uci import main as uci_main
-        return uci_main()
-    if "--bench" in sys.argv:
-        from .engine.benchmark import main as bench_main
-        return bench_main([a for a in sys.argv[1:] if a != "--bench"])
     try:
         from PySide6.QtWidgets import QApplication
     except ImportError:
         raise SystemExit("PySide6 is required for the desktop app. Install with: python -m pip install -e .")
     from .gui.window import MainWindow
+
     app = QApplication(sys.argv)
     app.setApplicationName("Nocturne Chess")
     app.setOrganizationName("Nocturne")
@@ -29,14 +24,40 @@ def main():
     window.show()
     if smoke:
         from PySide6.QtCore import QTimer
-        window.config.update({"mode": "human_ai", "human_color": 1, "difficulty": "Casual"})
+        from .core.game import Game
+
+        window.config.update({"mode": "analysis", "analysis_kind": "bounded", "engine_id": "smoke"})
+        window.analysis_mode = True
+        window._analysis_enabled = True
+        window.game = Game.from_pgn("1.e4 {Smoke annotation} (1.d4 d5) e5 *")
+        if "--smoke-engine" in sys.argv:
+            index = sys.argv.index("--smoke-engine")
+            executable = sys.argv[index + 1]
+            script = sys.argv[index + 2]
+            window.profiles = [
+                {
+                    "id": "smoke",
+                    "path": executable,
+                    "arguments": [script],
+                    "name": "Protocol fixture",
+                    "values": {},
+                    "options": {},
+                }
+            ]
+        window._apply_settings()
+        window.analysis_kind.setCurrentIndex(2)
         window._refresh()
         pulse = QTimer()
         pulse.setInterval(25)
 
         def verify():
-            if window.game.cursor >= 2:
-                valid = window.game.board.key == window.game.board.compute_key()
+            if not window.profiles or window._last_info:
+                restored = Game.from_dict(window.game.to_dict())
+                valid = (
+                    restored.board.fen() == window.game.board.fen()
+                    and "Smoke annotation" in restored.pgn()
+                    and "(" in restored.pgn()
+                )
                 pulse.stop()
                 window.close()
                 app.exit(0 if valid else 2)
@@ -47,8 +68,8 @@ def main():
 
         pulse.timeout.connect(verify)
         pulse.start()
-        QTimer.singleShot(0, lambda: window._human_move(window.game.board.parse_uci("e2e4")))
-        QTimer.singleShot(8000, timeout)
+        QTimer.singleShot(50, window._schedule_engine)
+        QTimer.singleShot(12000, timeout)
     result = app.exec()
     if temporary:
         temporary.cleanup()

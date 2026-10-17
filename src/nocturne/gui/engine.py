@@ -1,115 +1,126 @@
-"""Qt process supervision with cancellation and stale-result protection."""
+"""Desktop external-engine controller. No custom engine is used by the GUI."""
 
-from __future__ import annotations
+from pathlib import Path
 
-from dataclasses import asdict
-import multiprocessing
-import time
+from PySide6.QtCore import QObject, Signal
 
-from PySide6.QtCore import QObject, QTimer, Signal
-
-from ..core.game import Game
-from ..engine.search import SearchLimits
-from ..engine.worker import run_worker
+from ..core.notation import san
+from .uci_connection import UciConnection
 
 
 class EngineController(QObject):
     message = Signal(int, str, object)
+    discovered = Signal(object)
+    status = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.context = multiprocessing.get_context("spawn")
         self.generation = 0
-        self.active = None
-        self.retired = []
-        self.timer = QTimer(self)
-        self.timer.setInterval(25)
-        self.timer.timeout.connect(self._poll)
-        self.timer.start()
+        self.connection = UciConnection(self)
+        self.connection.information.connect(self._info)
+        self.connection.completed.connect(self._result)
+        self.connection.failed.connect(self._error)
+        self.connection.discovered.connect(self.discovered)
+        self.connection.status.connect(self.status)
+        self._busy = False
+        self.board = None
+        self.lines = {}
 
     @property
     def busy(self):
-        return self.active is not None
+        return self._busy
 
-    def start(self, game: Game, limits: SearchLimits, external="", kind="search", tablebase_path="") -> int:
+    def connect_engine(self, path, arguments=None):
         self.stop()
-        output, child_output = self.context.Pipe(duplex=False)
-        child_control, control = self.context.Pipe(duplex=False)
-        request = {"kind": kind, "initial_fen": game.initial_fen,
-                   "moves": [m.uci() for m in game.moves[:game.cursor]],
-                   "limits": asdict(limits), "external": external, "tablebase_path": tablebase_path}
-        proc = self.context.Process(target=run_worker, args=(request, child_output, child_control), daemon=True)
-        proc.start()
-        child_output.close()
-        child_control.close()
-        self.active = (self.generation, proc, output, control)
+        self.connection.launch(path, arguments)
+
+    def start(
+        self,
+        game,
+        limits,
+        external="",
+        kind="search",
+        tablebase_path="",
+        options=None,
+        infinite=False,
+        multipv=1,
+        searchmoves=None,
+        arguments=None,
+    ):
+        if not external:
+            raise ValueError("Select your Stockfish or another UCI executable first")
+        self.stop()
+        self.board = game.board.copy()
+        self.lines = {}
+        desired = dict(options or {})
+        desired["MultiPV"] = multipv
+        desired["UCI_AnalyseMode"] = kind == "analysis" or infinite
+        if tablebase_path:
+            desired["SyzygyPath"] = tablebase_path
+        desired["UCI_Chess960"] = bool(getattr(self.board, "chess960", False))
+        if self.connection.path != str(Path(external).absolute()) or not self.connection.alive:
+            self.connection.launch(external, arguments)
+        position = "position fen " + game.initial_fen
+        if game.cursor:
+            position += " moves " + " ".join(m.uci() for m in game.moves[: game.cursor])
+        go = (
+            "go infinite"
+            if infinite
+            else f"go depth {limits.depth} movetime {max(1, int(limits.seconds * 1000))}"
+        )
+        if limits.nodes:
+            go += " nodes " + str(limits.nodes)
+        if searchmoves:
+            valid = [self.board.parse_uci(m).uci() for m in searchmoves]
+            go += " searchmoves " + " ".join(valid)
+        self._busy = True
+        self.connection.request(self.generation, position, go, desired, game.id)
         return self.generation
+
+    def _info(self, generation, info):
+        if generation != self.generation or not self._busy:
+            return
+        position = self.board.copy()
+        pv, texts = [], []
+        for text in info["pv"][:128]:
+            try:
+                move = position.parse_uci(text)
+                texts.append(san(position, move))
+                position.push(move)
+                pv.append(text)
+            except ValueError:
+                break
+        if not pv:
+            return
+        info = dict(info, pv=pv, san=texts, engine=self.connection.name)
+        self.lines[info["multipv"]] = info
+        self.message.emit(generation, "info", info)
+
+    def _result(self, generation, bestmove):
+        if generation != self.generation or not self._busy:
+            return
+        self._busy = False
+        try:
+            if bestmove == "0000" and any(self.board.legal_moves()):
+                raise ValueError("No move in a nonterminal position")
+            move = self.board.parse_uci(bestmove).uci() if bestmove != "0000" else None
+        except ValueError:
+            self._error("Engine returned an illegal or outdated move: " + bestmove)
+            return
+        self.message.emit(
+            generation, "result", {"move": move, "info": self.lines.get(1, {}), "stopped": False}
+        )
+
+    def _error(self, message):
+        self._busy = False
+        self.message.emit(self.generation, "error", {"message": message})
 
     def stop(self):
         self.generation += 1
-        if self.active:
-            generation, proc, output, control = self.active
-            try:
-                control.send("stop")
-            except (BrokenPipeError, EOFError, OSError):
-                pass
-            self.retired.append((proc, output, control, time.monotonic() + .3))
-            self.active = None
-
-    def _poll(self):
-        active = self.active
-        if active:
-            generation, proc, output, control = active
-            try:
-                for _ in range(40):
-                    if not output.poll():
-                        break
-                    kind, payload = output.recv()
-                    if generation != self.generation:
-                        break
-                    if kind in ("result", "error", "benchmark"):
-                        self.active = None
-                        self.retired.append((proc, output, control, time.monotonic() + .3))
-                    self.message.emit(generation, kind, payload)
-                    if self.active != active:
-                        break
-                if self.active == active and not proc.is_alive() and not output.poll():
-                    self.active = None
-                    self.retired.append((proc, output, control, time.monotonic()))
-                    self.message.emit(generation, "error", {"message": f"Engine process exited ({proc.exitcode})"})
-            except (EOFError, OSError):
-                if self.active == active:
-                    self.active = None
-                    self.retired.append((proc, output, control, time.monotonic()))
-                    self.message.emit(generation, "error", {"message": "Engine process disconnected"})
-        remaining = []
-        for proc, output, control, deadline in self.retired:
-            if proc.is_alive() and time.monotonic() < deadline:
-                remaining.append((proc, output, control, deadline))
-            else:
-                if proc.is_alive():
-                    proc.terminate()
-                proc.join(timeout=0)
-                if proc.is_alive():
-                    remaining.append((proc, output, control, time.monotonic()))
-                    continue
-                output.close()
-                control.close()
-                proc.close()
-        self.retired = remaining
+        self._busy = False
+        self.lines = {}
+        self.connection.stop()
 
     def close(self):
         self.stop()
-        self.timer.stop()
-        for proc, output, control, _ in self.retired:
-            if proc.is_alive():
-                proc.terminate()
-            proc.join(timeout=.4)
-            if proc.is_alive():
-                proc.kill()
-                proc.join(timeout=.2)
-            output.close()
-            control.close()
-            if not proc.is_alive():
-                proc.close()
-        self.retired.clear()
+        self.connection.close()
