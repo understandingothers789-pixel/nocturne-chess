@@ -13,19 +13,16 @@ analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
 
-[Download the verified Windows 0.5.2 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39008543023/artifacts/12092370151) (GitHub sign-in required).
+[Download the verified Windows 0.5.3 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39011710749/artifacts/12093112925) (GitHub sign-in required).
 
 [All Windows builds](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
-Select **Nocturne-0.5.2-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
-Windows validation passed: 110 tests passed, 5 skipped; packaged app and external-UCI
+Select **Nocturne-0.5.3-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
+Windows validation passed: 116 tests passed, 5 skipped; packaged app and external-UCI
 protocol-fixture smoke checks passed. Real Stockfish/manual interaction verification remains open.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
 change is provided. The ZIP also includes the corresponding source archive.
-
-The 0.5.3 source reorganizes the analysis workspace and engine menus; its Windows
-build is pending verification. The link above is the previously verified build.
 
 ## Your saved PGNs
 

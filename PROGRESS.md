@@ -933,3 +933,34 @@ Windows font metrics, forcing the board arena minimum to 654 px. Wrapped that
 caption in Play and hid it in Analysis; Flip/Copy FEN remain available. Removed
 the unnecessary deferred resize timer. The regression now includes a long caption
 and checks it is hidden while both layouts retain wider analysis/custom splits.
+
+Caption fix validation: GUI pytest 34 passed in 16.56s; Ruff passed. Full local
+unittest discovery ran 121 tests in 34.110s: 116 passed, 5 skipped. Refreshed the
+five actual Qt workspace screenshots and inspected the wide capture. Published
+commit c89cff16102e323920ec738199b3e13a86cc4861; Windows run 39011710749 is
+validating the corrected minimum width and building the portable app.
+
+
+## 2026-10-17 — 0.5.3 verified Windows package
+
+Windows run 39011710749/job 117335431211 succeeded for code commit
+c89cff16102e323920ec738199b3e13a86cc4861. The workflow ran 121 tests in
+32.330s: 116 passed, 5 skipped. The isolated build environment repeated all
+121 tests in 39.629s with the same passing result. Ruff, PyInstaller and both
+frozen GUI smoke checks (study/save and external-UCI protocol fixture) passed.
+The Windows regressions now verify the wider analysis pane in both orders and
+compact/desktop sizes, mode switching, long instruction text and user splitter
+preservation. MultiPV presets/custom/unsupported limits, continuous/bounded UCI
+commands, 14 threads and GB hash labels also pass on native Windows.
+
+Artifact 12093112925: Nocturne-0.5.3-Windows-x64-unsigned, 53,376,940 bytes.
+SHA-256 1d633e9cf36e3e62c441c1d92ff023bcae2ee45bd17a84ad6756da68627f62d6.
+Metadata reports unexpired and retained until 2026-11-16. Download:
+https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39011710749/artifacts/12093112925
+
+README/BUILDING link to this verified executable; TODO retains real Stockfish,
+manual Windows/DPI and large-Syzygy checks. Refreshed actual Qt screenshots and
+source archive/wheel/checksums. Only documentation/images change after the passing
+Windows build; no product code changes. The tests use explicit protocol fixtures,
+not installed Stockfish, and make no playing-strength or speed claim. No engine
+or table files are bundled; no batch/PowerShell launcher or security bypass added.

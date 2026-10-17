@@ -21,4 +21,5 @@ allocation and manual Windows/DPI behavior; protocol fixture tests do not measur
 0.5.2 native Windows build/tests passed. Manual Explorer access to the PGN folder
 and real Stockfish allocation remain to verify on a user desktop.
 
-0.5.3: verify the native Windows build for menu-only controls and flowing PVs.
+0.5.3 native Windows tests/build and packaged smoke checks passed. Manual real
+Stockfish MultiPV, DPI and desktop interaction verification remains open.
