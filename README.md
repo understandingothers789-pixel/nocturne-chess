@@ -125,6 +125,10 @@ explicit. These are remote analysis records, separate from local engine scores
 and Lichess game statistics. Lichess speed/rating filters do not apply. A Lichess
 token is never sent to ChessDB; no ChessDB login is needed.
 
+Native HTTPS verification returned 29 legal ChessDB moves for the test opening.
+Lichess confirmed its token requirement; authenticated live data still needs
+verification with your own session token.
+
 ![Actual Qt ChessDB view with explicitly labelled cached test scores](docs/chessdb-explorer.png)
 
 Up to 256 positions/filter combinations are cached in `opening-cache.sqlite3`

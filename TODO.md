@@ -25,7 +25,8 @@ and real Stockfish allocation remain to verify on a user desktop.
 Stockfish MultiPV, DPI and desktop interaction verification remains open.
 
 0.5.4 native tests, six HTTP tests and packaged GUI checks passed.
-Live ChessDB connectivity verification pending.
+Live ChessDB HTTPS data query passed (29 legal moves); Lichess authentication
+requirement verified.
 Verify live Lichess data using a user-provided session token. Manual Windows
 explorer interactions and real Stockfish marker behavior remain to verify.
 Individual database game lists/downloads and Chess960 lookup are deferred.

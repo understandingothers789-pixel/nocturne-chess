@@ -1094,3 +1094,27 @@ Desktop CI now ignores documentation/connectivity-only edits; the separate
 database workflow can run on probe edits or manual dispatch. This reruns only
 the failed diagnostic instead of repeating the already-passing application
 build/tests. Download docs point to the verified 0.5.4 GUI artifact.
+
+
+## 2026-10-17 — 0.5.4 delivery verified
+
+Connectivity-only Windows run 39065979799/job 117493627053 passed for diagnostic
+commit 3a53f9c601a1aec57f754ffcc45007c1882c31de. The same Qt HTTPS client queried
+both Lichess sources and reported their authentication requirement. It then
+successfully queried ChessDB for the fixed 1.e4 e5 position and parsed/validated
+29 legal moves. UTF-8 output completed without exceptions. Authenticated live
+Lichess data remains explicitly untested because no user token is available;
+header scoping/401 behavior/session handling are covered by native tests.
+
+Final desktop artifact remains run 39065410510/artifact 12112334334, built from
+unchanged GUI code 762de7aee5ff49d11c6becb91f889d23effaa48a. It passed 132 tests
+with 5 optional skips twice, packaged save/explorer/UCI smoke checks and Ruff.
+Download is linked in README/BUILDING; Database menu screenshot shows all three
+sources and token controls. TODO retains authenticated real-user Lichess data,
+manual Windows/DPI/real Stockfish interactions, individual game downloads and
+Chess960 database support as open limitations.
+
+Refreshed local source ZIP, wheel and checksums after final docs. ZIP/wheel
+integrity checked; source has no executable or batch/PowerShell launcher.
+No application code changed after the passing native Windows package. All online
+lookups remain optional; no external engine or table files were downloaded/bundled.

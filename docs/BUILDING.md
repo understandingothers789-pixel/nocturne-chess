@@ -82,3 +82,9 @@ Run `python scripts/check_explorer_api.py` from a source install, or use the
 manual **Live database connectivity** workflow. It queries one fixed opening
 position, reports Lichess authentication requirements without a user token, and
 checks ChessDB independently. It never accepts or logs tokens.
+
+Connectivity-only run 39065979799/job 117493627053 passed on Windows for
+3a53f9c601a1aec57f754ffcc45007c1882c31de. Masters/player endpoints returned
+authentication-required responses; no authenticated data claim is made. ChessDB
+returned valid JSON containing 29 locally validated legal moves for 1.e4 e5.
+The UTF-8 diagnostic completed without callback errors.
