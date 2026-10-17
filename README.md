@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.5
+# Nocturne Analysis · 0.5.6
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -140,6 +140,12 @@ Late replies cannot change a different position. Network failures never prevent
 moving pieces or using the engine. Service availability and data coverage vary.
 
 ## Explore quickly
+
+- **Backspace** (or **Tree → Delete current line**) removes the selected move and
+  its continuations in Analysis. It selects the next sibling, or the previous one
+  when deleting the last sibling; without a sibling it returns to the parent. For
+  `1.e4 e5 (1...Nf6)`, deleting `e5` displays `Nf6`. Root cannot be deleted.
+  PGN/text editing keeps normal Backspace behavior. The edited study autosaves.
 
 - **Smart Move** is enabled by default for every displayed MultiPV candidate.
   Click a destination square to play that candidate. If several candidates end

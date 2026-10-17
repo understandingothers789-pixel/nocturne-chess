@@ -35,3 +35,7 @@ Individual database game lists/downloads and Chess960 lookup are deferred.
 views inspected; focused analysis tests and native Windows build checks passed.
 132 tests passed with 5 optional skips twice; packaged GUI/UCI smoke checks passed.
 Manual desktop/DPI review remains open.
+
+0.5.6 adds plain Backspace branch deletion with surviving-sibling selection,
+persistent tree compaction and text-editing guards. Focused tests passed; full
+local/native Windows build verification is pending. Manual desktop review remains open.

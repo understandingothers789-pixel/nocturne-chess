@@ -1177,3 +1177,40 @@ launcher. Refreshing source/checksums after final documentation changes. These
 final changes are documentation only; application code is unchanged after the
 passing Windows package. Next verification is user desktop/DPI appearance and
 real Stockfish interaction; automated results use a labelled UCI protocol fixture.
+
+
+## 2026-10-17 — 0.5.6 Backspace branch deletion, implementation
+
+User requested Nibbler-style selected-line deletion with plain Backspace: from
+1.e4 e5 (1...Nf6), deleting e5 must display Nf6. Added Game.delete_current_line in
+core/game.py and Tree → Delete current line in gui/window.py. Deletes the current
+move/subtree; chooses the next sibling, otherwise previous sibling, otherwise
+parent. Root and Play mode are protected; shortcut auto-repeat is disabled.
+The tree is compacted before saving, preserving child order and surviving
+comments/analysis/clocks/evaluations; review node references are remapped and
+removed entries discarded. A changed main line clears its previous result.
+The GUI cancels active review, stops old search before editing, refreshes board/
+history, autosaves, and reschedules only if analysis was enabled.
+
+Added regression coverage in tests/test_variations.py (main/side subtree deletion,
+sibling order, parent/root fallback, results and PGN/JSON restore), test_gui.py
+(actual Backspace on board/move pane, hover restoration, saved PGN/board sync,
+PGN and text-field editing), and test_external_analysis.py (live UCI restart,
+stale reply rejection and halted-state preservation). Initial tests exposed two
+invalid new fixtures: wrong PGN variation placement and a review record lacking
+criteria. Fixed the fixtures; no application bug was found in that run.
+
+Executed focused unittest discovery: variation tests 8 passed (0.076s), GUI tests
+36 passed (24.074s), external-analysis tests 21 passed (14.038s). Ruff passed.
+One history-text assertion was subsequently added and will run in the full suite.
+Version metadata, Windows artifact paths, README and CHANGELOG updated to 0.5.6.
+Full local validation and native Windows packaging are next; the prior verified
+0.5.5 download stays linked until the new artifact is verified. No new tooltips,
+launch scripts or dependencies. Manual Windows/DPI/real Stockfish review remains open.
+
+Full local validation executed: QT_QPA_PLATFORM=offscreen .venv/bin/python
+-m unittest discover -s tests -q ran 142 tests in 51.839s: 131 passed,
+11 skipped, no failures. Six HTTP tests skip on denied sandbox sockets; five
+optional historical checks also skip. The added visible-history assertion passed.
+The offscreen python -m nocturne --smoke-test exited 0; final Ruff passed.
+Publishing the reviewed changes next for native Windows validation and packaging.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.6 — Backspace deletes the current analysis line
+
+- Add Tree → Delete current line with plain Backspace. Delete the selected move
+  and descendants, display a surviving sibling, or return to its parent.
+- Preserve sibling order, annotations, saved analysis and review records while
+  removing deleted nodes from saved games/PGNs. Reset a changed main-line result.
+- Stop old analysis/review before editing; resume live analysis on the surviving
+  position and keep halted analysis halted. Text fields retain normal Backspace.
+- Disable deletion at the root and during play; ignore shortcut auto-repeat.
+
 ## 0.5.5 — Subtle analysis markers
 
 - Reduce candidate arrow/line thickness and opacity with a muted palette and much

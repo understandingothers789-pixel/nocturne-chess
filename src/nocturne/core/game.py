@@ -185,6 +185,42 @@ class Game:
             children.insert(0, child)
         self._main_result = "*"
 
+    def delete_current_line(self) -> bool:
+        """Remove this move and its subtree; select the nearest surviving sibling."""
+        index = self.current_node
+        parent = self.nodes[index].parent
+        if parent is None:
+            return False
+        self.pause_clock()
+        self._sync_tree_state()
+        changes_mainline = index in mainline(self.nodes)
+        removed, stack = set(), [index]
+        while stack:
+            child = stack.pop()
+            removed.add(child)
+            stack.extend(self.nodes[child].children)
+        siblings = self.nodes[parent].children
+        slot = siblings.index(index)
+        siblings.remove(index)
+        target = siblings[min(slot, len(siblings) - 1)] if siblings else parent
+        # First leave the removed path while all old IDs are still valid. Compact
+        # afterward so deleted nodes cannot reappear through save/restore.
+        self.select_node(parent)
+        remap = {old: new for new, old in enumerate(i for i in range(len(self.nodes)) if i not in removed)}
+        self.nodes = [node for i, node in enumerate(self.nodes) if i not in removed]
+        for node in self.nodes:
+            node.parent = remap[node.parent] if node.parent is not None else None
+            node.children = [remap[c] for c in node.children]
+        self._line_nodes = [remap[i] for i in self._line_nodes]
+        review = self.metadata.get("review")
+        if isinstance(review, dict):
+            keys = {str(old): str(new) for old, new in remap.items()}
+            self.metadata["review"] = {keys[key]: value for key, value in review.items() if key in keys}
+        if changes_mainline:
+            self._main_result = "*"
+        self.select_node(remap[target])
+        return True
+
     def mainline_node(self, depth):
         path = mainline(self.nodes)
         return path[min(max(0, depth), len(path) - 1)]

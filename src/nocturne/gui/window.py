@@ -548,6 +548,8 @@ class MainWindow(QMainWindow):
         add(tree, "Previous variation", lambda: self._sibling(-1))
         add(tree, "Next variation", lambda: self._sibling(1))
         add(tree, "Promote variation to main line", self._promote_line)
+        self.delete_line_action = add(tree, "Delete current line", self._delete_line, "Backspace")
+        self.delete_line_action.setAutoRepeat(False)
         add(tree, "Edit comment / annotations…", self._edit_annotation, "Ctrl+M")
 
         analysis = self.menuBar().addMenu("&Analysis")
@@ -1661,6 +1663,7 @@ class MainWindow(QMainWindow):
         self._schedule_engine()
 
     def _refresh(self, animate=False):
+        self.delete_line_action.setEnabled(self.analysis_mode and self.game.current_node != 0)
         self._register_study()
         self._sync_workspace_layout()
         self._preview_source = None
@@ -1935,6 +1938,16 @@ class MainWindow(QMainWindow):
         self._refresh()
         self._save()
         self._schedule_engine()
+
+    def _delete_line(self):
+        if not self.analysis_mode or self.game.current_node == 0:
+            return
+        self._cancel_review()
+        self._stop_engine()
+        if self.game.delete_current_line():
+            self._refresh()
+            self._save()
+            self._schedule_engine()
 
     def _history_clicked(self, row, column):
         if cursor := getattr(self, "_history_cells", {}).get((row, column)):

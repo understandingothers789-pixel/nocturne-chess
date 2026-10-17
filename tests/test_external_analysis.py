@@ -397,6 +397,39 @@ class QtIntegration(unittest.TestCase):
             )
             self.assertEqual(window.game.cursor, 1)
 
+    def test_backspace_during_live_analysis_restarts_on_surviving_sibling(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            window.autosave_timer.stop()
+            window.profiles = [self.profile()]
+            window.config.update(mode="analysis", engine_id="simulator", analysis_kind="explore", multipv=3)
+            window.analysis_mode = window._analysis_enabled = True
+            window.game = Game.from_pgn("1.e4 e5 (1...Nf6) 2.Nf3 *")
+            window.game.navigate(2)
+            window._apply_settings()
+            window.show()
+            window._refresh()
+            window._schedule_engine()
+            self.wait_until(lambda: bool(window.board_view.recommendations))
+            old_generation = window._job["generation"]
+            window.board_view.setFocus()
+            QTest.keyClick(window.board_view, Qt.Key.Key_Backspace)
+            self.assertEqual(window.game.sans, ["e4", "Nf6"])
+            self.wait_until(lambda: window._job is not None and window._job["generation"] > old_generation
+                            and bool(window.board_view.recommendations))
+            self.assertEqual(window._job["identity"], window._position_identity())
+            self.assertEqual(window.board_view.recommendation_fen, window.game.board.fen())
+            self.assertTrue(all(m in list(window.game.board.legal_moves())
+                                for m, _, _ in window.board_view.recommendations))
+            saved = window.game.to_dict()
+            window._engine_message(old_generation, "info", {"score": 9999, "pv": ["a1a8"]})
+            self.assertEqual(window.game.to_dict(), saved)
+            window._halt_analysis()
+            QTest.keyClick(window.board_view, Qt.Key.Key_Backspace)
+            self.assertEqual(window.game.sans, ["e4"])
+            self.assertFalse(window._analysis_enabled)
+            self.assertIsNone(window._job)
+
     def test_focus_replaces_candidate_context_instead_of_mixing_old_rows(self):
         with self.workspace() as window:
             window.timer.stop()

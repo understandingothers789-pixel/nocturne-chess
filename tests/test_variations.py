@@ -93,3 +93,47 @@ class VariationTests(unittest.TestCase):
         for text in ("1.e4 (1.e5) *", "1.e4 (1.d4 *", "1.e4 ) *"):
             with self.subTest(text=text), self.assertRaises(ValueError):
                 Game.from_pgn(text)
+
+    def test_delete_mainline_selects_sibling_and_persists_without_deleted_nodes(self):
+        game = Game.from_pgn("1.e4 e5 2.Nf3 Nc6 (2...Nf6) *")
+        game.navigate(1)
+        game.play(game.board.parse_uci("g8f6"))
+        alternative = game.current_node
+        game.nodes[alternative].comment = "Keep this variation"
+        game.nodes[alternative].analysis = {"score": 21}
+        game.metadata["review"] = {"2": {"label": "removed", "criteria": "test"}, str(alternative): {"label": "kept", "criteria": "test"}}
+        game.select_node(game.mainline_node(2))
+        self.assertEqual(game.sans[1], "e5")
+        self.assertTrue(game.delete_current_line())
+        self.assertEqual(game.sans, ["e4", "Nf6"])
+        self.assertEqual(game.cursor, 2)
+        self.assertEqual(len(game.nodes), 3)
+        self.assertEqual(game.nodes[game.current_node].comment, "Keep this variation")
+        self.assertEqual(game.nodes[game.current_node].analysis, {"score": 21})
+        self.assertEqual(game.metadata["review"], {"2": {"label": "kept", "criteria": "test"}})
+        restored = Game.from_dict(json.loads(json.dumps(game.to_dict())))
+        self.assertEqual(restored.board.fen(), game.board.fen())
+        self.assertEqual(restored.pgn(), game.pgn())
+        self.assertNotIn("e5", restored.pgn())
+        self.assertEqual(Game.from_pgn(game.pgn()).sans, ["e4", "Nf6"])
+
+    def test_delete_side_line_keeps_mainline_order_and_results(self):
+        game = Game.from_pgn('1.e4 e5 (1...Nf6 2.e5) (1...c5 2.Nf3) 2.Nf3 1-0')
+        e4 = game.nodes[0].children[0]
+        e5, nf6, c5 = game.nodes[e4].children
+        game.select_node(nf6)
+        self.assertTrue(game.delete_current_line())
+        self.assertEqual(game.nodes[game.current_node].san, "c5")
+        self.assertEqual([game.nodes[c].san for c in game.nodes[e4].children], ["e5", "c5"])
+        self.assertEqual(game._main_result, "1-0")
+        game.select_node(game.nodes[e4].children[-1])
+        self.assertTrue(game.delete_current_line())
+        self.assertEqual(game.nodes[game.current_node].san, "e5")
+        self.assertTrue(game.delete_current_line())
+        self.assertEqual(game.sans, ["e4"])
+        self.assertEqual(game._main_result, "*")
+        self.assertTrue(game.delete_current_line())
+        self.assertEqual(len(game.nodes), 1)
+        self.assertEqual(game.cursor, 0)
+        self.assertFalse(game.delete_current_line())
+        self.assertEqual(Game.from_dict(game.to_dict()).cursor, 0)

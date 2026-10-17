@@ -93,6 +93,56 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(window.game.sans[4:], ["Nc3"])
         self.assertIn("(", window.game.pgn())
 
+    def test_backspace_deletes_current_branch_selects_sibling_and_saves(self):
+        self._analysis_game("1.e4 e5 (1...Nf6 2.d4) 2.Nf3 (2.Bc4) *")
+        window = self.window
+        window._navigate(2)
+        window._preview_history(len(window.game.nodes) - 1)
+        action = window.menu_actions["Delete current line"]
+        self.assertEqual(action.shortcut().toString(), "Backspace")
+        self.assertFalse(action.autoRepeat())
+        window.board_view.setFocus()
+        QTest.keyClick(window.board_view, Qt.Key.Key_Backspace)
+        self.app.processEvents()
+        self.assertEqual(window.game.cursor, 2)
+        self.assertEqual(window.game.sans[:2], ["e4", "Nf6"])
+        self.assertIsNone(window.board_view.preview_board)
+        self.assertEqual(window.board_view.board.fen(), window.game.board.fen())
+        self.assertEqual(window.store.load(window.game.id).pgn(), window.game.pgn())
+        self.assertNotIn("e5", window.game.pgn())
+        self.assertNotIn("e5", window.analysis_history.toPlainText())
+        window.analysis_history.setFocus()
+        QTest.keyClick(window.analysis_history, Qt.Key.Key_Backspace)
+        self.app.processEvents()
+        self.assertEqual(window.game.sans, ["e4"])
+        QTest.keyClick(window.analysis_history, Qt.Key.Key_Backspace)
+        self.app.processEvents()
+        self.assertEqual(window.game.cursor, 0)
+        self.assertFalse(action.isEnabled())
+
+    def test_backspace_in_pgn_and_text_fields_does_not_delete_branch(self):
+        from PySide6.QtWidgets import QLineEdit
+
+        self._analysis_game()
+        window = self.window
+        original = window.game.pgn()
+        window.tabs.setCurrentIndex(window.tabs.indexOf(window.pgn_editor.parentWidget()))
+        window.pgn_editor.setFocus()
+        window.pgn_editor.setPlainText("abc")
+        window.pgn_editor.moveCursor(window.pgn_editor.textCursor().MoveOperation.End)
+        QTest.keyClick(window.pgn_editor, Qt.Key.Key_Backspace)
+        self.assertEqual(window.pgn_editor.toPlainText(), "ab")
+        edit = QLineEdit(window)
+        edit.setText("abc")
+        edit.show()
+        edit.setFocus()
+        QTest.keyClick(edit, Qt.Key.Key_Backspace)
+        self.assertEqual(edit.text(), "ab")
+        self.assertEqual(window.game.pgn(), original)
+        window.analysis_mode = False
+        window._refresh()
+        self.assertFalse(window.delete_line_action.isEnabled())
+
     def test_click_move_updates_model_board_and_san_history(self):
         self._click("e2")
         self.assertEqual(self.window.board_view.selected, parse_square("e2"))
