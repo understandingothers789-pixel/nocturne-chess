@@ -43,8 +43,8 @@ source access when redistributing.
 - The UCI simulator is explicitly a development/test fixture, not a playing engine.
   It is not included in the application bundle.
 
-Nibbler's 12 original PNG chess-piece assets are included as the Nibbler option,
-now the default. No Nibbler application code is copied. See the piece notice below.
+The Nibbler option is the default: matching shaded Merida vectors are rendered
+at device resolution; Nibbler's 12 original PNGs are retained as references. No Nibbler application code is copied. See the piece notice below.
 User-selected external engines retain their respective licenses; this application
 does not distribute or modify them.
 
@@ -86,7 +86,8 @@ The upstream COPYING.md exceptions table credits Colin M.L. Burnett and GPLv2+.
 Retain licenses/CBURNETT-NOTICE.txt and
 licenses/CBURNETT-GPL-2.0-or-later.txt, which accompany the native app, wheel and
 source archive. The SVGs themselves are the preferred modifiable artwork source.
-No Chess.com or Nibbler artwork is included; no Lichess endorsement is implied.
+This Cburnett set contains no Chess.com artwork; no Lichess endorsement is implied.
+The separate Nibbler/Merida artwork is credited below.
 
 
 ### Nibbler / shaded Merida chess pieces (default)
@@ -97,4 +98,6 @@ Nibbler credits Lichess for these pieces. Merida is credited by Lichess to Arman
 Hernandez Marroquin under GPL-2.0-or-later; shaded artwork also credits Felix Kling.
 See `licenses/NIBBLER-PIECES-NOTICE.txt`, `licenses/MERIDA-GPL-2.0-or-later.txt`
 and `licenses/GPL-3.0.txt`. The PNGs and upstream editable Merida SVGs are included
-in `assets/pieces/nibbler/` and the accompanying source archive. No endorsement.
+in `assets/pieces/nibbler/` and the accompanying source archive. Since 0.5.7.18,
+the matching SVGs in `source/` provide runtime rendering at native display
+resolution; original 240×240 PNGs remain archival references. No endorsement.

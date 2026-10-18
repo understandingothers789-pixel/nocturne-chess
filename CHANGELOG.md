@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7.18 — Crisp Nibbler-style vector rendering
+
+- Render the matching shaded Merida SVGs at native device resolution, retaining the Nibbler look and default preference.
+- Use vectors consistently for board, dragging, animation, settings, promotion and cursor previews.
+- Preserve all original PNG bytes as licensed archival references; update artwork notices.
+- Cover transparent rendering and antialiased edges at 1×, 2× and 3× device pixel ratios.
+
 ## 0.5.7.17 — Experimental cursor hover board
 
 - Add an opt-in, remembered Dev setting to preview on a small mouse-transparent board near the pointer.

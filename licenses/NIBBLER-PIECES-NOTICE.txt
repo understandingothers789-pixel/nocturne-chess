@@ -12,9 +12,11 @@ Editable upstream SVGs are included in assets/pieces/nibbler/source from:
 https://github.com/lichess-org/lila/tree/cd2656d2787a766ba743da8da1dd3b24975e6329/public/piece/merida
 See licenses/MERIDA-GPL-2.0-or-later.txt.
 
-Runtime images retain original names and bytes: uppercase KQRBNP are White;
-an underscore prefix denotes Black. No artwork edits. Rendering scales the
-original 240x240 PNGs smoothly; the SVGs provide upstream editable sources.
+The original PNGs retain their names and bytes: uppercase KQRBNP are White;
+an underscore prefix denotes Black. No artwork edits. Since 0.5.7.18 the app
+renders the matching shaded Merida SVGs directly at native device resolution,
+including high-DPI displays, keeping the original Nibbler design and gradients.
+The 240x240 PNGs remain included as archival references, not runtime textures.
 No endorsement by Nibbler, Lichess or the artists is implied.
 
 Upstream Git blob SHA-1 checksums (original PNGs):

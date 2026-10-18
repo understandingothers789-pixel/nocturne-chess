@@ -1,4 +1,16 @@
-# Windows 11 desktop builds · 0.5.7.15
+# Windows 11 desktop builds · 0.5.7.18
+
+The new cumulative source includes independent database statistics/display
+controls, the Dev cursor-board experiment and Nibbler-style vector rendering.
+Intermediate labelled source commits 0.5.7.16 and 0.5.7.17 intentionally skipped
+CI; one cumulative 0.5.7.18 Windows build follows local validation.
+
+Frozen launch checks now verify all twelve collected SVG renderers, hidden-table
+cached statistics and cursor previews that leave the main board unchanged, plus
+external-UCI/Game Review completion. No script launcher or security-policy change
+is introduced. Native build receipt and download will be recorded when complete.
+
+## Previous verified download · 0.5.7.15
 
 [Download Windows 0.5.7.15](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39107769865/artifacts/12129033459). Extract All and open **Nocturne/Nocturne.exe**.
 Includes exact Nibbler PNGs, blue evaluation/API metrics, 10% palette-relative

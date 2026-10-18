@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.17
+# Nocturne Analysis · 0.5.7.18
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -6,10 +6,18 @@ Stockfish or another UCI executable. **The desktop app has no built-in engine.**
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
-![Real Qt application, using explicitly labelled simulated UCI test data](docs/compact-studio-dark.png)
+![Real Qt application with vector pieces and hidden explorer; labelled fixture data](docs/vector-studio-dark.png)
 
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
-analysis. The simulator is not bundled in the application.*
+analysis. The simulator is not bundled in the application. Database counts in this capture
+are explicitly labelled fixtures, not live results.*
+
+**0.5.7.18: sharp Nibbler-style pieces.** The default now renders the matching
+shaded Merida SVGs directly at device resolution instead of enlarging 240×240
+PNGs. The silhouettes, gradients and padding retain the requested look on the
+board, during dragging/animation, in settings, promotion icons and hover previews.
+The original PNGs and source/license notices remain included.
+[Light appearance with Grey board](docs/vector-studio-light.png).
 
 **0.5.7.17: experimental small hover board.** Enable **Dev → Preview moves on a
 small board near cursor**. History, database and MultiPV previews use a small
@@ -26,7 +34,8 @@ labelled simulator moves and fixture database counts.
 frequency continue to update in each MultiPV header, including after navigation.
 Selecting Masters, Lichess players or ChessDB enables statistics without opening
 the panel. **Enable database statistics** independently disables all lookups;
-fresh installations still start offline. Existing enabled lookups are migrated.
+fresh installations still start offline. Saved database selections are retained on upgrade even with the panel hidden.
+The separate statistics switch provides an explicit offline opt-out.
 
 ## Windows: download and open
 

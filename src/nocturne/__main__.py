@@ -38,6 +38,7 @@ def main():
             "moves": [{"uci": move.uci(), "white": 1, "draws": 0, "black": 0}],
         })
         window.config["explorer_enabled"] = True
+        window.config["explorer_statistics"] = True
         if "--smoke-engine" in sys.argv:
             index = sys.argv.index("--smoke-engine")
             executable = sys.argv[index + 1]
@@ -54,6 +55,7 @@ def main():
             ]
         window._apply_settings()
         window._refresh()
+        window._set_explorer_option("explorer_enabled", False)
         pulse = QTimer()
         pulse.setInterval(25)
         review_started = False
@@ -83,6 +85,18 @@ def main():
                     and (not review_started or reviewed["reviewed"] == reviewed["total"] == 2
                          and reviewed["accuracy"] is not None)
                 )
+                # Exercise collected vector assets and the cursor-board path
+                # in the frozen executable, not just from the source checkout.
+                valid = valid and len(window.board_view._renderers) == 12 and all(
+                    renderer.isValid() for renderer in window.board_view._renderers.values())
+                actual_fen = window.game.board.fen()
+                window._set_cursor_preview(True)
+                window._preview_history(1)
+                valid = (valid and window.hover_preview.isVisible()
+                         and window.board_view.display_board.fen() == actual_fen
+                         and window.hover_preview.board.display_board.fen() == window.game.position_at_node(1).fen())
+                window._end_preview("history")
+                valid = valid and not window.hover_preview.isVisible()
                 pulse.stop()
                 window.close()
                 app.exit(0 if valid else 2)

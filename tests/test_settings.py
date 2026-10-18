@@ -53,6 +53,7 @@ class SettingsTests(unittest.TestCase):
 
     def test_database_statistics_and_explorer_visibility_are_independent(self):
         self.assertFalse(normalize({})["explorer_statistics"])
+        self.assertTrue(normalize({"explorer_source": "masters", "explorer_enabled": False})["explorer_statistics"])
         upgraded = normalize({"explorer_enabled": True})
         self.assertTrue(upgraded["explorer_statistics"])
         upgraded["explorer_enabled"] = False

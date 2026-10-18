@@ -1,8 +1,10 @@
 # Active roadmap
 
-**In progress: 0.5.7.16–18.** Independent database visibility/statistics implemented;
-experimental cursor hover board and sharp Nibbler rendering next, then cumulative
-Windows validation and download. Prior delivery below remains available.
+**In progress: 0.5.7.18 cumulative validation.** All three changes are implemented:
+independent database visibility/statistics, default-off Dev cursor hover board,
+and native-resolution shaded Merida vectors. Focused/GUI tests and source launch
+checks passed; full/native verification and final download are pending. Prior
+delivery below remains available.
 
 **Current: 0.5.7.15 delivered.** All requested pieces, color/metadata, 10% square
 shading, compressed graph guides and compact spacing are included. Two native
@@ -27,7 +29,7 @@ in 0.5.7.15. Tighter spacing followed in its own labelled 0.5.7.14 commit.
 styles, preview/promotion integration and a one-time default migration. Focused
 GUI/settings/local checks passed; native timing failures were fixed and
 the cumulative 0.5.7.15 validation passed. Original PNGs
-are 240×240; unusually large high-DPI boards can exceed native image resolution.
+were 240×240; 0.5.7.18 replaces runtime bitmap scaling with the matching vectors.
 
 0.5.7.11 adds blue evaluation/API/frequency values in neutral-depth PV headers,
 validated position/move-specific database joins and 10% palette-relative last-

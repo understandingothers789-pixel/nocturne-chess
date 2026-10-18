@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import QEasingCurve, QPointF, QRectF, QSize, Qt, QVariantAnimation, Signal
-from PySide6.QtGui import QColor, QFont, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QPolygonF, QPixmap
+from PySide6.QtGui import QColor, QFont, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QPolygonF
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QMenu, QWidget
 
@@ -68,14 +68,13 @@ class BoardWidget(QWidget):
 
     def piece_directory(self):
         directory = ASSETS / "pieces"
-        return directory / "nibbler" if self.piece_set == "Nibbler" else (
+        return directory / "nibbler" / "source" if self.piece_set == "Nibbler" else (
             directory / "original" if self.piece_set == "Original" else directory)
 
     def piece_path(self, piece):
         kind = PIECE_CHARS[abs(piece)]
-        if self.piece_set == "Nibbler":
-            return self.piece_directory() / (("_" if piece < 0 else "") + kind.upper() + ".png")
-        return self.piece_directory() / (("w" if piece > 0 else "b") + kind.lower() + ".svg")
+        kind = kind.upper() if self.piece_set == "Nibbler" else kind.lower()
+        return self.piece_directory() / (("w" if piece > 0 else "b") + kind + ".svg")
 
     def set_piece_set(self, name):
         name = name if name in ("Nibbler", "Cburnett", "Original") else "Nibbler"
@@ -90,7 +89,7 @@ class BoardWidget(QWidget):
         for color in (1, -1):
             for kind in range(1, 7):
                 path = str(self.piece_path(color * kind))
-                renderers[color * kind] = QPixmap(path) if name == "Nibbler" else QSvgRenderer(path, self)
+                renderers[color * kind] = QSvgRenderer(path, self)
         self._renderer_sets[name] = self._renderers = renderers
         self.update()
 
@@ -212,13 +211,10 @@ class BoardWidget(QWidget):
         self.update()
 
     def _piece(self, painter: QPainter, piece: int, rect: QRectF):
-        image = self._renderers[piece]
-        if isinstance(image, QPixmap):
-            # The upstream PNG already contains the intended transparent padding.
-            painter.drawPixmap(rect, image, QRectF(image.rect()))
-        else:
-            inset = rect.width() * 0.045
-            image.render(painter, rect.adjusted(inset, inset, -inset, -inset))
+        # The shaded Merida vectors already include the Nibbler artwork's
+        # padding. Render at the painter's device resolution, including HiDPI.
+        inset = 0 if self.piece_set == "Nibbler" else rect.width() * 0.045
+        self._renderers[piece].render(painter, rect.adjusted(inset, inset, -inset, -inset))
 
     def _arrow(self, painter: QPainter, src: int, dst: int, color: QColor, unit: float, *, subtle=False):
         if src == dst:

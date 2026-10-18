@@ -83,10 +83,11 @@ def normalize(data) -> dict:
         result["piece_set"] = "Nibbler"
     if data.get("candidate_marker_version") != 1:
         result["candidate_style"] = "lines"
-    # The old switch controlled both lookup and display. Preserve lookup opt-in
-    # on upgrade, then store the two choices independently.
+    # A saved source from the older UI remains selected even if its panel was
+    # hidden. New installs stay offline; the new explicit opt-out is respected.
     if "explorer_statistics" not in data:
-        result["explorer_statistics"] = data.get("explorer_enabled") is True
+        result["explorer_statistics"] = (data.get("explorer_enabled") is True
+                                         or data.get("explorer_source") in choices["explorer_source"])
     for key in (
         "light",
         "coordinates",

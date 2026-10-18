@@ -2364,3 +2364,42 @@ check; cumulative native tests/build still pending. The mini board is an experim
 and the prior main-board hover remains the default. Compared all twelve Nibbler
 PNGs against the included shaded Merida vectors using Qt rendering; same style.
 Switch to those vectors next to remove the fixed bitmap resolution ceiling.
+Follow-up cached GUI checks: five passed (1.904 s), including explicit close-preview
+dismissal. Ruff and the labelled capture regeneration passed.
+
+## 2026-10-18 — 0.5.7.18: native-resolution shaded Nibbler pieces
+
+**Changed:** `gui/board.py` now renders the matching shaded Merida SVGs directly
+at device resolution, retaining the Nibbler default, silhouettes, gradients and
+padding. Board, dragging/animation, preview dialogs, promotion icons and cursor
+boards share that path. All original PNGs remain byte-for-byte archival assets.
+Updated artwork notices, rendering tests, screenshots, build/version metadata
+and documentation. Corrected an older ambiguous Cburnett-only notice.
+
+**Integration fixes:** upgrades preserve saved source selections even when the
+old explorer panel was hidden; the new explicit lookup opt-out is respected and
+fresh installations stay offline. The source/frozen launch fixture now enables
+the independent statistics flag. It additionally validates collected SVGs and
+the cursor board without changing the real board.
+
+**Executed:** focused `test_gui.py -k nibbler -v`: three passed (2.683 s), including
+all twelve vectors with transparent margins/antialiased edges at 1×, 2× and 3×.
+Full `QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests -v`:
+**184 run, 173 passed / 11 skipped**, 157.584 s; no failures. Six loopback HTTP
+cases skip because this execution sandbox denies sockets; Windows runs them.
+Following the migration/fixture integration updates, settings suite: seven passed;
+`.venv/bin/ruff check src tests scripts`: passed. Both individually executed
+`python -m nocturne --smoke-test` and the same command with `--smoke-engine
+/workspace/.venv/bin/python /workspace/tests/fixtures/uci_simulator.py`: exit 0.
+The latter uses a protocol fixture, not a real playing-strength measurement.
+
+`pip wheel --no-deps --no-build-isolation --wheel-dir /tmp/nocturne-wheel .`
+completed. ZIP integrity and contents verified: twelve SVGs, twelve original
+PNGs and the new hover module. All twelve PNG Git-blob checksums match the pinned
+Nibbler reference notice. Real Qt dark/light/hover captures were generated and
+visually inspected; fixture counts and simulated UCI moves are explicitly labelled.
+
+**Next/limits:** publish this cumulative build to native Windows CI, inspect
+both full runs and frozen launch gates, then provide the actual Windows download.
+User-machine DPI/multi-monitor interaction and unsigned Windows trust remain
+manual checks. No new launch scripts or security-policy bypasses were introduced.
