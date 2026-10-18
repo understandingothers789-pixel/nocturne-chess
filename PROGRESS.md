@@ -1388,3 +1388,34 @@ Windows tests, PyInstaller and packaged GUI/UCI smoke checks before updating the
 download link. Manual Windows/DPI, real Stockfish hover interaction and very
 large MultiPV lists remain to verify on a desktop. Narrow fixed headers may
 clip some optional statistics; the main telemetry remains available.
+
+
+## 2026-10-18 — 0.5.8 native Windows delivery verified
+
+Published application commit b1322d643bb57901a854b398f9b1056f48cc1a25 with GitHub
+blob/tree/commit/ref operations and a matching-head lease; no forced update.
+Windows run 39083200511/job 117544263988 completed successfully. Full unittest
+discovery ran twice: 155 total each, 150 passed and 5 optional skips, in 84.660s
+and 106.145s. Both Ruff runs passed. All six loopback HTTP tests ran on native
+Windows. New clock/piece/MultiPV/hover/click regressions passed. PyInstaller
+built the windowed Nocturne.exe, then the builder launched both frozen smoke
+paths successfully (offline and external UCI with complete two-move Game Review).
+The check=True builder stops before source packaging/upload if either launch
+fails. No test failure. Non-blocking PyInstaller API-set DLL resolution notices
+and the existing Actions Node deprecation notice remain in the build log; the
+packaged GUI checks succeeded on the native runner.
+
+Verified artifact 12119502466 matches the tested commit and is not expired:
+Nocturne-0.5.8-Windows-x64-unsigned, 54,608,168 bytes, retained until 2026-11-17.
+SHA-256: 00ff5a5ba65e41d8ba6c6a46aa6f7cbb5acea456529aca71e33c4699001b65e2
+Download: https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39083200511/artifacts/12119502466
+
+The separate live API check returned 29 legal ChessDB moves. Lichess endpoints
+required a user token, so no authenticated Lichess data claim is made. README
+and BUILDING now link the verified package; TODO records completed checks.
+The source ZIP passed integrity/license checks and contains no EXE, batch or
+PowerShell launcher. Wheel integrity and required credit/license inclusion also
+passed. Refreshed local source/checksums after final documentation. Only docs
+follow the tested application commit. Next is manual Windows 11/DPI, actual
+engine hover/scroll interaction and clock usability verification on a desktop;
+PGN clock-comment import and other named limitations remain documented.

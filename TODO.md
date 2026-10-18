@@ -51,5 +51,7 @@ score parity is not claimed.
 0.5.8 exact Lichess Cburnett pieces, persisted Display → Clocks and fixed
 three-line MultiPV slots/hover snapshots passed 144 local tests (11 skips),
 focused GUI/external suites, Ruff and both app smoke checks. Native Windows
-packaging is next. Verify the clock strip, piece scale, internal PV scrolling
+validation passed twice: 150 tests passed and 5 optional skips each; PyInstaller
+and both frozen GUI/UCI/Game Review smoke checks passed. The 0.5.8 Windows
+download is verified. Verify the clock strip, piece scale, internal PV scrolling
 and hover behavior manually at Windows DPI settings with a real engine.

@@ -13,11 +13,11 @@ analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
 
-[Download the verified Windows 0.5.7 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39081231579/artifacts/12118044851) (GitHub sign-in required).
+[Download the verified Windows 0.5.8 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39083200511/artifacts/12119502466) (GitHub sign-in required).
 
 [All Windows builds](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
-Select **Nocturne-0.5.7-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
-Windows validation passed: 146 tests passed, 5 skipped; packaged app and external-UCI
+Select **Nocturne-0.5.8-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
+Windows validation passed: 150 tests passed, 5 skipped; packaged app and external-UCI
 protocol-fixture/Game Review smoke checks passed. Real Stockfish/manual interaction verification remains open.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
