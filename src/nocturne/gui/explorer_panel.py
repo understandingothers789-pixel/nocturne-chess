@@ -32,6 +32,7 @@ class ResultsDelegate(QStyledItemDelegate):
 
 
 class OpeningExplorer(QWidget):
+    statistics_changed = Signal()
     move_selected = Signal(object, str)
     move_hovered = Signal(object, str)
     preview_ended = Signal()
@@ -45,6 +46,8 @@ class OpeningExplorer(QWidget):
         self.query = None
         self.identity = None
         self.rows = []
+        self.statistics = None
+        self.statistics_origin = ""
         self._hover = None
         self.setMinimumHeight(170)
         layout = QVBoxLayout(self)
@@ -93,11 +96,17 @@ class OpeningExplorer(QWidget):
         self.status_label.setObjectName("muted")
         layout.addWidget(self.status_label)
 
+    def _clear_statistics(self):
+        self.statistics = None
+        self.statistics_origin = ""
+        self.statistics_changed.emit()
+
     def set_position(self, board, identity, enabled, source="masters", speed="all", rating=0):
         if not enabled:
             self.client.cancel()
             self.query = None
             self.identity = None
+            self._clear_statistics()
             self.rows = []
             self.table.setRowCount(0)
             self._end_preview()
@@ -110,6 +119,7 @@ class OpeningExplorer(QWidget):
         except ValueError as exc:
             self.client.cancel()
             self.query = None
+            self._clear_statistics()
             self.rows = []
             self.table.setRowCount(0)
             self._end_preview()
@@ -120,6 +130,7 @@ class OpeningExplorer(QWidget):
             return
         self._end_preview()
         self.query = query
+        self._clear_statistics()
         self.rows = []
         self.table.setRowCount(0)
         self.title.setText("ChessDB · cloud analysis" if source == "chessdb" else "Masters" if source == "masters" else
@@ -138,6 +149,9 @@ class OpeningExplorer(QWidget):
         if not self.query or self.query.key != key:
             return
         self._end_preview()
+        self.statistics = data
+        self.statistics_origin = origin
+        self.statistics_changed.emit()
         self.rows = data["moves"]
         self.table.setRowCount(len(self.rows))
         if self.query.source == "chessdb":

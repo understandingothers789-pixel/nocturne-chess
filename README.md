@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.10
+# Nocturne Analysis · 0.5.7.11
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -6,12 +6,31 @@ Stockfish or another UCI executable. **The desktop app has no built-in engine.**
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
-![Real Qt application, using explicitly labelled simulated UCI test data](docs/quiet-studio-dark.png)
+![Real Qt application, using explicitly labelled simulated UCI test data](docs/analysis-metrics-dark.png)
 
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
+
+**0.5.7.11: Nibbler-inspired analysis metrics.** Each suggested-line header now
+uses blue for evaluation, API win percentage and move frequency; depth, W/D/L,
+sample counts and source details remain neutral. Headers use the available width
+and wrap with identical reserved heights, preserving hovered PV placements.
+
+Enable a source under **Database** for statistics. **API win** is the actual win
+percentage for the side to move after that candidate (draws remain in the sample,
+not counted as half wins). **Freq** is the move's games divided by all games for
+the position and selected database filters, not just the returned moves. Headers
+show the move/position sample counts, source, and live/cached status. Missing data
+shows a dash. ChessDB has a separate **DB White** score and no fabricated win or
+frequency percentages. Engine W/D/L remains explicitly from White's perspective.
+
+Last-move square shading is now **10%** brighter/darker, retaining each square's
+own hue/saturation. Existing piece colors, thin hints and wheel controls remain.
+
+Windows 0.5.7.11 validation/build pending; prior verified downloads are below.
+[Light appearance with test statistics](docs/analysis-metrics-light.png).
 
 **0.5.7.10: softer colors and wheel navigation.** White analysis moves use muted
 ivory; Black moves a slightly darker warm tint. Saved game moves use soft blue.

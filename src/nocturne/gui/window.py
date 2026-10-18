@@ -404,6 +404,7 @@ class MainWindow(QMainWindow):
         self.analysis_detail_splitter.setChildrenCollapsible(False)
         self.analysis_detail_splitter.addWidget(self.engine_scroll)
         self.explorer = OpeningExplorer(self.data_directory / "opening-cache.sqlite3")
+        self.explorer.statistics_changed.connect(self._sync_candidate_database)
         self.explorer.move_selected.connect(self._explorer_move)
         self.explorer.move_hovered.connect(self._preview_explorer)
         self.explorer.preview_ended.connect(lambda: self._end_preview("explorer"))
@@ -818,6 +819,15 @@ class MainWindow(QMainWindow):
         if active and not self._explorer_active:
             self.analysis_detail_splitter.setSizes([500, 220])
         self._explorer_active = active
+        self._sync_candidate_database()
+
+    def _sync_candidate_database(self):
+        explorer = self.explorer
+        if (explorer.query and explorer.identity == self._position_identity()
+                and self._candidate_identity == self._position_identity()):
+            self.candidates.set_database(explorer.query, explorer.statistics, explorer.statistics_origin)
+        else:
+            self.candidates.set_database()
 
     def _explorer_move(self, identity, text):
         if not self.analysis_mode or not self._explorer_active or identity != self._position_identity():
@@ -1702,6 +1712,8 @@ class MainWindow(QMainWindow):
         self.board_view.animations = appearance.get("animations", True)
         self.board_view.overlays = appearance.get("overlays", True)
         self.history.setStyleSheet(f"QTableWidget {{ color: {palette(light)['history']}; }}")
+        self.eval_label.setStyleSheet(f"color: {palette(light)['metric']};")
+        self.telemetry.setStyleSheet(f"color: {palette(light)['metadata']};")
         self.graph.light = self.board_view.light = light
         self.graph.update()
         self.eval_bar.setVisible(self.board_view.overlays)
@@ -2690,6 +2702,7 @@ class MainWindow(QMainWindow):
             return
         if "score_type" in info:
             self._candidate_identity = self._position_identity()
+            self._sync_candidate_database()
             self.candidates.update_line(
                 info, job["turn"], self._appearance_config().get("light", False), self.config.get("details", False)
             )

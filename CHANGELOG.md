@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.7.11 — Blue analysis metrics and clearer move shading
+
+- Color evaluation, API win and frequency blue in suggested-line headers; keep
+  depth, W/D/L, samples and database provenance neutral. Use the available width.
+- Join validated explorer counts by position and candidate UCI move; distinguish
+  live/cache data, missing samples and ChessDB scores without invented statistics.
+- Keep metadata heights uniform across candidates and stable during API updates.
+- Increase palette-relative last-move brightness adjustment from 5% to 10%.
+
 ## 0.5.7.10 — Restrained colors, quieter hints and wheel navigation
 
 - Lower UI text brightness; distinguish White/Black PV moves with ivory/warm

@@ -1,5 +1,10 @@
 # Active roadmap
 
+0.5.7.11 adds blue evaluation/API/frequency values in neutral-depth PV headers,
+validated position/move-specific database joins and 10% palette-relative last-
+move shading. Focused checks passed; full local/native validation pending.
+Live authenticated Lichess statistics need a user token; ChessDB has no counts.
+
 0.5.7.10 adds softer distinct text colors, palette-relative last-move shading,
 thinner candidate hints and independent game/PV wheel controls. Focused tests,
 Ruff and source launch checks passed; local full suite: 158 passed/11 skips.

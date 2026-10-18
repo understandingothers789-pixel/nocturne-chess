@@ -1,4 +1,8 @@
-# Windows 11 desktop builds · 0.5.7.10
+# Windows 11 desktop builds · 0.5.7.11
+
+0.5.7.11 native build/validation is pending. This version adds blue analysis/API
+metrics with neutral depth and 10% palette-relative move shading. The verified
+prior downloads remain below.
 
 [Download Windows 0.5.7.10](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39101008893/artifacts/12126636588). Extract All and open **Nocturne/Nocturne.exe**.
 Softer distinct move colors, quieter palette-relative board highlights, and
@@ -110,7 +114,7 @@ the installed python-chess Python source and notices.
 Outputs:
 
 - `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
-- `dist/Nocturne-0.5.7.10-source.zip`: source, tests, documentation, rules-library source.
+- `dist/Nocturne-0.5.7.11-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI
 executable/native table reader are not part of this distribution. Source installation

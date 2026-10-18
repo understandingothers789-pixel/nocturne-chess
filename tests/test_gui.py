@@ -363,6 +363,106 @@ class GuiTests(unittest.TestCase):
         self.app.processEvents()
         return base, job
 
+    def _header_document(self, rank):
+        document = QTextDocument()
+        document.setHtml(self.window.candidates.rows[rank][1].text())
+        return document
+
+    def test_candidate_headers_color_real_api_metrics_and_keep_depth_neutral(self):
+        from nocturne.explorer import parse_statistics
+        from nocturne.gui.theme import palette
+        self._three_pvs()
+        self._show_external_info({"depth": 31, "seldepth": 46, "score": 22, "nodes": 10000,
+                                  "multipv": 3, "wdl": (100, 200, 700), "pv": ["b1c3", "g8f6"]},
+                                 {"turn": 1, "multipv": 3})
+        self.window.config.update(explorer_enabled=True, explorer_source="masters")
+        with patch.object(self.window.explorer.client, "load"):
+            self.window._sync_explorer()
+        explorer = self.window.explorer
+        query = explorer.query
+        data = parse_statistics({"white": 500, "draws": 200, "black": 300,
+                                 "moves": [{"uci": "b1c3", "white": 100, "draws": 100, "black": 200}]}, query)
+        explorer._result(query.key, data, "Cached · test data")
+        for light in (False, True):
+            self.window.config["light"] = light
+            self.window._apply_settings()
+            document = self._header_document(3)
+            text = document.toPlainText().replace("\u00a0", " ")
+            self.assertIn("Depth 31/46", text)
+            self.assertIn("W/D/L 10.0/20.0/70.0% White", text)
+            self.assertIn("API win (White) 25.0%", text)
+            self.assertIn("Freq 40.0%", text)  # Uses all 1,000 games, not just returned moves.
+            self.assertIn("400 / 1,000 games", text)
+            self.assertIn("Lichess Masters · Cached", text)
+            for blue_text in ("+0.22", "25.0%", "40.0%"):
+                color = document.find(blue_text).charFormat().foreground().color()
+                self.assertEqual(color, QColor(palette(light)["metric"]))
+            self.assertNotEqual(document.find("Depth").charFormat().foreground().color(),
+                                QColor(palette(light)["metric"]))
+            self.assertIn("no move sample", self._header_document(1).toPlainText())
+        # API updates change metadata without shifting a hovered lower slot.
+        third = self.window.candidates.rows[3][2]
+        self._hover_word(third, "Nc3")
+        before = third.mapToGlobal(third.rect().topLeft())
+        data["moves"][0].update(white=200, black=100)
+        explorer._result(query.key, data, "Live · Lichess Masters")
+        self.assertIn("50.0%", self._header_document(3).toPlainText())
+        self.assertEqual(third.mapToGlobal(third.rect().topLeft()), before)
+        self.assertEqual(self.window.candidates.hovered, 3)
+
+    def test_candidate_api_counts_follow_black_pov_and_reject_stale_results(self):
+        from nocturne.explorer import parse_statistics
+        self._analysis_game("1.e4 *")
+        self._show_external_info({"depth": 9, "seldepth": 12, "score": 30, "nodes": 1000,
+                                  "wdl": (100, 200, 700), "pv": ["e7e5"]}, {"turn": -1})
+        self.window.config.update(explorer_enabled=True, explorer_source="lichess")
+        with patch.object(self.window.explorer.client, "load"):
+            self.window._sync_explorer()
+        explorer = self.window.explorer
+        old = explorer.query
+        data = parse_statistics({"white": 40, "draws": 20, "black": 40,
+                                 "moves": [{"uci": "e7e5", "white": 10, "draws": 10, "black": 30}]}, old)
+        explorer._result(old.key, data, "Live · test data")
+        text = self._header_document(1).toPlainText()
+        self.assertIn("API win (Black) 60.0%", text)
+        self.assertIn("Freq 50.0%", text)
+        self.assertIn("W/D/L 70.0/20.0/10.0% White", text)
+        self.window.config["explorer_source"] = "chessdb"
+        with patch.object(explorer.client, "load"):
+            self.window._sync_explorer()
+        current = explorer.query
+        explorer._result(old.key, data, "Live · late old response")
+        self.assertNotIn("60.0%", self._header_document(1).toPlainText())
+        cloud = parse_statistics({"status": "ok", "moves": [{"uci": "e7e5", "score": 20}]}, current)
+        explorer._result(current.key, cloud, "Live · ChessDB")
+        text = self._header_document(1).toPlainText()
+        self.assertIn("DB White -0.20", text)
+        self.assertIn("ChessDB · Live", text)
+        self.assertIn("API win (Black) —", text)
+        self.assertIn("Freq —", text)
+        self.window.config["explorer_enabled"] = False
+        self.window._sync_explorer()
+        self.assertIn("Database off", self._header_document(1).toPlainText())
+        explorer._result(current.key, cloud, "Live · disabled response")
+        self.assertIsNone(self.window.candidates.database)
+
+    def test_metadata_headers_fit_at_narrow_and_wide_widths_without_pv_height_changes(self):
+        self._three_pvs()
+        panel = self.window.candidates
+        for width in (1000, 1600):
+            self.window.resize(width, 1000)
+            self.app.processEvents()
+            pv_heights = {row[2].height() for row in panel.rows.values()}
+            self.assertEqual(len(pv_heights), 1)
+            self.assertEqual(len({row[1].height() for row in panel.rows.values()}), 1)
+            for _, header, _ in panel.rows.values():
+                document = QTextDocument()
+                document.setDefaultFont(header.font())
+                document.setDocumentMargin(0)
+                document.setHtml(header.text())
+                document.setTextWidth(header.width())
+                self.assertLessEqual(document.size().height(), header.height())
+
     def _wheel(self, widget, delta, *, pixel=0, shift=False, point=None):
         point = point or widget.rect().center()
         event = QWheelEvent(QPointF(point), QPointF(widget.mapToGlobal(point)),
@@ -466,7 +566,7 @@ class GuiTests(unittest.TestCase):
             actual = image.pixelColor(point)
             expected = board.last_move_color(base)
             self.assertEqual(actual.name(), expected.name(), theme)
-            self.assertAlmostEqual(abs(expected.valueF() - base.valueF()), 0.05, delta=0.005)
+            self.assertAlmostEqual(abs(expected.valueF() - base.valueF()), 0.10, delta=0.005)
             for square_color in (light, dark):
                 source = QColor(square_color)
                 target = board.last_move_color(source)

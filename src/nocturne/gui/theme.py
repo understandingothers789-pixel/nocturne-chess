@@ -22,13 +22,13 @@ def palette(light: bool = False) -> dict[str, str]:
                     pressed="#d0d0cc", selection="#d4dfeb", selected_text="#20344b",
                     primary="#3d4a56", primary_text="#ffffff", primary_hover="#526373",
                     scroll="#a9a9a5", analysis_white="#43484e", analysis_black="#6a5d55",
-                    history="#476987")
+                    history="#476987", metric="#276e92", metadata="#65696f")
     return dict(bg="#171717", panel="#222222", raised="#2c2c2c", text="#c9cdd2",
                 muted="#97a6b2", border="#3c3c3c", accent="#b5c8da", hover="#383838",
                 pressed="#444444", selection="#394b5d", selected_text="#d8e3ee",
                 primary="#dedbd4", primary_text="#202020", primary_hover="#f0ede7",
                 scroll="#575f67", analysis_white="#c9cdd2", analysis_black="#b4a99f",
-                history="#a4bace")
+                history="#a4bace", metric="#78bedb", metadata="#a5a7aa")
 
 
 def stylesheet(light: bool = False) -> str:

@@ -1,8 +1,13 @@
 """Interactive engine candidate rows. Only actual, legally validated PV data is shown."""
 
+from html import escape
+import math
+
 from PySide6.QtCore import Signal, Qt, QTimer
+from PySide6.QtGui import QTextDocument
 from PySide6.QtWidgets import QLabel, QMenu, QVBoxLayout, QWidget, QLayout, QSizePolicy
 from ..engine.uci_types import score_label
+from ..explorer import chessdb_score
 from .moves import MoveText
 from .theme import palette
 
@@ -26,6 +31,8 @@ class CandidatePanel(QWidget):
         self.primary.reserve_lines(3)
         self.rows = {}
         self.light = False
+        self.database = None
+        self.details = {}
         self.lines = {}
         self.pinned = set()
         self.turn = 1
@@ -47,6 +54,7 @@ class CandidatePanel(QWidget):
             widgets[0].deleteLater()
         self.rows = {}
         self.lines = {}
+        self.details.clear()
         self.pinned.clear()
         self.slot_count = 0
         self.primary.set_moves([])
@@ -80,8 +88,10 @@ class CandidatePanel(QWidget):
         layout.setSpacing(2)
         header = QLabel("Waiting for engine")
         header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
-        header.setFixedHeight(max(22, header.fontMetrics().height() + 6))
-        header.setStyleSheet(f"color: {palette(self.light)['muted']};")
+        header.setTextFormat(Qt.TextFormat.RichText)
+        header.setWordWrap(True)
+        header.setFixedHeight(self._header_height(header))
+        header.setStyleSheet(f"color: {palette(self.light)['metadata']};")
         layout.addWidget(header)
         moves = self.primary if rank == 1 else MoveText(auto_fit=True, reserved_lines=3)
         moves.reserve_lines(0 if self.expanded else 3)
@@ -112,8 +122,9 @@ class CandidatePanel(QWidget):
         if self.light == light:
             return
         self.light = light
-        for _, header, _ in self.rows.values():
-            header.setStyleSheet(f"color: {palette(light)['muted']};")
+        for rank, (_, header, _) in self.rows.items():
+            header.setStyleSheet(f"color: {palette(light)['metadata']};")
+            self._render_header(rank)
 
     def _hover(self, rank, ply):
         if rank not in self.lines:
@@ -154,21 +165,85 @@ class CandidatePanel(QWidget):
         self.lines[rank] = info.copy()
         self.turn = turn
         self.recolor(light)
+        self.details[rank] = detailed
+        self._render_header(rank)
         frame, header, moves = self.rows[rank]
-        wdl = info.get("wdl")
-        if wdl and turn < 0:
-            wdl = wdl[::-1]
-        extra = f" · W/D/L {wdl[0] / 10:.1f}/{wdl[1] / 10:.1f}/{wdl[2] / 10:.1f}% White" if wdl else ""
-        header.setText(
-            ("★ " if rank in self.pinned else "")
-            + f"{score_label(info, turn)}   d{info['depth']}/{info['seldepth']}"
-            + (f" · {info['nodes']:,} nodes" if detailed else "")
-            + extra
-        )
-        header.setAccessibleName(f"Candidate {rank} evaluation and search metrics")
         moves.candidate_turn = turn
         moves.set_moves([(text, i + 1) for i, text in enumerate(info["san"])], light=light)
         self.changed.emit()
+
+    def set_database(self, query=None, data=None, origin=""):
+        value = (query, data, origin) if query else None
+        if value == self.database:
+            return
+        self.database = value
+        for rank in self.rows:
+            self._render_header(rank)
+
+    def _render_header(self, rank):
+        if rank not in self.lines:
+            return
+        info = self.lines[rank]
+        colors = palette(self.light)
+        def blue(value):
+            return f'<span style="color:{colors["metric"]};">{escape(str(value))}</span>'
+        wdl = info.get("wdl")
+        if wdl and self.turn < 0:
+            wdl = wdl[::-1]
+        first = ("★ " if rank in self.pinned else "") + blue(score_label(info, self.turn))
+        first += f" &nbsp; Depth {info['depth']}/{info['seldepth']}"
+        if wdl:
+            first += f" &nbsp; W/D/L {wdl[0] / 10:.1f}/{wdl[1] / 10:.1f}/{wdl[2] / 10:.1f}% White"
+        else:
+            first += " &nbsp; W/D/L —"
+        if self.details.get(rank):
+            first += f" &nbsp; {info['nodes']:,} nodes"
+        side = "White" if self.turn > 0 else "Black"
+        win, frequency, sample = "—", "—", ""
+        source = "Database off"
+        cloud_score = ""
+        if self.database:
+            query, data, origin = self.database
+            source = query.label + (" · Cached" if origin.startswith("Cached") else
+                                    " · Live" if origin.startswith("Live") else "")
+            if data is None:
+                source += " · awaiting data"
+            else:
+                row = next((row for row in data["moves"] if info.get("pv") and row["uci"] == info["pv"][0]), None)
+                if query.source == "chessdb":
+                    cloud_score = " · DB White " + blue(chessdb_score(row["score"], query.fen) if row else "—")
+                elif row and 0 < row["total"] <= data["total"]:
+                    win = f'{100 * row["white" if self.turn > 0 else "black"] / row["total"]:.1f}%'
+                    frequency = f'{100 * row["total"] / data["total"]:.1f}%'
+                    sample = f' &nbsp; [{row["total"]:,} / {data["total"]:,} games]'
+                elif row and row["total"] > data["total"]:
+                    source += " · inconsistent counts"
+                elif row and row["total"] == 0:
+                    sample = " &nbsp; [0 games]"
+                else:
+                    source += " · no move sample"
+        second = f"API win ({side}) {blue(win)} &nbsp; Freq {blue(frequency)}{sample} &nbsp; {escape(source)}{cloud_score}"
+        header = self.rows[rank][1]
+        header.setText(f"<div>{first} &nbsp; {second}</div>")
+        header.setAccessibleName(f"Candidate {rank} evaluation, search and database metrics")
+
+    def _header_height(self, header):
+        # Reserve identical metadata space from width, never from arriving PVs.
+        # This keeps hovered lower candidates in place during engine/API updates.
+        probe = QTextDocument()
+        probe.setDefaultFont(header.font())
+        probe.setDocumentMargin(0)
+        probe.setHtml("<div>★ +123.45 &nbsp; Depth 128/256 &nbsp; W/D/L 100.0/100.0/100.0% White"
+                      " &nbsp; 9,999,999,999 nodes &nbsp; "
+                      "API win (White) 100.0% &nbsp; Freq 100.0% &nbsp; "
+                      "[999,999,999 / 999,999,999 games] &nbsp; Lichess players · Cached · no move sample</div>")
+        probe.setTextWidth(max(160, self.width()))
+        return math.ceil(probe.size().height()) + 6
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        for _, header, _ in self.rows.values():
+            header.setFixedHeight(self._header_height(header))
 
     def _action(self, rank, action):
         if action == "pin":
@@ -176,8 +251,7 @@ class CandidatePanel(QWidget):
                 self.pinned.remove(rank)
             else:
                 self.pinned.add(rank)
-            frame, header, moves = self.rows[rank]
-            header.setText(("★ " + header.text()) if rank in self.pinned else header.text().removeprefix("★ "))
+            self._render_header(rank)
         else:
             self.action.emit(rank, action)
 

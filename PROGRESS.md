@@ -2064,3 +2064,41 @@ executable acceptance require user-machine feedback. No trust-policy changes.
 The live API check returned 29 legal ChessDB moves; authenticated Lichess data
 was not tested without a user token. No further implementation is pending for
 this request; next is user feedback on the new appearance and navigation.
+
+
+## 2026-10-18 — 0.5.7.11: analysis metrics and 10% move shading
+
+**Implemented:** `gui/candidates.py` uses full-width rich headers: restrained blue
+evaluation/API win/frequency (and separate ChessDB score), neutral depth/WDL/
+sample/source information. Uniform width-dependent metadata heights prevent
+engine/API updates moving hovered lower candidates. Existing three PV text rows,
+equal SAN slots, pins, wheel previews and move text colors are retained.
+`gui/theme.py` adds metric/neutral metadata colors in both appearances.
+
+`gui/explorer_panel.py` exposes validated results/provenance; `gui/window.py`
+joins them only to the matching current engine position. Headers match the
+first candidate UCI move, use total position games for frequency, use actual
+side-to-move wins (draws stay in the denominator), label cached/live and source,
+and show dashes for absent counts. ChessDB's White-perspective score is distinct
+from win/frequency. Disabled/new/stale queries cannot leak old percentages.
+Main evaluation is blue; telemetry is neutral. No new automatic network traffic.
+
+**User steering:** increased `board.py`'s per-square HSV value shift from 0.05 to
+0.10, keeping hue/saturation, and updated the six-palette rendered-pixel test.
+
+**Executed:** focused GUI tests for blue/neutral actual document formatting,
+White/Black API percentages and total-game denominator, API-update hover
+stability, stale/source/disabled result rejection, narrow/wide metadata sizing,
+10% highlight pixels, plus existing three-row hover regression: **5 tests passed**.
+One initial test expected the wrong ChessDB label ordering; display now explicitly
+labels `DB White` and the corrected test passed. Ruff passed. Full local and
+native Windows validation pending. Real Qt captures use clearly labelled UCI
+simulator/database fixture data, not measured engine/live API statistics.
+
+**Files:** candidate/explorer/window/theme/board GUI components, GUI tests, real
+Qt captures, version/build metadata, README/CHANGELOG/TODO/BUILDING and this log.
+No launcher or signing-policy changes.
+
+**Next:** full tests, frozen offline/external-UCI checks and native Windows build,
+then publish the verified artifact/results. Real Windows trust/high-DPI appearance
+and authenticated live Lichess data remain user-machine checks.

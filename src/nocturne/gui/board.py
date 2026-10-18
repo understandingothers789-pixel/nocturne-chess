@@ -231,11 +231,11 @@ class BoardWidget(QWidget):
 
     @staticmethod
     def last_move_color(base):
-        # Keep the square's hue/saturation. Move HSV brightness by five points,
+        # Keep the square's hue/saturation. Move HSV brightness by ten points,
         # darkening pale squares and lightening dark ones, independent of theme.
         color = QColor(base)
         hue, saturation, value, alpha = color.getHsvF()
-        value = max(0.0, min(1.0, value + (-0.05 if value >= 0.5 else 0.05)))
+        value = max(0.0, min(1.0, value + (-0.10 if value >= 0.5 else 0.10)))
         color.setHsvF(hue, saturation, value, alpha)
         return color
 
