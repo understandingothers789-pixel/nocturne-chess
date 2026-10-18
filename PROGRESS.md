@@ -1610,3 +1610,36 @@ and contain no EXE/batch/PowerShell launcher. Wheel SHA-256:
 Rechecked source diff: all 63 Python files except version-only __init__.py are
 byte-identical to working 0.5.7.1; spec, MANIFEST and all requirements also match.
 Next: publish the asset-only update and execute native Windows validation.
+
+
+## 2026-10-18 — 0.5.7.2 piece-only Windows delivery verified
+
+Published source commit 031f389e79e258bd6b9a8023730e063d1eafb5eb from the confirmed
+working 0.5.7.1 tree, using GitHub blob/tree/commit/ref operations with a matching-
+head lease and no forced update. Remote comparison confirms no behavior/test
+code changes; only the 12 SVGs, two license/credit files, version metadata and
+documentation/screenshots differ. GUI/engine/rules/settings/build logic is intact.
+
+Windows run 39089980725/job 117564482194 completed successfully. Full unittest
+discovery ran twice: 153 total each, 148 passed and 5 optional skips, in 95.171s
+and 103.852s. All six loopback HTTP tests ran. Both Ruff checks passed. The
+existing GUI tests exercised drag, promotion and stable PV slots with the new
+artwork. PyInstaller built the windowed application and both frozen smoke paths
+passed (offline and external UCI, including a full two-move Game Review). The
+check=True builder completed after both launches; no test/build failure occurred.
+The optional API check returned 29 legal ChessDB moves and Lichess token-required
+responses. Authenticated Lichess data is not claimed.
+
+Verified artifact metadata/logs: 12122595914 belongs to the passing source commit,
+is not expired, and is named Nocturne-0.5.7.2-Windows-x64-unsigned. Size 54,468,748
+bytes, retained until 2026-11-17. SHA-256:
+938d98832eab83a9ed0b4d5b57e2e44906296b6fc35362c492016e1460d18da9.
+Download: https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39089980725/artifacts/12122595914
+
+README and BUILDING now link the new package and retain working 0.5.7.1 as a
+fallback. TODO and this log record the completed milestone. Local source ZIP and
+wheel integrity, exact pinned pieces, GPL/credit inclusion and launcher checks
+passed; refreshed source/checksums after final documentation. Only docs follow
+the tested application/assets commit. No extra clock or other feature is added.
+Next: user desktop acceptance of the rebuilt unsigned EXE, manual Windows DPI
+and piece appearance/drag/promotion checks with their actual installed engine.

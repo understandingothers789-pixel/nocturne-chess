@@ -60,5 +60,6 @@ not establish the new executable's trust status. No 0.5.8 pieces/clock UI remain
 0.5.7.2 adds only exact licensed Lichess Cburnett piece artwork to the user-
 confirmed working 0.5.7.1 base. All GUI behavior/sizing/clocks/PV code and build
 rules stay unchanged. Source hashes and real Qt SVG/promotion icons verified;
-lint and both app launch checks passed. Focused GUI/native Windows validation
-and packaged license checks are next. User desktop trust/DPI remains to verify.
+lint and both app launch checks passed. Focused GUI: 39 passed. Native Windows: 148 passed and 5 optional skips, twice;
+both frozen GUI/UCI checks passed. Archives include GPL/credits and exact SVGs.
+The 0.5.7.2 Windows package is verified against the passing source commit. User desktop trust/DPI remains to verify.

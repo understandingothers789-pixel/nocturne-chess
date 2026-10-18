@@ -19,14 +19,13 @@ licensed GPL-2.0-or-later. The same assets appear on the board, during dragging/
 animation and in promotion choices. Existing piece sizing, clocks, three-line
 MultiPV slots, engine settings and build dependencies are unchanged. Artwork
 source/credits are in [third-party notices](THIRD_PARTY_NOTICES.md).
-The working 0.5.7.1 download remains linked until 0.5.7.2's native validation
-finishes. These are unsigned developer builds; acceptance by the user's Windows
+The working 0.5.7.1 download is also retained below as a fallback. These are unsigned developer builds; acceptance by the user's Windows
 configuration must still be checked on their computer.
 
-[Download the tested, unsigned Windows 0.5.7.1 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39088586425/artifacts/12121976207) (GitHub sign-in required).
+[Download the tested, unsigned Windows 0.5.7.2 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39089980725/artifacts/12122595914) (GitHub sign-in required).
 
 [All Windows builds](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
-Select **Nocturne-0.5.7.1-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
+Select **Nocturne-0.5.7.2-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
 Windows validation passed twice: 148 tests passed, 5 skipped per run; packaged app and external-UCI
 protocol-fixture/Game Review smoke checks passed. Real Stockfish/manual interaction verification remains open.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
@@ -34,7 +33,7 @@ Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
 change is provided. The ZIP also includes the corresponding source archive.
 
-[Original Windows 0.5.7 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39081231579/artifacts/12118044851) — retained as a fallback.
+[Working Windows 0.5.7.1 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39088586425/artifacts/12121976207) — retained as a fallback.
 
 ## Your saved PGNs
 

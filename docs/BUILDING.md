@@ -1,19 +1,19 @@
-# Windows 11 desktop builds · 0.5.7.1
+# Windows 11 desktop builds · 0.5.7.2
 
-[Download the tested, unsigned 0.5.7.1 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39088586425/artifacts/12121976207).
+[Download the tested, unsigned 0.5.7.2 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39089980725/artifacts/12122595914).
 
-Alternatively, select the successful **Nocturne-0.5.7.1-Windows-x64-unsigned** artifact from
+Alternatively, select the successful **Nocturne-0.5.7.2-Windows-x64-unsigned** artifact from
 [Windows Actions](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
 Sign into GitHub, download, Extract All, then open **Nocturne/Nocturne.exe**.
 Keep the full folder. No Python, compiler or batch launcher is needed to play/analyze.
 You select your own Stockfish executable from the Engine menu.
 
-Windows run 39088586425 succeeded for GUI commit 573e329d7882f7bc3cdd9a961b88b2a6d47c4bef.
-Both test runs passed 148 tests with 5 skips (101.585s / 108.900s). Ruff,
+Windows run 39089980725 succeeded for GUI commit 031f389e79e258bd6b9a8023730e063d1eafb5eb.
+Both test runs passed 148 tests with 5 skips (95.171s / 103.852s). Ruff,
 PyInstaller and both packaged explorer/study/save/UCI/Game Review smoke checks passed.
 All six loopback HTTP tests ran on native Windows. The unsigned artifact is
-54,465,871 bytes, retained until 2026-11-17. SHA-256:
-`bb28a693b772ea71b793822d5c00e457772e274cca2fbcb7be9afef1657ba052`.
+54,468,748 bytes, retained until 2026-11-17. SHA-256:
+`938d98832eab83a9ed0b4d5b57e2e44906296b6fc35362c492016e1460d18da9`.
 
 Live authenticated Lichess data requires a user session token. Separate live
 connectivity checks distinguish protected responses from actual returned data;
@@ -22,21 +22,20 @@ The current build also queried live ChessDB successfully (29 legal moves);
 Lichess reported its authentication requirement. No desktop application code
 changed after the passing build.
 
-## Patch scope and Windows trust status
+## Piece-only patch and Windows trust status
 
-0.5.7.1 restores the 0.5.7 baseline and includes only fixed three-line MultiPV
-slots and the hover/click stability needed for those slots. Original pieces,
-clock display, runtime/build dependencies, build script and PyInstaller spec
-are unchanged. Extra 0.5.8 artwork and clock UI are excluded. A test-only cold-
-startup wait/diagnostic correction followed an initial native validation timeout;
-application code did not change during that investigation. Both subsequent full
-Windows runs passed, along with the actual packaged GUI/UCI smoke checks.
+0.5.7.2 starts from the user-confirmed working 0.5.7.1 and adds only the exact
+Lichess Cburnett piece SVGs by Colin M. L. Burnett. License/credits are included
+as licenses/CBURNETT-GPL-2.0-or-later.txt and CBURNETT-NOTICE.txt through the
+existing native/source/wheel license collection. All 63 Python files except the
+version-only __init__.py match 0.5.7.1, as do the spec, MANIFEST and requirements.
+Piece sizing, drag/animation/promotion logic, clocks and three-line PV behavior
+retain their existing implementation. No test or build-script change is added.
 
-The user reports that 0.5.7 opens on their PC and 0.5.8 was blocked. All of these
-builds are unsigned. Returning to the old source does not establish that Windows
-will accept the new executable; Smart App Control acceptance is unverified here.
-[Original Windows 0.5.7 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39081231579/artifacts/12118044851) remains available. No certificate,
-security-policy or launcher change is included in this patch.
+[Working Windows 0.5.7.1 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39088586425/artifacts/12121976207) remains available as a fallback.
+These are unsigned test builds. The user confirms 0.5.7.1 runs on their computer;
+acceptance of the new executable by that Windows configuration is unverified
+here. No signing, certificate, launcher or security-policy change is included.
 
 ## Reproducible Windows build
 
@@ -58,7 +57,7 @@ the installed python-chess Python source and notices.
 Outputs:
 
 - `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
-- `dist/Nocturne-0.5.7.1-source.zip`: source, tests, documentation, rules-library source.
+- `dist/Nocturne-0.5.7.2-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI
 executable/native table reader are not part of this distribution. Source installation
