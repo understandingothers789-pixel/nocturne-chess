@@ -251,8 +251,9 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(self.window.analysis_clock_values[1].text(), "0:04:58.4")
         self.assertEqual(self.window.analysis_clock_values[-1].text(), "0:04:58.9")
         visible_moves = self.window.analysis_history.toPlainText()
-        self.assertIn("[0:04:59.3]", visible_moves)
-        self.assertIn("[0:04:58.9]", visible_moves)
+        self.assertNotIn("[0:04:59.3]", visible_moves)
+        self.assertNotIn("[0:04:58.9]", visible_moves)
+        self.assertIn("e4", visible_moves)
         self.assertNotIn("[%clk", visible_moves)
         self.assertNotIn("[%timestamp", visible_moves)
 
@@ -274,6 +275,47 @@ class GuiTests(unittest.TestCase):
         self.assertNotIn("[0:04:59.1]", self.window.analysis_history.toPlainText())
         self.window.display_actions["show_clocks"].trigger()
         self.assertEqual(self.window.analysis_clock_values[-1].text(), "0:04:59.1")
+
+    def test_game_moves_clean_and_optional_raw_pgn_preserves_annotations(self):
+        text = '1.e4 {Keep this note [%clk 0:04:59.3][%timestamp 7]} $1 (1.d4 {Branch}) e5 *'
+        self.assertTrue(self.window._import_text(text))
+        window = self.window
+        raw_index = window.tabs.indexOf(window.raw_pgn_page)
+        self.assertFalse(window.raw_pgn_action.isChecked())
+        self.assertFalse(window.tabs.isTabVisible(raw_index))
+        visible = window.analysis_history.toPlainText()
+        self.assertIn("e4", visible)
+        self.assertIn("d4", visible)
+        self.assertNotIn("04:59", visible)
+        self.assertNotIn("Keep this note", visible)
+        self.assertNotIn("Branch", visible)
+        before = window.game.pgn()
+        fen, generation = window.game.board.fen(), window.engine.generation
+        window.raw_pgn_action.trigger()
+        self.assertIs(window.tabs.currentWidget(), window.raw_pgn_page)
+        self.assertTrue(window.raw_pgn_text.isReadOnly())
+        self.assertEqual(window.raw_pgn_text.toPlainText(), before)
+        self.assertIn("[%timestamp 7]", window.raw_pgn_text.toPlainText())
+        self.assertIn("[%clk 0:04:59.3]", window.raw_pgn_text.toPlainText())
+        flipped = window.board_view.flipped
+        window.raw_pgn_text.setFocus()
+        QTest.keyClick(window.raw_pgn_text, Qt.Key.Key_Backspace)
+        QTest.keyClick(window.raw_pgn_text, Qt.Key.Key_F)
+        self.assertEqual(window.board_view.flipped, flipped)
+        self.assertEqual(window.game.pgn(), before)
+        self.assertEqual(window.game.board.fen(), fen)
+        self.assertEqual(window.engine.generation, generation)
+        window._copy_pgn()
+        exported = QApplication.clipboard().text()
+        restored = Game.from_pgn(exported)
+        self.assertIn("Keep this note", restored.pgn())
+        self.assertIn("Branch", restored.pgn())
+        self.assertTrue(restored.has_pgn_clocks)
+        self.assertIn("[%timestamp 7]", window.store.load(window.game.id).pgn())
+        window.raw_pgn_action.trigger()
+        self.assertFalse(window.tabs.isTabVisible(raw_index))
+        self.assertFalse(window.store.get("settings")["show_raw_pgn"])
+        self.assertEqual(window.game.pgn(), before)
 
     def test_hiding_play_clocks_keeps_elapsed_time_and_saved_game(self):
         from nocturne.core.game import TimeControl
@@ -434,7 +476,7 @@ class GuiTests(unittest.TestCase):
     def test_nibbler_style_menus_and_no_widget_tooltips(self):
         self.assertEqual(
             [a.text().replace("&", "") for a in self.window.menuBar().actions()],
-            ["File", "Tree", "Analysis", "Display", "Engine", "Database", "Play"],
+            ["File", "Tree", "Analysis", "Display", "Engine", "Database", "Play", "Dev"],
         )
         self.assertTrue(all("custom engine" not in w.toolTip() for w in self.window.findChildren(QWidget)))
         action = self.window.display_actions["coordinates"]

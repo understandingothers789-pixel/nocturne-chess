@@ -1,5 +1,9 @@
 # Active roadmap
 
+0.5.7.7 (download 3) keeps metadata in the backend/export while Game Moves shows
+numbers and SAN. Dev → Show raw PGN data enables a separate read-only view;
+default off. Three cumulative feature commits and Windows downloads are retained.
+
 0.5.7.6 (download 2) adds reference-style teal/green candidate lines and numbered
 circles, colored MultiPV rows and a once-only default marker migration.
 

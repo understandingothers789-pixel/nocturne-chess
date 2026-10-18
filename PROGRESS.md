@@ -1833,3 +1833,52 @@ fixture suggestions rather than claiming measured engine evaluations. Updated
 version/build artifact names, README/CHANGELOG/TODO and this log. Native Windows
 validation runs on the versioned commit. Next: hide metadata in Game Moves while
 preserving PGN/export data, with an optional read-only developer view.
+
+## 2026-10-18 — Verified Windows downloads 1 and 2
+
+Download 1, source 3229377b796bba09e6eb7f9beabfc68b7e907d88, passed run
+39097285528/job 117586249755: both 160-test runs succeeded (155 passed, 5 optional
+skips) in 116.719s and 128.484s. Ruff, native packaging and frozen GUI/UCI/Game
+Review launch checks passed. Artifact 12125655113 is the matching non-expired
+Nocturne-0.5.7.5-Windows-x64-unsigned, 54,781,794 bytes. SHA-256:
+49f0ccae9cec311befd7debccb8c23fec0b7618038a8c68340b623e6bac620f9.
+https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39097285528/artifacts/12125655113
+
+Download 2, source 7a4169e5fb4119f6cb3b021fbf79fe2e8dadd013, passed run
+39097588959/job 117587131716: both 162-test runs succeeded (157 passed, 5 optional
+skips) in 105.242s and 105.758s. Ruff, native packaging and frozen GUI/UCI/Game
+Review launch checks passed. Artifact 12125422408 is the matching non-expired
+Nocturne-0.5.7.6-Windows-x64-unsigned, 54,968,343 bytes. SHA-256:
+925d1b778ce3917bbb69de69acc1ab20d23894883d01d533503c7f7449170b30.
+https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39097588959/artifacts/12125422408
+
+Both are retained until 2026-11-17. Exact artifact source hashes verified. These
+build results establish native tests/packaging, not user-machine signing or trust
+acceptance. The third feature commit and download follow separately.
+
+## 2026-10-18 — Download 3 / commit 3: 0.5.7.7 clean moves and optional raw PGN
+
+Changed window.py to render the bottom move strip from numbered SAN/variation
+tokens alone. Clocks, timestamps, comments, NAGs and review metadata remain in
+the game model, SQLite saves, PGN editor and export. Display → Clocks still
+controls the board clock strip. Added Dev → Show raw PGN data, default off via
+validated settings, opening a separate read-only tab with a complete-PGN copy
+button. The raw text is refreshed from the authoritative game, not an editable
+duplicate. Backspace/letter shortcuts in that text view cannot mutate the board.
+Updated clock-display regression expectations for the requested clean moves,
+added raw-view/export/storage/focus coverage, and updated docs/version metadata.
+
+The first focused run exposed a misplaced old clock assertion in the new test;
+corrected its test placement. Seven focused checks then passed in 1.057s, followed
+by the final keyboard check (1 passed, 0.302s). The first full run found only an
+outdated menu-list expectation (Dev was newly added); updated that expectation.
+Final full local discovery: 163 tests in 104.795s, 152 passed, 11 skipped, no
+failures. Ruff and both offline/absolute-path external-UCI/Game Review smoke
+commands passed. Captured/inspected real Qt normal and optional raw-PGN screens
+(docs/clean-game-moves.png, raw-pgn-data.png): metadata is absent from Game Moves,
+clock values remain above the board, and the opt-in view retains the full data.
+
+This is the third and final requested feature commit. Windows CI will test this
+exact source and create download 3 after native validation. The previous two
+verified downloads remain available independently. No build/signing/dependency
+or security-policy change; actual desktop trust acceptance is not claimed.

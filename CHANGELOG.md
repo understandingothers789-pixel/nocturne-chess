@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.7 — Download 3: clean Game Moves and optional raw PGN
+
+- Show only move numbers/SAN and branch parentheses in the bottom Game Moves
+  component, preserving selection, hover previews and navigation.
+- Keep clocks/timestamps/comments/NAGs/review annotations in saves and PGN export.
+- Add Dev → Show raw PGN data, off by default, with a separate read-only tab and
+  copy control. Protect text-view keyboard focus from board shortcuts.
+
 ## 0.5.7.6 — Download 2: teal/green MultiPV circles and lines
 
 - Use teal for rank one and green for alternatives, with numbered destination

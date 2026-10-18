@@ -27,6 +27,10 @@ Qt QProcess supplies asynchronous, safe child-process transport. See the
   reversible previews, destination execution, rendering and sampled graph.
 - `gui/setup_position.py`: manual position editor with final library validation.
 - `gui/window.py`: native menus, study tabs, analysis/review orchestration and saves.
+  Studio appearance previews use a temporary visual configuration; only Save
+  changes preferences. Board SVG renderers cache each available piece style.
+  Game Moves renders numbered SAN/branches without metadata. An opt-in read-only
+  raw PGN tab exposes full saved annotations, including clock and timestamp tags.
 - `storage.py`: transactional SQLite records/preferences, no Qt dependency.
 
 Historical custom rules/search/UCI/Fathom modules remain as 0.4-era source. The

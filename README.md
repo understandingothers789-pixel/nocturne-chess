@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.6
+# Nocturne Analysis · 0.5.7.7
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -12,6 +12,22 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
+
+**Download 3 · 0.5.7.7 includes all three changes.**
+The bottom Game Moves strip shows move numbers and SAN, with variations and hover
+navigation. Clock tags, comments and review metadata remain in saved/exported PGNs.
+**Dev → Show raw PGN data** opens a separate read-only tab; it starts off by default.
+
+| Windows download | Includes |
+| --- | --- |
+| [1 · 0.5.7.5](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39097285528/artifacts/12125655113) | Live settings previews |
+| [2 · 0.5.7.6](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39097588959/artifacts/12125422408) | Previews + teal/green MultiPV |
+| [3 · 0.5.7.7](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml) | All above + clean moves and optional raw PGN |
+
+Select the corresponding versioned artifact from its successful run. GitHub sign-in
+is required. These are three cumulative source commits and three separate builds.
+
+![Actual Qt imported-clock PGN with clean Game Moves](docs/clean-game-moves.png)
 
 **Download 2 · 0.5.7.6: reference-style MultiPV markers.**
 The leading candidate uses teal, alternatives use green, and numbered circles
@@ -30,9 +46,9 @@ default piece set, with Nocturne's original MIT pieces as a second option.
 ![Real Qt Studio settings appearance preview](docs/studio-preview.png)
 
 **0.5.7.4 shows clocks recorded in imported PGNs.**
-The Display → Clocks option now updates the board clock strip and shows a clean
-clock value beside each annotated move; raw `[%clk]` and `[%timestamp]` tags are
-kept in exported PGNs but hidden from the move display. Clock values follow the
+The Display → Clocks option updates the board clock strip. Raw `[%clk]` and
+`[%timestamp]` tags are kept in exported PGNs and the optional raw view, while
+the Game Moves component shows moves only. Clock values follow the
 selected variation. The previous 0.5.7.3 neutral interface, classic board colors,
 and persistent clock toggle remain.
 The default board is classic brown and cream, with a Grey option under
@@ -44,8 +60,7 @@ The previously verified 0.5.7.3 download is retained below as a fallback.
 These remain unsigned developer builds; acceptance by the user's Windows setup
 must be checked on that computer.
 
-[Get Windows download 2 · 0.5.7.6](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml) from the successful run's Artifacts section (GitHub sign-in required).
-[Download 1 · preview settings only](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39097285528) is retained separately.
+The three downloads above remain available separately for comparison and fallback.
 The versioned workflow runs native tests and frozen GUI/UCI smoke checks before upload.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
@@ -62,7 +77,7 @@ clocks. Hiding the display does not pause/reset a timed game or change its
 position. Set a time control and increment through **File → New game…** in a
 playing mode. Analysis pauses the game clocks; untimed games show ∞. Returning
 to a saved game retains its time control and remaining times. Imported PGN clock
-annotations (`[%clk]`) show the recorded time at each move and selected position;
+annotations (`[%clk]`) show the recorded time in the board clock strip at the selected position;
 positions with no recorded value show an em dash.
 
 ![Native Play board portion: actual running local 5+2 game after e4](docs/clocks-play.png)
@@ -86,7 +101,9 @@ per-user Nocturne data directory, so keep it when upgrading the application.
 Earlier library games are exported in the background on startup, without changing
 your resume game. Corrupt library records are reported and retained. If a PGN
 write fails, the SQLite save remains available and the status bar reports it.
-PGNs do not contain clocks/profile settings; those remain in the library.
+Imported clock/timestamp comments are retained in PGNs. Live running-clock state
+and engine profile settings remain in the library. The bottom Game Moves strip
+keeps this metadata hidden; Dev → Show raw PGN data reveals the full read-only PGN.
 
 ![Saved PGNs and game library](docs/saved-pgn-library.png)
 

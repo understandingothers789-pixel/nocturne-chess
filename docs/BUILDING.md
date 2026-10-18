@@ -1,11 +1,26 @@
-# Windows 11 desktop builds · 0.5.7.4
+# Windows 11 desktop builds · 0.5.7.5–0.5.7.7
+
+Three cumulative feature commits have separate Windows artifacts:
+
+1. [0.5.7.5: live Studio previews](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39097285528/artifacts/12125655113).
+2. [0.5.7.6: previews and MultiPV circles/colors](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39097588959/artifacts/12125422408).
+3. [0.5.7.7: all above plus clean Game Moves/raw PGN](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
+
+Select the matching versioned artifact after the workflow succeeds. The 0.5.7.5
+run passed both 160-test Windows runs (155 passed/5 skipped each), and 0.5.7.6
+passed both 162-test runs (157 passed/5 skipped each). Both passed packaged launch
+checks. The last run validates the third source commit before upload.
+The existing unsigned packaging/build tools are retained for all three downloads;
+Windows Smart App Control acceptance cannot be established by CI.
+
+## Previously verified baseline
 
 [Download the tested, unsigned **Nocturne-0.5.7.4 Windows ZIP**](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39096484337/artifacts/12125455189).
 Sign into GitHub, download, Extract All, then open **Nocturne/Nocturne.exe**.
 Keep the full folder. No Python, compiler or batch launcher is needed to play/analyze.
 You select your own Stockfish executable from the Engine menu.
 
-Windows run 39096484337 succeeded for source commit
+The previous 0.5.7.4 Windows run 39096484337 succeeded for source commit
 d020afff00f871f23ccea7c390f27865bf85b964. Both native runs passed 154 tests with
 5 optional skips (83.309s / 92.496s). Ruff passed twice. PyInstaller and both
 packaged smoke checks passed, including external-UCI review. The artifact is
@@ -58,7 +73,7 @@ the installed python-chess Python source and notices.
 Outputs:
 
 - `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
-- `dist/Nocturne-0.5.7.4-source.zip`: source, tests, documentation, rules-library source.
+- `dist/Nocturne-0.5.7.7-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI
 executable/native table reader are not part of this distribution. Source installation

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 import random
-import re
 
 from PySide6.QtCore import QEvent, QStandardPaths, Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence
@@ -449,6 +448,18 @@ class MainWindow(QMainWindow):
         self.review_panel.before_requested.connect(self._review_navigate)
         self.review_panel.back_requested.connect(lambda: self.tabs.setCurrentIndex(1))
         self.tabs.addTab(self.review_panel, "Game Review")
+        self.raw_pgn_page = QWidget()
+        raw_layout = QVBoxLayout(self.raw_pgn_page)
+        raw_layout.setContentsMargins(0, 10, 0, 0)
+        raw_layout.addWidget(label("Raw PGN · saved comments, clocks and annotations", "muted", True))
+        self.raw_pgn_text = QPlainTextEdit()
+        self.raw_pgn_text.installEventFilter(self)
+        self.raw_pgn_text.setReadOnly(True)
+        self.raw_pgn_text.setAccessibleName("Raw PGN data")
+        raw_layout.addWidget(self.raw_pgn_text, 1)
+        raw_layout.addWidget(button("Copy complete PGN", self._copy_pgn, "quiet"))
+        self.tabs.addTab(self.raw_pgn_page, "Raw PGN")
+        self.tabs.setTabVisible(self.tabs.indexOf(self.raw_pgn_page), False)
         self._pgn_game_id = None
         side.addWidget(self.tabs, 1)
         self.pause_button = button("Pause", self._pause)
@@ -683,6 +694,10 @@ class MainWindow(QMainWindow):
         add(play, "Pause / continue", self._pause, "Space")
         add(play, "Offer / claim draw…", self._draw)
         add(play, "Resign…", self._resign)
+        dev = self.menuBar().addMenu("&Dev")
+        self.raw_pgn_action = add(dev, "Show raw PGN data", self._set_raw_pgn)
+        self.raw_pgn_action.setCheckable(True)
+        add(dev, "Engine diagnostics…", self._diagnostics)
         # Retain explicit references for menu state and interaction checks.
         self.shortcut_overrides = self.store.get("shortcuts", {}) if self.store else {}
         for name, value in self.shortcut_overrides.items():
@@ -696,7 +711,34 @@ class MainWindow(QMainWindow):
             "Engine": engine,
             "Database": database,
             "Play": play,
+            "Dev": dev,
         }
+
+    def _set_raw_pgn(self, enabled):
+        self.config["show_raw_pgn"] = bool(enabled)
+        self._sync_raw_pgn()
+        if enabled:
+            self.tabs.setCurrentWidget(self.raw_pgn_page)
+        self._analysis_tab_changed()
+        self._save()
+
+    def _sync_raw_pgn(self):
+        enabled = self.config.get("show_raw_pgn", False)
+        index = self.tabs.indexOf(self.raw_pgn_page)
+        if not enabled and self.tabs.currentWidget() is self.raw_pgn_page:
+            self.tabs.setCurrentIndex(1 if self.analysis_mode else 0)
+        self.tabs.setTabVisible(index, enabled)
+        self.raw_pgn_action.setChecked(enabled)
+        self._refresh_raw_pgn()
+
+    def _refresh_raw_pgn(self):
+        if not self.config.get("show_raw_pgn", False) or not hasattr(self, "raw_pgn_text"):
+            return
+        text = self.game.pgn()
+        if self.raw_pgn_text.toPlainText() != text:
+            scroll = self.raw_pgn_text.verticalScrollBar().value()
+            self.raw_pgn_text.setPlainText(text)
+            self.raw_pgn_text.verticalScrollBar().setValue(scroll)
 
     def _set_display(self, key, value):
         self.config[key] = value
@@ -786,7 +828,7 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, watched, event):
         if (
-            watched is getattr(self, "pgn_editor", None)
+            watched in (getattr(self, "pgn_editor", None), getattr(self, "raw_pgn_text", None))
             and event.type() == QEvent.Type.ShortcutOverride
             and event.modifiers() in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.ShiftModifier)
         ):
@@ -1657,6 +1699,7 @@ class MainWindow(QMainWindow):
         self._update_players()
 
         self._sync_explorer()
+        self._sync_raw_pgn()
 
     def _sync_workspace_layout(self):
         analysis = self.analysis_mode
@@ -1711,32 +1754,14 @@ class MainWindow(QMainWindow):
                 or not self.analysis_mode else Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             if self.tabs.currentWidget() is getattr(self, "review_panel", None):
                 self._update_review_panel()
+            if self.tabs.currentWidget() is getattr(self, "raw_pgn_page", None):
+                self._refresh_raw_pgn()
         self._sync_explorer()
 
     def _render_move_history(self):
-        tokens = []
-        for text, index in self.game.tree_tokens():
-            if index is not None:
-                node = self.game.nodes[index]
-                if node.nags:
-                    text += " " + "".join(
-                        {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}.get(n, f" ${n}")
-                        for n in node.nags
-                    )
-                if self.config.get("show_clocks", True):
-                    move_clock = pgn_clock(node.comment)
-                    if move_clock is not None:
-                        text += f" [{move_clock[1]}]"
-                comment = re.sub(r"\s*\[%\s*(?:clk|timestamp)\s+[^\]]*\]", "", node.comment)
-                comment = " ".join(comment.split())
-                if comment:
-                    text += " {" + comment[:100] + ("…" if len(comment) > 100 else "") + "}"
-                records = self.game.metadata.get("review", {})
-                review = records.get(str(index)) if isinstance(records, dict) else None
-                if isinstance(review, dict) and isinstance(review.get("label"), str):
-                    text += " [" + review["label"] + "]"
-            tokens.append((text, index))
+        tokens = self.game.tree_tokens()
         self.analysis_history.set_moves(tokens, self.game.current_node, self._appearance_config().get("light", False))
+        self._refresh_raw_pgn()
 
     def _end_preview(self, source):
         if self._preview_source == source:
