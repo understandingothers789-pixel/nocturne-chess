@@ -1446,3 +1446,61 @@ created. No application code changed; no application tests were rerun for these
 documentation-only changes. Next: configure legitimate publisher signing, sign
 the native bundle, pass the existing signature gate and test the downloaded
 package with Smart App Control enabled before offering a signed release.
+
+
+## 2026-10-18 — Restore 0.5.7 and isolate the three-line MultiPV patch
+
+User confirms 0.5.7 works on their computer and requests reverting to it with
+only the three-reserved-text-lines change. Restored all 35 tracked files that
+differed from 0.5.7 commit b69b8d81222117946838ad7a40b864eecd624a9a using the
+existing 0.5.7 source archive. Verified every restored Git blob hash against that
+remote tree before writing; all 35 matched. Removed the three 0.5.8-only clock
+preview/Cburnett license files. Original piece SVGs, board.py, theme.py,
+settings.py, THIRD_PARTY_NOTICES, MANIFEST, requirements, build script, PyInstaller
+specification and capture script match 0.5.7 exactly. No signing/build-policy
+change. Historical log/changelog entries are retained, not represented as active
+features. A new unsigned EXE is not guaranteed the same Windows trust decision;
+root cause of the user's 0.5.8 block remains unconfirmed.
+
+Applied only the MultiPV change to gui/moves.py, candidates.py and window.py:
+three fixed text lines per rank, fixed-height headers, reserved waiting ranks,
+internal scrolling for long PVs, owner-aware hover snapshots/latest-update queue,
+click-before-flush ordering and displayed-snapshot marker synchronization.
+Added the related GUI regressions only, excluding the removed clock/art tests.
+Verified that these three runtime files and tests/test_gui.py were the complete
+source diff against 0.5.7 before changing version metadata. Labelled this patch
+0.5.7.1 in pyproject, __init__, Windows file/product versions and CI artifact paths.
+
+Executed focused GUI command:
+QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests -p test_gui.py -q
+39 tests passed in 35.911s, no failures. Ruff check src tests scripts passed twice.
+Both offline and external-UCI python -m nocturne --smoke-test commands exited 0,
+including complete two-move Game Review via the protocol fixture. Captured and
+visually inspected actual Qt dark 1920×1040, compact 1024×660 and light 1440×1040
+views with original pieces and no new clock strip; screenshot engine output is
+explicitly labelled simulator test data. Updated these docs previews and fixed
+obsolete full-height-PV wording in README/architecture. No tooltips/launchers.
+Full regression discovery is running; next is source-diff verification and native
+Windows packaging. Manual Windows trust/DPI and real-engine checks remain open.
+
+
+## 2026-10-18 — 0.5.7.1 local validation complete
+
+Final full command QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest
+discover -s tests -q ran 153 tests in 79.478s: 142 passed, 11 skipped, no failures.
+Six HTTP tests skip due to sandbox socket restrictions; five optional historical
+checks skip. Focused GUI: 39 passed in 35.911s. Both app smoke checks exited 0.
+Ruff passed. No application code changed after this validation.
+
+Rechecked scoped diff against 0.5.7: exactly three runtime GUI files, their test,
+four version/artifact metadata files, docs and three real Qt screenshots.
+Twenty-three critical packaging/appearance files (all 12 original pieces,
+Nocturne.spec, build_windows.py, capture_preview.py, all requirements, board.py,
+theme.py, settings.py, MANIFEST and notices) match the 0.5.7 Git blob hashes.
+Built source ZIP via scripts/package_source.py and wheel via pip wheel --no-deps
+--no-build-isolation. Both passed ZIP integrity checks, contain byte-identical
+restored pieces and no removed Cburnett files or Windows script/EXE launchers.
+Pip's unwritable-cache notice and Qt/offscreen/font warnings are environmental;
+negative SAN parsing tests emit expected warnings. No test failure discovered.
+Next: publish this isolated patch as a new commit without rewriting history and
+verify Windows tests/PyInstaller/frozen checks before updating the download.

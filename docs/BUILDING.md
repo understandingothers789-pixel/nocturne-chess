@@ -1,24 +1,19 @@
-# Windows 11 desktop builds · 0.5.8
+# Windows 11 desktop builds · 0.5.7
 
-[Download the tested, unsigned 0.5.8 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39083200511/artifacts/12119502466).
+[Download the verified 0.5.7 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39081231579/artifacts/12118044851).
 
-**This unsigned developer build has been blocked by Windows Smart App Control.**
-Automated build/test success is separate from publisher trust. No trusted signed
-Nocturne release is currently available. See the signing status below before
-using this download on a computer with Smart App Control enabled.
-
-Alternatively, select the successful **Nocturne-0.5.8-Windows-x64-unsigned** artifact from
+Alternatively, select the successful **Nocturne-0.5.7-Windows-x64-unsigned** artifact from
 [Windows Actions](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
 Sign into GitHub, download, Extract All, then open **Nocturne/Nocturne.exe**.
 Keep the full folder. No Python, compiler or batch launcher is needed to play/analyze.
 You select your own Stockfish executable from the Engine menu.
 
-Windows run 39083200511 succeeded for GUI commit b1322d643bb57901a854b398f9b1056f48cc1a25.
-Both test runs passed 150 tests with 5 skips (84.660s / 106.145s). Ruff,
+Windows run 39081231579 succeeded for GUI commit b00711c9f41c67362d1afab3f176e9a6f81dad1e.
+Both test runs passed 146 tests with 5 skips (102.826s / 113.005s). Ruff,
 PyInstaller and both packaged explorer/study/save/UCI/Game Review smoke checks passed.
 All six loopback HTTP tests ran on native Windows. The unsigned artifact is
-54,608,168 bytes, retained until 2026-11-17. SHA-256:
-`00ff5a5ba65e41d8ba6c6a46aa6f7cbb5acea456529aca71e33c4699001b65e2`.
+54,467,609 bytes, retained until 2026-11-17. SHA-256:
+`16fc6f5fe3097f9f7f6f88241041ca8601d5f08724c0fa298b4cba88ee4143d2`.
 
 Live authenticated Lichess data requires a user session token. Separate live
 connectivity checks distinguish protected responses from actual returned data;
@@ -26,32 +21,6 @@ a green workflow alone is not evidence of successful API data retrieval.
 The current build also queried live ChessDB successfully (29 legal moves);
 Lichess reported its authentication requirement. No desktop application code
 changed after the passing build.
-
-## Smart App Control and signing status
-
-A user reported that Smart App Control blocked Nocturne because it was unsigned.
-This is a release blocker for that Windows configuration, not evidence of a
-chess-rule or GUI-test failure. The CI runners' successful smoke checks do not
-test the user's Smart App Control policy.
-
-The Windows workflow currently produces an explicitly unsigned test artifact.
-No code-signing certificate, signing service identity or signing credentials are
-configured in this workspace. The existing `--package-signed` mode verifies
-Authenticode signatures using SignTool; it does not sign files, create a
-certificate or enroll a publisher.
-
-For a distributable signed release, the publisher must first obtain access to a
-legitimate code-signing certificate/service with the required identity checks.
-Sign the executable and any shipped native dependencies requiring signatures,
-use `--package-signed` to verify and package them, then validate the download on
-Windows 11 with Smart App Control enabled. A signature alone is not a guarantee
-that every Windows trust/reputation policy will accept the application.
-
-Rebuilding, renaming or re-zipping the unsigned files does not supply a trusted
-publisher signature. A self-signed certificate is not equivalent to a publicly
-trusted publisher identity. Do not disable Smart App Control, import a new trust
-root or change execution/security policies to use this developer build. A signed
-download will be linked only after signing and acceptance checks actually run.
 
 ## Reproducible Windows build
 
@@ -73,7 +42,7 @@ the installed python-chess Python source and notices.
 Outputs:
 
 - `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
-- `dist/Nocturne-0.5.8-source.zip`: source, tests, documentation, rules-library source.
+- `dist/Nocturne-0.5.7-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI
 executable/native table reader are not part of this distribution. Source installation

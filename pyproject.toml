@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nocturne-chess"
-version = "0.5.8"
+version = "0.5.7.1"
 description = "A native offline Stockfish and UCI chess analysis studio"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "GPL-3.0-or-later"
-license-files = ["COPYING", "LICENSE", "THIRD_PARTY_NOTICES.md", "licenses/*.txt", "licenses/*.md"]
+license-files = ["COPYING", "LICENSE", "licenses/*.txt"]
 authors = [{name = "Nocturne Chess contributors"}]
 dependencies = ["PySide6>=6.8,<7", "chess==1.11.2"]
 

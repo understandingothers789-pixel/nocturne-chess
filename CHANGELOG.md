@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.7.1 — 0.5.7 baseline with stable three-line MultiPV
+
+- Restore the original 0.5.7 pieces, clock display, dependencies and packaging.
+- Reserve three text lines and a fixed header per MultiPV rank; scroll long PVs
+  within their slot without changing lower rows' positions.
+- Preserve hovered moves during engine updates and use their displayed snapshot
+  for clicks; clear queued updates after position changes.
+- Exclude the 0.5.8 Cburnett artwork, extra clock strip and Display clock toggle.
+- Retain Game Review and all other 0.5.7 behavior. No signing or Windows security
+  policy change is included; trust acceptance still needs desktop verification.
+
 ## 0.5.8 — Familiar pieces, optional clocks and steady MultiPV slots
 
 - Use the exact Lichess Cburnett SVG set, with upstream attribution, GPLv2+

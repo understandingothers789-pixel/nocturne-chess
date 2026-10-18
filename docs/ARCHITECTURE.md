@@ -50,8 +50,14 @@ Smart Move requires a matching full FEN and rechecks live legal moves. An ordina
 selected piece takes priority; ambiguity and promotions require explicit choices.
 
 The analysis pane contains status, actual PVs and a graph. Candidate move views
-fit their complete wrapped document height; one outer scroll handles the list.
-Primary PV rendering has one owner to preserve hover when only depth changes.
+reserve a fixed three-line viewport per rank, including ranks awaiting output.
+Font/DPI-aware measurement is cached; longer documents scroll within the slot.
+Headers retain a fixed height. A hovered rank holds its displayed snapshot and
+queues its newest update until hover ends. Only that rank can end its preview;
+updates elsewhere cannot clear it. Clicks activate before the pending update can
+replace their data. Position/context changes invalidate queued callbacks. Markers
+and destination clicks follow displayed snapshots, including a queued flush.
+These are the only runtime changes from the 0.5.7 baseline in patch 0.5.7.1.
 Settings live in the Engine menu and line actions in context menus. The classic
 split gives more width to analysis and keeps a compact move tree below.
 
@@ -120,21 +126,3 @@ explorer.lichess.org and same-origin redirect policy applies. ChessDB and custom
 test endpoints never receive it. HTTP 401/403 explains the native token menu.
 The optional live check reports unauthenticated sources as protected, separately
 from successful data queries; it never substitutes a fabricated response.
-
-
-### Stable MultiPV presentation and piece assets (0.5.8)
-
-CandidatePanel allocates ranks in numerical order before streaming data. Each
-MoveText PV measures a three-line document once per font/DPI and reserves that
-viewport; longer documents scroll internally. Fixed-height single-line headers
-prevent changing metrics from moving later ranks. A hovered rank holds its
-displayed data, not just its rendered text, so preview and click use the same PV.
-Only that rank's end event clears its preview. A zero-delay, revision-guarded
-flush applies the newest pending result after leaving; clear invalidates pending
-callbacks. Changed data signals refresh legal candidate markers.
-
-The default vector pieces are unmodified, pinned Lichess Cburnett sources under
-GPL-2.0-or-later, distinct from the MIT application icon/original code. Licenses
-and asset attribution are included in native packages, source archives and wheel
-license metadata. Display-only clock visibility is separate from Game's clock
-state: toggling visibility neither starts, pauses nor resets clocks.

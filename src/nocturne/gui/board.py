@@ -180,8 +180,8 @@ class BoardWidget(QWidget):
         self.update()
 
     def _piece(self, painter: QPainter, piece: int, rect: QRectF):
-        # The Cburnett SVGs include their own square margins, as on Lichess.
-        self._renderers[piece].render(painter, rect)
+        inset = rect.width() * 0.045
+        self._renderers[piece].render(painter, rect.adjusted(inset, inset, -inset, -inset))
 
     def _arrow(self, painter: QPainter, src: int, dst: int, color: QColor, unit: float, *, subtle=False):
         if src == dst:

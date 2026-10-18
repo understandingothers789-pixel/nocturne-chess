@@ -21,7 +21,6 @@ def main():
     parser.add_argument("--engine", type=Path)
     parser.add_argument("--light", action="store_true")
     parser.add_argument("--lines", action="store_true")
-    parser.add_argument("--hide-clocks", action="store_true")
     parser.add_argument("--review", action="store_true", help="Game Review with explicitly labelled test scores")
     parser.add_argument("--explorer-fixture", action="store_true", help="Clearly labelled cached test statistics; no network")
     parser.add_argument("--chessdb-fixture", action="store_true", help="Clearly labelled cached ChessDB test scores; no network")
@@ -45,7 +44,6 @@ def main():
             analysis_kind="explore",
             multipv=6,
             candidate_style="lines" if args.lines else "arrows",
-            show_clocks=not args.hide_clocks,
         )
         window.game = Game.from_pgn(
             '[Event "Italian Game study"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bc4 {Develop toward the center.} (3.Nc3 Nf6) Bc5 4.c3 *'

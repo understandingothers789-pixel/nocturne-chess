@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.8
+# Nocturne Analysis · 0.5.7.1
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -13,37 +13,23 @@ analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
 
-**Signing blocker:** the current ZIP is an unsigned developer build. Windows
-Smart App Control has blocked it on a user's computer. Passing the automated
-tests does not establish Windows publisher trust. There is currently no signed
-Nocturne release available, so this download is unsuitable where Smart App
-Control blocks unsigned applications. Keep your existing Windows protection on.
-See [signing status](docs/BUILDING.md#smart-app-control-and-signing-status).
+**0.5.7.1 is based on 0.5.7 and adds only stable, three-line MultiPV slots.**
+It restores 0.5.7's original pieces and clock display, dependencies and packaging.
+The former 0.5.8 piece/clock changes are excluded. The original 0.5.7 package
+remains linked below until the new patch's native build is validated. A rebuilt
+unsigned executable can still receive a different Windows trust decision;
+Smart App Control acceptance on the user's computer has not been verified.
 
-[Download the tested, unsigned Windows 0.5.8 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39083200511/artifacts/12119502466) (GitHub sign-in required).
+[Download the verified Windows 0.5.7 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39081231579/artifacts/12118044851) (GitHub sign-in required).
 
 [All Windows builds](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
-Select **Nocturne-0.5.8-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
-Windows validation passed: 150 tests passed, 5 skipped; packaged app and external-UCI
+Select **Nocturne-0.5.7-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
+Windows validation passed: 146 tests passed, 5 skipped; packaged app and external-UCI
 protocol-fixture/Game Review smoke checks passed. Real Stockfish/manual interaction verification remains open.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
 change is provided. The ZIP also includes the corresponding source archive.
-
-
-The board now uses the **exact Lichess Cburnett SVG piece set** by Colin M. L.
-Burnett, included offline with its GPL-2.0-or-later license and source attribution.
-These replace the earlier Nocturne pieces throughout the board, drag animation
-and promotion chooser. See [third-party notices](THIRD_PARTY_NOTICES.md).
-
-**Display → Clocks** shows/hides the chess-clock portion and saves your preference.
-Analysis has a compact White/Black clock strip; Play uses its existing player clocks.
-Choose the time control through **File → New game…** in a playing mode. Hiding
-clocks changes visibility only: a running game keeps counting down. Analysis
-pauses the game clocks, and untimed games show ∞. PGN clock-comment import is
-not implemented, so importing a PGN without a stored time control does not invent
-clock values. Saved games retain their existing time-control/remaining-time data.
 
 ## Your saved PGNs
 
@@ -196,13 +182,12 @@ moving pieces or using the engine. Service availability and data coverage vary.
   available in the Engine menu; logs and output queues are bounded.
 
 The default workspace is board left, a wide analysis pane on the right with the
-graph at its foot, and game moves below. Each MultiPV has a fixed three-line move viewport and a fixed metrics header.
-Short lines retain their space, and longer PVs scroll inside that viewport.
-All requested ranks reserve their slots before results arrive, including out-of-order results.
-Updates to other ranks cannot move or dismiss a hovered line. The hovered rank
-keeps its displayed moves/evidence until you leave, then applies the latest update.
-Clicking a future move uses that displayed snapshot; changing position discards
-queued updates. Engine settings and per-line button bars occupy no
+graph at its foot, and game moves below. Each MultiPV rank reserves exactly three
+text lines, even for a one-line PV, so updates do not push lower candidates around.
+Ranks reserve their places before results arrive. Longer PVs scroll within their
+slot and still copy in full. A hovered PV keeps its displayed moves until you
+leave it; the latest queued update then appears. Clicking uses the displayed
+move, and navigation discards pending updates for the old position. Engine settings and per-line button bars occupy no
 analysis space. The PGN tab bar appears when editing PGN and hides during analysis.
 Splitters resize the panels; **Display → Analysis on the left** preserves the
 previous layout. Light/dark palettes, coordinates, animations, overlay visibility,

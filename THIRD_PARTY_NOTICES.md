@@ -1,8 +1,8 @@
 # Distribution notices · Nocturne Analysis 0.5
 
 The combined analysis application is distributed under GPL-3.0-or-later (COPYING)
-because of its runtime python-chess dependency. Original Nocturne code and application icon retain their MIT license grant
-(LICENSE). Default Cburnett chess pieces use GPL-2.0-or-later, as detailed below. No Nibbler implementation
+because of its runtime python-chess dependency. Original Nocturne code and SVG
+pieces/icon retain their MIT license grant (LICENSE). No Nibbler implementation
 or assets, and no Stockfish executable/neural network/table files are bundled.
 
 ## Runtime
@@ -64,21 +64,6 @@ disabled. Service results are kept separate from local engine evaluations.
 
 The independent Python review implementation uses numerical score/accuracy curves
 published by Lichess, with Nocturne-specific aggregation, classifications and
-same-root search comparisons. No Lichess server/Scala code is bundled. The separately credited Cburnett
-SVG pieces below are included.
+same-root search comparisons. No Lichess server/Scala code or assets are bundled.
 The estimates differ from Lichess game accuracy and are not endorsed by Lichess.
 Method and upstream references: docs/REVIEW.md.
-
-### Cburnett chess pieces (default set)
-
-The 12 default chess-piece SVGs are the exact Cburnett set distributed by Lichess.
-Copyright Colin M. L. Burnett; GPL-2.0-or-later, compatible with this application's
-GPL-3.0-or-later distribution. Original modifiable SVG sources are included in
-the app and source archive. Only filename case is normalized; paths/colors are
-unmodified. No Chess.com or Nibbler piece artwork is included.
-
-Source pinned to lila commit cd2656d2787a766ba743da8da1dd3b24975e6329:
-https://github.com/lichess-org/lila/tree/cd2656d2787a766ba743da8da1dd3b24975e6329/public/piece/cburnett
-Upstream COPYING.md explicitly lists this set under its GPLv2+ exceptions.
-See licenses/CBURNETT-NOTICE.md and licenses/CBURNETT-GPL-2.0-or-later.txt.
-Lichess is named to identify the source; no endorsement is implied.

@@ -9,10 +9,6 @@ and discovered bugs are recorded in [PROGRESS.md](PROGRESS.md).
 
 Highest-priority remaining checks:
 
-- Release blocker: obtain legitimate publisher signing, sign the native bundle
-  and validate the downloaded package with Windows 11 Smart App Control enabled.
-  The current unsigned 0.5.8 build was blocked on a user's computer. CI smoke
-  success does not establish Smart App Control acceptance.
 - Real Stockfish 19 and official development-build integration on Windows.
 - Manual Windows 11 interaction/DPI/suspend and large Syzygy collections.
 - Large-tree profiling, richer branch editing and study collections.
@@ -52,10 +48,9 @@ judgments with actual Stockfish/user games and manual Windows/DPI; official site
 score parity is not claimed.
 
 
-0.5.8 exact Lichess Cburnett pieces, persisted Display → Clocks and fixed
-three-line MultiPV slots/hover snapshots passed 144 local tests (11 skips),
-focused GUI/external suites, Ruff and both app smoke checks. Native Windows
-validation passed twice: 150 tests passed and 5 optional skips each; PyInstaller
-and both frozen GUI/UCI/Game Review smoke checks passed. The 0.5.8 Windows
-download is verified. Verify the clock strip, piece scale, internal PV scrolling
-and hover behavior manually at Windows DPI settings with a real engine.
+0.5.7.1 restores the 0.5.7 baseline and adds only three-line MultiPV slots and
+hover stability. Focused GUI tests: 39 passed; lint and both app smoke checks
+passed. Full local discovery passed: 142 passed, 11 skipped. Native Windows validation
+is next. Confirm the rebuilt
+patch opens on the user's Windows configuration; prior 0.5.7 acceptance does
+not establish the new executable's trust status. No 0.5.8 pieces/clock UI remain.

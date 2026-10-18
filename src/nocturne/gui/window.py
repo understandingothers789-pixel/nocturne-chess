@@ -271,22 +271,6 @@ class MainWindow(QMainWindow):
         board_layout.setSpacing(0)
         self.top_card, self.top_name, self.top_detail, self.top_clock = self._player_card()
         board_layout.addWidget(self.top_card)
-        self.analysis_clocks = QFrame()
-        self.analysis_clocks.setObjectName("clockStrip")
-        clock_row = QHBoxLayout(self.analysis_clocks)
-        clock_row.setContentsMargins(12, 4, 12, 4)
-        self.analysis_clock_names = {}
-        self.analysis_clock_values = {}
-        for color, title in ((1, "White"), (-1, "Black")):
-            caption, value = label(title, "muted"), label("∞", "analysisClock")
-            value.setAccessibleName(title + " chess clock")
-            clock_row.addWidget(caption)
-            clock_row.addWidget(value)
-            self.analysis_clock_names[color] = caption
-            self.analysis_clock_values[color] = value
-            if color == 1:
-                clock_row.addStretch()
-        board_layout.addWidget(self.analysis_clocks)
         self.board_view = BoardWidget()
         self.board_view.move_requested.connect(self._human_move)
         board_row = QHBoxLayout()
@@ -597,7 +581,6 @@ class MainWindow(QMainWindow):
         display.addSeparator()
         for key, text in (
             ("coordinates", "Coordinates"),
-            ("show_clocks", "Clocks"),
             ("overlays", "Analysis overlays"),
             ("animations", "Move animations"),
             ("light", "Light appearance"),
@@ -1636,7 +1619,6 @@ class MainWindow(QMainWindow):
         if self._pv_root is not None:
             self.pv_label.set_moves(self.pv_label._items, light=self.config.get("light", False))
         self.board_view.update()
-        self._update_players()
 
         self._sync_explorer()
 
@@ -1858,16 +1840,8 @@ class MainWindow(QMainWindow):
         self._update_players()
 
     def _update_players(self):
-        clocks_visible = self.config.get("show_clocks", True)
-        self.analysis_clocks.setVisible(self.analysis_mode and clocks_visible)
-        self.top_clock.setVisible(clocks_visible)
-        self.bottom_clock.setVisible(clocks_visible)
         top_color = 1 if self.board_view.flipped else -1
         values = self.game.clock_values()
-        for color, value in self.analysis_clock_values.items():
-            title = "White" if color == 1 else "Black"
-            self.analysis_clock_names[color].setText(title)
-            value.setText(self._clock_text(values[color]) if self.game.time_control.seconds else "∞")
         material = sum(
             (1 if self.game.board.cells[s] > 0 else -1) * (0, 1, 3, 3, 5, 9, 0)[abs(self.game.board.cells[s])]
             for s in SQUARES

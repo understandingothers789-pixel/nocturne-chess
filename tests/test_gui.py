@@ -157,35 +157,6 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(window.game._line_nodes, selected)
         self.assertFalse(window._analysis_enabled)
 
-    def test_display_clocks_toggle_persists_without_changing_time_or_position(self):
-        from nocturne.core.game import TimeControl
-
-        self._analysis_game()
-        window = self.window
-        window.game = Game(time_control=TimeControl(300, 2))
-        window.game._remaining = {1: 280, -1: 290}
-        window._refresh()
-        self.assertTrue(window.analysis_clocks.isVisible())
-        self.assertEqual(window.analysis_clock_values[1].text(), "04:40")
-        self.assertEqual(window.analysis_clock_values[-1].text(), "04:50")
-        fen, generation = window.game.board.fen(), window.engine.generation
-        action = window.display_actions["show_clocks"]
-        action.trigger()
-        self.assertFalse(window.analysis_clocks.isVisible())
-        self.assertFalse(window.store.get("settings")["show_clocks"])
-        self.assertEqual(window.game.board.fen(), fen)
-        self.assertEqual(window.engine.generation, generation)
-        action.trigger()
-        self.assertTrue(window.analysis_clocks.isVisible())
-        window._workspace(False)
-        window.game.start_clock()
-        action.trigger()
-        self.assertTrue(window.game.running)
-        self.assertTrue(window.top_card.isVisible())
-        self.assertFalse(window.top_clock.isVisible())
-        self.assertFalse(window.bottom_clock.isVisible())
-        self.assertFalse(window.analysis_clocks.isVisible())
-
     def _three_pvs(self):
         self._analysis_game("1.e4 e5 *")
         self.window.config["multipv"] = 3
@@ -243,10 +214,6 @@ class GuiTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(self.window.game.sans, ["e4", "e5", "Nc3"])
         self.assertFalse(panel.pending)
-
-    def test_cburnett_assets_are_valid_for_all_pieces_and_promotion_icons(self):
-        self.assertEqual(len(self.window.board_view._renderers), 12)
-        self.assertTrue(all(renderer.isValid() for renderer in self.window.board_view._renderers.values()))
 
     def test_click_move_updates_model_board_and_san_history(self):
         self._click("e2")
