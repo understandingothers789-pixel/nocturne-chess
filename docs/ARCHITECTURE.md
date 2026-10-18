@@ -152,3 +152,30 @@ rows, without changing their three-line measurement or move snapshots.
 # PGN clock comments are parsed as read-only position data. The mainline or
 # selected variation determines the last known clock for each color. The display
 # does not turn imported annotations into an active timer or infer missing times.
+
+
+## Preview and database presentation (0.5.7.18)
+
+`window._show_move_preview()` routes temporary history, candidate/PV and database
+positions to either the main board's reversible overlay or `gui/hover_preview.py`.
+The default-off `cursor_preview` preference selects the child-frame miniature.
+It never takes focus or mouse events, copies board appearance/orientation and
+clamps pointer-relative placement to the visible window/screen intersection.
+MoveText forwards pointer movement without changing candidate snapshot ownership.
+The same end-preview path clears both renderers on leave, navigation and lifecycle
+changes. No preview writes study moves or changes the engine's position.
+
+`explorer_enabled` now means table visibility only. `explorer_statistics` owns
+lookup opt-in; either visible or hidden lookups still run only in the active
+Analysis/Engine view. Source selection enables statistics without opening the
+table. A new installation stays offline; saved source selections migrate once
+even if their old panel was hidden, and the new explicit opt-out is preserved.
+`OpeningExplorer` retains its position/query/data when hidden, allowing existing
+`statistics_changed` joins to update per-candidate API headers. Full position
+identity and query/source/filter keys still reject stale data. Explicit lookup
+disable cancels transport, invalidates its query and clears headers.
+
+Nibbler uses the bundled shaded Merida SVGs with cached QSvgRenderers, drawing
+directly to the painter's native device resolution for every board/icon surface.
+Artwork-internal padding is retained. Original 240×240 Nibbler PNGs remain
+licensed archival references; their bytes and pinned checksums are unchanged.

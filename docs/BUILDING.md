@@ -1,14 +1,28 @@
 # Windows 11 desktop builds · 0.5.7.18
 
-The new cumulative source includes independent database statistics/display
-controls, the Dev cursor-board experiment and Nibbler-style vector rendering.
-Intermediate labelled source commits 0.5.7.16 and 0.5.7.17 intentionally skipped
-CI; one cumulative 0.5.7.18 Windows build follows local validation.
+[Download Windows 0.5.7.18](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39110217241/artifacts/12130256462).
+Extract All, then open **Nocturne/Nocturne.exe**. This is the cumulative download
+for independent database display/statistics, the Dev cursor-board experiment and
+crisp Nibbler-style vector rendering.
 
-Frozen launch checks now verify all twelve collected SVG renderers, hidden-table
-cached statistics and cursor previews that leave the main board unchanged, plus
-external-UCI/Game Review completion. No script launcher or security-policy change
-is introduced. Native build receipt and download will be recorded when complete.
+Tested source `6339a03daf29939c69628164449bc26616ea6489`, run **39110217241**,
+job **117624541482** succeeded. Both native suites: **184 tests, 179 passed /
+5 optional skips**, in 142.631s and 148.320s. Ruff passed twice; PyInstaller and
+both frozen launch gates passed. Hidden lookup/navigation, API headers, cursor
+snapshot/wheel/click, high-DPI vector rendering and real HTTP pacing regressions
+passed twice. The packaged executable verifies collected SVGs and cursor boards
+as well as offline data and external-UCI/Game Review completion.
+
+Artifact **12130256462**: 57,794,796 bytes, expires 2026-11-17. SHA-256:
+`c4473d4d59285be889e6cdf7d2707ba37e5ed6b9c0d268f0dfc279123b57abeb`.
+Lichess live checks reported the expected access-token requirement; ChessDB
+returned 29 validated legal moves. Fixture statistics remain labelled test data.
+Only documentation changed after the tested source commit. No new launcher or
+security-policy change was introduced. The artifact remains an unsigned build.
+
+The feature commits are labelled 0.5.7.16 (database), 0.5.7.17 (cursor preview)
+and 0.5.7.18 (vector pieces/cumulative verification). The first two intentionally
+skipped CI; the cumulative build validates all three together.
 
 ## Previous verified download · 0.5.7.15
 

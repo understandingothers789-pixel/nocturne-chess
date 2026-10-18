@@ -39,10 +39,15 @@ The separate statistics switch provides an explicit offline opt-out.
 
 ## Windows: download and open
 
-[Download Windows 0.5.7.15](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39107769865/artifacts/12129033459).
+[Download Windows 0.5.7.18](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39110217241/artifacts/12130256462).
 Extract All, then open **Nocturne/Nocturne.exe**. Both native runs passed
-**173 tests with 5 optional skips**; Ruff and both packaged launch checks passed.
-All requested appearance, piece, graph and spacing changes below are included.
+**179 tests with 5 optional skips**; Ruff and both packaged launch checks passed.
+All three new changes above are included, in separate labelled source commits.
+The mini hover board is opt-in under **Dev**. Database table visibility does not
+turn off statistics. See [build receipt](docs/BUILDING.md) and [development log](PROGRESS.md).
+
+[Previous verified Windows 0.5.7.15](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39107769865/artifacts/12129033459)
+remains available as a fallback.
 
 **0.5.7.15: cumulative validation fixes.** Database requests now recheck their
 monotonic dispatch deadline, guarding against early Windows timer delivery.

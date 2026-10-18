@@ -1,12 +1,14 @@
 # Active roadmap
 
-**In progress: 0.5.7.18 cumulative validation.** All three changes are implemented:
-independent database visibility/statistics, default-off Dev cursor hover board,
-and native-resolution shaded Merida vectors. Focused/GUI tests and source launch
-checks passed; full/native verification and final download are pending. Prior
-delivery below remains available.
+**Current: 0.5.7.18 delivered.** Independent database display/statistics, the
+opt-in Dev cursor hover board and native-resolution Nibbler-style vectors are
+complete in three labelled commits. Local: 173 passed/11 skips. Native Windows:
+179 passed/5 optional skips twice, Ruff twice, PyInstaller and both packaged
+launch checks passed. Remaining manual checks: physical Windows DPI/multi-monitor
+hover placement and unsigned trust. Lichess live data still needs a session token;
+ChessDB live query returned 29 legal moves. No requested implementation is pending.
 
-**Current: 0.5.7.15 delivered.** All requested pieces, color/metadata, 10% square
+**Previous: 0.5.7.15 delivered.** All requested pieces, color/metadata, 10% square
 shading, compressed graph guides and compact spacing are included. Two native
 178-test runs passed (173 passed/5 optional skips), Ruff twice and packaged launch
 checks. Remaining checks: physical Windows DPI/trackpad feel and unsigned trust;

@@ -2403,3 +2403,40 @@ visually inspected; fixture counts and simulated UCI moves are explicitly labell
 both full runs and frozen launch gates, then provide the actual Windows download.
 User-machine DPI/multi-monitor interaction and unsigned Windows trust remain
 manual checks. No new launch scripts or security-policy bypasses were introduced.
+
+## 2026-10-18 — 0.5.7.18: verified cumulative Windows delivery
+
+**Labelled feature commits:**
+
+- `edd89b8ae167c1973d49c200f3bdf8507b33ccf4` — 0.5.7.16: independent database visibility/statistics.
+- `8123c54bb7c279c13af2e15bc8798731f1c812b7` — 0.5.7.17: opt-in cursor hover board.
+- `6339a03daf29939c69628164449bc26616ea6489` — 0.5.7.18: matching shaded vectors and cumulative checks.
+
+The first two feature pushes intentionally skipped CI; the final cumulative push
+built all changes. Run **39110217241**, job **117624541482**: **success**.
+Actual job logs show `python -m unittest discover -s tests -v` twice, **184 tests
+per run: 179 passed / 5 optional skips**, 142.631 s and 148.320 s. Ruff passed
+twice. PyInstaller completed; both subprocess-gated frozen launch checks passed.
+The packaged checks exercise all twelve SVGs, hidden-panel cached results and
+non-mutating cursor previews, plus external-UCI/Game Review completion.
+
+Verified twice in the logs: hidden lookup navigation/source behavior, blue API
+headers, cursor snapshot/wheel/click handling, cursor appearance/bounds, 1×/2×/3×
+vector drawing, and real HTTP request spacing. No failed test or build gate.
+Live service check: Masters/Lichess reported the expected token requirement;
+ChessDB returned 29 validated legal moves. No live Lichess percentages claimed.
+
+[Windows download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39110217241/artifacts/12130256462) —
+artifact **12130256462**, `Nocturne-0.5.7.18-Windows-x64-unsigned`, **57,794,796 bytes**;
+SHA-256 `c4473d4d59285be889e6cdf7d2707ba37e5ed6b9c0d268f0dfc279123b57abeb`,
+expires 2026-11-17. Extract All; open `Nocturne/Nocturne.exe`.
+
+**Documentation:** README, CHANGELOG, TODO, BUILDING, ARCHITECTURE and this log
+updated with final behavior and receipt. No application code changed after the
+verified source. Local source ZIP integrity/assets/launcher exclusion checks
+passed; rebuilt after this receipt.
+
+**Remaining limits:** physical Windows DPI/multi-monitor interaction and local
+unsigned trust remain manual checks. New mini hover mode is experimental and off
+by default; prior main-board preview remains selectable. Lichess needs a session
+token for uncached service access. All requested implementation is complete.

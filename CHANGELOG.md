@@ -6,6 +6,7 @@
 - Use vectors consistently for board, dragging, animation, settings, promotion and cursor previews.
 - Preserve all original PNG bytes as licensed archival references; update artwork notices.
 - Cover transparent rendering and antialiased edges at 1×, 2× and 3× device pixel ratios.
+- Cumulative native Windows validation passed twice: 179 passed/5 optional skips, Ruff twice, PyInstaller and both frozen launch checks.
 
 ## 0.5.7.17 — Experimental cursor hover board
 
