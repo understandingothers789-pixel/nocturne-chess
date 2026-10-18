@@ -9,6 +9,10 @@ and discovered bugs are recorded in [PROGRESS.md](PROGRESS.md).
 
 Highest-priority remaining checks:
 
+- Release blocker: obtain legitimate publisher signing, sign the native bundle
+  and validate the downloaded package with Windows 11 Smart App Control enabled.
+  The current unsigned 0.5.8 build was blocked on a user's computer. CI smoke
+  success does not establish Smart App Control acceptance.
 - Real Stockfish 19 and official development-build integration on Windows.
 - Manual Windows 11 interaction/DPI/suspend and large Syzygy collections.
 - Large-tree profiling, richer branch editing and study collections.

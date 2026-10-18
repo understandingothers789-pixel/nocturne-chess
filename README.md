@@ -13,7 +13,14 @@ analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
 
-[Download the verified Windows 0.5.8 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39083200511/artifacts/12119502466) (GitHub sign-in required).
+**Signing blocker:** the current ZIP is an unsigned developer build. Windows
+Smart App Control has blocked it on a user's computer. Passing the automated
+tests does not establish Windows publisher trust. There is currently no signed
+Nocturne release available, so this download is unsuitable where Smart App
+Control blocks unsigned applications. Keep your existing Windows protection on.
+See [signing status](docs/BUILDING.md#smart-app-control-and-signing-status).
+
+[Download the tested, unsigned Windows 0.5.8 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39083200511/artifacts/12119502466) (GitHub sign-in required).
 
 [All Windows builds](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
 Select **Nocturne-0.5.8-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).

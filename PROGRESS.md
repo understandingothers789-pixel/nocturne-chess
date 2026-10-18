@@ -1419,3 +1419,30 @@ passed. Refreshed local source/checksums after final documentation. Only docs
 follow the tested application commit. Next is manual Windows 11/DPI, actual
 engine hover/scroll interaction and clock usability verification on a desktop;
 PGN clock-comment import and other named limitations remain documented.
+
+
+## 2026-10-18 — User-reported Smart App Control signing blocker
+
+User reports that Windows Smart App Control blocks the delivered Nocturne EXE
+because it is unsigned. This is an unresolved release blocker for their setup;
+the earlier passing native tests and packaged smoke checks did not test that
+policy or establish publisher trust. The block is user-reported, not reproduced
+inside this Linux workspace.
+
+Inspected scripts/build_windows.py, .github/workflows/windows.yml and current
+build documentation using rg/sed/cat. The workflow builds/uploads unsigned test
+artifacts. The existing --package-signed gate verifies Authenticode signatures
+with SignTool but does not perform signing or enroll a publisher. Managed
+environment readiness reports no configured secrets, signing identities or
+signing capabilities. A trusted signing operation cannot be completed here
+without a legitimate certificate/service and publisher enrollment.
+
+Updated README.md and docs/BUILDING.md to identify the current download as a
+tested unsigned developer build, explain the actual Smart App Control block and
+distinguish test success from signature/trust verification. Added the signing/
+Smart App Control acceptance task at the top of TODO.md. No self-signed trust
+root, launcher script, security-policy bypass or replacement unsigned EXE was
+created. No application code changed; no application tests were rerun for these
+documentation-only changes. Next: configure legitimate publisher signing, sign
+the native bundle, pass the existing signature gate and test the downloaded
+package with Smart App Control enabled before offering a signed release.

@@ -1,6 +1,11 @@
 # Windows 11 desktop builds · 0.5.8
 
-[Download the verified 0.5.8 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39083200511/artifacts/12119502466).
+[Download the tested, unsigned 0.5.8 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39083200511/artifacts/12119502466).
+
+**This unsigned developer build has been blocked by Windows Smart App Control.**
+Automated build/test success is separate from publisher trust. No trusted signed
+Nocturne release is currently available. See the signing status below before
+using this download on a computer with Smart App Control enabled.
 
 Alternatively, select the successful **Nocturne-0.5.8-Windows-x64-unsigned** artifact from
 [Windows Actions](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
@@ -21,6 +26,32 @@ a green workflow alone is not evidence of successful API data retrieval.
 The current build also queried live ChessDB successfully (29 legal moves);
 Lichess reported its authentication requirement. No desktop application code
 changed after the passing build.
+
+## Smart App Control and signing status
+
+A user reported that Smart App Control blocked Nocturne because it was unsigned.
+This is a release blocker for that Windows configuration, not evidence of a
+chess-rule or GUI-test failure. The CI runners' successful smoke checks do not
+test the user's Smart App Control policy.
+
+The Windows workflow currently produces an explicitly unsigned test artifact.
+No code-signing certificate, signing service identity or signing credentials are
+configured in this workspace. The existing `--package-signed` mode verifies
+Authenticode signatures using SignTool; it does not sign files, create a
+certificate or enroll a publisher.
+
+For a distributable signed release, the publisher must first obtain access to a
+legitimate code-signing certificate/service with the required identity checks.
+Sign the executable and any shipped native dependencies requiring signatures,
+use `--package-signed` to verify and package them, then validate the download on
+Windows 11 with Smart App Control enabled. A signature alone is not a guarantee
+that every Windows trust/reputation policy will accept the application.
+
+Rebuilding, renaming or re-zipping the unsigned files does not supply a trusted
+publisher signature. A self-signed certificate is not equivalent to a publicly
+trusted publisher identity. Do not disable Smart App Control, import a new trust
+root or change execution/security policies to use this developer build. A signed
+download will be linked only after signing and acceptance checks actually run.
 
 ## Reproducible Windows build
 
