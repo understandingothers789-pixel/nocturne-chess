@@ -1785,3 +1785,26 @@ the original machine tags; display strips them into readable times. No timer or
 time control is inferred, and positions without a recorded clock show an em dash.
 Manual Windows Smart App Control acceptance and user-machine interaction remain
 unverified. No signing, security-policy or launcher changes were made.
+
+## 2026-10-18 — Download 1 / commit 1: 0.5.7.5 live appearance preview
+
+Requested three cumulative commits/builds. This first change adds reversible
+Studio previews for board palette, piece style, light/dark, coordinates and
+overlays. dialogs.py shows a sample BoardWidget beside scrolling controls and
+emits visual-only changes. window.py keeps the preview separate from config;
+Cancel/window-close restores the original appearance without changing saved
+preferences, board, clocks or engine generation. Save commits choices normally.
+board.py lazily caches SVG renderers for Cburnett and Original, including matching
+promotion icons. Restored the twelve original MIT pieces from pinned 0.5.7 source;
+updated package-data and notices, settings validation, README/CHANGELOG/TODO.
+
+Executed focused GUI/settings checks: 5 passed in 1.775s. Full local discovery:
+160 tests in 99.267s, 149 passed and 11 skipped, no failures. Ruff passed. Both
+offline and absolute-path external-UCI/Game Review smoke commands exited 0.
+Built the 0.5.7.5 wheel and checked ZIP integrity plus all 24 SVG assets. Captured
+and inspected the actual 860x620 Qt dialog (docs/studio-preview.png): preview and
+Save/Cancel visible, long form scrolls. No test failure. Six local socket tests
+and five optional historical checks skip as before. Native Windows validation
+will run on this commit before download delivery. Next: MultiPV reference colors
+and numbered destination circles in the second commit. No signing/build-tool or
+security-policy change; desktop trust acceptance remains unverified here.

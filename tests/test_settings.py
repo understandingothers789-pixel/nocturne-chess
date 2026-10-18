@@ -21,6 +21,8 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(normalize({"show_clocks": "false"})["show_clocks"])
         self.assertTrue(normalize({"show_clocks": 0})["show_clocks"])
         self.assertFalse(normalize({"show_clocks": False})["show_clocks"])
+        self.assertEqual(normalize({"piece_set": "Original"})["piece_set"], "Original")
+        self.assertEqual(normalize({"piece_set": "missing"})["piece_set"], "Cburnett")
 
     def test_menu_migration_preserves_effective_line_count(self):
         self.assertEqual(normalize({"analysis_kind": "infinite", "multipv": 3})["multipv"], 1)

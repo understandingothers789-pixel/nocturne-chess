@@ -196,6 +196,51 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(self.window.game.time_control, TimeControl(300, 2))
         self.assertEqual(self.window.game.clock_values(), {1: 280, -1: 290})
 
+    def test_studio_appearance_preview_cancel_and_save(self):
+        from nocturne.gui.dialogs import SettingsDialog
+
+        window = self.window
+        original = deepcopy(window.config)
+        state = (window.game.board.fen(), window.engine.generation, window.game.clock_values())
+        saved = deepcopy(window.store.get("settings"))
+
+        def cancel(dialog):
+            dialog.theme.setCurrentText("Grey")
+            dialog.pieces.setCurrentText("Original")
+            dialog.checks["light"].setChecked(True)
+            dialog.checks["coordinates"].setChecked(False)
+            dialog.checks["overlays"].setChecked(False)
+            self.assertEqual(window.board_view.theme, "Grey")
+            self.assertEqual(dialog.preview.theme, "Grey")
+            self.assertEqual(window.board_view.piece_set, "Original")
+            self.assertTrue(all(r.isValid() for r in window.board_view._renderers.values()))
+            self.assertTrue(window.board_view.light)
+            self.assertFalse(window.board_view.coordinates)
+            self.assertFalse(window.board_view.overlays)
+            self.assertEqual(window.config, original)
+            self.assertEqual(window.store.get("settings"), saved)
+            self.assertEqual((window.game.board.fen(), window.engine.generation, window.game.clock_values()), state)
+            return dialog.DialogCode.Rejected
+
+        with patch.object(SettingsDialog, "exec", new=cancel):
+            window._settings()
+        self.assertEqual(window.config, original)
+        self.assertEqual(window.board_view.theme, original["theme"])
+        self.assertEqual(window.board_view.piece_set, original["piece_set"])
+        self.assertEqual(window.board_view.light, original["light"])
+        self.assertEqual(window.board_view.overlays, original["overlays"])
+
+        def save(dialog):
+            dialog.theme.setCurrentText("Grey")
+            dialog.pieces.setCurrentText("Original")
+            return dialog.DialogCode.Accepted
+
+        with patch.object(SettingsDialog, "exec", new=save):
+            window._settings()
+        self.assertEqual(window.store.get("settings")["piece_set"], "Original")
+        self.assertEqual(window.store.get("settings")["theme"], "Grey")
+        self.assertEqual(window.game.board.fen(), state[0])
+
     def test_imported_pgn_clocks_follow_selected_position_and_display_toggle(self):
         text = (
             '1. e4 {[%clk 0:04:59.3][%timestamp 7]} '

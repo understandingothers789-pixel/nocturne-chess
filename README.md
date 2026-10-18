@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.4
+# Nocturne Analysis · 0.5.7.5
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -12,6 +12,14 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
+
+**Download 1 · 0.5.7.5: live Studio appearance previews.**
+Changing board palette, piece style, light/dark appearance, coordinates or overlays
+previews immediately in the dialog and on your board. Save keeps the choices;
+Cancel or closing the dialog restores the prior appearance. Cburnett remains the
+default piece set, with Nocturne's original MIT pieces as a second option.
+
+![Real Qt Studio settings appearance preview](docs/studio-preview.png)
 
 **0.5.7.4 shows clocks recorded in imported PGNs.**
 The Display → Clocks option now updates the board clock strip and shows a clean
@@ -28,10 +36,8 @@ The previously verified 0.5.7.3 download is retained below as a fallback.
 These remain unsigned developer builds; acceptance by the user's Windows setup
 must be checked on that computer.
 
-[Download the Windows 0.5.7.4 build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39096484337/artifacts/12125455189) (GitHub sign-in required).
-Windows validation passed twice: 154 passed and 5 skipped each run. The packaged
-application and external-UCI Game Review smoke checks passed. The previous verified
-Windows build is available below as a fallback.
+[Get Windows download 1 · 0.5.7.5](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml) from the successful run's Artifacts section (GitHub sign-in required).
+The versioned workflow runs native tests and frozen GUI/UCI smoke checks before upload.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy

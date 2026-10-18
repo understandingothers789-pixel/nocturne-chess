@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.5 — Download 1: live Studio appearance preview
+
+- Preview board palette, Cburnett/Original pieces, light/dark appearance,
+  coordinates and overlays before saving. Cancel restores the saved appearance.
+- Show a sample board and keep Save/Cancel visible with a scrolling settings form.
+- Keep live previews separate from saved preferences, position, clocks and engine
+  jobs; include original MIT SVGs and matching promotion icons in distributions.
+
 ## 0.5.7.4 — Show imported PGN clock annotations
 
 - Read standard `[%clk …]` comments for each move and variation, display the

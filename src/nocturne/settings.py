@@ -14,6 +14,7 @@ DEFAULTS = {
     "white_engine": "external",
     "black_engine": "external",
     "theme": "Classic",
+    "piece_set": "Cburnett",
     "appearance_version": 1,
     "light": False,
     "coordinates": True,
@@ -58,6 +59,7 @@ def normalize(data) -> dict:
         "explorer_speed": ("all", "ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence"),
         "explorer_rating": (0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500),
         "theme": ("Classic", "Grey", "Walnut", "Slate", "Forest", "Midnight"),
+        "piece_set": ("Cburnett", "Original"),
         "white_engine": ("custom", "external"),
         "black_engine": ("custom", "external"),
     }

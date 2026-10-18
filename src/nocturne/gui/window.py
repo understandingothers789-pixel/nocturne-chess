@@ -1157,7 +1157,7 @@ class MainWindow(QMainWindow):
 
     def _update_review_panel(self):
         if hasattr(self, "review_panel") and self.tabs.currentWidget() is self.review_panel:
-            self.review_panel.update_game(self.game, self._review, self._profile(), self.config.get("light", False))
+            self.review_panel.update_game(self.game, self._review, self._profile(), self._appearance_config().get("light", False))
 
     def _review_navigate(self, node_id):
         # Review navigation must not turn halted analysis back on.
@@ -1618,30 +1618,41 @@ class MainWindow(QMainWindow):
             self._save()
             self._schedule_engine()
 
+    def _appearance_config(self):
+        return getattr(self, "_appearance_preview", None) or self.config
+
+    def _preview_appearance(self, appearance):
+        self._appearance_preview = appearance
+        self._apply_appearance(appearance)
+
+    def _apply_appearance(self, appearance):
+        light = appearance.get("light", False)
+        QApplication.instance().setStyleSheet(stylesheet(light))
+        self.board_view.theme = appearance.get("theme", "Classic")
+        self.board_view.set_piece_set(appearance.get("piece_set", "Cburnett"))
+        self.board_view.coordinates = appearance.get("coordinates", True)
+        self.board_view.animations = appearance.get("animations", True)
+        self.board_view.overlays = appearance.get("overlays", True)
+        self.graph.light = self.board_view.light = light
+        self.graph.update()
+        self.eval_bar.setVisible(self.board_view.overlays)
+        self._render_move_history()
+        for view in {self.pv_label, *(widgets[2] for widgets in self.candidates.rows.values())}:
+            view.set_moves(view._items, view._current, light=light)
+        self.board_view.update()
+
     def _apply_settings(self):
-        QApplication.instance().setStyleSheet(stylesheet(self.config.get("light", False)))
-        self.board_view.theme = self.config.get("theme", "Classic")
-        self.board_view.coordinates = self.config.get("coordinates", True)
-        self.board_view.animations = self.config.get("animations", True)
+        self._apply_appearance(self._appearance_config())
         self.tablebase_label.setVisible(bool(self.config.get("syzygy_path")))
-        self.board_view.overlays = self.config.get("overlays", True)
         self.board_view.smart_move = self.config.get("smart_move", True)
         self.board_view.candidate_style = self.config.get("candidate_style", "arrows")
         for key, action in self.marker_actions.items():
             action.setChecked(key == self.board_view.candidate_style)
-        self.graph.light = self.config.get("light", False)
-        self.board_view.light = self.config.get("light", False)
-        self.eval_bar.setVisible(self.board_view.overlays)
         for key, action in self.display_actions.items():
             action.setChecked(bool(self.config.get(key, False)))
         if not self._profile() and self.profiles:
             self.config["engine_id"] = self.profiles[0]["id"]
         self._refresh_engine_menus()
-        self._render_move_history()
-        move_views = {self.pv_label, *(widgets[2] for widgets in self.candidates.rows.values())}
-        for view in move_views:
-            view.set_moves(view._items, view._current, light=self.config.get("light", False))
-        self.board_view.update()
         self._update_players()
 
         self._sync_explorer()
@@ -1724,7 +1735,7 @@ class MainWindow(QMainWindow):
                 if isinstance(review, dict) and isinstance(review.get("label"), str):
                     text += " [" + review["label"] + "]"
             tokens.append((text, index))
-        self.analysis_history.set_moves(tokens, self.game.current_node, self.config.get("light", False))
+        self.analysis_history.set_moves(tokens, self.game.current_node, self._appearance_config().get("light", False))
 
     def _end_preview(self, source):
         if self._preview_source == source:
@@ -2356,13 +2367,19 @@ class MainWindow(QMainWindow):
 
     def _settings(self):
         dialog = SettingsDialog(self.config, self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        dialog.appearance_changed.connect(self._preview_appearance)
+        accepted = dialog.exec() == QDialog.DialogCode.Accepted
+        self._appearance_preview = None
+        if accepted:
             self._cancel_review()
             self._stop_engine()
             self.config.update(dialog.config())
             self._apply_settings()
             self._save()
             self._schedule_engine()
+        else:
+            self._apply_appearance(self.config)
+        dialog.deleteLater()
 
     def _analyze(self):
         if not self._profile():
@@ -2611,7 +2628,7 @@ class MainWindow(QMainWindow):
         if "score_type" in info:
             self._candidate_identity = self._position_identity()
             self.candidates.update_line(
-                info, job["turn"], self.config.get("light", False), self.config.get("details", False)
+                info, job["turn"], self._appearance_config().get("light", False), self.config.get("details", False)
             )
             if info.get("multipv", 1) != 1:
                 return

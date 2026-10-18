@@ -1,5 +1,6 @@
 """Compact native dialogs; each exposed setting has a real consumer."""
 
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -14,10 +15,13 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QSpinBox,
+    QScrollArea,
     QVBoxLayout,
+    QWidget,
 )
 
-from .theme import BOARD_THEMES
+from .board import BoardWidget
+from .theme import BOARD_THEMES, stylesheet
 
 
 class NewGameDialog(QDialog):
@@ -134,21 +138,45 @@ class NewGameDialog(QDialog):
 
 
 class SettingsDialog(QDialog):
+    appearance_changed = Signal(dict)
+
     def __init__(self, config: dict, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Studio settings")
-        self.setMinimumWidth(470)
+        self.setMinimumWidth(780)
+        self.resize(860, 620)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(26, 24, 26, 24)
         title = QLabel("Make yourself at home.")
         title.setObjectName("title")
         layout.addWidget(title)
-        form = QFormLayout()
+        content = QHBoxLayout()
+        preview_column = QVBoxLayout()
+        self.preview = BoardWidget()
+        self.preview.setAccessibleName("Appearance preview chessboard")
+        self.preview.setMinimumSize(260, 260)
+        self.preview.setMaximumWidth(330)
+        self.preview.interactive = False
+        if parent is not None and hasattr(parent, "game"):
+            self.preview.set_position(parent.game.board, parent.board_view.last_move)
+            self.preview.set_recommendations(parent.board_view.recommendations)
+        preview_column.addWidget(self.preview, 1)
+        caption = QLabel("Live preview · Save to keep your choices.\nCancel restores your previous appearance.")
+        caption.setWordWrap(True)
+        caption.setObjectName("muted")
+        preview_column.addWidget(caption)
+        content.addLayout(preview_column)
+        controls = QWidget()
+        form = QFormLayout(controls)
         form.setSpacing(14)
         self.theme = QComboBox()
         self.theme.addItems(BOARD_THEMES)
         self.theme.setCurrentText(config.get("theme", "Classic"))
         form.addRow("Board palette", self.theme)
+        self.pieces = QComboBox()
+        self.pieces.addItems(["Cburnett", "Original"])
+        self.pieces.setCurrentText(config.get("piece_set", "Cburnett"))
+        form.addRow("Piece style", self.pieces)
         self.checks = {}
         for key, label, default in (
             ("light", "Light appearance", False),
@@ -200,7 +228,13 @@ class SettingsDialog(QDialog):
         tb_row.addWidget(self.syzygy)
         tb_row.addWidget(tb_browse)
         form.addRow("Syzygy tablebases", tb_row)
-        layout.addLayout(form)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(controls)
+        content.addWidget(scroll, 1)
+        layout.addLayout(content, 1)
         note = QLabel(
             "Threads, Hash and other engine options are in Engine profiles.\nTime/depth/node limits apply to bounded analysis and game review."
         )
@@ -212,6 +246,25 @@ class SettingsDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+        self.theme.currentTextChanged.connect(self._preview_appearance)
+        self.pieces.currentTextChanged.connect(self._preview_appearance)
+        for check in self.checks.values():
+            check.toggled.connect(self._preview_appearance)
+        self._preview_appearance()
+
+    def appearance(self):
+        return {"theme": self.theme.currentText(), "piece_set": self.pieces.currentText(),
+                **{k: c.isChecked() for k, c in self.checks.items()}}
+
+    def _preview_appearance(self, *_):
+        appearance = self.appearance()
+        self.setStyleSheet(stylesheet(appearance["light"]))
+        self.preview.theme = appearance["theme"]
+        self.preview.set_piece_set(appearance["piece_set"])
+        for key in ("light", "coordinates", "animations", "overlays"):
+            setattr(self.preview, key, appearance[key])
+        self.preview.update()
+        self.appearance_changed.emit(appearance)
 
     def _browse(self):
         file, _ = QFileDialog.getOpenFileName(
@@ -229,8 +282,7 @@ class SettingsDialog(QDialog):
 
     def config(self):
         return {
-            "theme": self.theme.currentText(),
-            **{k: c.isChecked() for k, c in self.checks.items()},
+            **self.appearance(),
             "analysis_nodes": self.nodes.value(),
             "analysis_depth": self.depth.value(),
             "analysis_seconds": self.seconds.value(),

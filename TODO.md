@@ -1,5 +1,9 @@
 # Active roadmap
 
+0.5.7.5 (download 1) adds reversible live Studio appearance previews and an
+Original piece-style option. Native Windows build receipts are in PROGRESS.md
+and the corresponding versioned Actions run.
+
 Nocturne 0.5 changes direction to an external-UCI analysis GUI. Custom-engine
 milestones from 0.1–0.4 are historical; no further search development is planned.
 

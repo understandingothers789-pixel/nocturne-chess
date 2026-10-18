@@ -50,10 +50,9 @@ class BoardWidget(QWidget):
         self._anim_move: Move | None = None
         self._anim_progress = 0.0
         self._renderers = {}
-        for color in (1, -1):
-            for kind in range(1, 7):
-                file = ("w" if color == 1 else "b") + PIECE_CHARS[kind].lower() + ".svg"
-                self._renderers[color * kind] = QSvgRenderer(str(ASSETS / "pieces" / file), self)
+        self._renderer_sets = {}
+        self.piece_set = ""
+        self.set_piece_set("Cburnett")
         self._animation = QVariantAnimation(self)
         self._animation.setDuration(170)
         self._animation.setEasingCurve(QEasingCurve.Type.OutCubic)
@@ -62,6 +61,27 @@ class BoardWidget(QWidget):
         self._animation.valueChanged.connect(self._animate)
         self._animation.finished.connect(self._animation_finished)
         self.setAccessibleName("Chessboard")
+
+    def piece_directory(self):
+        directory = ASSETS / "pieces"
+        return directory / "original" if self.piece_set == "Original" else directory
+
+    def set_piece_set(self, name):
+        name = name if name in ("Cburnett", "Original") else "Cburnett"
+        if name == self.piece_set:
+            return
+        self.piece_set = name
+        if name in self._renderer_sets:
+            self._renderers = self._renderer_sets[name]
+            self.update()
+            return
+        renderers = {}
+        for color in (1, -1):
+            for kind in range(1, 7):
+                file = ("w" if color == 1 else "b") + PIECE_CHARS[kind].lower() + ".svg"
+                renderers[color * kind] = QSvgRenderer(str(self.piece_directory() / file), self)
+        self._renderer_sets[name] = self._renderers = renderers
+        self.update()
 
     def sizeHint(self):
         return QSize(690, 690)
@@ -349,7 +369,7 @@ class BoardWidget(QWidget):
                 if move.promotion:
                     kind = PIECE_CHARS[move.promotion].lower()
                     name = {"q": "Queen", "r": "Rook", "b": "Bishop", "n": "Knight"}[kind]
-                    action = menu.addAction(QIcon(str(ASSETS / "pieces" / f"{color}{kind}.svg")), name)
+                    action = menu.addAction(QIcon(str(self.piece_directory() / f"{color}{kind}.svg")), name)
                 else:
                     from ..core.notation import san
 
