@@ -644,6 +644,32 @@ class GuiTests(unittest.TestCase):
                 self.assertAlmostEqual(source.hsvSaturationF(), target.hsvSaturationF(), delta=0.005)
                 self.assertEqual(source.hsvHue(), target.hsvHue())
 
+    def test_compact_spacing_fits_eight_analysis_columns_and_tighter_history(self):
+        from nocturne.gui.moves import MoveText
+        analysis = MoveText(auto_fit=True, reserved_lines=3)
+        history = MoveText()
+        analysis.candidate_rank = 1
+        items = [(text, i + 1) for i, text in enumerate(
+            ("e4", "Qxe4", "O-O-O+", "Nf3", "Bxe5+", "Rae1", "d8=Q+", "Qh4xe1#"))]
+        for view in (analysis, history):
+            view.resize(800, 100)
+            view.set_moves(items)
+            view.show()
+        self.app.processEvents()
+        try:
+            self.assertEqual(analysis.document().begin().layout().lineCount(), 1)
+            first, last = (analysis.document().find(word) for word in ("e4", "Qh4xe1#"))
+            self.assertEqual(analysis.cursorRect(first).y(), analysis.cursorRect(last).y())
+            a_line = analysis.document().begin().layout().lineAt(0)
+            h_line = history.document().begin().layout().lineAt(0)
+            self.assertLess(h_line.naturalTextWidth(), a_line.naturalTextWidth())
+            self.assertLess(h_line.height(), a_line.height())
+            self.assertEqual(analysis._reserved_lines, 3)
+        finally:
+            for view in (analysis, history):
+                view.close()
+                view.deleteLater()
+
     def test_candidate_slots_have_equal_width_and_padded_hit_targets(self):
         self._three_pvs()
         view = self.window.candidates.rows[1][2]

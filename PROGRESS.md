@@ -2178,3 +2178,39 @@ README/CHANGELOG/TODO/PROGRESS. This graph change is a separate version-labelled
 commit after the exact-piece commit. User added compact move spacing while it
 was being completed; that is the next separate commit. No requested feature
 has been dropped. Windows physical display/trust checks remain manual.
+
+
+### 0.5.7.11 — Native metrics delivery verified
+
+Source `7932bd96be45168673df13f4140d3f26cfdf8c2e`, Windows run 39101814543,
+job 117599461444 succeeded. Both full native runs: **172 tests, 167 passed,
+5 optional skips**, 153.701s / 152.316s. Ruff passed twice and the gated build/
+frozen GUI checks passed. Artifact 12126029735, 56,219,724 bytes, expires
+2026-11-17; SHA-256
+`dbe690e8658fed08495284150cdd778fbe4f295cbfab16f3c9fee0ab16c23926`.
+Later cumulative commits include the additional piece/graph/spacing requests.
+
+## 2026-10-18 — 0.5.7.14: separate compact-spacing phase
+
+**Implemented:** `gui/moves.py` keeps 16px analysis text, reduces a short SAN's
+anchor from ten to nine monospace characters and inter-token separators from
+three to one. Nonbreaking padded slots remain equal width. Analysis leading is
+155% (previously 175%), with three consistently remeasured rows. Game history
+keeps 14px text and reduces leading to 140% with single spaces.
+`candidates.py` reduces outer PV row gaps. `window.py` reduces bottom-strip
+padding, navigation-button height and minimum/default strip height to 90px.
+
+**Executed:** four focused native Qt tests passed: eight short/long SAN columns
+fit in 800px, history is tighter than analysis; padded hit-area activation; stable
+three-row hover with queued updates; clicking the displayed frozen snapshot.
+Ruff passed. Both source offline/external-UCI smoke commands passed. Real Qt
+dark/light captures show labelled simulator/database/graph fixtures, not measured
+engine/live statistics. Full cumulative suite is running; native build pending.
+
+**Files:** move/candidate/window components, GUI tests, real Qt captures,
+version/build metadata, README/CHANGELOG/TODO/BUILDING/PROGRESS. This is another
+version-labelled feature commit after 0.5.7.13's graph change. No features from
+earlier requests were dropped; no signing or launcher changes.
+
+**Next:** complete full/native verification and deliver the newest cumulative
+Windows artifact. Physical Windows DPI/trackpad/trust checks remain manual.

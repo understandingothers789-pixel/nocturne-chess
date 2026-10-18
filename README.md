@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.13
+# Nocturne Analysis · 0.5.7.14
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -6,12 +6,22 @@ Stockfish or another UCI executable. **The desktop app has no built-in engine.**
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
-![Real Qt application, using explicitly labelled simulated UCI test data](docs/nibbler-pieces-dark.png)
+![Real Qt application, using explicitly labelled simulated UCI test data](docs/compact-studio-dark.png)
 
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
+
+**0.5.7.14: denser move spacing.** Game history uses single spaces and tighter
+line/panel spacing. Analysis keeps its text size and padded equal-width SAN
+slots, with smaller gaps and modestly tighter rows—eight columns fit at 800px.
+Three fixed PV rows, hover snapshots, colors and wheel navigation remain.
+[Compact light appearance](docs/compact-studio-light.png).
+
+This cumulative build includes the exact Nibbler pieces, blue API metrics,
+10% last-move shading and dotted/compressed graph from separate commits.
+Windows 0.5.7.14 validation/build pending; prior verified downloads remain below.
 
 **0.5.7.13: evaluation graph reference guides.** Dotted +1.00/−1.00 lines mark
 one-pawn advantages, with a subtle equality baseline and labelled scale. Near

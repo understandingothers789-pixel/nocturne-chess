@@ -110,12 +110,12 @@ class MoveText(QTextBrowser):
                      if index == current else f"color: {move_color};")
             # Keep SAN slots identical across candidates and updates. Nonbreaking
             # padding belongs to the anchor, so the whole slot is interactive.
-            label = ("\u00a0" + text + "\u00a0" * max(1, 9 - len(text))
+            label = ("\u00a0" + text + "\u00a0" * max(1, 8 - len(text))
                      if self.candidate_rank is not None else text)
             tokens.append(f'<a href="move:{index}" style="{style} text-decoration:none;">{escape(label)}</a>')
-        size, spacing = (16, 175) if self._auto_fit else (14, 160)
+        size, spacing = (16, 155) if self._auto_fit else (14, 140)
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'
-                     + " &nbsp; ".join(tokens) + "</div>")
+                     + " ".join(tokens) + "</div>")
 
     def _move_at(self, point):
         """Include the padding above and below each candidate anchor."""
@@ -202,7 +202,7 @@ class MoveText(QTextBrowser):
                 if not self._reserved_measurement or self._reserved_measurement[0] != key:
                     probe = QTextDocument()
                     probe.setDocumentMargin(self.document().documentMargin())
-                    probe.setHtml('<div style="font-family:Consolas,monospace; font-size:16px; line-height:175%;">'
+                    probe.setHtml('<div style="font-family:Consolas,monospace; font-size:16px; line-height:155%;">'
                                   + '<br/>'.join(['Hg'] * self._reserved_lines) + '</div>')
                     probe.size()  # Force Qt to lay out the three sample lines.
                     layout = probe.begin().layout()

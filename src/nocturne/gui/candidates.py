@@ -84,7 +84,7 @@ class CandidatePanel(QWidget):
     def _make_row(self, rank):
         frame = QWidget()
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(0, 8, 0, 12)
+        layout.setContentsMargins(0, 5, 0, 8)
         layout.setSpacing(2)
         header = QLabel("Waiting for engine")
         header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)

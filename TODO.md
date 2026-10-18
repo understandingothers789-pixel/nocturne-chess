@@ -1,5 +1,9 @@
 # Active roadmap
 
+0.5.7.14 compacts game/history spacing most, with narrower equal analysis slots
+and comfortable leading. Four focused layout/hover/click checks passed; full
+cumulative validation/native packaging pending. Prior requests remain included.
+
 0.5.7.13 adds dotted ±1-pawn chart guides and a symmetric compressed scale.
 Two focused graph tests and Ruff passed; cumulative full/native checks pending.
 User requested tighter spacing next; it will be a separate labelled commit.

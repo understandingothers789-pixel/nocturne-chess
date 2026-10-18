@@ -493,10 +493,10 @@ class MainWindow(QMainWindow):
         self.workspace_splitter.addWidget(splitter)
         self.analysis_moves_panel = QFrame()
         self.analysis_moves_panel.setObjectName("panel")
-        self.analysis_moves_panel.setMinimumHeight(110)
+        self.analysis_moves_panel.setMinimumHeight(90)
         history_layout = QVBoxLayout(self.analysis_moves_panel)
-        history_layout.setContentsMargins(14, 8, 14, 8)
-        history_layout.setSpacing(4)
+        history_layout.setContentsMargins(10, 5, 10, 5)
+        history_layout.setSpacing(2)
         history_tools = QHBoxLayout()
         history_tools.addWidget(label("GAME MOVES", "eyebrow"))
         history_tools.addStretch()
@@ -506,11 +506,14 @@ class MainWindow(QMainWindow):
             ("›", self._redo),
             ("›|", lambda: self._navigate(len(self.game.moves))),
         ):
-            history_tools.addWidget(button(text, callback, "quiet"))
+            control = button(text, callback, "quiet")
+            control.setFixedHeight(22)
+            control.setStyleSheet("padding: 1px 8px;")
+            history_tools.addWidget(control)
         history_layout.addLayout(history_tools)
         self.analysis_history = MoveText()
         self.analysis_history.setAccessibleName("Analysis game moves")
-        self.analysis_history.setMinimumHeight(45)
+        self.analysis_history.setMinimumHeight(36)
         self.analysis_history.move_hovered.connect(self._preview_history)
         self.analysis_history.move_clicked.connect(self._navigate_node)
         self.analysis_history.wheel_navigated.connect(self._wheel_game)
@@ -1786,7 +1789,7 @@ class MainWindow(QMainWindow):
         if analysis:
             self.tabs.setCurrentIndex(1)
             self.main_splitter.setSizes([1020, 780] if left else [780, 1020])
-            self.workspace_splitter.setSizes([800, 110])
+            self.workspace_splitter.setSizes([800, 90])
         else:
             self.main_splitter.setSizes([720, 350])
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7.14 — Compact game history and comfortable analysis spacing
+
+- Reduce SAN slot width and inter-move gaps to fit eight analysis columns at 800px.
+- Retain text sizes, padded click areas and three reserved PV rows with tighter leading.
+- Make game history the densest section; reduce its panel padding and navigation height.
+- Preserve hover snapshots, queued candidate clicks, colors and wheel behavior.
+
 ## 0.5.7.13 — Dotted evaluation guides and compressed graph scale
 
 - Add labelled dotted ±1.00-pawn guides and a subtle equality baseline.
