@@ -1,8 +1,9 @@
 # Distribution notices · Nocturne Analysis 0.5
 
 The combined analysis application is distributed under GPL-3.0-or-later (COPYING)
-because of its runtime python-chess dependency. Original Nocturne code and SVG
-pieces/icon retain their MIT license grant (LICENSE). No Nibbler implementation
+because of its runtime python-chess dependency. Original Nocturne code and application
+icon retain their MIT license grant (LICENSE). The bundled Cburnett pieces are
+GPL-2.0-or-later, credited separately below. No Nibbler implementation
 or assets, and no Stockfish executable/neural network/table files are bundled.
 
 ## Runtime
@@ -64,6 +65,19 @@ disabled. Service results are kept separate from local engine evaluations.
 
 The independent Python review implementation uses numerical score/accuracy curves
 published by Lichess, with Nocturne-specific aggregation, classifications and
-same-root search comparisons. No Lichess server/Scala code or assets are bundled.
+same-root search comparisons. No Lichess server/Scala code is bundled.
 The estimates differ from Lichess game accuracy and are not endorsed by Lichess.
 Method and upstream references: docs/REVIEW.md.
+
+
+### Cburnett chess pieces from Lichess
+
+All twelve SVG pieces are the exact Cburnett set by Colin M. L. Burnett, licensed
+GPL-2.0-or-later. Source files are unchanged; filenames are normalized to lowercase.
+Pinned upstream source:
+https://github.com/lichess-org/lila/tree/cd2656d2787a766ba743da8da1dd3b24975e6329/public/piece/cburnett
+The upstream COPYING.md exceptions table credits Colin M.L. Burnett and GPLv2+.
+Retain licenses/CBURNETT-NOTICE.txt and
+licenses/CBURNETT-GPL-2.0-or-later.txt, which accompany the native app, wheel and
+source archive. The SVGs themselves are the preferred modifiable artwork source.
+No Chess.com or Nibbler artwork is included; no Lichess endorsement is implied.

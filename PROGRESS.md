@@ -1562,3 +1562,51 @@ Only docs follow the passing native commit. The optional API check again returne
 is not claimed. User-machine Smart App Control acceptance, manual DPI and actual
 engine interaction remain unverified. This patch restores the requested baseline;
 it is not claimed to resolve or bypass the unconfirmed Windows trust decision.
+
+
+## 2026-10-18 — 0.5.7.2 piece artwork only
+
+User confirms 0.5.7.1 works and requests adding only the different pieces.
+Verified the complete local tracked manifest matches confirmed working GitHub
+commit 40f185ec20e2acd5dbcb464c7d0e848dfbbd800d before editing. Replaced only the
+12 assets/pieces/*.svg files with the exact Lichess Cburnett sources at lila
+commit cd2656d2787a766ba743da8da1dd3b24975e6329. All twelve local Git blob hashes
+match that pinned upstream directory; only filename case is normalized. GPLv2+
+art by Colin M. L. Burnett is compatible with this GPL-3.0-or-later distribution.
+Added licenses/CBURNETT-GPL-2.0-or-later.txt and CBURNETT-NOTICE.txt and corrected
+THIRD_PARTY_NOTICES.md. Using .txt for credits lets existing wheel/source license
+patterns collect them, so no packaging-pattern/specification change is needed.
+
+Versioned 0.5.7.2 in pyproject, __init__, Windows version strings and artifact
+paths. All GUI/rules/engine/controller/test/settings code, piece sizing, clock
+UI, three-line MultiPV behavior, build script, PyInstaller spec, MANIFEST and
+requirements remain byte-identical to working 0.5.7.1. No tooltip, launcher,
+clock option, dependency or signing change. No new test mirrors the asset swap;
+existing GUI coverage includes drag/click/animation/promotion and PV behavior.
+
+Ruff passed. Both python -m nocturne --smoke-test commands exited 0 (offline and
+external UCI using the local protocol fixture, including two-move Game Review).
+Executed a real Qt renderer/icon check: all twelve QSvgRenderers are valid,
+produce nontransparent pixels and provide non-null promotion QIcon pixmaps.
+Captured/visually inspected dark 1920×1040, compact 1024×660 and light 1440×1040
+actual Qt windows. Pieces are clear at the existing size; rendering code stays
+unchanged. Simulator scores are explicitly labelled. Updated docs previews,
+README, CHANGELOG and TODO. Focused GUI suite is running; next is archive/license
+verification and native Windows full tests/build before changing the download.
+
+
+Focused command completed:
+QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests -p test_gui.py -q
+39 tests passed in 34.387s, no failures. This asset-only patch does not require
+re-running unrelated local engine suites; the unchanged Windows workflow runs
+full discovery twice before packaging. Both actual app smoke commands exited 0.
+
+
+Archive checks completed: scripts/package_source.py and pip wheel --no-deps
+--no-build-isolation both succeeded. Both archives pass ZIP integrity checks,
+include GPL and author-credit texts plus all twelve byte-identical pinned SVGs,
+and contain no EXE/batch/PowerShell launcher. Wheel SHA-256:
+9ad6c8ca1253e8d516dcef35cfc911b04d55351e2aed815b99b3606c04573269.
+Rechecked source diff: all 63 Python files except version-only __init__.py are
+byte-identical to working 0.5.7.1; spec, MANIFEST and all requirements also match.
+Next: publish the asset-only update and execute native Windows validation.

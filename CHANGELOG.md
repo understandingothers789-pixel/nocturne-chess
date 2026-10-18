@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.2 — Cburnett pieces on the working 0.5.7.1 base
+
+- Replace the twelve original SVGs with the exact Lichess Cburnett set by Colin
+  M. L. Burnett, with GPL-2.0-or-later license text, credits and pinned source.
+- Keep all board rendering, sizing, drag/promotion logic, clocks, fixed three-line
+  MultiPV slots and dependencies unchanged. No runtime feature code is modified.
+- Include the artwork's notices through existing native/wheel/source collection.
+
 ## 0.5.7.1 — 0.5.7 baseline with stable three-line MultiPV
 
 - Restore the original 0.5.7 pieces, clock display, dependencies and packaging.

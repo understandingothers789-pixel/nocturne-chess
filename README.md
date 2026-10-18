@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.1
+# Nocturne Analysis · 0.5.7.2
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -13,12 +13,15 @@ analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
 
-**0.5.7.1 is based on 0.5.7 and adds only stable, three-line MultiPV slots.**
-It restores 0.5.7's original pieces and clock display, dependencies and packaging.
-The former 0.5.8 piece/clock changes are excluded. The patch
-and original 0.5.7 downloads are both linked below. A rebuilt
-unsigned executable can still receive a different Windows trust decision;
-Smart App Control acceptance on the user's computer has not been verified.
+**0.5.7.2 adds only the piece artwork to the working 0.5.7.1 version.**
+The board now uses the exact Lichess Cburnett SVG set by Colin M. L. Burnett,
+licensed GPL-2.0-or-later. The same assets appear on the board, during dragging/
+animation and in promotion choices. Existing piece sizing, clocks, three-line
+MultiPV slots, engine settings and build dependencies are unchanged. Artwork
+source/credits are in [third-party notices](THIRD_PARTY_NOTICES.md).
+The working 0.5.7.1 download remains linked until 0.5.7.2's native validation
+finishes. These are unsigned developer builds; acceptance by the user's Windows
+configuration must still be checked on their computer.
 
 [Download the tested, unsigned Windows 0.5.7.1 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39088586425/artifacts/12121976207) (GitHub sign-in required).
 

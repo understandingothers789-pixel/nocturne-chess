@@ -55,3 +55,10 @@ passed twice: 148 passed, 5 optional skips each; packaged GUI/UCI/Game Review
 checks passed. The 0.5.7.1 Windows download is verified against the tested commit. Confirm the rebuilt
 patch opens on the user's Windows configuration; prior 0.5.7 acceptance does
 not establish the new executable's trust status. No 0.5.8 pieces/clock UI remain.
+
+
+0.5.7.2 adds only exact licensed Lichess Cburnett piece artwork to the user-
+confirmed working 0.5.7.1 base. All GUI behavior/sizing/clocks/PV code and build
+rules stay unchanged. Source hashes and real Qt SVG/promotion icons verified;
+lint and both app launch checks passed. Focused GUI/native Windows validation
+and packaged license checks are next. User desktop trust/DPI remains to verify.
