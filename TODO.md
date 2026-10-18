@@ -1,7 +1,10 @@
 # Active roadmap
 
 0.5.7.9 adds padded equal-width analysis move slots and a persistent Dev option
-to expand PVs beyond three rows. Native Windows validation/build pending.
+to expand PVs beyond three rows. Native Windows validation/build passed:
+160 passed/5 optional skips twice, Ruff twice, both frozen launch checks.
+Local full suite: 154 passed/11 skips (six sandbox network-server skips).
+User-machine Windows trust and high-DPI appearance remain manual checks.
 
 0.5.7.8 removes analysis-panel rank badges and rank coloring, with subtle side-to-
 move text tints. Board overlays retain the approved appearance.

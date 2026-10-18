@@ -6,7 +6,7 @@ Stockfish or another UCI executable. **The desktop app has no built-in engine.**
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
-![Real Qt application, using explicitly labelled simulated UCI test data](docs/subtle-analysis-dark.png)
+![Real Qt application, using explicitly labelled simulated UCI test data](docs/aligned-analysis.png)
 
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application.*
@@ -19,7 +19,12 @@ rows remain the default. **Dev → Expand analysis beyond three rows** lets each
 candidate grow to show its entire engine line; this preference is remembered.
 Board markers and subtle White/Black text colors are unchanged.
 
-Windows 0.5.7.9 validation/build is pending. The verified prior build is below.
+[Download Windows 0.5.7.9](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39100427444/artifacts/12126700388).
+Extract All, then open **Nocturne/Nocturne.exe**. Both native suites passed
+160 tests with 5 optional skips; Ruff and both frozen launch checks passed.
+[Expanded-layout capture](docs/expanded-analysis.png).
+
+The verified prior build is below.
 
 **0.5.7.8: quieter analysis text.** The analysis panel has no numbered badges or
 rank colors. Headings are neutral gray, and White/Black move text differs only

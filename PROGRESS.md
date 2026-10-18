@@ -1957,7 +1957,10 @@ test failed because its separate offscreen top-level window did not receive
 mouse moves; switched to the actual application analysis widget. The equal-slot
 width/padded click test, full-PV expansion test, and fixed-slot hover stability
 test then each passed. Ruff and both offline/external-UCI source smoke commands
-passed. Full local suite and native Windows packaging are pending.
+passed. Full local suite: **165 run, 154 passed, 11 skipped**, no failures,
+118.846s (`QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover
+-s tests -q`). Six HTTP-server tests skip under sandbox socket restrictions;
+five optional tests also skip. Native Windows packaging is pending.
 
 **Files:** move/candidate/window/settings components, GUI/settings tests, preview
 capture helper and real Qt screenshots, version/build metadata, README, changelog,
@@ -1966,3 +1969,31 @@ roadmap and this log. No launcher scripts or signing-policy changes.
 **Next:** finish full validation and native Windows build, record the exact test
 results and artifact, then deliver its download. Actual Windows trust decisions
 and high-DPI appearance still require user-machine verification.
+
+
+### 0.5.7.9 — Native Windows delivery verified
+
+**Published:** `439b2dc0ccf6a1c97f7e1dbbb32fa2d5b351859d`, run 39100427444,
+job 117595398583, overall success. Native `python -m unittest discover -s tests
+-v` and the build's second full discovery each ran **165 tests: 160 passed,
+5 optional skips**, in 74.675s and 82.054s. Ruff passed twice. The Python Windows
+builder completed PyInstaller and both gated packaged launch checks, including
+external-UCI/Game Review. No test failures. New integration checks cover equal
+SAN widths, padded hover/click activation, full final-PV visibility, preference
+storage and reverting to stable three-row slots.
+
+**Artifact:** [Nocturne-0.5.7.9-Windows-x64-unsigned](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39100427444/artifacts/12126700388),
+ID 12126700388, 55,631,228 bytes, expires 2026-11-17. SHA-256:
+`5d5ed7b16311c46faae08e2e92afe923a29e481a780c51bd356c38e9fed1c3d0`.
+Source ZIP integrity check passed, all 24 piece SVGs present, no `.bat`, `.cmd`
+or `.ps1` launchers. Real Qt fixed/expanded captures are in `docs/`.
+
+**Remaining limits:** unsigned executable trust and physical Windows high-DPI
+appearance require user-machine checks. Expanded mode intentionally allows rows
+to change height as PV lengths change; fixed mode remains the default. Live
+ChessDB returned 29 legal moves; authenticated Lichess data was not verified
+without a user token. No engine, board marker, launcher or signing-policy changes.
+
+**Completed:** requested display phase and Windows delivery. README, BUILDING,
+TODO and this log now record actual results; application code is unchanged
+after the successful build. Next: user feedback on target sizes and spacing.

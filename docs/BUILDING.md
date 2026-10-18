@@ -1,6 +1,16 @@
 # Windows 11 desktop builds · 0.5.7.9
 
-[Download Windows 0.5.7.9](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39099441736/artifacts/12124934909).
+[Download Windows 0.5.7.9](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39100427444/artifacts/12126700388). Extract All and open **Nocturne/Nocturne.exe**.
+This build adds equal-width padded SAN targets and Dev → Expand analysis beyond
+three rows. Source `439b2dc0ccf6a1c97f7e1dbbb32fa2d5b351859d` passed run
+39100427444/job 117595398583: both native suites ran 165 tests, **160 passed /
+5 optional skips**, in 74.675s and 82.054s. Ruff passed twice, PyInstaller and
+both frozen launch checks passed. Artifact 12126700388: 55,631,228 bytes,
+retained until 2026-11-17. SHA-256:
+`5d5ed7b16311c46faae08e2e92afe923a29e481a780c51bd356c38e9fed1c3d0`.
+Only documentation changed after this tested application commit.
+
+[Previous Windows 0.5.7.8 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39099441736/artifacts/12124934909).
 This version removes analysis-panel badges/rank colors and softens White/Black
 text tints, preserving the approved board renderer exactly. Source commit
 6e12832ff813f74c4946d0cb018e04e6c698fbf8 passed Windows run 39099441736/job
