@@ -1304,3 +1304,33 @@ Reviewed final dark/light/compact Qt captures. Published method/limitations in
 docs/REVIEW.md; documented UI use and synthetic screenshot labelling in README.
 Next: publish the source and run Windows CI/PyInstaller and frozen review smoke
 checks. Prior verified Windows link remains until the 0.5.7 artifact is verified.
+
+
+## 2026-10-18 — 0.5.7 Windows Game Review delivery verified
+
+Application commit b00711c9f41c67362d1afab3f176e9a6f81dad1e passed Windows run
+39081231579/job 117538394042. Full unittest discovery ran twice: 151 total each,
+146 passed and 5 optional skips, in 102.826s and 113.005s. New Game Review grading,
+filter/navigation, pause/resume, wrong-target/bound rejection, Black/FEN numbering,
+partial coverage, malformed legacy export and branch-preserving navigation tests
+passed on Windows. All six HTTP tests executed. Ruff passed twice. PyInstaller
+built the windowed GUI. Both frozen smoke commands passed, including a full
+two-move external-UCI Game Review with complete graded coverage through the
+packaged UI/controller, alongside saved-study/PGN/explorer checks. No test failures.
+The optional API probe returned 29 legal ChessDB moves; Lichess required a token,
+so authenticated Lichess data is not claimed.
+
+Verified artifact 12118044851: Nocturne-0.5.7-Windows-x64-unsigned from the tested
+commit, 54,467,609 bytes, retained until 2026-11-17. SHA-256:
+16fc6f5fe3097f9f7f6f88241041ca8601d5f08724c0fa298b4cba88ee4143d2.
+Download: https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39081231579/artifacts/12118044851
+
+README, BUILDING and TODO now link the verified package and record completed
+checks. Source ZIP/wheel built locally and passed archive integrity checks; source
+has no EXE/batch/PowerShell launcher. Refreshed source/checksums after final docs.
+Only documentation follows the passing native package; application code is
+unchanged. Game Review is opt-in under Analysis; normal PV analysis retains its
+space. Actual Stockfish quality calibration, manual Windows/DPI interactions and
+large-tree profiling remain open. Percentages are Nocturne estimates, not official
+Chess.com/Lichess scores or evidence of engine strength. Next is user desktop
+verification with the installed engine and adequate review budgets.

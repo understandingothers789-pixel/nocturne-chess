@@ -1,19 +1,19 @@
-# Windows 11 desktop builds · 0.5.6
+# Windows 11 desktop builds · 0.5.7
 
-[Download the verified 0.5.6 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39076887941/artifacts/12116669238).
+[Download the verified 0.5.7 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39081231579/artifacts/12118044851).
 
-Alternatively, select the successful **Nocturne-0.5.6-Windows-x64-unsigned** artifact from
+Alternatively, select the successful **Nocturne-0.5.7-Windows-x64-unsigned** artifact from
 [Windows Actions](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
 Sign into GitHub, download, Extract All, then open **Nocturne/Nocturne.exe**.
 Keep the full folder. No Python, compiler or batch launcher is needed to play/analyze.
 You select your own Stockfish executable from the Engine menu.
 
-Windows run 39076887941 succeeded for GUI commit e59980a326306e05080b1a8a55d3255b3e5f3a4c.
-Both test runs passed 137 tests with 5 skips (68.116s / 67.472s). Ruff,
-PyInstaller and both packaged explorer/study/save/UCI smoke checks passed.
+Windows run 39081231579 succeeded for GUI commit b00711c9f41c67362d1afab3f176e9a6f81dad1e.
+Both test runs passed 146 tests with 5 skips (102.826s / 113.005s). Ruff,
+PyInstaller and both packaged explorer/study/save/UCI/Game Review smoke checks passed.
 All six loopback HTTP tests ran on native Windows. The unsigned artifact is
-53,978,903 bytes, retained until 2026-11-16. SHA-256:
-`bd6912922b667292c14cfacef6069de7d1cc058ea195c8cfcd94b4fa941b46c4`.
+54,467,609 bytes, retained until 2026-11-17. SHA-256:
+`16fc6f5fe3097f9f7f6f88241041ca8601d5f08724c0fa298b4cba88ee4143d2`.
 
 Live authenticated Lichess data requires a user session token. Separate live
 connectivity checks distinguish protected responses from actual returned data;
@@ -33,7 +33,8 @@ py -3.12 scripts/build_windows.py --build-only
 The Python build creates `.venv-build`, installs pinned runtime/build/validation
 dependencies, installs the project, runs Ruff and full unittest discovery,
 renders the icon, runs PyInstaller and launches the packaged app for smoke checks.
-A second smoke connects the packaged GUI to the development-only protocol fixture
+A second smoke connects the packaged GUI, completes a two-move Game Review and
+checks full accuracy coverage using the development-only protocol fixture
 using the build environment's Python. Neither that interpreter nor the fixture
 is a bundled chess engine. A failing check stops the build. The source ZIP includes
 the installed python-chess Python source and notices.
@@ -41,7 +42,7 @@ the installed python-chess Python source and notices.
 Outputs:
 
 - `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
-- `dist/Nocturne-0.5.6-source.zip`: source, tests, documentation, rules-library source.
+- `dist/Nocturne-0.5.7-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI
 executable/native table reader are not part of this distribution. Source installation
