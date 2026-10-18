@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.7 — Optional Game Review and accuracy estimates
+
+- Add Analysis → Game Review and a button above PVs, with White/Black/overall
+  accuracy estimates, six move-quality counts, review progress and error filtering.
+- Click results for board navigation and engine evidence; return to the previous
+  position without changing the selected branch or restarting halted analysis.
+- Grade exact same-root best/played comparisons using published score curves and
+  explicit loss bands. Exclude missing, stale, bound, legacy or wrong-move evidence.
+- Keep partial coverage explicit; persist results and export labelled PGN comments.
+  No official Chess.com/Lichess score, brilliant/book label or strength claim.
+- Preserve pause/resume/cancel; harden legacy review export and freeze review limits.
+- Extend frozen executable smoke checks to run an actual external-UCI review.
+
 ## 0.5.6 — Backspace deletes the current analysis line
 
 - Add Tree → Delete current line with plain Backspace. Delete the selected move

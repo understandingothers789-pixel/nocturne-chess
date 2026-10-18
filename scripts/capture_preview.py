@@ -21,6 +21,7 @@ def main():
     parser.add_argument("--engine", type=Path)
     parser.add_argument("--light", action="store_true")
     parser.add_argument("--lines", action="store_true")
+    parser.add_argument("--review", action="store_true", help="Game Review with explicitly labelled test scores")
     parser.add_argument("--explorer-fixture", action="store_true", help="Clearly labelled cached test statistics; no network")
     parser.add_argument("--chessdb-fixture", action="store_true", help="Clearly labelled cached ChessDB test scores; no network")
     parser.add_argument("--pgn", action="store_true")
@@ -47,6 +48,8 @@ def main():
         window.game = Game.from_pgn(
             '[Event "Italian Game study"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bc4 {Develop toward the center.} (3.Nc3 Nf6) Bc5 4.c3 *'
         )
+        if args.review:
+            window.game = Game.from_pgn("1.e3 e5 2.Nf3 Nc6 3.Bc4 Nf6 *")
         if args.explorer_fixture or args.chessdb_fixture:
             from nocturne.explorer import ExplorerQuery
             source = "chessdb" if args.chessdb_fixture else "lichess"
@@ -79,7 +82,7 @@ def main():
                 {
                     "id": "capture",
                     "path": sys.executable,
-                    "arguments": [str(fixture)],
+                    "arguments": [str(fixture)] + (["review-grades"] if args.review else []),
                     "name": "UCI transport simulator · test data",
                     "label": "UCI simulator · test data",
                     "values": {},
@@ -91,10 +94,14 @@ def main():
         window.tabs.setCurrentIndex(2 if args.pgn else 1)
         window.resize(args.width, args.height)
         window.show()
+        if args.review and window.profiles:
+            window._show_review()
+            window._begin_review(0.1)
         deadline = time.monotonic() + 12
 
         def capture():
-            if window.profiles and not window.candidates.lines and time.monotonic() < deadline:
+            pending = window._review is not None if args.review else not window.candidates.lines
+            if window.profiles and pending and time.monotonic() < deadline:
                 QTimer.singleShot(100, capture)
                 return
             actual_fen = window.game.board.fen()
@@ -102,6 +109,8 @@ def main():
                 window._preview_history(args.preview_ply)
             if args.explorer_fixture or args.chessdb_fixture:
                 window.explorer.status_label.setText("Cached · test data (not live database results)")
+            if args.review and args.simulate:
+                window.review_panel.status.setText("Review complete · UCI simulator test scores, not measured chess analysis")
             assert window.game.board.fen() == actual_fen
             args.output.parent.mkdir(parents=True, exist_ok=True)
             if not window.grab().save(str(args.output)):

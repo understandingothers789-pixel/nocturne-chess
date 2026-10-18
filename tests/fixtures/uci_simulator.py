@@ -32,8 +32,10 @@ def search(position, command, event):
     moves = list(position.legal_moves)
     prefer = ["e2e4", "d2d4", "g1f3"]
     moves.sort(key=lambda m: prefer.index(m.uci()) if m.uci() in prefer else 100)
+    if mode == "review-grades" and position.ply() == 2:
+        moves.sort(key=lambda m: m.uci() != "g1f3")
     tokens = command.split()
-    if "searchmoves" in tokens:
+    if "searchmoves" in tokens and mode != "ignore-searchmoves":
         allowed = tokens[tokens.index("searchmoves") + 1 :]
         moves = [m for m in moves if m.uci() in allowed]
     for depth in range(1, 5):
@@ -45,6 +47,9 @@ def search(position, command, event):
             reply = next(iter(child.legal_moves), None)
             pv = move.uci() + (" " + reply.uci() if reply else "")
             score = "mate -3 upperbound" if mode == "bounds" else f"cp {35 - (rank - 1) * 20}"
+            if mode == "review-grades":
+                value = [-600, 100, 150, 0, 140, 120][position.ply() % 6] if "searchmoves" in tokens else 150
+                score = f"cp {value}"
             send(
                 f"info depth {depth} seldepth {depth + 3} time {depth * 5} nodes {depth * 100} nps 20000 score {score} wdl 400 500 100 multipv {rank} pv {pv}"
             )

@@ -143,6 +143,20 @@ class GuiTests(unittest.TestCase):
         window._refresh()
         self.assertFalse(window.delete_line_action.isEnabled())
 
+    def test_review_navigation_preserves_selected_variation_and_halted_state(self):
+        self._analysis_game("1.e4 e5 (1...c5 2.Nf3) 2.Bc4 *")
+        window = self.window
+        parent = next(i for i, n in enumerate(window.game.nodes) if n.san == "c5")
+        window.game.select_node(window.game.nodes[parent].children[0])
+        selected = window.game._line_nodes.copy()
+        window._show_review()
+        window._review_navigate(parent)
+        self.assertEqual(window.game._line_nodes, selected)
+        self.assertEqual(window.game.cursor, 2)
+        window._review_navigate(0)
+        self.assertEqual(window.game._line_nodes, selected)
+        self.assertFalse(window._analysis_enabled)
+
     def test_click_move_updates_model_board_and_san_history(self):
         self._click("e2")
         self.assertEqual(self.window.board_view.selected, parse_square("e2"))

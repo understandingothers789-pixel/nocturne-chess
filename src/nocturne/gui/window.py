@@ -55,6 +55,8 @@ from .engine import EngineController
 from .engine_manager import EngineManager
 from .engine_resources import EngineResources, validate_resource
 from .candidates import CandidatePanel
+from .review_panel import ReviewPanel
+from ..review import classify, chance
 from .explorer_panel import OpeningExplorer
 from ..explorer import RATINGS, SPEEDS
 from .moves import MoveText
@@ -348,6 +350,7 @@ class MainWindow(QMainWindow):
         self.eval_label.setStyleSheet("font-size: 20px; font-weight: 600;")
         headline = QHBoxLayout()
         headline.addWidget(self.engine_state, 1)
+        headline.addWidget(button("Game Review", self._show_review, "quiet"))
         headline.addWidget(self.eval_label)
         engine_page_layout.addLayout(headline)
         self.telemetry = label("Offline analysis · engine supplied by you", "muted", True)
@@ -419,6 +422,15 @@ class MainWindow(QMainWindow):
         pgn_actions.addWidget(self.load_pgn_button)
         pgn_layout.addLayout(pgn_actions)
         self.tabs.addTab(pgn_page, "PGN")
+        self.review_panel = ReviewPanel()
+        self.review_panel.seconds.setValue(self.config.get("review_seconds", 3))
+        self.review_panel.run_requested.connect(self._begin_review)
+        self.review_panel.pause_requested.connect(self._pause_review)
+        self.review_panel.cancel_requested.connect(self._cancel_review)
+        self.review_panel.move_requested.connect(self._review_navigate)
+        self.review_panel.before_requested.connect(self._review_navigate)
+        self.review_panel.back_requested.connect(lambda: self.tabs.setCurrentIndex(1))
+        self.tabs.addTab(self.review_panel, "Game Review")
         self._pgn_game_id = None
         side.addWidget(self.tabs, 1)
         self.pause_button = button("Pause", self._pause)
@@ -553,6 +565,8 @@ class MainWindow(QMainWindow):
         add(tree, "Edit comment / annotations…", self._edit_annotation, "Ctrl+M")
 
         analysis = self.menuBar().addMenu("&Analysis")
+        add(analysis, "Game Review…", self._show_review)
+        analysis.addSeparator()
         add(analysis, "Go", self._start_analysis, "Ctrl+G")
         add(analysis, "Halt", self._halt_analysis, "Ctrl+H")
         add(analysis, "Analyze entire line…", self._analyze_game, "F12")
@@ -1102,6 +1116,29 @@ class MainWindow(QMainWindow):
         update("")
         dialog.exec()
 
+    def _show_review(self):
+        if not self.analysis_mode:
+            self._workspace(True)
+        self.tabs.setCurrentWidget(self.review_panel)
+        self._update_review_panel()
+
+    def _update_review_panel(self):
+        if hasattr(self, "review_panel") and self.tabs.currentWidget() is self.review_panel:
+            self.review_panel.update_game(self.game, self._review, self._profile(), self.config.get("light", False))
+
+    def _review_navigate(self, node_id):
+        # Review navigation must not turn halted analysis back on.
+        if not 0 <= node_id < len(self.game.nodes):
+            return
+        self._stop_engine()
+        self._analysis_enabled = False
+        if node_id in self.game._line_nodes:
+            self.game.navigate(self.game._line_nodes.index(node_id))
+        else:
+            self.game.select_node(node_id)
+        self._refresh()
+        self._save()
+
     def _analyze_game(self):
         from PySide6.QtWidgets import QInputDialog
 
@@ -1112,16 +1149,28 @@ class MainWindow(QMainWindow):
             self,
             "Analyze entire line",
             "Seconds per position / targeted move",
-            self.config.get("analysis_seconds", 3),
+            self.config.get("review_seconds", 3),
             0.05,
             600,
             2,
         )
         if not ok:
             return
+        self._show_review()
+        self._begin_review(seconds)
+
+    def _begin_review(self, seconds):
+        if not self._profile():
+            self._manage_engines()
+            self._update_review_panel()
+            return
+        if len(self.game._line_nodes) < 2:
+            return
         self._cancel_review()
         self._stop_engine()
         self._analysis_enabled = False
+        self.config["review_seconds"] = seconds
+        self.review_panel.seconds.setValue(seconds)
         # Freeze the line and node identities; the displayed position is free to move.
         self.game._sync_tree_state()
         self._review = {
@@ -1133,7 +1182,17 @@ class MainWindow(QMainWindow):
             "paused": False,
             "info": None,
             "generation": None,
+            "depth": self.config.get("analysis_depth", 24),
+            "nodes": self.config.get("analysis_nodes") or None,
         }
+        if not isinstance(self.game.metadata.get("review"), dict):
+            self.game.metadata["review"] = {}
+        records = self.game.metadata["review"]
+        for node_id in self._review["line"][1:]:
+            records.pop(str(node_id), None)
+        self._render_move_history()
+        self._update_review_panel()
+        self._save()
         self._review_next()
 
     def _review_next(self):
@@ -1143,6 +1202,8 @@ class MainWindow(QMainWindow):
         state = self._review
         if not state or state["paused"]:
             return
+        if state.get("generation") is not None and self.engine.busy:
+            return
         if state["game_id"] != self.game.id:
             self._cancel_review()
             return
@@ -1151,6 +1212,8 @@ class MainWindow(QMainWindow):
             self.quick_analysis_button.setText("Analyze")
             self.statusBar().showMessage("Game analysis complete · evaluations and review evidence saved")
             self._save()
+            self._render_move_history()
+            self._update_review_panel()
             return
         node_id = state["line"][state["index"]]
         position = self.game.position_at_node(node_id)
@@ -1177,9 +1240,9 @@ class MainWindow(QMainWindow):
         if state["stage"] == "played":
             searchmoves = [self.game.nodes[state["line"][state["index"] + 1]].move.uci()]
         limits = SearchLimits(
-            depth=self.config.get("analysis_depth", 24),
+            depth=state["depth"],
             seconds=state["seconds"],
-            nodes=self.config.get("analysis_nodes") or None,
+            nodes=state["nodes"],
         )
         try:
             generation = self.engine.start(
@@ -1199,6 +1262,7 @@ class MainWindow(QMainWindow):
             return
         state["generation"] = generation
         state["info"] = None
+        state.pop("message", None)
         state["turn"] = position.turn
         state["profile"] = profile["id"]
         state["options"] = dict(profile.get("values", {}))
@@ -1206,6 +1270,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             f"Game analysis {state['index'] + 1}/{len(state['line'])} · {state['stage']} search"
         )
+        self._update_review_panel()
 
     def _review_message(self, generation, kind, payload):
         state = self._review
@@ -1217,7 +1282,10 @@ class MainWindow(QMainWindow):
             return False
         if kind == "error":
             state["paused"] = True
+            state["generation"] = None
+            state["message"] = payload["message"] + " · review paused"
             self.statusBar().showMessage(payload["message"])
+            self._update_review_panel()
             return True
         if kind == "info":
             state["info"] = payload.copy()
@@ -1225,11 +1293,18 @@ class MainWindow(QMainWindow):
         if kind != "result":
             return True
         info = payload.get("info") or state["info"]
-        if not info or info.get("bound", "exact") != "exact":
+        valid = chance(info) is not None and bool(info.get("pv"))
+        if valid and state["stage"] == "played":
+            valid = info["pv"][0] == self.game.nodes[state["line"][state["index"] + 1]].move.uci()
+        if not valid:
             state["paused"] = True
-            self.statusBar().showMessage("No exact engine score received; review paused.")
+            state["generation"] = None
+            state["message"] = "No exact score for the requested move; review paused."
+            self.statusBar().showMessage(state["message"])
+            self._update_review_panel()
             return True
         index = state["index"]
+        state["generation"] = None
         line = state["line"]
         node_id = line[index]
         if state["stage"] == "best":
@@ -1249,31 +1324,22 @@ class MainWindow(QMainWindow):
         state["stage"] = "best"
         self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
         self._save()
+        self._render_move_history()
+        self._update_review_panel()
         QTimer.singleShot(0, self._review_next)
         return True
 
     def _classify_review(self, node_id, best, played):
-        record = {
-            "best": best,
-            "played": played,
-            "criteria": "cp loss: 50 inaccuracy, 100 mistake, 200 blunder; equal-limit estimates, depths may differ",
-        }
-        if best["pv"][0] == self.game.nodes[node_id].move.uci():
-            record.update(label="Best", loss_cp=0)
-        elif best.get("score_type") == played.get("score_type") == "cp":
-            loss = max(0, best["score_value"] - played["score_value"])
-            record.update(
-                loss_cp=loss,
-                label="Blunder"
-                if loss >= 200
-                else "Mistake"
-                if loss >= 100
-                else "Inaccuracy"
-                if loss >= 50
-                else "Within 0.50",
-            )
-        else:
-            record["label"] = "Mate score · inspect lines"
+        node = self.game.nodes[node_id]
+        state = self._review or {}
+        record = classify(self.game.position_at_node(node.parent), node.move, best, played, {
+            "profile": state.get("profile", ""), "options": state.get("options", {}),
+            "seconds": state.get("seconds"), "depth": state.get("depth"),
+            "nodes": state.get("nodes"),
+            "engine": best.get("engine", "UCI"),
+        })
+        if record is None:
+            return
         self.game.metadata.setdefault("review", {})[str(node_id)] = record
         self.statusBar().showMessage(self.game.nodes[node_id].san + " · " + record["label"])
 
@@ -1288,6 +1354,7 @@ class MainWindow(QMainWindow):
             self._save()
         else:
             self._review_next()
+        self._update_review_panel()
 
     def _cancel_review(self):
         if self._review:
@@ -1295,6 +1362,7 @@ class MainWindow(QMainWindow):
             self._review = None
             self.quick_analysis_button.setText("Analyze")
             self._save()
+        self._update_review_panel()
 
     def _choose_engine(self):
         self._manage_engines()
@@ -1590,6 +1658,11 @@ class MainWindow(QMainWindow):
     def _analysis_tab_changed(self, index=None):
         if hasattr(self, "tabs"):
             self.tabs.tabBar().setVisible(not self.analysis_mode or self.tabs.currentIndex() != 1)
+            self.panel.setVerticalScrollBarPolicy(
+                Qt.ScrollBarPolicy.ScrollBarAsNeeded if self.tabs.currentWidget() is getattr(self, "review_panel", None)
+                or not self.analysis_mode else Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            if self.tabs.currentWidget() is getattr(self, "review_panel", None):
+                self._update_review_panel()
         self._sync_explorer()
 
     def _render_move_history(self):
@@ -1604,8 +1677,9 @@ class MainWindow(QMainWindow):
                     )
                 if node.comment:
                     text += " {" + node.comment[:100] + ("…" if len(node.comment) > 100 else "") + "}"
-                review = self.game.metadata.get("review", {}).get(str(index))
-                if review:
+                records = self.game.metadata.get("review", {})
+                review = records.get(str(index)) if isinstance(records, dict) else None
+                if isinstance(review, dict) and isinstance(review.get("label"), str):
                     text += " [" + review["label"] + "]"
             tokens.append((text, index))
         self.analysis_history.set_moves(tokens, self.game.current_node, self.config.get("light", False))
@@ -1665,6 +1739,7 @@ class MainWindow(QMainWindow):
     def _refresh(self, animate=False):
         self.delete_line_action.setEnabled(self.analysis_mode and self.game.current_node != 0)
         self._register_study()
+        self._update_review_panel()
         self._sync_workspace_layout()
         self._preview_source = None
         if self._pgn_game_id != self.game.id or not self.pgn_editor.document().isModified():

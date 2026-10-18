@@ -21,6 +21,7 @@ DEFAULTS = {
     "hash_mb": 32,
     "analysis_depth": 24,
     "analysis_seconds": 3.0,
+    "review_seconds": 3.0,
     "details": False,
     "smart_move": True,
     "candidate_style": "arrows",
@@ -82,6 +83,7 @@ def normalize(data) -> dict:
         ("multipv", 1, 32),
         ("analysis_nodes", 0, 2_000_000_000),
         ("analysis_seconds", 0.05, 600),
+        ("review_seconds", 0.05, 600),
         ("seconds", 0, 86400),
         ("increment", 0, 600),
         ("watch_delay_ms", 0, 3000),
@@ -89,7 +91,7 @@ def normalize(data) -> dict:
         value = data.get(key)
         if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
             value = min(maximum, max(minimum, value))
-            result[key] = float(value) if key == "analysis_seconds" else int(value)
+            result[key] = float(value) if key in ("analysis_seconds", "review_seconds") else int(value)
     for key, limit in (
         ("engine_id", 128),
         ("white_name", 80),

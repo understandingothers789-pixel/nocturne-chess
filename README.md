@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.6
+# Nocturne Analysis · 0.5.7
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -207,19 +207,43 @@ Autosaves and settings use local SQLite in Qt's application data directory,
 typically `%LOCALAPPDATA%/Nocturne/Nocturne Chess`. Corrupt records are reported,
 not silently deleted. Back up the database while the app is closed.
 
-## Analyze a complete line
+## Game Review
 
-**Analysis → Analyze entire line… (F12)** uses a chosen per-position time budget
-and the bounded depth/node settings. It evaluates each position and performs a
-separate root `searchmoves` search for a played alternative. It does not move the
-visible board. Pause/resume/cancel preserve completed results. Evaluations and
-review evidence are saved with their nodes and exported as PGN annotations.
+Open **Analysis → Game Review…**, or click **Game Review** above the analysis lines.
+Choose your engine, set seconds per search and click **Start review**. Reviewing is
+optional and offline; it never changes the displayed board or overwrites variations.
+The selected line includes its saved continuation even when you navigate backward.
 
-For exact centipawn scores, estimated losses of 50/100/200 cp mark inaccuracy,
-mistake/blunder. Best means the engine's reported first move. Different achieved
-depths are retained, so these equal-limit comparisons are estimates, not objective
-proof of move quality. Mate scores are shown for inspection rather than mixed
-arithmetically with centipawns. Bound scores do not become exact review labels.
+The panel shows **White, Black and overall estimated accuracy**, counts of Best,
+Excellent, Good, Inaccuracy, Mistake and Blunder, a progress indicator and a filter
+for mistakes/inaccuracies. Click a row to see the position, suggested best move,
+scores and achieved depths. **Show position before selected move** lets you try
+another move using the normal branch-preserving board. Pause/resume/cancel keep
+completed results. Opening the panel only displays results; Start runs the review.
+
+![Game Review with explicitly labelled UCI simulator test scores](docs/game-review.png)
+
+*These example grades are test data, not measured chess analysis.*
+
+Accuracy is a **Nocturne estimate**, not the Chess.com/Lichess game score or a
+percentage of objectively correct moves. It uses published score/accuracy curves
+and the arithmetic mean of graded moves; partial reviews show their coverage and
+provisional percentages. Each alternative is compared by a separate root
+`searchmoves` search with the same depth/time/node limits. Different achieved
+depths and engine estimates can change the result. Bound scores or wrong targeted
+moves pause review rather than produce a grade. Mate outcomes are treated separately
+from centipawns; mate distance is not graded. Full method and sources:
+[docs/REVIEW.md](docs/REVIEW.md).
+
+Results and engine evidence persist in the local library. PGN export includes
+labels, accuracy estimates and evaluation annotations; PGN reimport retains these
+as comments, but cannot recover full search evidence, so rerun review for a fresh
+summary. Old cp-only reviews also need rerunning for the new accuracy metric.
+
+**Analysis → Analyze entire line… (F12)** opens the same review with a time-budget
+prompt. Bounded depth/node limits and Engine-menu Threads/Hash apply. Review uses
+one PV per search without changing your normal MultiPV preference. **Back to
+analysis** returns to the spacious analysis view; Go starts continuous analysis.
 The graph uses White's perspective: click a sample to navigate, hover for its value,
 wheel to zoom, middle-drag to pan, and double-click to reset the view.
 

@@ -1242,3 +1242,65 @@ passing Windows build. Next is user desktop/DPI/real Stockfish verification;
 automated engine interactions use the labelled protocol fixture. Backspace
 deletes the selected move and descendants, not earlier ancestors; root/Play
 mode remain protected and text fields retain their normal key behavior.
+
+
+## 2026-10-17 — 0.5.7 optional Game Review, implementation and focused checks
+
+User requested optional chess.com/Lichess-style move review and total percentages
+under Analysis. Added independent review.py scoring/evidence module and
+gui/review_panel.py. Updated gui/window.py with Analysis → Game Review, a button
+above PVs, opt-in review tab, frozen review limits, exact same-root targeted-move
+validation, per-node evidence, live progress, pause/resume/cancel and navigation
+that preserves the chosen branch and halted analysis. The panel displays White,
+Black and overall estimated accuracy, all six quality counts, error filtering,
+best moves and score/depth evidence. Empty/partial coverage remains explicit.
+
+Used published numerical score/accuracy curves inspected in Lichess's official
+scalachess eval.scala/lila AccuracyPercent.scala; independent Python math with
+Nocturne arithmetic-mean aggregation and explicit 3/8/20 pp loss bands. Accuracy
+is labelled an estimate, not an official site score or a probability/rating.
+Mate outcomes are separate from cp; mate distance is not graded. Full formulas,
+limits and references are documented in docs/REVIEW.md and credited in notices.
+
+Updated core/game.py for accuracy PGN annotations and resilient legacy records;
+settings.py persists the review budget; gui/theme.py styles progress. Extended
+__main__.py smoke checks so the frozen UCI test executes review and checks complete
+coverage. capture_preview.py --review uses explicitly labelled deterministic
+simulator scores. Created docs/game-review.png, -compact.png and -light.png from
+real Qt captures at 1440×1040 (dark/light) and 1024×660; all visually inspected.
+Compact height uses a vertical review scroll area; normal analysis is unchanged.
+
+Focused commands executed: unittest discovery for test_review.py: 5 passed
+(0.042s), test_external_analysis.py: 23 passed (33.586s), test_gui.py: 36 passed
+(36.404s). The new integration initially failed because the simulator preferred
+d4 over the intended Nf3 Best example; fixed fixture ordering, then all 23 passed.
+Earlier existing 21 external tests also passed (18.409s). Ruff passed.
+
+Full local discovery then ran 149 tests in 84.262s: 138 passed, 11 skipped,
+no failures. Both offline and external-UCI app smoke commands exited 0, including
+a full two-move review through the actual UI/controller. Later hardened malformed
+legacy annotation export, added its regression plus side-variation navigation,
+and started a final full run for the final source. Six HTTP skips are sandbox
+socket restrictions; five other optional historical checks skip. No GUI freeze,
+rule change, new dependency, tooltip or launcher added.
+
+README/CHANGELOG/roadmap/notices and version/Windows paths are 0.5.7. Final local
+validation and native Windows package verification are next. Manual Windows/DPI,
+actual Stockfish review calibration and large-tree profiling remain open.
+
+
+## 2026-10-18 — 0.5.7 final local validation
+
+Final full command: QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest
+discover -s tests -q. Ran 151 tests in 73.528s: 140 passed, 11 skipped, no
+failures. This includes six scoring/evidence tests, 23 external-analysis tests
+and 37 GUI tests, with the new malformed-record and selected-branch navigation
+regressions. Ruff check src tests scripts passed. Both app smoke commands exited
+0; the --smoke-engine path completed actual two-move review with full coverage
+through the UI/controller. Fontconfig/offscreen popup notices are environmental.
+Six HTTP tests remain sandbox-skipped; native Windows must run them.
+
+Reviewed final dark/light/compact Qt captures. Published method/limitations in
+docs/REVIEW.md; documented UI use and synthetic screenshot labelling in README.
+Next: publish the source and run Windows CI/PyInstaller and frozen review smoke
+checks. Prior verified Windows link remains until the 0.5.7 artifact is verified.

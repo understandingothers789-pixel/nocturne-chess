@@ -27,3 +27,8 @@ The uploaded 2026-10-17 specification is the direction. No custom-engine work.
 - [ ] Piece-set choices, fully editable panel layout, shortcut import/export.
 
 Unchecked items are not release claims. Keep this synchronized with executed work.
+
+- [x] Optional Game Review UI, per-side/overall estimated accuracy, quality counts,
+  move filtering/navigation, partial coverage and engine-evidence persistence.
+- [ ] Calibrate/retest review estimates with actual Stockfish and user games;
+  official website score parity is not claimed.

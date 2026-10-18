@@ -539,6 +539,70 @@ class QtIntegration(unittest.TestCase):
             restored = Game.from_pgn(exported)
             self.assertEqual(len(restored.evaluations), len(window.game.evaluations))
 
+    def test_review_panel_grades_accuracy_navigation_and_saved_restore(self):
+        from nocturne.review import rows, summarize
+
+        with self.workspace() as window:
+            window.timer.stop()
+            window.autosave_timer.stop()
+            profile = self.profile()
+            profile["arguments"] = [SIMULATOR, "review-grades"]
+            window.profiles = [profile]
+            window.config.update(mode="analysis", engine_id="simulator")
+            window.game = Game.from_pgn("1.e3 e5 2.Nf3 Nc6 3.Bc4 Nf6 *")
+            window.analysis_mode = True
+            window._analysis_enabled = False
+            window._apply_settings()
+            window._refresh()
+            window.show()
+            window.menu_actions["Game Review…"].trigger()
+            panel = window.review_panel
+            self.assertIs(window.tabs.currentWidget(), panel)
+            self.assertIsNone(window._review)
+            self.assertEqual(panel.scores[None][0].text(), "—")
+            original = window.game.board.fen()
+            panel.seconds.setValue(0.1)
+            QTest.mouseClick(panel.run, Qt.MouseButton.LeftButton)
+            self.wait_until(lambda: window._review is None and summarize(rows(window.game))["reviewed"] == 6, 10)
+            self.assertEqual(window.game.board.fen(), original)
+            summary = summarize(rows(window.game))
+            self.assertTrue(all(count == 1 for count in summary["counts"].values()))
+            self.assertEqual(panel.scores[None][0].text(), f"{summary['accuracy']:.1f}%")
+            self.assertEqual(panel.progress.value(), 6)
+            panel.errors_only.setChecked(True)
+            self.assertEqual(panel.table.rowCount(), 3)
+            QTest.mouseClick(panel.table.viewport(), Qt.MouseButton.LeftButton,
+                            pos=panel.table.visualItemRect(panel.table.item(0, 0)).center())
+            self.assertEqual(window.game.cursor, 1)
+            self.assertIn("Blunder", panel.detail.toPlainText())
+            self.assertFalse(window._analysis_enabled)
+            self.assertIsNone(window._job)
+            QTest.mouseClick(panel.before, Qt.MouseButton.LeftButton)
+            self.assertEqual(window.game.cursor, 0)
+            restored = window.store.load(window.game.id)
+            self.assertEqual(summarize(rows(restored)), summary)
+
+    def test_review_rejects_bound_scores_and_wrong_targeted_moves(self):
+        from nocturne.review import rows, summarize
+
+        for mode in ("bounds", "ignore-searchmoves"):
+            with self.subTest(mode=mode), self.workspace() as window:
+                window.timer.stop()
+                window.autosave_timer.stop()
+                profile = self.profile()
+                profile["arguments"] = [SIMULATOR, mode]
+                window.profiles = [profile]
+                window.config.update(engine_id="simulator")
+                window.game = Game.from_pgn("1.e3 *")
+                window._show_review()
+                window._begin_review(0.1)
+                self.wait_until(lambda: window._review and window._review["paused"])
+                self.assertEqual(summarize(rows(window.game))["reviewed"], 0)
+                self.assertEqual(window.review_panel.scores[None][0].text(), "—")
+                self.assertIn("paused", window.review_panel.status.text())
+                window.review_panel.cancel.click()
+                self.assertIsNone(window._review)
+
     def test_multiple_games_open_in_tabs_and_preserve_annotations(self):
         with self.workspace() as window:
             window._analysis_enabled = False
@@ -651,6 +715,8 @@ class QtIntegration(unittest.TestCase):
             window._pause_review()
             self.assertTrue(window._review["paused"])
             self.assertFalse(window.engine.busy)
+            self.assertEqual(window.review_panel.pause.text(), "Resume")
+            self.assertGreater(window.review_panel.progress.value(), 0)
             self.assertIn("[%eval", window.game.pgn())
             completed = dict(window.game.metadata["review"])
             window._pause_review()

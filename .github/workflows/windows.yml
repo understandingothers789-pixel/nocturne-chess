@@ -32,10 +32,10 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: Nocturne-0.5.6-Windows-x64-unsigned
+          name: Nocturne-0.5.7-Windows-x64-unsigned
           path: |
             dist/Nocturne/
-            dist/Nocturne-0.5.6-source.zip
+            dist/Nocturne-0.5.7-source.zip
           if-no-files-found: error
           retention-days: 30
       - name: Live Masters, Lichess player and ChessDB API check

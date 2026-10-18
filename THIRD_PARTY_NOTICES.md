@@ -59,3 +59,11 @@ Optional queries use https://www.chessdb.cn/cdb.php according to
 https://chessdb.cn/cloudbookc_api_en.html. The interface credits ChessDB; no
 server code or database dump is bundled. Lookups use queryall with learning
 disabled. Service results are kept separate from local engine evaluations.
+
+### Review metric references
+
+The independent Python review implementation uses numerical score/accuracy curves
+published by Lichess, with Nocturne-specific aggregation, classifications and
+same-root search comparisons. No Lichess server/Scala code or assets are bundled.
+The estimates differ from Lichess game accuracy and are not endorsed by Lichess.
+Method and upstream references: docs/REVIEW.md.

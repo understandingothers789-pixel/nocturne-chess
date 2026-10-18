@@ -296,13 +296,16 @@ class Game:
         while stack:
             index = stack.pop()
             node = self.nodes[index]
-            review = self.metadata.get("review", {}).get(str(index))
+            records = self.metadata.get("review", {})
+            review = records.get(str(index)) if isinstance(records, dict) else None
             comment = node.comment
-            if review:
+            if isinstance(review, dict) and isinstance(review.get("label"), str):
                 comment += " [Nocturne review: " + review["label"]
-                if "loss_cp" in review:
+                if isinstance(review.get("loss_cp"), (int, float)):
                     comment += f"; estimated loss {review['loss_cp'] / 100:.2f} pawns"
-                comment += "; " + review["criteria"] + "]"
+                if isinstance(review.get("accuracy"), (int, float)):
+                    comment += f"; estimated accuracy {review['accuracy']:.1f}%"
+                comment += "; " + str(review.get("criteria", "Legacy review; rerun for current accuracy")) + "]"
             result[len(result)] = {
                 "comment": comment,
                 "starting_comment": node.starting_comment,

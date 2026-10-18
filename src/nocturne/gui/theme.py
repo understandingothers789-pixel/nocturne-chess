@@ -52,6 +52,8 @@ def stylesheet(light: bool = False) -> str:
     QTableWidget::item, QListWidget::item {{ padding: 8px; border-radius: 5px; }}
     QTableWidget::item:selected, QListWidget::item:selected {{ background: #344b35; color: #d7ecc6; }}
     QHeaderView::section {{ background: {panel}; color: {muted}; border: none; padding: 7px; }}
+    QProgressBar {{ background: {raised}; border: none; border-radius: 5px; text-align: center; color: {text}; min-height: 17px; }}
+    QProgressBar::chunk {{ background: {border}; border-radius: 5px; }}
     QScrollBar:vertical {{ background: transparent; width: 6px; margin: 0; }}
     QScrollBar::handle:vertical {{ background: #405546; border-radius: 3px; min-height: 24px; }}
     QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}

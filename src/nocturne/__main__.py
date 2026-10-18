@@ -56,16 +56,32 @@ def main():
         window._refresh()
         pulse = QTimer()
         pulse.setInterval(25)
+        review_started = False
+        explorer_valid = False
 
         def verify():
+            nonlocal review_started, explorer_valid
             if not window.profiles or window._last_info:
+                if window.profiles and not review_started:
+                    explorer_valid = len(window.explorer.rows) == 1 and window.explorer.rows[0]["uci"] == move.uci()
+                    review_started = True
+                    window._show_review()
+                    window._begin_review(0.05)
+                    return
+                if review_started and window._review is not None:
+                    return
+                from .review import rows, summarize
+
+                reviewed = summarize(rows(window.game))
                 restored = Game.from_dict(window.game.to_dict())
                 valid = (
                     restored.board.fen() == window.game.board.fen()
                     and "Smoke annotation" in restored.pgn()
                     and "(" in restored.pgn()
-                    and len(window.explorer.rows) == 1
-                    and window.explorer.rows[0]["uci"] == move.uci()
+                    and (explorer_valid if review_started else
+                         len(window.explorer.rows) == 1 and window.explorer.rows[0]["uci"] == move.uci())
+                    and (not review_started or reviewed["reviewed"] == reviewed["total"] == 2
+                         and reviewed["accuracy"] is not None)
                 )
                 pulse.stop()
                 window.close()

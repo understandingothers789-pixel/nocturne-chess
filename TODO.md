@@ -40,3 +40,8 @@ Manual desktop/DPI review remains open.
 and native Windows tests twice (137 passed, 5 optional skips). Packaged GUI/UCI
 smoke checks passed; the new Windows download is verified. Manual desktop/DPI/
 real Stockfish interaction review remains open.
+
+0.5.7 adds optional Game Review and per-side/overall accuracy estimates, quality
+counts, filtering and navigation with persisted evidence. Focused/initial full
+checks passed; final local/native Windows verification pending. Validate review
+judgments with actual Stockfish/user games; official site score parity is not claimed.
