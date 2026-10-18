@@ -26,7 +26,10 @@ down forward; leaving the line restores the real position. Both are on by defaul
 and remembered. Hold **Shift** for normal scrolling. Trackpad deltas accumulate
 into individual moves. Analysis previews freeze their displayed line until you leave.
 
-Windows 0.5.7.10 validation/build pending; prior verified downloads are below.
+[Download Windows 0.5.7.10](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39101008893/artifacts/12126636588).
+Extract All, then open **Nocturne/Nocturne.exe**. Both native runs passed
+164 tests with 5 optional skips; Ruff and both packaged launch checks passed.
+Prior verified downloads remain below.
 [Light appearance](docs/quiet-studio-light.png).
 
 **0.5.7.9: easier-to-hit, aligned analysis moves.** Each suggested move uses an

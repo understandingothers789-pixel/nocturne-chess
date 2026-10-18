@@ -1,7 +1,16 @@
 # Windows 11 desktop builds · 0.5.7.10
 
-0.5.7.10 native build/validation is pending. It adds softer distinct move colors,
-quieter board highlights and wheel navigation. The prior verified download is below.
+[Download Windows 0.5.7.10](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39101008893/artifacts/12126636588). Extract All and open **Nocturne/Nocturne.exe**.
+Softer distinct move colors, quieter palette-relative board highlights, and
+independent game/PV wheel options. Source `2f68a331f6f213ac03b5e9cdf33b11929518aa26`
+passed run 39101008893/job 117597097215: both full native runs **169 tests,
+164 passed / 5 optional skips**, in 131.223s and 128.822s. Ruff passed twice;
+PyInstaller and both gated packaged launch checks passed. Artifact 12126636588:
+55,885,463 bytes, expires 2026-11-17. SHA-256:
+`552dd4f800ff646ee850a4597666b6d2bdebd4b2396c6a86bcebf504493a75c7`.
+Only documentation changed after this verified application build.
+
+The prior verified downloads remain below.
 
 [Download Windows 0.5.7.9](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39100427444/artifacts/12126700388). Extract All and open **Nocturne/Nocturne.exe**.
 This build adds equal-width padded SAN targets and Dev → Expand analysis beyond

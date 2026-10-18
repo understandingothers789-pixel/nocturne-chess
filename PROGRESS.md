@@ -2021,7 +2021,11 @@ No position edits or variation insertion during PV preview.
 White/Black/history colors, and last-move pixels across all six board themes:
 **4 tests passed**. Ruff passed; both source offline/external-UCI smoke checks
 passed. Initial tests/lint caught a missing palette import, fixed before these
-passes. Full local suite and native Windows build pending.
+passes. Full local suite (`QT_QPA_PLATFORM=offscreen .venv/bin/python -m
+unittest discover -s tests -q`) **169 run, 158 passed, 11 skipped**, no failures,
+121.629s. Six HTTP tests skip under sandbox socket restrictions; five are optional.
+The suite includes partial mouse-wheel and pixel-trackpad accumulation. Native
+Windows build pending.
 
 **Modified:** board/move/candidate/window/theme/settings components, new wheel
 helper, GUI/settings regression tests, version/build metadata, screenshots and
@@ -2032,3 +2036,31 @@ to signing/trust policy.
 test results and download. Physical trackpad feel, high-DPI contrast and Windows
 trust acceptance remain user-machine checks. Expanded PV mode can still change
 row heights by design; fixed three-row mode remains the default.
+
+
+### 0.5.7.10 — Windows delivery verified
+
+**Source:** `2f68a331f6f213ac03b5e9cdf33b11929518aa26`. Windows run 39101008893,
+job 117597097215, overall success. `python -m unittest discover -s tests -v`
+and the builder's repeated full discovery each ran **169 tests: 164 passed,
+5 optional skips**, in 131.223s and 128.822s. Ruff passed twice. The existing
+Python Windows builder completed PyInstaller and both gated frozen GUI launch
+checks, including external-UCI/Game Review. No failures.
+
+**Download:** [Nocturne-0.5.7.10-Windows-x64-unsigned](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39101008893/artifacts/12126636588),
+artifact 12126636588, 55,885,463 bytes, expires 2026-11-17. SHA-256:
+`552dd4f800ff646ee850a4597666b6d2bdebd4b2396c6a86bcebf504493a75c7`.
+The source ZIP passed integrity checks, includes all 24 piece SVGs and contains
+no batch/CMD/PowerShell launchers. README/BUILDING/TODO now contain actual results
+and the download. Application code is unchanged after this successful build.
+
+**Completed:** restrained side/history text colors in both appearances, thinner
+numbered candidate hints, per-square hue-preserving last-move shading, wheel
+game navigation and reversible frozen-PV previews with independent saved Display
+toggles and Shift scrolling. Fixed three-row slots and variation trees retained.
+
+**Limits/next:** physical Windows high-DPI contrast, trackpad feel and unsigned
+executable acceptance require user-machine feedback. No trust-policy changes.
+The live API check returned 29 legal ChessDB moves; authenticated Lichess data
+was not tested without a user token. No further implementation is pending for
+this request; next is user feedback on the new appearance and navigation.
