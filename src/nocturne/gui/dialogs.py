@@ -147,7 +147,7 @@ class SettingsDialog(QDialog):
         form.setSpacing(14)
         self.theme = QComboBox()
         self.theme.addItems(BOARD_THEMES)
-        self.theme.setCurrentText(config.get("theme", "Forest"))
+        self.theme.setCurrentText(config.get("theme", "Classic"))
         form.addRow("Board palette", self.theme)
         self.checks = {}
         for key, label, default in (

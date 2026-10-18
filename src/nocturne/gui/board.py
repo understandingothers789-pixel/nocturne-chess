@@ -10,7 +10,7 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QMenu, QWidget
 
 from ..core.board import Board, Move, PIECE_CHARS, SQUARES
-from .theme import ASSETS, BOARD_THEMES
+from .theme import ASSETS, BOARD_THEMES, palette
 
 
 class BoardWidget(QWidget):
@@ -26,7 +26,8 @@ class BoardWidget(QWidget):
         self.preview_caption = ""
         self.flipped = False
         self.coordinates = True
-        self.theme = "Forest"
+        self.theme = "Classic"
+        self.light = False
         self.interactive = True
         self.animations = True
         self.overlays = True
@@ -212,23 +213,24 @@ class BoardWidget(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         rect, unit = self._geometry()
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#25352b"))
+        colors = palette(self.light)
+        painter.setBrush(QColor(colors["border"]))
         painter.drawRoundedRect(rect.adjusted(-3, -3, 3, 3), 10, 10)
         clip = QPainterPath()
         clip.addRoundedRect(rect, 8, 8)
         painter.save()
         painter.setClipPath(clip)
-        light, dark = BOARD_THEMES.get(self.theme, BOARD_THEMES["Forest"])
+        light, dark = BOARD_THEMES.get(self.theme, BOARD_THEMES["Classic"])
         for square in SQUARES:
             square_rect = self.square_rect(square)
             painter.fillRect(square_rect, QColor(dark if ((square >> 4) + (square & 7)) % 2 == 0 else light))
             if last_move and square in (last_move.from_sq, last_move.to_sq):
-                painter.fillRect(square_rect, QColor(220, 215, 105, 105))
+                painter.fillRect(square_rect, QColor(230, 191, 71, 100))
             if not preview and square in self.marks:
-                painter.fillRect(square_rect, QColor(76, 170, 159, 135))
+                painter.fillRect(square_rect, QColor(114, 150, 180, 120))
             if not preview and square == self.selected:
-                painter.fillRect(square_rect, QColor(217, 236, 131, 130))
-                painter.setPen(QPen(QColor("#d8ecb2"), 3))
+                painter.fillRect(square_rect, QColor(232, 185, 72, 110))
+                painter.setPen(QPen(QColor("#e2b75c"), 3))
                 painter.setBrush(Qt.BrushStyle.NoBrush)
                 painter.drawRect(square_rect.adjusted(1.5, 1.5, -1.5, -1.5))
                 painter.setPen(Qt.PenStyle.NoPen)
@@ -241,12 +243,12 @@ class BoardWidget(QWidget):
                     continue
                 target = self.square_rect(move.to_sq)
                 if self.board.is_capture(move):
-                    painter.setPen(QPen(QColor(20, 49, 32, 150), unit * 0.09))
+                    painter.setPen(QPen(QColor(30, 30, 30, 150), unit * 0.09))
                     painter.setBrush(Qt.BrushStyle.NoBrush)
                     painter.drawEllipse(target.adjusted(unit * 0.06, unit * 0.06, -unit * 0.06, -unit * 0.06))
                 else:
                     painter.setPen(Qt.PenStyle.NoPen)
-                    painter.setBrush(QColor(20, 49, 32, 95))
+                    painter.setBrush(QColor(30, 30, 30, 95))
                     painter.drawEllipse(target.center(), unit * 0.135, unit * 0.135)
         for square in SQUARES:
             piece = board.cells[square]
@@ -268,13 +270,13 @@ class BoardWidget(QWidget):
             for move in self.branch_moves:
                 self._arrow(painter, move.from_sq, self._destination(move), QColor(153, 137, 106, 65), unit, subtle=True)
             entries = self.recommendations or ([(self.best_move, 1, "")] if self.best_move else [])
-            colors = ["#66897f", "#7a879c", "#9a886f", "#967e91"]
+            marker_colors = ["#71879b", "#9b8a72", "#968295", "#858b90"]
             best_rank = {}
             for move, rank, _ in entries:
                 destination = self._destination(move)
                 best_rank[destination] = min(rank, best_rank.get(destination, rank))
             for move, rank, text in reversed(entries):
-                color = QColor(colors[(rank - 1) % len(colors)])
+                color = QColor(marker_colors[(rank - 1) % len(marker_colors)])
                 color.setAlpha(95 if rank == 1 else 75)
                 if self.candidate_style == "lines":
                     painter.setPen(QPen(color, max(1.0, min(1.6, unit * 0.018)), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
@@ -287,10 +289,10 @@ class BoardWidget(QWidget):
                 diameter = max(12.0, unit * 0.19)
                 badge = QRectF(destination.right() - diameter - unit * 0.06,
                                destination.top() + unit * 0.06, diameter, diameter)
-                painter.setBrush(QColor(28, 48, 40, 75))
+                painter.setBrush(QColor(35, 35, 35, 75))
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawEllipse(badge)
-                painter.setPen(QColor(242, 243, 229, 175))
+                painter.setPen(QColor(245, 245, 245, 175))
                 font = QFont("Segoe UI")
                 font.setPixelSize(max(8, int(unit * 0.115)))
                 painter.setFont(font)
@@ -305,7 +307,7 @@ class BoardWidget(QWidget):
                 )
         painter.restore()
         if preview:
-            painter.setPen(QColor("#82998a"))
+            painter.setPen(QColor(colors["muted"]))
             painter.setFont(QFont("Segoe UI", 10))
             painter.drawText(
                 QRectF(rect.x(), rect.y() - 22, rect.width(), 18),
@@ -314,7 +316,7 @@ class BoardWidget(QWidget):
             )
         if self.coordinates:
             painter.setFont(QFont("Segoe UI", 10))
-            painter.setPen(QColor("#82998a"))
+            painter.setPen(QColor(colors["muted"]))
             for index in range(8):
                 square = index if not self.flipped else 119 - index
                 center = self.square_rect(square).center()

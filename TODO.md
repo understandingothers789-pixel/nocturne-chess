@@ -63,3 +63,11 @@ rules stay unchanged. Source hashes and real Qt SVG/promotion icons verified;
 lint and both app launch checks passed. Focused GUI: 39 passed. Native Windows: 148 passed and 5 optional skips, twice;
 both frozen GUI/UCI checks passed. Archives include GPL/credits and exact SVGs.
 The 0.5.7.2 Windows package is verified against the passing source commit. User desktop trust/DPI remains to verify.
+
+
+0.5.7.3 neutral appearance and Display → Clocks: settings (4), GUI (41), full
+local suite (146 passed/11 skipped), final clock checks (2) and both app launch
+checks passed. Native Windows build and archive checks are next. Verify manual
+Windows trust/DPI and saved-default migration. Follow up Play sidebar minimum
+width/content clipping; analysis PV space and both player clocks are unaffected.
+PGN clock-comment parsing remains a separate future feature.

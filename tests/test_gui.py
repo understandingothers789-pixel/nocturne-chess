@@ -157,6 +157,79 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(window.game._line_nodes, selected)
         self.assertFalse(window._analysis_enabled)
 
+    def test_display_clocks_analysis_values_toggle_and_reopen(self):
+        from nocturne.core.game import TimeControl
+
+        self._analysis_game()
+        window = self.window
+        self.assertTrue(window.analysis_clocks.isVisible())
+        self.assertEqual(window.analysis_clock_values[1].text(), "∞")
+        self.assertEqual(window.analysis_clock_values[-1].text(), "∞")
+        window.game = Game(time_control=TimeControl(300, 2))
+        window.game.metadata["mode"] = "analysis"
+        window.game._remaining = {1: 280, -1: 290}
+        window._refresh()
+        self.assertEqual(window.analysis_clock_values[1].text(), "04:40")
+        self.assertEqual(window.analysis_clock_values[-1].text(), "04:50")
+        fen, generation = window.game.board.fen(), window.engine.generation
+        action = window.display_actions["show_clocks"]
+        action.trigger()
+        self.assertFalse(window.analysis_clocks.isVisible())
+        self.assertFalse(window.store.get("settings")["show_clocks"])
+        self.assertEqual(window.game.board.fen(), fen)
+        self.assertEqual(window.engine.generation, generation)
+        self.assertFalse(window.game.running)
+        action.trigger()
+        self.assertTrue(window.analysis_clocks.isVisible())
+        action.trigger()
+        window.close()
+        window.deleteLater()
+        self.app.processEvents()
+        self.window = MainWindow(Path(self.tmp.name))
+        self.window.timer.stop()
+        self.window.autosave_timer.stop()
+        self.window._analysis_enabled = False
+        self.window.show()
+        self.app.processEvents()
+        self.assertFalse(self.window.display_actions["show_clocks"].isChecked())
+        self.assertFalse(self.window.analysis_clocks.isVisible())
+        self.assertEqual(self.window.game.time_control, TimeControl(300, 2))
+        self.assertEqual(self.window.game.clock_values(), {1: 280, -1: 290})
+
+    def test_hiding_play_clocks_keeps_elapsed_time_and_saved_game(self):
+        from nocturne.core.game import TimeControl
+
+        window = self.window
+        window.game = Game(time_control=TimeControl(60, 2))
+        action = window.display_actions["show_clocks"]
+        fen, generation = window.game.board.fen(), window.engine.generation
+        with patch("nocturne.core.game.time.monotonic", return_value=100.0) as clock:
+            window.game.start_clock()
+            window._refresh()
+            self.assertFalse(window.analysis_clocks.isVisible())
+            self.assertTrue(window.bottom_clock.isVisible())
+            clock.return_value = 106.0
+            action.trigger()
+            self.assertTrue(window.game.running)
+            self.assertEqual(window.game._anchor, 100.0)
+            self.assertEqual(window.game.clock_values(), {1: 54, -1: 60})
+            self.assertTrue(window.top_card.isVisible())
+            self.assertTrue(window.bottom_card.isVisible())
+            self.assertFalse(window.top_clock.isVisible())
+            self.assertFalse(window.bottom_clock.isVisible())
+            clock.return_value = 110.0
+            action.trigger()
+            self.assertEqual(window.bottom_clock.text(), "00:50")
+            self.assertEqual(window.top_clock.text(), "01:00")
+            self.assertEqual(window.bottom_clock.objectName(), "activeClock")
+            self.assertEqual(window.game._remaining, {1: 60, -1: 60})
+            self.assertEqual(window.game.board.fen(), fen)
+            self.assertEqual(window.engine.generation, generation)
+            saved = window.store.load(window.game.id)
+            self.assertEqual(saved.time_control, TimeControl(60, 2))
+            self.assertEqual(saved.clock_values(), {1: 50, -1: 60})
+            window.game.pause_clock()
+
     def _three_pvs(self):
         self._analysis_game("1.e4 e5 *")
         self.window.config["multipv"] = 3

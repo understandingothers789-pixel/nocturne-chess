@@ -155,9 +155,9 @@ class ReviewPanel(QWidget):
                 item = QTableWidgetItem(text)
                 item.setData(Qt.ItemDataRole.UserRole, entry["node"])
                 if column == 1 and record:
-                    colors = (["#397b58", "#397b58", "#637469", "#91733c", "#ae613d", "#ad4848"]
+                    colors = (["#3c6b90", "#3c6b90", "#666666", "#91733c", "#ae613d", "#ad4848"]
                               if getattr(self, "_light", False) else
-                              ["#95c7a6", "#95c7a6", "#a6b7aa", "#cfb879", "#d59772", "#d98a88"])
+                              ["#a8c4dd", "#a8c4dd", "#b5b5b5", "#cfb879", "#d59772", "#d98a88"])
                     item.setForeground(QColor(colors[LABELS.index(record["label"])]))
                 self.table.setItem(row, column, item)
             if self.game and self.game.current_node == entry["node"]:

@@ -5,6 +5,7 @@ import math
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QWidget
+from .theme import palette
 
 
 class EvaluationBar(QWidget):
@@ -30,7 +31,7 @@ class EvaluationBar(QWidget):
         path = QPainterPath()
         path.addRoundedRect(rect, 5, 5)
         p.setClipPath(path)
-        p.fillRect(rect, QColor("#2b3e33"))
+        p.fillRect(rect, QColor("#282828"))
         fraction = 0.5 if self.score is None else 1 / (1 + math.exp(-max(-2000, min(2000, self.score)) / 250))
         if self.flipped:
             white = QRectF(rect.x(), rect.y(), rect.width(), rect.height() * fraction)
@@ -38,9 +39,9 @@ class EvaluationBar(QWidget):
             white = QRectF(
                 rect.x(), rect.bottom() - rect.height() * fraction, rect.width(), rect.height() * fraction
             )
-        p.fillRect(white, QColor("#e6ebd9") if self.score is not None else QColor("#7d9081"))
+        p.fillRect(white, QColor("#f2f2f0") if self.score is not None else QColor("#898989"))
         p.setClipping(False)
-        p.setPen(QPen(QColor("#91b37d"), 1))
+        p.setPen(QPen(QColor("#999999"), 1))
         p.drawLine(QPointF(2, rect.center().y()), QPointF(20, rect.center().y()))
 
 
@@ -79,10 +80,11 @@ class EvaluationGraph(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        p.setPen(QPen(QColor("#c0ccba" if self.light else "#34493b"), 1, Qt.PenStyle.DashLine))
+        colors = palette(self.light)
+        p.setPen(QPen(QColor(colors["border"]), 1, Qt.PenStyle.DashLine))
         p.drawLine(8, self.height() // 2, self.width() - 8, self.height() // 2)
         if not self.samples:
-            p.setPen(QColor("#819386"))
+            p.setPen(QColor(colors["muted"]))
             p.setFont(QFont("Segoe UI", 10))
             p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Evaluation samples appear here")
             return
@@ -91,7 +93,7 @@ class EvaluationGraph(QWidget):
         path.moveTo(points[0][1])
         for _, point in points[1:]:
             path.lineTo(point)
-        accent = QColor("#507a3f" if self.light else "#b5d99d")
+        accent = QColor(colors["accent"])
         p.setPen(QPen(accent, 2))
         p.drawPath(path)
         p.setBrush(accent)
@@ -99,7 +101,7 @@ class EvaluationGraph(QWidget):
         for ply, point in points:
             p.drawEllipse(point, 4 if ply == self.cursor else 2.3, 4 if ply == self.cursor else 2.3)
         x = self._point(self.cursor, 0).x()
-        p.setPen(QPen(QColor("#7b9a78"), 1))
+        p.setPen(QPen(QColor(colors["muted"]), 1))
         p.drawLine(QPointF(x, 8), QPointF(x, self.height() - 8))
         if self.hover_ply is not None and self.hover_ply in self.samples:
             value = self.samples[self.hover_ply]

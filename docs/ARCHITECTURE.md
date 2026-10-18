@@ -126,3 +126,21 @@ explorer.lichess.org and same-origin redirect policy applies. ChessDB and custom
 test endpoints never receive it. HTTP 401/403 explains the native token menu.
 The optional live check reports unauthenticated sources as protected, separately
 from successful data queries; it never substitutes a fabricated response.
+
+
+## Neutral appearance and clock presentation (0.5.7.3)
+
+A shared theme.palette() supplies neutral dark/light colors to Qt stylesheets,
+move HTML and custom-painted graphs/board frames. Classic/Grey board colors are
+independent of interface light/dark mode. settings.normalize() records one
+appearance_version migration: legacy Forest defaults become Classic, other
+palettes remain unchanged, and later explicit choices round-trip normally.
+The original icon is recolored and its multi-resolution ICO regenerated with Qt.
+
+Display show_clocks is a validated persisted boolean. window._update_players()
+reads the existing Game.clock_values() for both the analysis strip and Play
+labels. Visibility never calls start_clock/pause_clock or changes game data.
+Analysis retains its existing paused timing semantics and untimed games show
+infinity. Player clocks keep a stable content margin when active styling changes.
+Changing light/dark appearance recolors all candidate views, including pinned
+rows, without changing their three-line measurement or move snapshots.

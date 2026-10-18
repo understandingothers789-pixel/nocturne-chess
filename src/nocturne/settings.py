@@ -13,9 +13,11 @@ DEFAULTS = {
     "black_name": "Black",
     "white_engine": "external",
     "black_engine": "external",
-    "theme": "Forest",
+    "theme": "Classic",
+    "appearance_version": 1,
     "light": False,
     "coordinates": True,
+    "show_clocks": True,
     "animations": True,
     "overlays": True,
     "hash_mb": 32,
@@ -55,7 +57,7 @@ def normalize(data) -> dict:
         "explorer_source": ("masters", "lichess", "chessdb"),
         "explorer_speed": ("all", "ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence"),
         "explorer_rating": (0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500),
-        "theme": ("Forest", "Walnut", "Slate", "Midnight"),
+        "theme": ("Classic", "Grey", "Walnut", "Slate", "Forest", "Midnight"),
         "white_engine": ("custom", "external"),
         "black_engine": ("custom", "external"),
     }
@@ -64,9 +66,13 @@ def normalize(data) -> dict:
             continue
         if data.get(key) in options:
             result[key] = data[key]
+    # Upgrade the old default once; later explicit palette choices are retained.
+    if data.get("appearance_version") != 1 and data.get("theme", "Forest") == "Forest":
+        result["theme"] = "Classic"
     for key in (
         "light",
         "coordinates",
+        "show_clocks",
         "animations",
         "overlays",
         "takebacks",

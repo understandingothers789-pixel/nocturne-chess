@@ -4,6 +4,24 @@ from nocturne.settings import DEFAULTS, normalize
 
 
 class SettingsTests(unittest.TestCase):
+    def test_classic_migration_is_once_only_and_keeps_other_preferences(self):
+        upgraded = normalize({"theme": "Forest", "hash_mb": 1024, "analysis_menu_version": 1,
+                              "multipv": 6, "show_clocks": False})
+        self.assertEqual(upgraded["theme"], "Classic")
+        self.assertEqual(upgraded["appearance_version"], 1)
+        self.assertEqual(upgraded["hash_mb"], 1024)
+        self.assertEqual(upgraded["multipv"], 6)
+        self.assertFalse(upgraded["show_clocks"])
+        self.assertEqual(normalize(upgraded), upgraded)
+        self.assertEqual(normalize({"theme": "Walnut"})["theme"], "Walnut")
+        self.assertEqual(normalize({"theme": "Slate"})["theme"], "Slate")
+        self.assertEqual(normalize({"theme": "Forest", "appearance_version": 1})["theme"], "Forest")
+
+    def test_clock_visibility_is_a_validated_boolean(self):
+        self.assertTrue(normalize({"show_clocks": "false"})["show_clocks"])
+        self.assertTrue(normalize({"show_clocks": 0})["show_clocks"])
+        self.assertFalse(normalize({"show_clocks": False})["show_clocks"])
+
     def test_menu_migration_preserves_effective_line_count(self):
         self.assertEqual(normalize({"analysis_kind": "infinite", "multipv": 3})["multipv"], 1)
         self.assertEqual(normalize({"analysis_kind": "explore", "multipv": 6})["multipv"], 6)

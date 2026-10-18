@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.7.3 — Neutral appearance and optional chess clocks
+
+- Replace the green interface with charcoal/neutral light palettes, classic
+  brown-and-cream squares and a Grey option; migrate the old default once.
+- Apply consistent colors to menus, move text, graphs, highlights, database bars,
+  review labels and the original application icon; preserve Cburnett artwork.
+- Add saved Display → Clocks, with an analysis clock strip and Play clock labels.
+  Hiding clocks leaves running timers, positions and time controls intact.
+- Verify clock preference reload, elapsed time/save integrity and settings
+  migration. Keep three-line PV slots, hover snapshots and engine behavior.
+
 ## 0.5.7.2 — Cburnett pieces on the working 0.5.7.1 base
 
 - Replace the twelve original SVGs with the exact Lichess Cburnett set by Colin

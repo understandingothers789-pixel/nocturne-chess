@@ -12,6 +12,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 from nocturne.core.game import Game
 from nocturne.gui.window import MainWindow
+from nocturne.gui.theme import BOARD_THEMES
 
 
 def main():
@@ -20,6 +21,8 @@ def main():
     parser.add_argument("--simulate", action="store_true")
     parser.add_argument("--engine", type=Path)
     parser.add_argument("--light", action="store_true")
+    parser.add_argument("--hide-clocks", action="store_true")
+    parser.add_argument("--board-theme", choices=tuple(BOARD_THEMES), default="Classic")
     parser.add_argument("--lines", action="store_true")
     parser.add_argument("--review", action="store_true", help="Game Review with explicitly labelled test scores")
     parser.add_argument("--explorer-fixture", action="store_true", help="Clearly labelled cached test statistics; no network")
@@ -39,6 +42,8 @@ def main():
         window.config.update(
             mode="analysis",
             light=args.light,
+            show_clocks=not args.hide_clocks,
+            theme=args.board_theme,
             layout=args.layout,
             engine_id="capture",
             analysis_kind="explore",

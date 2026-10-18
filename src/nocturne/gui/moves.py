@@ -6,6 +6,7 @@ import math
 from PySide6.QtCore import QEvent, Signal, Qt
 from PySide6.QtGui import QTextDocument
 from PySide6.QtWidgets import QTextBrowser
+from .theme import palette
 
 
 class MoveText(QTextBrowser):
@@ -81,13 +82,15 @@ class MoveText(QTextBrowser):
         self.preview_ended.emit()
         self._hovered = None
         self._items, self._current, self._light = signature
-        color = "#21372c" if light else "#e3ecd8"
+        colors = palette(light)
+        color = colors["text"]
         tokens = []
         for text, index in self._items:
             if index is None:
                 tokens.append(escape(text))
                 continue
-            style = "color: #19291c; background-color: #b5d99d;" if index == current else f"color: {color};"
+            style = (f'color: {colors["selected_text"]}; background-color: {colors["selection"]};'
+                     if index == current else f"color: {color};")
             tokens.append(f'<a href="move:{index}" style="{style} text-decoration:none;">{escape(text)}</a>')
         size, spacing = (16, 145) if self._auto_fit else (14, 160)
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'

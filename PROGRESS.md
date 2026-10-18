@@ -1643,3 +1643,72 @@ passed; refreshed source/checksums after final documentation. Only docs follow
 the tested application/assets commit. No extra clock or other feature is added.
 Next: user desktop acceptance of the rebuilt unsigned EXE, manual Windows DPI
 and piece appearance/drag/promotion checks with their actual installed engine.
+
+
+## 2026-10-18 — 0.5.7.3 neutral appearance and Display clocks
+
+User confirms 0.5.7.2 works and requests standard square/interface colors plus the
+previously requested clock controls. Started from df0de14f3a50499e36eb82d98f6ad0d3e3de94b3.
+Changed gui/theme.py to shared neutral charcoal/light palettes, with Classic
+brown/cream and Grey boards. settings.py migrates legacy Forest defaults once
+(appearance_version=1), preserves other old choices and later explicit selections,
+and validates/persists show_clocks. No chess-rule/search/time-control code changes.
+
+Updated board.py frame/coordinates/selection/legal dots and subtly colored hint
+markers, moves.py HTML, widgets.py evaluation graphics, explorer_panel.py WDL
+bars and review_panel.py quality colors to remove the green UI tint. Marker
+geometry/opacity and fixed PV slots stay intact. dialogs.py uses Classic as its
+fallback. Original icon.svg is neutral; scripts/make_icon.py regenerated icon.ico.
+All twelve licensed Cburnett piece SVGs remain byte-identical to working 0.5.7.2.
+
+window.py adds the White/Black clock strip above the analysis board and the
+checkable Display → Clocks action. Existing Play labels follow the same preference.
+Both presentations read actual Game.clock_values(); analysis remains paused,
+untimed games show infinity, and hidden Play clocks keep running. Preference
+changes do not stop/restart engine search or change position/time control. Applied
+shared text colors to all candidate rows, including pinned rows, on light changes.
+Adjusted player clock geometry and content margin after actual Play capture
+showed active styling too tight. No new clock engine or inferred PGN clock times.
+
+Executed Ruff check src tests scripts: passed. Settings discovery: 4 passed
+(0.000s), including once-only migration/idempotence/resource preservation and
+boolean validation. Focused GUI discovery: 41 passed (38.494s), including new
+analysis/untimed/timed visibility + reopen and deterministic hidden-running-clock/
+save-restore regressions. Full local discovery then ran 157 tests in 79.731s:
+146 passed, 11 skipped, no failures. Six HTTP tests are sandbox socket skips;
+five historical optional checks skip. Following final clock/icon styling,
+clock-only discovery ran twice: 2 passed in 1.765s and 2 in 1.795s. Final Ruff
+passed; both offline and external-UCI app smoke commands exited 0 again, including
+a complete two-move Game Review via the protocol fixture. Native full validation
+will cover final styling changes before delivery. No claim of a final local
+full rerun after the last visual spacing adjustment.
+
+Captured and visually inspected real Qt dark 1920×1040, compact 1024×660,
+light 1440×1040, clocks-hidden and Grey views. Also exercised actual human 5+2
+creation/e4 play: increment applied to White and Black's clock runs; captured the
+native board/clock portion, not a fabricated UI. Analysis/review fixture values
+are explicitly labelled simulator test data. scripts/capture_preview.py adds
+--hide-clocks and --board-theme. Updated README/CHANGELOG/architecture/TODO and
+preview assets. Version/artifact metadata is 0.5.7.3; build spec/script, all
+requirements, UCI/rules/game model and piece sources remain unchanged.
+
+Next: verify source/wheel/license contents, publish, run native Windows full tests
+and frozen smoke checks, then replace the download link. Manual Windows trust/
+DPI and real-engine interactions remain to verify. The Play sidebar can clip
+some content at narrower widths; tracked for layout follow-up. This does not
+hide either player clock or affect analysis's full-width PV area. PGN clock-
+comment import remains unsupported and documented. No tooltips/launcher scripts.
+
+
+Also captured/inspected dark/light Game Review and Nibbler-style candidate lines
+with the neutral palette, and updated their documentation screenshots. Final
+Play clock spacing uses a stable QLabel content margin, verified in the actual
+running 5+2 view. All app code is now frozen for native validation.
+
+
+Source ZIP and wheel build commands succeeded. Both archives passed integrity,
+Cburnett source-hash/credit/license and no-launcher checks. Wheel SHA-256:
+63e9d6464b6ebb91a76d1e42cc69cb20d3c963c44b1a60fb027924f2b467f972.
+Critical-file hash checks confirm the build script/spec, MANIFEST, requirements,
+CandidatePanel snapshot controller, UCI controller/transport and all piece SVGs
+match working 0.5.7.2. No further application changes before native verification.

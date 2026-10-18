@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.2
+# Nocturne Analysis · 0.5.7.3
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -13,14 +13,15 @@ analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
 
-**0.5.7.2 adds only the piece artwork to the working 0.5.7.1 version.**
-The board now uses the exact Lichess Cburnett SVG set by Colin M. L. Burnett,
-licensed GPL-2.0-or-later. The same assets appear on the board, during dragging/
-animation and in promotion choices. Existing piece sizing, clocks, three-line
-MultiPV slots, engine settings and build dependencies are unchanged. Artwork
-source/credits are in [third-party notices](THIRD_PARTY_NOTICES.md).
-The working 0.5.7.1 download is also retained below as a fallback. These are unsigned developer builds; acceptance by the user's Windows
-configuration must still be checked on their computer.
+**0.5.7.3 uses a neutral interface and adds Display → Clocks.**
+The default board is classic brown and cream, with a Grey option under
+**Display → Board appearance… → Board palette**. Dark mode uses charcoal panels;
+light mode uses neutral whites/greys. Move text, graphs, menus, highlights and the
+application icon use the same neutral styling. The working Cburnett pieces and
+fixed three-line MultiPV behavior are retained.
+The working 0.5.7.2 download stays linked until the new native build is verified.
+These remain unsigned developer builds; acceptance by the user's Windows setup
+must be checked on that computer.
 
 [Download the tested, unsigned Windows 0.5.7.2 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39089980725/artifacts/12122595914) (GitHub sign-in required).
 
@@ -34,6 +35,23 @@ These are unsigned test builds; no batch/PowerShell launcher or security-policy
 change is provided. The ZIP also includes the corresponding source archive.
 
 [Working Windows 0.5.7.1 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39088586425/artifacts/12121976207) — retained as a fallback.
+
+## Appearance and clocks
+
+**Display → Clocks** shows/hides the clock portion and saves your choice. Analysis
+has a compact White/Black strip above the board; Play uses the existing player
+clocks. Hiding the display does not pause/reset a timed game or change its
+position. Set a time control and increment through **File → New game…** in a
+playing mode. Analysis pauses the game clocks; untimed games show ∞. Returning
+to a saved game retains its time control and remaining times. PGN clock-comment
+import is not implemented: a PGN without saved clock state does not invent times.
+
+![Native Play board portion: actual running local 5+2 game after e4](docs/clocks-play.png)
+
+On upgrade, the old Forest default changes to Classic once. Other saved board
+choices are retained; subsequent selections remain yours. Choose **Grey** for a
+traditional grey board, or switch **Display → Light appearance** for a neutral
+light interface. Older board palettes remain available as explicit choices.
 
 ## Your saved PGNs
 

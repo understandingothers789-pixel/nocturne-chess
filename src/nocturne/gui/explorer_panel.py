@@ -20,7 +20,7 @@ class ResultsDelegate(QStyledItemDelegate):
         painter.save()
         rect = QRectF(option.rect.adjusted(3, 5, -3, -5))
         offset, total = rect.left(), sum(counts)
-        for count, bg, fg in zip(counts, ("#e7eadf", "#718277", "#243c30"), ("#203327", "#ffffff", "#edf1e6")):
+        for count, bg, fg in zip(counts, ("#eeeeec", "#858585", "#333333"), ("#262626", "#ffffff", "#f2f2f0")):
             width = rect.width() * count / total
             part = QRectF(offset, rect.top(), width, rect.height())
             painter.fillRect(part, QColor(bg))
