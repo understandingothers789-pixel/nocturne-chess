@@ -1712,3 +1712,38 @@ Cburnett source-hash/credit/license and no-launcher checks. Wheel SHA-256:
 Critical-file hash checks confirm the build script/spec, MANIFEST, requirements,
 CandidatePanel snapshot controller, UCI controller/transport and all piece SVGs
 match working 0.5.7.2. No further application changes before native verification.
+
+
+## 2026-10-18 — 0.5.7.3 neutral appearance/clocks Windows delivery verified
+
+Final application/assets commit e99f58e900285e2646caa3204f90249d709e4d5b passed
+Windows run 39095336406/job 117580486769. Full discovery ran twice: 157 total
+in each run, 152 passed and 5 optional skips, in 98.932s and 99.584s. All six HTTP
+tests executed. Both Ruff runs passed. New tests verify once-only palette
+migration with preserved hash/MultiPV/choices, clock boolean validation, analysis
+clock values and preference reload, hidden running-time continuity, unchanged
+FEN/engine generation and saved remaining-time/time-control integrity. Existing
+PV/hover/click, review, rules and persistence checks passed. No test failure.
+
+PyInstaller built windowed Nocturne.exe with the neutral multi-resolution icon;
+both frozen smoke paths passed (offline and external UCI with complete two-move
+Game Review). The existing check=True build gate completed after both launches.
+The optional API check returned 29 legal ChessDB moves and Lichess authentication
+requirements; no authenticated Lichess result is claimed. Build spec/script,
+requirements, game/rules/UCI code and working Cburnett piece sources are unchanged.
+
+Verified artifact metadata and upload log: 12124810527 is
+Nocturne-0.5.7.3-Windows-x64-unsigned, from the tested source commit and not expired.
+Size 54,693,152 bytes; retained until 2026-11-17. SHA-256:
+f00beba4ee0cbb9136cfff848e7a3510947e371b01938a279d57c623aafe0d3e.
+Download: https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39095336406/artifacts/12124810527
+
+README/BUILDING now link the tested package and retain working 0.5.7.2 as fallback.
+Updated TODO and this visible development log. Source ZIP/wheel integrity,
+Cburnett byte/credit/license and no-launcher checks passed; source/checksums
+refreshed after final docs. Only documentation follows the passing build; no
+application source changes after final native validation. Next is user desktop
+verification of the new appearance and Display clock toggle, including Windows
+trust/DPI, real engine interaction and the tracked narrow Play-sidebar layout
+limitation. PGN clock-comment import remains deferred. No claim of a signed or
+Smart App Control-verified executable.

@@ -19,22 +19,22 @@ The default board is classic brown and cream, with a Grey option under
 light mode uses neutral whites/greys. Move text, graphs, menus, highlights and the
 application icon use the same neutral styling. The working Cburnett pieces and
 fixed three-line MultiPV behavior are retained.
-The working 0.5.7.2 download stays linked until the new native build is verified.
+The working 0.5.7.2 download is retained below as a fallback.
 These remain unsigned developer builds; acceptance by the user's Windows setup
 must be checked on that computer.
 
-[Download the tested, unsigned Windows 0.5.7.2 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39089980725/artifacts/12122595914) (GitHub sign-in required).
+[Download the tested, unsigned Windows 0.5.7.3 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39095336406/artifacts/12124810527) (GitHub sign-in required).
 
 [All Windows builds](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
-Select **Nocturne-0.5.7.2-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
-Windows validation passed twice: 148 tests passed, 5 skipped per run; packaged app and external-UCI
+Select **Nocturne-0.5.7.3-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
+Windows validation passed twice: 152 tests passed, 5 skipped per run; packaged app and external-UCI
 protocol-fixture/Game Review smoke checks passed. Real Stockfish/manual interaction verification remains open.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
 change is provided. The ZIP also includes the corresponding source archive.
 
-[Working Windows 0.5.7.1 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39088586425/artifacts/12121976207) — retained as a fallback.
+[Working Windows 0.5.7.2 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39089980725/artifacts/12122595914) — retained as a fallback.
 
 ## Appearance and clocks
 

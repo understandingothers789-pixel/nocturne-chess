@@ -67,7 +67,9 @@ The 0.5.7.2 Windows package is verified against the passing source commit. User 
 
 0.5.7.3 neutral appearance and Display → Clocks: settings (4), GUI (41), full
 local suite (146 passed/11 skipped), final clock checks (2) and both app launch
-checks passed. Native Windows build and archive checks are next. Verify manual
+checks passed. Native Windows passed twice: 152 passed, 5 optional skips per run; packaging
+and both frozen GUI/UCI/Game Review checks passed. Source/wheel/license checks
+passed and the 0.5.7.3 Windows download is verified against the tested commit. Verify manual
 Windows trust/DPI and saved-default migration. Follow up Play sidebar minimum
 width/content clipping; analysis PV space and both player clocks are unaffected.
 PGN clock-comment parsing remains a separate future feature.
