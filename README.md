@@ -28,8 +28,10 @@ The previously verified 0.5.7.3 download is retained below as a fallback.
 These remain unsigned developer builds; acceptance by the user's Windows setup
 must be checked on that computer.
 
-[Download the Windows 0.5.7.4 build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml) from its successful run under Artifacts (GitHub sign-in required).
-The previous verified Windows build is available below as a fallback.
+[Download the Windows 0.5.7.4 build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39096484337/artifacts/12125455189) (GitHub sign-in required).
+Windows validation passed twice: 154 passed and 5 skipped each run. The packaged
+application and external-UCI Game Review smoke checks passed. The previous verified
+Windows build is available below as a fallback.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy

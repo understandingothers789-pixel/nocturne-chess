@@ -1748,7 +1748,7 @@ trust/DPI, real engine interaction and the tracked narrow Play-sidebar layout
 limitation. PGN clock-comment import was added in the following 0.5.7.4 phase.
 No claim of a signed or Smart App Control-verified executable.
 
-## 2026-10-18 — 0.5.7.4 imported PGN clock display (validation in progress)
+## 2026-10-18 — 0.5.7.4 imported PGN clock display Windows delivery verified
 
 User supplied a PGN with standard `[%clk ...]` and `[%timestamp ...]` comments;
 the Display → Clocks strip showed infinity and the move list printed raw tags.
@@ -1762,7 +1762,26 @@ Changed core/notation.py and core/game.py for parsing and variation-aware displa
 data; gui/window.py connects the data to the existing toggle, board strip and
 analysis move line. Updated README, CHANGELOG, architecture, build notes, TODO and
 this log; version metadata is 0.5.7.4. Regression tests cover hours/minutes and
-tenths parsing, invalid clock tags, branch-specific clock values, the display
-toggle, preservation on PGN export and game save/restore. Focused rules and GUI
-tests passed (1 each); Ruff passed. Full local and native Windows validation has
-not yet run. The Windows build artifact will be linked after CI verifies it.
+tenths parsing, invalid clock tags, branch-specific clock values, unrecorded root
+positions, the display toggle, preservation on PGN export and game save/restore.
+Focused rules and GUI tests passed (1 each). Full local discovery ran 159 tests:
+148 passed, 11 skipped, no failures. Ruff passed; offline and absolute-path
+external-UCI app smoke checks exited 0. One initial UCI smoke invocation used
+relative executable paths and timed out; rerunning with the absolute interpreter
+and fixture paths passed.
+
+Windows run 39096484337/job 117583902608 tested source commit
+d020afff00f871f23ccea7c390f27865bf85b964. Both native runs completed 159 tests:
+154 passed, 5 optional skips (83.309s / 92.496s). Ruff passed twice. PyInstaller,
+offline and external-UCI/Game Review packaged smoke checks and artifact upload all
+passed. Artifact 12125455189, `Nocturne-0.5.7.4-Windows-x64-unsigned`, is 54,697,193
+bytes and retained until 2026-11-17. SHA-256:
+`8d4a33a54066c972c0f1dc71b1ac83e55ad74781b27771d5d4c7a7d57de4ca66`.
+Download: https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39096484337/artifacts/12125455189
+
+The exact supplied-style inline `[Best]` annotations were accepted alongside
+standard clock/timestamp comments. Export and saved-game restoration preserve
+the original machine tags; display strips them into readable times. No timer or
+time control is inferred, and positions without a recorded clock show an em dash.
+Manual Windows Smart App Control acceptance and user-machine interaction remain
+unverified. No signing, security-policy or launcher changes were made.

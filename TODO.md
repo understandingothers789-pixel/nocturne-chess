@@ -73,4 +73,5 @@ passed and the 0.5.7.3 Windows download is verified against the tested commit. V
 Windows trust/DPI and saved-default migration. Follow up Play sidebar minimum
 width/content clipping; analysis PV space and both player clocks are unaffected.
 PGN clock comments now display in the board clock strip and beside annotated
-moves. They follow the selected variation; validate with additional user PGNs.
+moves. They follow the selected variation; the 0.5.7.4 native Windows regression
+and packaged smoke checks passed.

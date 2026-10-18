@@ -1,14 +1,16 @@
 # Windows 11 desktop builds · 0.5.7.4
 
-[Select the successful **Nocturne-0.5.7.4-Windows-x64-unsigned** artifact](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml)
-from its Windows Actions run.
+[Download the tested, unsigned **Nocturne-0.5.7.4 Windows ZIP**](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39096484337/artifacts/12125455189).
 Sign into GitHub, download, Extract All, then open **Nocturne/Nocturne.exe**.
 Keep the full folder. No Python, compiler or batch launcher is needed to play/analyze.
 You select your own Stockfish executable from the Engine menu.
 
-The 0.5.7.4 Windows workflow runs Ruff and the full test suite twice, creates the
-native executable, then runs offline and external-UCI packaged smoke checks before
-uploading. Check the successful run and its artifact metadata for exact results.
+Windows run 39096484337 succeeded for source commit
+d020afff00f871f23ccea7c390f27865bf85b964. Both native runs passed 154 tests with
+5 optional skips (83.309s / 92.496s). Ruff passed twice. PyInstaller and both
+packaged smoke checks passed, including external-UCI review. The artifact is
+54,697,193 bytes, retained until 2026-11-17. SHA-256:
+`8d4a33a54066c972c0f1dc71b1ac83e55ad74781b27771d5d4c7a7d57de4ca66`.
 
 Live authenticated Lichess data requires a user session token. Separate live
 connectivity checks distinguish protected responses from actual returned data;
