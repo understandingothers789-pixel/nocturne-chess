@@ -10,8 +10,9 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QMenu, QWidget
 
 from ..core.board import Board, Move, PIECE_CHARS, SQUARES
+from ..pieces import DEFAULT_PIECE_SET, PIECE_SET_NAMES, piece_path as asset_path
 from .wheel import WheelSteps
-from .theme import ASSETS, BOARD_THEMES, CANDIDATE_MARKERS, palette
+from .theme import BOARD_THEMES, CANDIDATE_MARKERS, palette
 
 
 class BoardWidget(QWidget):
@@ -56,7 +57,7 @@ class BoardWidget(QWidget):
         self._renderers = {}
         self._renderer_sets = {}
         self.piece_set = ""
-        self.set_piece_set("Nibbler")
+        self.set_piece_set(DEFAULT_PIECE_SET)
         self._animation = QVariantAnimation(self)
         self._animation.setDuration(170)
         self._animation.setEasingCurve(QEasingCurve.Type.OutCubic)
@@ -67,17 +68,13 @@ class BoardWidget(QWidget):
         self.setAccessibleName("Chessboard")
 
     def piece_directory(self):
-        directory = ASSETS / "pieces"
-        return directory / "nibbler" / "source" if self.piece_set == "Nibbler" else (
-            directory / "original" if self.piece_set == "Original" else directory)
+        return asset_path(self.piece_set, 1, PIECE_CHARS).parent
 
     def piece_path(self, piece):
-        kind = PIECE_CHARS[abs(piece)]
-        kind = kind.upper() if self.piece_set == "Nibbler" else kind.lower()
-        return self.piece_directory() / (("w" if piece > 0 else "b") + kind + ".svg")
+        return asset_path(self.piece_set, piece, PIECE_CHARS)
 
     def set_piece_set(self, name):
-        name = name if name in ("Nibbler", "Cburnett", "Original") else "Nibbler"
+        name = name if name in PIECE_SET_NAMES else DEFAULT_PIECE_SET
         if name == self.piece_set:
             return
         self.piece_set = name
@@ -211,10 +208,9 @@ class BoardWidget(QWidget):
         self.update()
 
     def _piece(self, painter: QPainter, piece: int, rect: QRectF):
-        # The shaded Merida vectors already include the Nibbler artwork's
-        # padding. Render at the painter's device resolution, including HiDPI.
-        inset = 0 if self.piece_set == "Nibbler" else rect.width() * 0.045
-        self._renderers[piece].render(painter, rect.adjusted(inset, inset, -inset, -inset))
+        # Every set is vector art. QSvgRenderer follows the painter's device
+        # pixel ratio; its asset viewBox alone controls piece size and spacing.
+        self._renderers[piece].render(painter, rect)
 
     def _arrow(self, painter: QPainter, src: int, dst: int, color: QColor, unit: float, *, subtle=False):
         if src == dst:

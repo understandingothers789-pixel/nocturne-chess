@@ -154,6 +154,17 @@ rows, without changing their three-line measurement or move snapshots.
 # does not turn imported annotations into an active timer or infer missing times.
 
 
+## Registered vector piece sets (0.5.7.19)
+
+`pieces.py` is the single registry of licensed SVG directories and filename
+conventions. `BoardWidget` keeps a `QSvgRenderer` cache per style, then paints
+each asset directly to the logical square rectangle; Qt rasterizes at the
+current device pixel ratio with antialiasing. The SVG viewBox controls the art's
+own whitespace, so no bitmap enlargement or renderer-added inset changes the
+piece size. To add another style, add its twelve licensed SVGs and one registry
+entry. The same path is used by the board, settings preview, promotion icons
+and cursor preview.
+
 ## Preview and database presentation (0.5.7.18)
 
 `window._show_move_preview()` routes temporary history, candidate/PV and database

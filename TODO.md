@@ -1,6 +1,10 @@
 # Active roadmap
 
-**Current: 0.5.7.18 delivered.** Independent database display/statistics, the
+**In progress: 0.5.7.19.** Apply the same high-DPI SVG pipeline to Cburnett and
+future registered piece styles; verify every piece at 1×/2×/3× before Windows
+packaging. The latest verified Windows build remains 0.5.7.18.
+
+**Previous: 0.5.7.18 delivered.** Independent database display/statistics, the
 opt-in Dev cursor hover board and native-resolution Nibbler-style vectors are
 complete in three labelled commits. Local: 173 passed/11 skips. Native Windows:
 179 passed/5 optional skips twice, Ruff twice, PyInstaller and both packaged

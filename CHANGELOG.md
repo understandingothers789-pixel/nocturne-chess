@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.7.19 — High-resolution Cburnett and registered SVG piece sets
+
+- Draw Cburnett directly from its licensed SVG artwork at device resolution, using its own viewBox spacing without an extra inset.
+- Keep one registry for filename conventions and asset locations; every registered SVG style shares the same antialiased Qt vector renderer.
+- Verify all 36 pieces across Nibbler, Cburnett and Original at 1×, 2× and 3× device pixel ratios.
+
 ## 0.5.7.18 — Crisp Nibbler-style vector rendering
 
 - Render the matching shaded Merida SVGs at native device resolution, retaining the Nibbler look and default preference.

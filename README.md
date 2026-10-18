@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.18
+# Nocturne Analysis · 0.5.7.19
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -12,7 +12,14 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
-**0.5.7.18: sharp Nibbler-style pieces.** The default now renders the matching
+**0.5.7.19: crisp Cburnett and future piece styles.** Cburnett uses the same
+direct vector rendering as the Nibbler default. The renderer follows each
+piece set's SVG viewBox without an extra inset; adding a licensed SVG set to the
+piece registry automatically gives it the same antialiased high-DPI treatment.
+All 36 pieces in the three styles are covered at 1×, 2× and 3×.
+[Cburnett Qt capture](docs/cburnett-vector.png).
+
+**0.5.7.18: sharp Nibbler-style pieces.** The default renders the matching
 shaded Merida SVGs directly at device resolution instead of enlarging 240×240
 PNGs. The silhouettes, gradients and padding retain the requested look on the
 board, during dragging/animation, in settings, promotion icons and hover previews.
@@ -39,12 +46,9 @@ The separate statistics switch provides an explicit offline opt-out.
 
 ## Windows: download and open
 
-[Download Windows 0.5.7.18](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39110217241/artifacts/12130256462).
-Extract All, then open **Nocturne/Nocturne.exe**. Both native runs passed
-**179 tests with 5 optional skips**; Ruff and both packaged launch checks passed.
-All three new changes above are included, in separate labelled source commits.
-The mini hover board is opt-in under **Dev**. Database table visibility does not
-turn off statistics. See [build receipt](docs/BUILDING.md) and [development log](PROGRESS.md).
+The Cburnett update is being validated for its cumulative Windows download.
+The latest verified download remains [Windows 0.5.7.18](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39110217241/artifacts/12130256462).
+Extract All, then open **Nocturne/Nocturne.exe**. See [build receipt](docs/BUILDING.md) and [development log](PROGRESS.md).
 
 [Previous verified Windows 0.5.7.15](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39107769865/artifacts/12129033459)
 remains available as a fallback.

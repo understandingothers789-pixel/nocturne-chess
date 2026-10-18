@@ -1,9 +1,8 @@
-# Windows 11 desktop builds · 0.5.7.18
+# Windows 11 desktop builds · 0.5.7.19
 
-[Download Windows 0.5.7.18](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39110217241/artifacts/12130256462).
-Extract All, then open **Nocturne/Nocturne.exe**. This is the cumulative download
-for independent database display/statistics, the Dev cursor-board experiment and
-crisp Nibbler-style vector rendering.
+The 0.5.7.19 Cburnett high-DPI update is being validated; use the latest verified
+[Windows 0.5.7.18 build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39110217241/artifacts/12130256462)
+while it runs. Extract All, then open **Nocturne/Nocturne.exe**.
 
 Tested source `6339a03daf29939c69628164449bc26616ea6489`, run **39110217241**,
 job **117624541482** succeeded. Both native suites: **184 tests, 179 passed /

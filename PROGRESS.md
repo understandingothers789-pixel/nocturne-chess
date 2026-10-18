@@ -2440,3 +2440,34 @@ passed; rebuilt after this receipt.
 unsigned trust remain manual checks. New mini hover mode is experimental and off
 by default; prior main-board preview remains selectable. Lichess needs a session
 token for uncached service access. All requested implementation is complete.
+
+## 2026-10-18 — 0.5.7.19: Cburnett high-DPI vectors
+
+**Phase:** extend the sharp SVG rendering used by default Nibbler pieces to
+Cburnett (Lichess's familiar set) and provide the same rendering automatically
+for every registered SVG style. The artwork remains vector; Qt antialiases it at
+the screen's device-pixel ratio. Its own SVG viewBox sets piece spacing, with no
+extra renderer inset.
+
+**Files changed:** added `src/nocturne/pieces.py` as a path/casing registry;
+updated board, settings and Studio preview to use it; generalized the Qt test to
+all 36 pieces in Nibbler, Cburnett and Original; added `--piece-set` to the
+capture tool and a real Cburnett screenshot; updated versions, workflow artifact
+name and README/CHANGELOG/TODO/BUILDING/ARCHITECTURE.
+
+**Issue found and fixed:** the first test run showed Cburnett's existing files
+use lowercase piece letters, unlike Nibbler's uppercase filenames. The registry
+now maps each correctly; rerunning the focused all-style test passed.
+
+**Commands/results:**
+
+- `QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest tests.test_gui.GuiTests.test_every_registered_piece_set_paints_as_antialiased_vectors_at_high_dpi -v` — passed for all 36 vectors at 1×/2×/3×.
+- `QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests -v` — **184 tests, 173 passed / 11 skipped**, no failures. Six loopback HTTP tests are skipped by the local sandbox; five tablebase fixture tests need a local Syzygy fixture; Windows CI runs the HTTP tests.
+- `.venv/bin/ruff check src tests scripts` — passed.
+- `QT_QPA_PLATFORM=offscreen .venv/bin/python -m nocturne --smoke-test` and the same command with `--smoke-engine /workspace/.venv/bin/python /workspace/tests/fixtures/uci_simulator.py` — both exited 0.
+- `scripts/capture_preview.py --piece-set Cburnett` produced the real Qt capture `docs/cburnett-vector.png`; visually checked. The offscreen environment reports a missing writable Fontconfig cache, but rendering succeeds.
+- `scripts/package_source.py` — created `dist/Nocturne-0.5.7.19-source.zip` (5,468,308 bytes). ZIP integrity passed; 209 entries, all 36 SVGs and the registry included, no `.bat`, `.cmd` or `.ps1` files. SHA-256: `1c9cb1db6d76b2d2522fe82eb8a59c838b19c8c3d1b8810393dd873dd879de76`.
+
+**Next:** publish the labelled source change, run the native Windows test/build
+workflow, and record its actual result and downloadable artifact here. The latest
+verified Windows download remains 0.5.7.18 until that build succeeds.

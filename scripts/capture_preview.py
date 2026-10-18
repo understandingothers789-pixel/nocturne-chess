@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QApplication
 from nocturne.core.game import Game
 from nocturne.gui.window import MainWindow
 from nocturne.gui.theme import BOARD_THEMES
+from nocturne.pieces import DEFAULT_PIECE_SET, PIECE_SET_NAMES
 
 
 def main():
@@ -23,6 +24,7 @@ def main():
     parser.add_argument("--light", action="store_true")
     parser.add_argument("--hide-clocks", action="store_true")
     parser.add_argument("--board-theme", choices=tuple(BOARD_THEMES), default="Classic")
+    parser.add_argument("--piece-set", choices=PIECE_SET_NAMES, default=DEFAULT_PIECE_SET)
     parser.add_argument("--graph-fixture", action="store_true", help="Clearly labelled compressed-scale test scores")
     parser.add_argument("--expand-pv", action="store_true")
     parser.add_argument("--cursor-preview", action="store_true")
@@ -51,6 +53,7 @@ def main():
             light=args.light,
             show_clocks=not args.hide_clocks,
             theme=args.board_theme,
+            piece_set=args.piece_set,
             layout=args.layout,
             engine_id="capture",
             analysis_kind="explore",
@@ -102,6 +105,7 @@ def main():
                 }
             ]
         window._apply_settings()
+        window.board_view.set_piece_set(args.piece_set)
         window._workspace(True)
         window.tabs.setCurrentIndex(2 if args.pgn else 1)
         window.resize(args.width, args.height)

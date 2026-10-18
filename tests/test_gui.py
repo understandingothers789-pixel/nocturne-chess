@@ -223,25 +223,31 @@ class GuiTests(unittest.TestCase):
             dialog.close()
             dialog.deleteLater()
 
-    def test_nibbler_vectors_paint_with_alpha_at_one_two_and_three_times_dpi(self):
+    def test_every_registered_piece_set_paints_as_antialiased_vectors_at_high_dpi(self):
         from PySide6.QtCore import QRectF
         from PySide6.QtGui import QImage, QPainter
+        from nocturne.pieces import PIECE_SET_NAMES
         board = self.window.board_view
-        for piece in board._renderers:
-            for scale in (1, 2, 3):
-                image = QImage(256 * scale, 256 * scale, QImage.Format.Format_ARGB32)
-                image.setDevicePixelRatio(scale)
-                image.fill(Qt.GlobalColor.transparent)
-                painter = QPainter(image)
-                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-                board._piece(painter, piece, QRectF(0, 0, 256, 256))
-                painter.end()
-                self.assertEqual(image.pixelColor(0, 0).alpha(), 0)
-                self.assertGreater(image.pixelColor(128 * scale, 190 * scale).alpha(), 0)
-                # Curved/slanted vector edges must retain intermediate alpha at
-                # native device resolution, rather than nearest-neighbor pixels.
-                edge = [image.pixelColor(x, 128 * scale).alpha() for x in range(image.width())]
-                self.assertTrue(any(0 < alpha < 255 for alpha in edge), (piece, scale))
+        for style in PIECE_SET_NAMES:
+            board.set_piece_set(style)
+            self.assertEqual(len(board._renderers), 12, style)
+            for piece, renderer in board._renderers.items():
+                self.assertTrue(renderer.isValid(), (style, piece))
+                self.assertTrue(board.piece_path(piece).is_file(), (style, piece))
+                self.assertNotIn("<image", board.piece_path(piece).read_text(), (style, piece))
+                for scale in (1, 2, 3):
+                    image = QImage(256 * scale, 256 * scale, QImage.Format.Format_ARGB32)
+                    image.setDevicePixelRatio(scale)
+                    image.fill(Qt.GlobalColor.transparent)
+                    painter = QPainter(image)
+                    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+                    board._piece(painter, piece, QRectF(0, 0, 256, 256))
+                    painter.end()
+                    self.assertEqual(image.pixelColor(0, 0).alpha(), 0, (style, piece, scale))
+                    self.assertGreater(image.pixelColor(128 * scale, 190 * scale).alpha(), 0,
+                                       (style, piece, scale))
+                    edge = [image.pixelColor(x, 128 * scale).alpha() for x in range(image.width())]
+                    self.assertTrue(any(0 < alpha < 255 for alpha in edge), (style, piece, scale))
 
     def test_studio_appearance_preview_cancel_and_save(self):
         from nocturne.gui.dialogs import SettingsDialog

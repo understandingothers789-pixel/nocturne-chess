@@ -1,6 +1,7 @@
 """Validate persisted preferences before they cross into UI or search limits."""
 
 import math
+from .pieces import DEFAULT_PIECE_SET, PIECE_SET_NAMES
 
 DEFAULTS = {
     "mode": "analysis",
@@ -14,7 +15,7 @@ DEFAULTS = {
     "white_engine": "external",
     "black_engine": "external",
     "theme": "Classic",
-    "piece_set": "Nibbler",
+    "piece_set": DEFAULT_PIECE_SET,
     "piece_set_version": 1,
     "appearance_version": 1,
     "light": False,
@@ -67,7 +68,7 @@ def normalize(data) -> dict:
         "explorer_speed": ("all", "ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence"),
         "explorer_rating": (0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500),
         "theme": ("Classic", "Grey", "Walnut", "Slate", "Forest", "Midnight"),
-        "piece_set": ("Nibbler", "Cburnett", "Original"),
+        "piece_set": PIECE_SET_NAMES,
         "white_engine": ("custom", "external"),
         "black_engine": ("custom", "external"),
     }
@@ -80,7 +81,7 @@ def normalize(data) -> dict:
     if data.get("appearance_version") != 1 and data.get("theme", "Forest") == "Forest":
         result["theme"] = "Classic"
     if data.get("piece_set_version") != 1:
-        result["piece_set"] = "Nibbler"
+        result["piece_set"] = DEFAULT_PIECE_SET
     if data.get("candidate_marker_version") != 1:
         result["candidate_style"] = "lines"
     # A saved source from the older UI remains selected even if its panel was

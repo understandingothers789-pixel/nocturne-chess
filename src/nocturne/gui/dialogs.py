@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from .board import BoardWidget
 from .theme import BOARD_THEMES, stylesheet
+from ..pieces import PIECE_SET_NAMES
 
 
 class NewGameDialog(QDialog):
@@ -175,7 +176,7 @@ class SettingsDialog(QDialog):
         self.theme.setCurrentText(config.get("theme", "Classic"))
         form.addRow("Board palette", self.theme)
         self.pieces = QComboBox()
-        self.pieces.addItems(["Nibbler", "Cburnett", "Original"])
+        self.pieces.addItems(PIECE_SET_NAMES)
         self.pieces.setCurrentText(config.get("piece_set", "Nibbler"))
         form.addRow("Piece style", self.pieces)
         self.checks = {}
