@@ -11,7 +11,7 @@
 
 ## 0.5.7.14 — Compact game history and comfortable analysis spacing
 
-- Reduce SAN slot width and inter-move gaps to fit eight analysis columns at 800px.
+- Reduce SAN slot width and inter-move gaps to fit more analysis columns while respecting native font/DPI metrics.
 - Retain text sizes, padded click areas and three reserved PV rows with tighter leading.
 - Make game history the densest section; reduce its panel padding and navigation height.
 - Preserve hover snapshots, queued candidate clicks, colors and wheel behavior.

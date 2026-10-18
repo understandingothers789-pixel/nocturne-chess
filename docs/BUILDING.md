@@ -1,20 +1,31 @@
 # Windows 11 desktop builds · 0.5.7.15
 
-0.5.7.15 cumulative native validation/build pending. It fixes database pacing
-and permits legitimate cold-start time in the review fixture. Production Game
-Review has no total 10/20-second cap. Earlier failed builds were not uploaded.
+[Download Windows 0.5.7.15](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39107769865/artifacts/12129033459). Extract All and open **Nocturne/Nocturne.exe**.
+Includes exact Nibbler PNGs, blue evaluation/API metrics, 10% palette-relative
+last-move shading, dotted ±1-pawn compressed graph and compact move spacing.
+Production Game Review has no total 10/20-second cap.
 
-0.5.7.14 native validation/build pending. It includes compact move spacing,
+Source `4ff370ea4b2d0961e8ee4b6f4903faaeb165331d`, run 39107769865/job
+117617227322 succeeded. Both native suites: **178 tests, 173 passed / 5 optional
+skips**, in 159.879s and 157.084s. Ruff passed twice. PyInstaller, offline frozen
+launch and external-UCI/Game Review frozen checks passed. The real HTTP pacing,
+early-callback, native-DPI spacing and review completion regressions passed twice.
+Artifact 12129033459: 57,235,802 bytes, retained until 2026-11-17. SHA-256:
+`57079d9db689df64a1313734d25fe6fd8a556a954e7532285dfce940351eb05a`.
+Only documentation changed after the tested application commit. Earlier failed
+builds were not uploaded.
+
+0.5.7.14 introduced compact move spacing,
 dotted ±1-pawn graph guides, exact Nibbler pieces, blue metrics and 10% shading.
 Graph and spacing have separate version-labelled commits.
 
-0.5.7.12 native validation/build pending. It includes the exact Nibbler PNG set
+0.5.7.12 introduced the exact Nibbler PNG set
 as default, blue metrics and 10% square shading. The spec recursively includes
 all artwork and licenses; package data also covers PNGs and editable SVG sources.
 
-0.5.7.11 native build/validation is pending. This version adds blue analysis/API
-metrics with neutral depth and 10% palette-relative move shading. The verified
-prior downloads remain below.
+0.5.7.11 introduced blue analysis/API metrics, neutral depth and 10% move shading.
+Its native run passed twice (167 passed/5 optional skips per run). Later cumulative
+versions contain those changes; see the newest download above.
 
 [Download Windows 0.5.7.10](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39101008893/artifacts/12126636588). Extract All and open **Nocturne/Nocturne.exe**.
 Softer distinct move colors, quieter palette-relative board highlights, and

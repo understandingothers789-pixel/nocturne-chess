@@ -13,6 +13,11 @@ analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
 
+[Download Windows 0.5.7.15](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39107769865/artifacts/12129033459).
+Extract All, then open **Nocturne/Nocturne.exe**. Both native runs passed
+**173 tests with 5 optional skips**; Ruff and both packaged launch checks passed.
+All requested appearance, piece, graph and spacing changes below are included.
+
 **0.5.7.15: cumulative validation fixes.** Database requests now recheck their
 monotonic dispatch deadline, guarding against early Windows timer delivery.
 Game Review works through the whole game with the configured **per-position**
@@ -21,7 +26,7 @@ six-move integration fixture permits 20 seconds for cold startup, all searches
 and saved evidence; grading/completion assertions are unchanged.
 
 This build includes all the separately committed appearance, pieces, graph and
-spacing changes below. Windows validation/build pending.
+spacing changes below. Native validation and packaging passed.
 
 **0.5.7.14: denser move spacing.** Game history uses single spaces and tighter
 line/panel spacing. Analysis keeps its text size and padded equal-width SAN
@@ -32,7 +37,7 @@ Three fixed PV rows, hover snapshots, colors and wheel navigation remain.
 
 This cumulative build includes the exact Nibbler pieces, blue API metrics,
 10% last-move shading and dotted/compressed graph from separate commits.
-Windows 0.5.7.14 validation/build pending; prior verified downloads remain below.
+The cumulative Windows 0.5.7.15 download above includes this spacing change.
 
 **0.5.7.13: evaluation graph reference guides.** Dotted +1.00/−1.00 lines mark
 one-pawn advantages, with a subtle equality baseline and labelled scale. Near
@@ -42,7 +47,7 @@ at the edges without flattening normal scores. Raw evaluations and hover values
 remain unchanged. Graph zoom, middle-drag pan and click navigation are retained.
 
 This is a separate version-labelled graph commit, following the pieces commit.
-Full cumulative validation/build pending; earlier changes remain included.
+Validated in the cumulative 0.5.7.15 build; earlier changes remain included.
 
 **0.5.7.12: the exact Nibbler piece set is now the default.** All twelve original
 240×240 transparent PNGs are included, including the Black bishop and king needed
@@ -53,7 +58,7 @@ appearance… → Piece style**; live preview and Cancel/Save still work.
 
 This version also includes the blue evaluation/API/frequency headers and **10%**
 last-move shading below. [Light appearance](docs/nibbler-pieces-light.png).
-Windows 0.5.7.12 validation/build pending; prior verified downloads remain below.
+The cumulative Windows 0.5.7.15 download above includes this piece set.
 Artwork sources/licenses: [Nibbler/Merida notice](licenses/NIBBLER-PIECES-NOTICE.txt).
 
 **0.5.7.11: Nibbler-inspired analysis metrics.** Each suggested-line header now
@@ -72,7 +77,8 @@ frequency percentages. Engine W/D/L remains explicitly from White's perspective.
 Last-move square shading is now **10%** brighter/darker, retaining each square's
 own hue/saturation. Existing piece colors, thin hints and wheel controls remain.
 
-Windows 0.5.7.11 validation/build pending; prior verified downloads are below.
+The metrics-only 0.5.7.11 native build passed both full runs (167 passed/5 optional
+skips each). The latest cumulative download above also includes the later changes.
 [Light appearance with test statistics](docs/analysis-metrics-light.png).
 
 **0.5.7.10: softer colors and wheel navigation.** White analysis moves use muted

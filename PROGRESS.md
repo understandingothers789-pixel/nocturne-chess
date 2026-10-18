@@ -2272,3 +2272,47 @@ The timing-fix local suite ran **178 tests: 167 passed, 11 skipped**, 142.659s.
 No failures. This further validation commit retains version 0.5.7.15 and uses a
 descriptive version-prefixed title, following the user's commit-labelling request.
 Native validation of the final follow-up is required before delivery.
+
+
+### 0.5.7.15 — Final cumulative Windows delivery verified
+
+**Source:** `4ff370ea4b2d0961e8ee4b6f4903faaeb165331d`. Windows run 39107769865,
+job 117617227322, overall success. `python -m unittest discover -s tests -v`
+and the builder's repeated full discovery each ran **178 tests: 173 passed,
+5 optional skips**, in 159.879s and 157.084s. Ruff passed twice. PyInstaller and
+both gated frozen launch checks passed (offline GUI and external-UCI/Game Review).
+No failures in either final run. The exact prior failures are covered: real HTTP
+request spacing, simulated early callback/backoff, native-font compact density,
+and full review grading/navigation/restore all passed twice.
+
+**Artifact:** [Nocturne-0.5.7.15-Windows-x64-unsigned](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39107769865/artifacts/12129033459),
+ID 12129033459, 57,235,802 bytes, expires 2026-11-17. SHA-256:
+`57079d9db689df64a1313734d25fe6fd8a556a954e7532285dfce940351eb05a`.
+Final source ZIP integrity passed; 12 exact Nibbler PNGs and preferred/reference
+SVG sources included, no batch/CMD/PowerShell launchers. The 0.5.7.12 wheel
+archive also verified all original PNGs and upstream SVGs. No application code
+changed after this successful final build; documentation-only receipt update.
+
+**Feature commits preserved and labelled:**
+
+| Version | Source commit | Change |
+| --- | --- | --- |
+| 0.5.7.11 | 7932bd96be45168673df13f4140d3f26cfdf8c2e | Blue API/evaluation metrics, neutral depth, 10% shading |
+| 0.5.7.12 | 049ed72c3e19ecc1242cce4f4672909dba6213e6 | Exact Nibbler PNGs as default, preview/promotion integration |
+| 0.5.7.13 | 8b024d508a971aeb62a9c3ca17b86e10342c8bc0 | Dotted ±1-pawn guides and compressed graph scale |
+| 0.5.7.14 | 439e320e27e935b91cafd98320fc901fc4558661 | Tight game history and comfortable compact analysis slots |
+| 0.5.7.15 | 9c0bf6b87a278ba817b02e24aca401e7c24c7408 | Database pacing and review fixture cold-start allowance |
+| 0.5.7.15 | 4ff370ea4b2d0961e8ee4b6f4903faaeb165331d | Native-font DPI validation follow-up; final verified source |
+
+**Completed:** every requested change remains in the cumulative download. Real
+Game Review has per-position budgets and no 10/20-second whole-game cap. Local
+full suite: 178 run, 167 passed/11 skips (six sandbox socket tests plus five
+optional tests); final native suites exercise those HTTP tests successfully.
+Real Qt previews explicitly label UCI/database/graph fixtures as test data.
+
+**Limits/next:** exact runtime PNGs are 240×240, so extreme enlargement can soften
+them. Physical Windows DPI/trackpad feel and executable trust still require
+user-machine checks. Live ChessDB returned 29 legal moves; authenticated Masters/
+Lichess data was not tested without a user token. Earlier failed runs remain
+recorded above. README/BUILDING/TODO/CHANGELOG now reflect actual final results.
+Next is user feedback; no requested implementation remains pending.

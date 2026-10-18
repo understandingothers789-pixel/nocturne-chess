@@ -1,26 +1,33 @@
 # Active roadmap
 
+**Current: 0.5.7.15 delivered.** All requested pieces, color/metadata, 10% square
+shading, compressed graph guides and compact spacing are included. Two native
+178-test runs passed (173 passed/5 optional skips), Ruff twice and packaged launch
+checks. Remaining checks: physical Windows DPI/trackpad feel and unsigned trust;
+Lichess authentication needs a user token. No requested implementation is pending.
+
 0.5.7.15 fixes an early database-dispatch timer caught on Windows and adjusts
 a review integration-test cold-start allowance. Real reviews have no total
-10/20-second cap. Focused regressions pass; final cumulative verification pending.
+10/20-second cap. Focused regressions and final cumulative native verification passed.
 0.5.7.12/13 native runs failed timing checks and produced no delivery artifacts.
 
 0.5.7.14 compacts game/history spacing most, with narrower equal analysis slots
-and comfortable leading. Four focused layout/hover/click checks passed; full
-cumulative validation/native packaging pending. Prior requests remain included.
+and comfortable leading. Four focused layout/hover/click checks passed; native DPI validation was corrected
+and final cumulative packaging passed in 0.5.7.15. Prior requests remain included.
 
 0.5.7.13 adds dotted ±1-pawn chart guides and a symmetric compressed scale.
-Two focused graph tests and Ruff passed; cumulative full/native checks pending.
-User requested tighter spacing next; it will be a separate labelled commit.
+Two focused graph tests and Ruff passed; cumulative full/native checks passed
+in 0.5.7.15. Tighter spacing followed in its own labelled 0.5.7.14 commit.
 
 0.5.7.12 makes the exact twelve Nibbler PNGs the default, with optional legacy
 styles, preview/promotion integration and a one-time default migration. Focused
-GUI/settings checks passed; full local/native validation pending. Original PNGs
+GUI/settings/local checks passed; native timing failures were fixed and
+the cumulative 0.5.7.15 validation passed. Original PNGs
 are 240×240; unusually large high-DPI boards can exceed native image resolution.
 
 0.5.7.11 adds blue evaluation/API/frequency values in neutral-depth PV headers,
 validated position/move-specific database joins and 10% palette-relative last-
-move shading. Focused checks passed; full local/native validation pending.
+move shading. Focused/local checks and both native runs passed (167 passed/5 optional skips).
 Live authenticated Lichess statistics need a user token; ChessDB has no counts.
 
 0.5.7.10 adds softer distinct text colors, palette-relative last-move shading,
