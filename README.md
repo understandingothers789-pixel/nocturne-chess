@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.5
+# Nocturne Analysis · 0.5.7.6
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -12,6 +12,14 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
+
+**Download 2 · 0.5.7.6: reference-style MultiPV markers.**
+The leading candidate uses teal, alternatives use green, and numbered circles
+sit at the move destinations on thin connecting lines. Matching circle badges
+and move colors connect board suggestions to the reserved MultiPV rows. Candidate
+clicks keep choosing the highest-ranked move when destinations overlap.
+
+![Real Qt app with five PVs; explicitly labelled protocol-simulator data](docs/reference-multipv.png)
 
 **Download 1 · 0.5.7.5: live Studio appearance previews.**
 Changing board palette, piece style, light/dark appearance, coordinates or overlays
@@ -36,7 +44,8 @@ The previously verified 0.5.7.3 download is retained below as a fallback.
 These remain unsigned developer builds; acceptance by the user's Windows setup
 must be checked on that computer.
 
-[Get Windows download 1 · 0.5.7.5](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml) from the successful run's Artifacts section (GitHub sign-in required).
+[Get Windows download 2 · 0.5.7.6](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml) from the successful run's Artifacts section (GitHub sign-in required).
+[Download 1 · preview settings only](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39097285528) is retained separately.
 The versioned workflow runs native tests and frozen GUI/UCI smoke checks before upload.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.

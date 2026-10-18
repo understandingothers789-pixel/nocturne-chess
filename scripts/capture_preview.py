@@ -24,6 +24,7 @@ def main():
     parser.add_argument("--hide-clocks", action="store_true")
     parser.add_argument("--board-theme", choices=tuple(BOARD_THEMES), default="Classic")
     parser.add_argument("--lines", action="store_true")
+    parser.add_argument("--multipv", type=int, choices=range(1, 33), default=6)
     parser.add_argument("--review", action="store_true", help="Game Review with explicitly labelled test scores")
     parser.add_argument("--explorer-fixture", action="store_true", help="Clearly labelled cached test statistics; no network")
     parser.add_argument("--chessdb-fixture", action="store_true", help="Clearly labelled cached ChessDB test scores; no network")
@@ -47,7 +48,7 @@ def main():
             layout=args.layout,
             engine_id="capture",
             analysis_kind="explore",
-            multipv=6,
+            multipv=args.multipv,
             candidate_style="lines" if args.lines else "arrows",
         )
         window.game = Game.from_pgn(

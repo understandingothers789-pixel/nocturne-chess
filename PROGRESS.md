@@ -1808,3 +1808,28 @@ and five optional historical checks skip as before. Native Windows validation
 will run on this commit before download delivery. Next: MultiPV reference colors
 and numbered destination circles in the second commit. No signing/build-tool or
 security-policy change; desktop trust acceptance remains unverified here.
+
+## 2026-10-18 — Download 2 / commit 2: 0.5.7.6 MultiPV presentation
+
+First source commit 3229377b796bba09e6eb7f9beabfc68b7e907d88 is undergoing native
+Windows validation in run 39097285528. Its first full Windows test pass succeeded;
+packaging is still running as this second source commit is prepared.
+
+Updated theme.py, board.py, candidates.py and moves.py: rank-one hints use teal,
+alternatives green; thin lines end in matching numbered circles at destination
+centers. The higher-ranked shared-destination marker is drawn above the rest.
+Candidate rows have matching round badges, colored first moves and contrasting
+White/Black continuation text. Three-line reservations and hover snapshots remain
+intact. settings.py upgrades to reference lines once, preserving later explicit
+arrow choices. Dialog previews inherit the selected marker style. Added two
+behavior regressions and a --multipv option to the real Qt capture tool.
+
+Focused tests passed: 7 in 0.902s, covering five-rank destination execution,
+hover/update stability and settings. Full local discovery: 162 tests in 92.236s,
+151 passed, 11 skipped, no failures. Ruff and the external-UCI/Game Review smoke
+check passed. Captured/inspected actual Qt five-PV UI and board-only reference
+views (docs/reference-multipv.png and reference-board.png), explicitly using
+fixture suggestions rather than claiming measured engine evaluations. Updated
+version/build artifact names, README/CHANGELOG/TODO and this log. Native Windows
+validation runs on the versioned commit. Next: hide metadata in Game Moves while
+preserving PGN/export data, with an optional read-only developer view.

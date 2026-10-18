@@ -1,5 +1,8 @@
 # Active roadmap
 
+0.5.7.6 (download 2) adds reference-style teal/green candidate lines and numbered
+circles, colored MultiPV rows and a once-only default marker migration.
+
 0.5.7.5 (download 1) adds reversible live Studio appearance previews and an
 Original piece-style option. Native Windows build receipts are in PROGRESS.md
 and the corresponding versioned Actions run.

@@ -4,6 +4,11 @@ from nocturne.settings import DEFAULTS, normalize
 
 
 class SettingsTests(unittest.TestCase):
+    def test_reference_markers_upgrade_once_then_keep_explicit_arrow_choice(self):
+        self.assertEqual(normalize({"candidate_style": "arrows"})["candidate_style"], "lines")
+        self.assertEqual(normalize({"candidate_style": "arrows", "candidate_marker_version": 1})["candidate_style"], "arrows")
+        self.assertEqual(normalize(normalize({"candidate_style": "arrows"}))["candidate_style"], "lines")
+
     def test_classic_migration_is_once_only_and_keeps_other_preferences(self):
         upgraded = normalize({"theme": "Forest", "hash_mb": 1024, "analysis_menu_version": 1,
                               "multipv": 6, "show_clocks": False})

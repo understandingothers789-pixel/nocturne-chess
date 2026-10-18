@@ -10,7 +10,7 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QMenu, QWidget
 
 from ..core.board import Board, Move, PIECE_CHARS, SQUARES
-from .theme import ASSETS, BOARD_THEMES, palette
+from .theme import ASSETS, BOARD_THEMES, CANDIDATE_MARKERS, palette
 
 
 class BoardWidget(QWidget):
@@ -290,31 +290,32 @@ class BoardWidget(QWidget):
             for move in self.branch_moves:
                 self._arrow(painter, move.from_sq, self._destination(move), QColor(153, 137, 106, 65), unit, subtle=True)
             entries = self.recommendations or ([(self.best_move, 1, "")] if self.best_move else [])
-            marker_colors = ["#71879b", "#9b8a72", "#968295", "#858b90"]
             best_rank = {}
             for move, rank, _ in entries:
                 destination = self._destination(move)
                 best_rank[destination] = min(rank, best_rank.get(destination, rank))
             for move, rank, text in reversed(entries):
-                color = QColor(marker_colors[(rank - 1) % len(marker_colors)])
-                color.setAlpha(95 if rank == 1 else 75)
+                color = QColor(CANDIDATE_MARKERS[0 if rank == 1 else 1])
+                color.setAlpha(175 if rank == 1 else 145)
                 if self.candidate_style == "lines":
-                    painter.setPen(QPen(color, max(1.0, min(1.6, unit * 0.018)), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                    painter.setPen(QPen(color, max(1.4, min(3.5, unit * 0.04)), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
                     painter.drawLine(self.square_rect(move.from_sq).center(), self.square_rect(self._destination(move)).center())
                 else:
                     self._arrow(painter, move.from_sq, self._destination(move), color, unit, subtle=True)
                 if best_rank[self._destination(move)] != rank:
                     continue
                 destination = self.square_rect(self._destination(move))
-                diameter = max(12.0, unit * 0.19)
-                badge = QRectF(destination.right() - diameter - unit * 0.06,
-                               destination.top() + unit * 0.06, diameter, diameter)
-                painter.setBrush(QColor(35, 35, 35, 75))
+                diameter = max(12.0, min(27.0, unit * 0.25))
+                center = destination.center()
+                badge = QRectF(center.x() - diameter / 2, center.y() - diameter / 2, diameter, diameter)
+                badge_color = QColor(CANDIDATE_MARKERS[0 if rank == 1 else 1])
+                badge_color.setAlpha(230)
+                painter.setBrush(badge_color)
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawEllipse(badge)
-                painter.setPen(QColor(245, 245, 245, 175))
+                painter.setPen(QColor("#17251d"))
                 font = QFont("Segoe UI")
-                font.setPixelSize(max(8, int(unit * 0.115)))
+                font.setPixelSize(max(9, int(diameter * 0.62)))
                 painter.setFont(font)
                 painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, str(rank))
         if not preview and self._drag_pos is not None and self._pressed is not None:

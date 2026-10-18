@@ -160,6 +160,7 @@ class SettingsDialog(QDialog):
         if parent is not None and hasattr(parent, "game"):
             self.preview.set_position(parent.game.board, parent.board_view.last_move)
             self.preview.set_recommendations(parent.board_view.recommendations)
+            self.preview.candidate_style = parent.board_view.candidate_style
         preview_column.addWidget(self.preview, 1)
         caption = QLabel("Live preview · Save to keep your choices.\nCancel restores your previous appearance.")
         caption.setWordWrap(True)

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.6 — Download 2: teal/green MultiPV circles and lines
+
+- Use teal for rank one and green for alternatives, with numbered destination
+  circles, thin connecting lines, matching row badges and colored move text.
+- Keep three reserved move-text lines, hover snapshots, pins, legal destination
+  execution and highest-ranked shared-destination selection.
+- Apply reference lines once on upgrade; retain later explicit arrow selections.
+
 ## 0.5.7.5 — Download 1: live Studio appearance preview
 
 - Preview board palette, Cburnett/Original pieces, light/dark appearance,

@@ -6,7 +6,7 @@ import math
 from PySide6.QtCore import QEvent, Signal, Qt
 from PySide6.QtGui import QTextDocument
 from PySide6.QtWidgets import QTextBrowser
-from .theme import palette
+from .theme import candidate_color, palette
 
 
 class MoveText(QTextBrowser):
@@ -30,6 +30,9 @@ class MoveText(QTextBrowser):
         self._current = None
         self._light = False
         self._hovered = None
+        self.candidate_rank = None
+        self.candidate_turn = 1
+        self._candidate_style = None
         if auto_fit:
             self.document().setDocumentMargin(2)
             self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -77,11 +80,13 @@ class MoveText(QTextBrowser):
 
     def set_moves(self, items, current=None, light=False):
         signature = (list(items), current, light)
-        if signature == (self._items, self._current, self._light):
+        candidate_style = (self.candidate_rank, self.candidate_turn)
+        if signature == (self._items, self._current, self._light) and candidate_style == self._candidate_style:
             return
         self.preview_ended.emit()
         self._hovered = None
         self._items, self._current, self._light = signature
+        self._candidate_style = candidate_style
         colors = palette(light)
         color = colors["text"]
         tokens = []
@@ -89,8 +94,15 @@ class MoveText(QTextBrowser):
             if index is None:
                 tokens.append(escape(text))
                 continue
+            move_color = color
+            if self.candidate_rank is not None:
+                side = self.candidate_turn if index % 2 else -self.candidate_turn
+                if side < 0:
+                    move_color = "#8e514a" if light else "#dfaaa3"
+                if index == 1:
+                    move_color = candidate_color(self.candidate_rank, light)
             style = (f'color: {colors["selected_text"]}; background-color: {colors["selection"]};'
-                     if index == current else f"color: {color};")
+                     if index == current else f"color: {move_color};")
             tokens.append(f'<a href="move:{index}" style="{style} text-decoration:none;">{escape(text)}</a>')
         size, spacing = (16, 145) if self._auto_fit else (14, 160)
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'

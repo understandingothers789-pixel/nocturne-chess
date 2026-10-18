@@ -1,9 +1,10 @@
 """Interactive engine candidate rows. Only actual, legally validated PV data is shown."""
 
 from PySide6.QtCore import Signal, Qt, QTimer
-from PySide6.QtWidgets import QLabel, QMenu, QVBoxLayout, QWidget, QLayout, QSizePolicy
+from PySide6.QtWidgets import QLabel, QMenu, QHBoxLayout, QVBoxLayout, QWidget, QLayout, QSizePolicy
 from ..engine.uci_types import score_label
 from .moves import MoveText
+from .theme import CANDIDATE_MARKERS, candidate_color
 
 
 class CandidatePanel(QWidget):
@@ -22,6 +23,8 @@ class CandidatePanel(QWidget):
         self.primary = primary
         self.primary.reserve_lines(3)
         self.rows = {}
+        self.badges = {}
+        self.light = False
         self.lines = {}
         self.pinned = set()
         self.turn = 1
@@ -42,6 +45,7 @@ class CandidatePanel(QWidget):
                 self.primary.setParent(self)
             widgets[0].deleteLater()
         self.rows = {}
+        self.badges = {}
         self.lines = {}
         self.pinned.clear()
         self.slot_count = 0
@@ -62,11 +66,25 @@ class CandidatePanel(QWidget):
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(0, 8, 0, 12)
         layout.setSpacing(2)
-        header = QLabel(f"#{rank}   Waiting for engine")
+        header = QLabel("Waiting for engine")
         header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         header.setFixedHeight(header.fontMetrics().height() + 6)
-        layout.addWidget(header)
+        heading = QHBoxLayout()
+        heading.setContentsMargins(0, 0, 0, 0)
+        heading.setSpacing(9)
+        badge = QLabel(str(rank))
+        badge.setFixedSize(22, 22)
+        badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        badge.setAccessibleName(f"Candidate rank {rank}")
+        color = CANDIDATE_MARKERS[0 if rank == 1 else 1]
+        badge.setStyleSheet(f"background: {color}; color: #17251d; border-radius: 11px; font-weight: 600;")
+        heading.addWidget(badge)
+        heading.addWidget(header, 1)
+        self.badges[rank] = badge
+        header.setStyleSheet(f"color: {candidate_color(rank, self.light)};")
+        layout.addLayout(heading)
         moves = self.primary if rank == 1 else MoveText(auto_fit=True, reserved_lines=3)
+        moves.candidate_rank = rank
         layout.addWidget(moves)
         moves.show()
         # The primary widget survives clear/reuse, so wire it exactly once.
@@ -87,6 +105,13 @@ class CandidatePanel(QWidget):
                 self._primary_menu_connected = True
         self.rows[rank] = (frame, header, moves)
         self.layout.addWidget(frame)
+
+    def recolor(self, light):
+        if self.light == light:
+            return
+        self.light = light
+        for rank, (_, header, _) in self.rows.items():
+            header.setStyleSheet(f"color: {candidate_color(rank, light)};")
 
     def _hover(self, rank, ply):
         if rank not in self.lines:
@@ -126,6 +151,7 @@ class CandidatePanel(QWidget):
         self.pending.pop(rank, None)
         self.lines[rank] = info.copy()
         self.turn = turn
+        self.recolor(light)
         frame, header, moves = self.rows[rank]
         wdl = info.get("wdl")
         if wdl and turn < 0:
@@ -133,11 +159,12 @@ class CandidatePanel(QWidget):
         extra = f" · W/D/L {wdl[0] / 10:.1f}/{wdl[1] / 10:.1f}/{wdl[2] / 10:.1f}% White" if wdl else ""
         header.setText(
             ("★ " if rank in self.pinned else "")
-            + f"#{rank}   {score_label(info, turn)}   d{info['depth']}/{info['seldepth']}"
+            + f"{score_label(info, turn)}   d{info['depth']}/{info['seldepth']}"
             + (f" · {info['nodes']:,} nodes" if detailed else "")
             + extra
         )
         header.setAccessibleName(f"Candidate {rank} evaluation and search metrics")
+        moves.candidate_turn = turn
         moves.set_moves([(text, i + 1) for i, text in enumerate(info["san"])], light=light)
         self.changed.emit()
 

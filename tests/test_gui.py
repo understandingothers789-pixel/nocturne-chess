@@ -321,6 +321,23 @@ class GuiTests(unittest.TestCase):
         self.app.processEvents()
         return base, job
 
+    def test_five_colored_candidates_keep_slots_and_destination_execution(self):
+        self._analysis_game("1.e4 e5 *")
+        self.window.config["multipv"] = 5
+        job = {"turn": 1, "multipv": 5}
+        for rank, move in enumerate(["g1f3", "b1c3", "f1c4", "d2d3", "d2d4"], 1):
+            self._show_external_info({"depth": 7, "seldepth": 9, "score": 35 - rank * 5,
+                                      "nodes": 2000, "multipv": rank, "pv": [move]}, job)
+        self.app.processEvents()
+        panel = self.window.candidates
+        self.assertEqual([panel.badges[r].text() for r in range(1, 6)], ["1", "2", "3", "4", "5"])
+        self.assertEqual(len({panel.rows[r][2].height() for r in range(1, 6)}), 1)
+        self.assertNotEqual(panel.badges[1].styleSheet(), panel.badges[2].styleSheet())
+        self.assertEqual(self.window.board_view.candidate_style, "lines")
+        QTest.mouseClick(self.window.board_view, Qt.MouseButton.LeftButton,
+                         pos=self.window.board_view.square_rect(parse_square("d4")).center().toPoint())
+        self.assertEqual(self.window.game.sans[-1], "d4")
+
     def test_three_line_pv_slots_preserve_hover_and_apply_latest_update_after_leaving(self):
         base, job = self._three_pvs()
         panel = self.window.candidates

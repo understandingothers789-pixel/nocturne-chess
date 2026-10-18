@@ -1637,6 +1637,7 @@ class MainWindow(QMainWindow):
         self.graph.update()
         self.eval_bar.setVisible(self.board_view.overlays)
         self._render_move_history()
+        self.candidates.recolor(light)
         for view in {self.pv_label, *(widgets[2] for widgets in self.candidates.rows.values())}:
             view.set_moves(view._items, view._current, light=light)
         self.board_view.update()
@@ -1645,7 +1646,7 @@ class MainWindow(QMainWindow):
         self._apply_appearance(self._appearance_config())
         self.tablebase_label.setVisible(bool(self.config.get("syzygy_path")))
         self.board_view.smart_move = self.config.get("smart_move", True)
-        self.board_view.candidate_style = self.config.get("candidate_style", "arrows")
+        self.board_view.candidate_style = self.config.get("candidate_style", "lines")
         for key, action in self.marker_actions.items():
             action.setChecked(key == self.board_view.candidate_style)
         for key, action in self.display_actions.items():

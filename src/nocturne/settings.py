@@ -27,7 +27,8 @@ DEFAULTS = {
     "review_seconds": 3.0,
     "details": False,
     "smart_move": True,
-    "candidate_style": "arrows",
+    "candidate_style": "lines",
+    "candidate_marker_version": 1,
     "branch_arrows": True,
     "layout": "classic",
     "analysis_kind": "infinite",
@@ -71,6 +72,8 @@ def normalize(data) -> dict:
     # Upgrade the old default once; later explicit palette choices are retained.
     if data.get("appearance_version") != 1 and data.get("theme", "Forest") == "Forest":
         result["theme"] = "Classic"
+    if data.get("candidate_marker_version") != 1:
+        result["candidate_style"] = "lines"
     for key in (
         "light",
         "coordinates",

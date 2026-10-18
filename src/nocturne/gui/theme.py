@@ -12,6 +12,14 @@ BOARD_THEMES = {
     "Midnight": ("#98aaa1", "#3c5b50"),
 }
 
+CANDIDATE_MARKERS = ("#65a9ab", "#62a460")
+
+
+def candidate_color(rank: int, light: bool = False) -> str:
+    if light:
+        return "#286c72" if rank == 1 else "#3b7039"
+    return "#81c3c7" if rank == 1 else "#9ac58a"
+
 
 def palette(light: bool = False) -> dict[str, str]:
     if light:
