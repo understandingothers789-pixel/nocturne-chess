@@ -390,6 +390,50 @@ class GuiTests(unittest.TestCase):
         self.app.processEvents()
         return base, job
 
+    def test_graph_guides_track_one_pawn_on_compressed_symmetric_scale(self):
+        graph = self.window.graph
+        samples = {0: 0, 1: 50, 2: 100, 3: 200, 4: 400, 5: 800, 6: -800}
+        graph.set_samples(samples, 2, 6)
+        rect = graph._plot_rect()
+        center = graph._point(0, 0).y()
+        self.assertAlmostEqual(center, rect.center().y())
+        self.assertAlmostEqual(center - graph._point(2, 100).y(),
+                               graph._point(2, -100).y() - center)
+        self.assertAlmostEqual(center - graph._point(1, 50).y(),
+                               (center - graph._point(2, 100).y()) / 2)
+        self.assertLess(graph._point(5, 800).y(), graph._point(4, 400).y())
+        self.assertGreater(graph._point(5, 800).y(), rect.top())
+        self.assertGreater(graph._compressed(200) - graph._compressed(100),
+                           graph._compressed(800) - graph._compressed(700))
+        self.assertEqual(graph.samples, samples)  # Values stay actual cp, not display coordinates.
+        before = graph._point(2, 100).y()
+        graph.set_samples(samples | {7: 2000, 8: -2000}, 7, 8)
+        self.assertGreater(graph._point(2, 100).y(), before)
+        self.assertAlmostEqual(graph._point(2, 100).y() + graph._point(2, -100).y(), 2 * center)
+
+    def test_graph_mates_do_not_flatten_cp_and_zoom_clicks_keep_ply_mapping(self):
+        graph = self.window.graph
+        graph.set_samples({0: 0, 1: 100, 2: -100, 3: 400}, 1, 6)
+        ordinary = graph._point(1, 100).y()
+        graph.set_samples({0: 0, 1: 100, 2: -100, 3: 400, 4: 30000, 6: -30000}, 1, 6)
+        self.assertEqual(graph._point(1, 100).y(), ordinary)
+        self.assertEqual(graph._point(4, 30000).y(), graph._plot_rect().top())
+        self.assertEqual(graph._point(6, -30000).y(), graph._plot_rect().bottom())
+        graph.resize(650, 85)
+        graph.view_start, graph.view_end = 1.0, 4.0
+        selected = []
+        graph.position_requested.connect(selected.append)
+        # Disconnect normal game navigation while checking graph coordinates.
+        graph.position_requested.disconnect()
+        graph.position_requested.connect(selected.append)
+        QTest.mouseClick(graph, Qt.MouseButton.LeftButton, pos=graph._point(3, 0).toPoint())
+        self.assertEqual(selected, [3])
+        self._wheel(graph, 120, point=graph._point(2, 0).toPoint())
+        self.assertLess(graph.view_end - graph.view_start, 3)
+        QTest.mouseDClick(graph, Qt.MouseButton.LeftButton, pos=graph.rect().center())
+        self.assertEqual(graph.view_start, 0)
+        self.assertIsNone(graph.view_end)
+
     def _header_document(self, rank):
         document = QTextDocument()
         document.setHtml(self.window.candidates.rows[rank][1].text())

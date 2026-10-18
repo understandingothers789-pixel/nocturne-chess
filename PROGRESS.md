@@ -2147,3 +2147,34 @@ README/CHANGELOG/TODO/BUILDING/research/PROGRESS and real Qt captures.
 results. Native PNG resolution is 240×240; extreme enlargement can soften images.
 Physical Windows trust/high-DPI behavior remains a user-machine check. No launcher
 or signing-policy changes; all prior requested changes remain included.
+
+
+### 0.5.7.12 — Local full validation
+
+Full local command: `QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest
+discover -s tests -q`: **174 tests, 163 passed, 11 skipped**, 136.119s, no failures.
+Both source smoke commands passed. `pip wheel --no-deps --no-build-isolation`
+built 0.5.7.12; archive integrity and presence of all 12 original PNGs/12 editable
+Merida SVGs passed. Windows run 39102285548 is validating this piece commit.
+
+## 2026-10-18 — 0.5.7.13: separate evaluation graph phase
+
+**Implemented:** `gui/widgets.py` adds neutral dotted ±100cp reference lines with
+labels and an equality baseline. The transform is linear inside ±100cp and
+sign-preserving log2 compression outside; fit uses 12% transformed headroom and
+a minimum extent, smoothly adjusting beyond equality. Mate sentinels are placed
+at the edge without determining centipawn range. Actual samples/hover values
+remain raw. Labels avoid overlap when guides converge. Plotting is clipped;
+shared plot geometry retains mouse click, wheel zoom and middle-drag mapping.
+
+**Executed:** two focused native Qt graph tests passed, covering symmetry,
+near-zero linearity, large-score compression, adaptive reference location, raw
+score preservation, mate independence and zoom/click/reset mapping. Ruff passed.
+Capture helper adds explicit `--graph-fixture` values and labels those as test
+cp, not engine analysis. Full cumulative/native validation is pending.
+
+**Files:** widgets, GUI tests, preview helper, version/build metadata and
+README/CHANGELOG/TODO/PROGRESS. This graph change is a separate version-labelled
+commit after the exact-piece commit. User added compact move spacing while it
+was being completed; that is the next separate commit. No requested feature
+has been dropped. Windows physical display/trust checks remain manual.

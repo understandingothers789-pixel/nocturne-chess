@@ -23,6 +23,7 @@ def main():
     parser.add_argument("--light", action="store_true")
     parser.add_argument("--hide-clocks", action="store_true")
     parser.add_argument("--board-theme", choices=tuple(BOARD_THEMES), default="Classic")
+    parser.add_argument("--graph-fixture", action="store_true", help="Clearly labelled compressed-scale test scores")
     parser.add_argument("--expand-pv", action="store_true")
     parser.add_argument("--lines", action="store_true")
     parser.add_argument("--multipv", type=int, choices=range(1, 33), default=6)
@@ -112,6 +113,9 @@ def main():
             if window.profiles and pending and time.monotonic() < deadline:
                 QTimer.singleShot(100, capture)
                 return
+            if args.graph_fixture:
+                window.graph.set_samples({0: 0, 1: 35, 2: -60, 3: 110, 4: 380, 5: -250, 6: 650, 7: 900}, 4, 7)
+                window.statusBar().showMessage("Evaluation graph fixture · test cp values, not engine analysis")
             actual_fen = window.game.board.fen()
             if args.preview_ply is not None:
                 window._preview_history(args.preview_ply)

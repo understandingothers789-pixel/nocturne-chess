@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.12
+# Nocturne Analysis · 0.5.7.13
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -12,6 +12,16 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
+
+**0.5.7.13: evaluation graph reference guides.** Dotted +1.00/−1.00 lines mark
+one-pawn advantages, with a subtle equality baseline and labelled scale. Near
+zero the vertical scale is linear; beyond ±1 pawn it compresses logarithmically.
+The range expands smoothly to fit real samples with headroom. Mate sentinels sit
+at the edges without flattening normal scores. Raw evaluations and hover values
+remain unchanged. Graph zoom, middle-drag pan and click navigation are retained.
+
+This is a separate version-labelled graph commit, following the pieces commit.
+Full cumulative validation/build pending; earlier changes remain included.
 
 **0.5.7.12: the exact Nibbler piece set is now the default.** All twelve original
 240×240 transparent PNGs are included, including the Black bishop and king needed

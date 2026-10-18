@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.13 — Dotted evaluation guides and compressed graph scale
+
+- Add labelled dotted ±1.00-pawn guides and a subtle equality baseline.
+- Preserve detail near zero with a linear segment and logarithmic compression
+  beyond one pawn; smoothly fit the range with 12% transformed-scale headroom.
+- Keep mate sentinels at the edges, independent of centipawn range fitting.
+- Clip zoomed plotting to its bounds and retain accurate click/zoom/pan mapping.
+
 ## 0.5.7.12 — Exact Nibbler pieces by default
 
 - Bundle all twelve unmodified Nibbler PNGs with verified upstream blob hashes,

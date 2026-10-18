@@ -61,33 +61,63 @@ class EvaluationGraph(QWidget):
         self.view_end = None
         self.hover_ply = None
         self._pan_x = None
+        self._extent = 2.0
+        self.setAccessibleName("Evaluation history · White perspective · linear near zero, logarithmic beyond one pawn")
 
     def set_samples(self, samples: dict[int, int], cursor: int, total: int):
         self.samples = samples.copy()
+        ordinary = [abs(score) for score in samples.values() if abs(score) < 29000]
+        maximum = self._compressed(max(ordinary, default=0))
+        self._extent = max(2.0, maximum * 1.12)
         if total != self.total:
             self.view_start = 0.0
             self.view_end = None
         self.cursor, self.total = cursor, total
         self.update()
 
+    @staticmethod
+    def _compressed(score):
+        pawns = abs(score) / 100
+        distance = pawns if pawns <= 1 else 1 + math.log2(pawns)
+        return math.copysign(distance, score)
+
+    def _plot_rect(self):
+        return QRectF(39, 12, max(1, self.width() - 47), max(1, self.height() - 24))
+
     def _point(self, ply, score):
         end = self.total if self.view_end is None else self.view_end
+        rect = self._plot_rect()
+        # Mate sentinels sit at the edge; they never flatten normal cp samples.
+        fraction = math.copysign(1.0, score) if abs(score) >= 29000 else self._compressed(score) / self._extent
         return QPointF(
-            8 + (self.width() - 16) * (ply - self.view_start) / max(1, end - self.view_start),
-            self.height() / 2 - math.tanh(score / 500) * (self.height() / 2 - 12),
+            rect.left() + rect.width() * (ply - self.view_start) / max(1, end - self.view_start),
+            rect.center().y() - fraction * rect.height() / 2,
         )
 
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         colors = palette(self.light)
-        p.setPen(QPen(QColor(colors["border"]), 1, Qt.PenStyle.DashLine))
-        p.drawLine(8, self.height() // 2, self.width() - 8, self.height() // 2)
+        rect = self._plot_rect()
+        p.setFont(QFont("Segoe UI", 8))
+        for score, label in ((100, "+1.00"), (-100, "−1.00")):
+            y = self._point(0, score).y()
+            p.setPen(QPen(QColor(colors["metadata"]), 1, Qt.PenStyle.DotLine))
+            p.drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y))
+            label_y = min(y - 8, rect.center().y() - 18) if score > 0 else max(y - 8, rect.center().y() + 2)
+            p.drawText(QRectF(0, label_y, 34, 16), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, label)
+            if abs(label_y + 8 - y) > 1:
+                p.setPen(QPen(QColor(colors["border"]), 1))
+                p.drawLine(QPointF(35, label_y + 8), QPointF(rect.left(), y))
+        p.setPen(QPen(QColor(colors["border"]), 1))
+        p.drawLine(QPointF(rect.left(), rect.center().y()), QPointF(rect.right(), rect.center().y()))
         if not self.samples:
             p.setPen(QColor(colors["muted"]))
             p.setFont(QFont("Segoe UI", 10))
             p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Evaluation samples appear here")
             return
+        p.save()
+        p.setClipRect(rect.adjusted(-1, -3, 1, 3))
         path = QPainterPath()
         points = [(ply, self._point(ply, score)) for ply, score in sorted(self.samples.items())]
         path.moveTo(points[0][1])
@@ -101,8 +131,9 @@ class EvaluationGraph(QWidget):
         for ply, point in points:
             p.drawEllipse(point, 4 if ply == self.cursor else 2.3, 4 if ply == self.cursor else 2.3)
         x = self._point(self.cursor, 0).x()
-        p.setPen(QPen(QColor(colors["muted"]), 1))
-        p.drawLine(QPointF(x, 8), QPointF(x, self.height() - 8))
+        p.setPen(QPen(QColor(colors["metric"]), 1, Qt.PenStyle.DotLine))
+        p.drawLine(QPointF(x, rect.top()), QPointF(x, rect.bottom()))
+        p.restore()
         if self.hover_ply is not None and self.hover_ply in self.samples:
             value = self.samples[self.hover_ply]
             text = (
@@ -126,7 +157,7 @@ class EvaluationGraph(QWidget):
         if self._pan_x is not None:
             end = self.total if self.view_end is None else self.view_end
             span = max(1, end - self.view_start)
-            delta = (self._pan_x - event.position().x()) * span / max(1, self.width() - 16)
+            delta = (self._pan_x - event.position().x()) * span / self._plot_rect().width()
             start = min(max(0, self.view_start + delta), max(0, self.total - span))
             self.view_start, self.view_end = start, start + span
             self._pan_x = event.position().x()
@@ -149,7 +180,8 @@ class EvaluationGraph(QWidget):
             return
         end = self.total if self.view_end is None else self.view_end
         span = max(1, end - self.view_start)
-        fraction = min(1, max(0, (event.position().x() - 8) / max(1, self.width() - 16)))
+        rect = self._plot_rect()
+        fraction = min(1, max(0, (event.position().x() - rect.left()) / rect.width()))
         center = self.view_start + fraction * span
         span = min(self.total, max(2, span * (0.75 if event.angleDelta().y() > 0 else 1.33)))
         self.view_start = min(max(0, center - fraction * span), self.total - span)

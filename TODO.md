@@ -1,5 +1,9 @@
 # Active roadmap
 
+0.5.7.13 adds dotted ±1-pawn chart guides and a symmetric compressed scale.
+Two focused graph tests and Ruff passed; cumulative full/native checks pending.
+User requested tighter spacing next; it will be a separate labelled commit.
+
 0.5.7.12 makes the exact twelve Nibbler PNGs the default, with optional legacy
 styles, preview/promotion integration and a one-time default migration. Focused
 GUI/settings checks passed; full local/native validation pending. Original PNGs
