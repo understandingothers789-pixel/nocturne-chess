@@ -15,21 +15,23 @@ analysis. The simulator is not bundled in the application.*
 
 **0.5.7.1 is based on 0.5.7 and adds only stable, three-line MultiPV slots.**
 It restores 0.5.7's original pieces and clock display, dependencies and packaging.
-The former 0.5.8 piece/clock changes are excluded. The original 0.5.7 package
-remains linked below until the new patch's native build is validated. A rebuilt
+The former 0.5.8 piece/clock changes are excluded. The patch
+and original 0.5.7 downloads are both linked below. A rebuilt
 unsigned executable can still receive a different Windows trust decision;
 Smart App Control acceptance on the user's computer has not been verified.
 
-[Download the verified Windows 0.5.7 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39081231579/artifacts/12118044851) (GitHub sign-in required).
+[Download the tested, unsigned Windows 0.5.7.1 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39088586425/artifacts/12121976207) (GitHub sign-in required).
 
 [All Windows builds](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
-Select **Nocturne-0.5.7-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
-Windows validation passed: 146 tests passed, 5 skipped; packaged app and external-UCI
+Select **Nocturne-0.5.7.1-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
+Windows validation passed twice: 148 tests passed, 5 skipped per run; packaged app and external-UCI
 protocol-fixture/Game Review smoke checks passed. Real Stockfish/manual interaction verification remains open.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
 change is provided. The ZIP also includes the corresponding source archive.
+
+[Original Windows 0.5.7 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39081231579/artifacts/12118044851) — retained as a fallback.
 
 ## Your saved PGNs
 

@@ -51,6 +51,7 @@ score parity is not claimed.
 0.5.7.1 restores the 0.5.7 baseline and adds only three-line MultiPV slots and
 hover stability. Focused GUI tests: 39 passed; lint and both app smoke checks
 passed. Full local discovery passed: 142 passed, 11 skipped. Native Windows validation
-is next. Confirm the rebuilt
+passed twice: 148 passed, 5 optional skips each; packaged GUI/UCI/Game Review
+checks passed. The 0.5.7.1 Windows download is verified against the tested commit. Confirm the rebuilt
 patch opens on the user's Windows configuration; prior 0.5.7 acceptance does
 not establish the new executable's trust status. No 0.5.8 pieces/clock UI remain.

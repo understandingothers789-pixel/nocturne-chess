@@ -1532,3 +1532,33 @@ claim Windows packaging passed until it actually completes.
 Revised external suite command completed: 23 tests passed in 26.173s, no failures.
 Only tests/test_external_analysis.py and this log change after the initial native
 attempt. Retrying the unchanged application with stronger test diagnostics.
+
+
+## 2026-10-18 — 0.5.7.1 Windows patch delivery verified
+
+Final tested source commit 573e329d7882f7bc3cdd9a961b88b2a6d47c4bef passed Windows
+run 39088586425/job 117560251408. Full discovery ran twice: 153 total each,
+148 passed and 5 optional skips, in 101.585s and 108.900s. All six HTTP tests ran.
+Both Ruff runs passed. The revised cold-start/rejection test and all new PV
+regressions passed in both runs. PyInstaller built the windowed application;
+both frozen smoke commands passed (offline and external UCI, including complete
+two-move Game Review). The build's check=True gate completed only after both
+launches. The initial failed attempt remains documented above; its timeout was
+not counted as a successful build. No application source changes followed the
+original successful local application validation; the retry changed test/log only.
+
+Verified artifact 12121976207 belongs to the final tested commit, is not expired,
+and is named Nocturne-0.5.7.1-Windows-x64-unsigned. Size 54,465,871 bytes; retention
+until 2026-11-17. SHA-256:
+bb28a693b772ea71b793822d5c00e457772e274cca2fbcb7be9afef1657ba052.
+Download: https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39088586425/artifacts/12121976207
+
+README/BUILDING link the new tested unsigned patch and retain the original 0.5.7
+package as a fallback. TODO records completed checks. Source ZIP and wheel passed
+integrity checks with the byte-identical original pieces and no removed Cburnett
+or Windows launcher files. Refreshed source/checksums after final documentation.
+Only docs follow the passing native commit. The optional API check again returned
+29 legal ChessDB moves and Lichess token requirements; authenticated Lichess data
+is not claimed. User-machine Smart App Control acceptance, manual DPI and actual
+engine interaction remain unverified. This patch restores the requested baseline;
+it is not claimed to resolve or bypass the unconfirmed Windows trust decision.
