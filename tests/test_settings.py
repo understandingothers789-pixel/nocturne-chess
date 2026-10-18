@@ -48,6 +48,15 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(normalize({"piece_set": "Original", "piece_set_version": 1})["piece_set"], "Original")
         self.assertEqual(normalize({"piece_set": "missing"})["piece_set"], "Nibbler")
 
+    def test_database_statistics_and_explorer_visibility_are_independent(self):
+        self.assertFalse(normalize({})["explorer_statistics"])
+        upgraded = normalize({"explorer_enabled": True})
+        self.assertTrue(upgraded["explorer_statistics"])
+        upgraded["explorer_enabled"] = False
+        self.assertTrue(normalize(upgraded)["explorer_statistics"])
+        self.assertFalse(normalize({"explorer_enabled": True, "explorer_statistics": False})["explorer_statistics"])
+        self.assertFalse(normalize({"explorer_statistics": "true"})["explorer_statistics"])
+
     def test_menu_migration_preserves_effective_line_count(self):
         self.assertEqual(normalize({"analysis_kind": "infinite", "multipv": 3})["multipv"], 1)
         self.assertEqual(normalize({"analysis_kind": "explore", "multipv": 6})["multipv"], 6)

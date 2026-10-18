@@ -447,7 +447,7 @@ class GuiTests(unittest.TestCase):
         self._show_external_info({"depth": 31, "seldepth": 46, "score": 22, "nodes": 10000,
                                   "multipv": 3, "wdl": (100, 200, 700), "pv": ["b1c3", "g8f6"]},
                                  {"turn": 1, "multipv": 3})
-        self.window.config.update(explorer_enabled=True, explorer_source="masters")
+        self.window.config.update(explorer_enabled=True, explorer_statistics=True, explorer_source="masters")
         with patch.object(self.window.explorer.client, "load"):
             self.window._sync_explorer()
         explorer = self.window.explorer
@@ -472,6 +472,13 @@ class GuiTests(unittest.TestCase):
             self.assertNotEqual(document.find("Depth").charFormat().foreground().color(),
                                 QColor(palette(light)["metric"]))
             self.assertIn("no move sample", self._header_document(1).toPlainText())
+        self.window._set_explorer_option("explorer_enabled", False)
+        self.assertFalse(explorer.isVisible())
+        self.assertIs(explorer.query, query)
+        self.assertIs(explorer.statistics, data)
+        self.assertIn("25.0%", self._header_document(3).toPlainText())
+        self.assertTrue(self.window.explorer_statistics_action.isChecked())
+        # API updates still reach headers while the explorer panel is hidden.
         # API updates change metadata without shifting a hovered lower slot.
         third = self.window.candidates.rows[3][2]
         self._hover_word(third, "Nc3")
@@ -487,7 +494,7 @@ class GuiTests(unittest.TestCase):
         self._analysis_game("1.e4 *")
         self._show_external_info({"depth": 9, "seldepth": 12, "score": 30, "nodes": 1000,
                                   "wdl": (100, 200, 700), "pv": ["e7e5"]}, {"turn": -1})
-        self.window.config.update(explorer_enabled=True, explorer_source="lichess")
+        self.window.config.update(explorer_enabled=True, explorer_statistics=True, explorer_source="lichess")
         with patch.object(self.window.explorer.client, "load"):
             self.window._sync_explorer()
         explorer = self.window.explorer
@@ -512,8 +519,10 @@ class GuiTests(unittest.TestCase):
         self.assertIn("ChessDB · Live", text)
         self.assertIn("API win (Black) —", text)
         self.assertIn("Freq —", text)
-        self.window.config["explorer_enabled"] = False
-        self.window._sync_explorer()
+        self.window._set_explorer_option("explorer_enabled", False)
+        self.assertIn("DB White -0.20", self._header_document(1).toPlainText())
+        self.assertFalse(explorer.isVisible())
+        self.window._set_explorer_option("explorer_statistics", False)
         self.assertIn("Database off", self._header_document(1).toPlainText())
         explorer._result(current.key, cloud, "Live · disabled response")
         self.assertIsNone(self.window.candidates.database)

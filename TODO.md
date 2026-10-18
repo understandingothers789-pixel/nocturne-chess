@@ -1,5 +1,9 @@
 # Active roadmap
 
+**In progress: 0.5.7.16–18.** Independent database visibility/statistics implemented;
+experimental cursor hover board and sharp Nibbler rendering next, then cumulative
+Windows validation and download. Prior delivery below remains available.
+
 **Current: 0.5.7.15 delivered.** All requested pieces, color/metadata, 10% square
 shading, compressed graph guides and compact spacing are included. Two native
 178-test runs passed (173 passed/5 optional skips), Ruff twice and packaged launch

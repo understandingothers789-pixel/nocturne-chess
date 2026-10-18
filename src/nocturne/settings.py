@@ -40,6 +40,7 @@ DEFAULTS = {
     "multipv": 1,
     "analysis_menu_version": 1,
     "explorer_enabled": False,
+    "explorer_statistics": False,
     "explorer_source": "masters",
     "explorer_speed": "all",
     "explorer_rating": 0,
@@ -81,6 +82,10 @@ def normalize(data) -> dict:
         result["piece_set"] = "Nibbler"
     if data.get("candidate_marker_version") != 1:
         result["candidate_style"] = "lines"
+    # The old switch controlled both lookup and display. Preserve lookup opt-in
+    # on upgrade, then store the two choices independently.
+    if "explorer_statistics" not in data:
+        result["explorer_statistics"] = data.get("explorer_enabled") is True
     for key in (
         "light",
         "coordinates",
@@ -96,6 +101,7 @@ def normalize(data) -> dict:
         "branch_arrows",
         "details",
         "explorer_enabled",
+        "explorer_statistics",
     ):
         if isinstance(data.get(key), bool):
             result[key] = data[key]

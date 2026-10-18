@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.15
+# Nocturne Analysis · 0.5.7.16
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -10,6 +10,13 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application.*
+
+**0.5.7.16: database statistics without the lower explorer panel.**
+**Database → Show database explorer** only shows/hides the table. API win and
+frequency continue to update in each MultiPV header, including after navigation.
+Selecting Masters, Lichess players or ChessDB enables statistics without opening
+the panel. **Enable database statistics** independently disables all lookups;
+fresh installations still start offline. Existing enabled lookups are migrated.
 
 ## Windows: download and open
 

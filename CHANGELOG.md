@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.7.16 — Keep database statistics when hiding the explorer
+
+- Separate explorer visibility from database lookup opt-in; preserve API win, frequency and source metadata while hidden.
+- Source selection enables statistics without opening the lower table.
+- Retain explicit lookup disable, offline default, cache reuse and stale-result guards.
+
 ## 0.5.7.15 — Enforce database pacing and allow cold CI startup
 
 - Use a precise Qt timer and recheck debounce/interval/backoff monotonic deadlines

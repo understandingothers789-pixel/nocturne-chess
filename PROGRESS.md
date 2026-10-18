@@ -2316,3 +2316,24 @@ user-machine checks. Live ChessDB returned 29 legal moves; authenticated Masters
 Lichess data was not tested without a user token. Earlier failed runs remain
 recorded above. README/BUILDING/TODO/CHANGELOG now reflect actual final results.
 Next is user feedback; no requested implementation remains pending.
+
+## 2026-10-18 — 0.5.7.16: independent database statistics and panel visibility
+
+**Changed:** `gui/window.py`, `settings.py`, GUI/explorer/settings regressions,
+`capture_preview.py`, version/build metadata and README/CHANGELOG/TODO.
+The explorer visibility checkbox now affects only the lower table. Selecting a
+source activates lookups without opening it; hidden lookups follow navigation and
+filters and keep updating API win/frequency. A separate lookup toggle preserves
+explicit offline operation, including cancellation and late-response rejection.
+Existing enabled lookups migrate; fresh installations remain opt-in.
+
+**Executed:** `QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests
+-p test_gui.py -k candidate_api -v` and `-k candidate_headers_color -v`: one passed
+each. `-p test_explorer.py -k CachedGuiTests -q`: five passed (2.005 s), including
+hidden-panel cache/navigation/source/close/persistence/disable coverage.
+`-p test_settings.py -q`: seven passed. `.venv/bin/ruff check src tests scripts`: passed.
+No failed checks in this phase; native cumulative validation is pending.
+
+**Next:** Dev cursor-board hover experiment, then vector piece rendering. Hidden
+lookups still require internet/authentication for uncached service data; no
+statistics or database results are invented.

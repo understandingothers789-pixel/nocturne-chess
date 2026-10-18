@@ -62,7 +62,7 @@ def main():
         if args.explorer_fixture or args.chessdb_fixture:
             from nocturne.explorer import ExplorerQuery
             source = "chessdb" if args.chessdb_fixture else "lichess"
-            window.config.update(explorer_enabled=True, explorer_source=source, explorer_speed="rapid", explorer_rating=1800)
+            window.config.update(explorer_enabled=True, explorer_statistics=True, explorer_source=source, explorer_speed="rapid", explorer_rating=1800)
             query = ExplorerQuery(window.game.board.fen(), source, "rapid", 1800)
             payload = {
                 "white": 250, "draws": 150, "black": 100,

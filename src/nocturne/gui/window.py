@@ -677,6 +677,8 @@ class MainWindow(QMainWindow):
         database = self.menuBar().addMenu("&Database")
         self.explorer_enabled_action = add(database, "Show database explorer", lambda checked: self._set_explorer_option("explorer_enabled", checked))
         self.explorer_enabled_action.setCheckable(True)
+        self.explorer_statistics_action = add(database, "Enable database statistics", lambda checked: self._set_explorer_option("explorer_statistics", checked))
+        self.explorer_statistics_action.setCheckable(True)
         self.explorer_actions = {}
         for source, title in (("masters", "Masters database"), ("lichess", "Lichess players (Amateurs)"),
                               ("chessdb", "ChessDB · cloud analysis")):
@@ -766,7 +768,7 @@ class MainWindow(QMainWindow):
 
     def _choose_explorer(self, source):
         self.config["explorer_source"] = source
-        self.config["explorer_enabled"] = True
+        self.config["explorer_statistics"] = True
         self._workspace(True)
         self.tabs.setCurrentIndex(1)
         self._sync_explorer()
@@ -797,6 +799,7 @@ class MainWindow(QMainWindow):
     def _set_explorer_option(self, key, value):
         self.config[key] = value
         if key == "explorer_enabled" and value:
+            self.config["explorer_statistics"] = True
             self._workspace(True)
             self.tabs.setCurrentIndex(1)
         self._sync_explorer()
@@ -807,15 +810,17 @@ class MainWindow(QMainWindow):
             return
         enabled = bool(self.config.get("explorer_enabled"))
         active = enabled and self.analysis_mode and self.tabs.currentIndex() == 1
+        lookup = bool(self.config.get("explorer_statistics")) and self.analysis_mode and self.tabs.currentIndex() == 1
         if hasattr(self, "explorer_actions"):
             self.clear_lichess_token_action.setEnabled(self.explorer.client.has_lichess_token)
             self.explorer_enabled_action.setChecked(enabled)
+            self.explorer_statistics_action.setChecked(bool(self.config.get("explorer_statistics")))
             for (key, value), action in self.explorer_actions.items():
                 action.setChecked(self.config.get(key) == value)
             for menu in self.explorer_filter_menus:
                 menu.setEnabled(self.config.get("explorer_source") == "lichess")
         self.explorer.setVisible(active)
-        self.explorer.set_position(self.game.board, self._position_identity(), active,
+        self.explorer.set_position(self.game.board, self._position_identity(), lookup,
                                    self.config.get("explorer_source", "masters"),
                                    self.config.get("explorer_speed", "all"),
                                    self.config.get("explorer_rating", 0))
