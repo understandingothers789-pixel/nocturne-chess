@@ -372,9 +372,11 @@ class GuiTests(unittest.TestCase):
                                       "nodes": 2000, "multipv": rank, "pv": [move]}, job)
         self.app.processEvents()
         panel = self.window.candidates
-        self.assertEqual([panel.badges[r].text() for r in range(1, 6)], ["1", "2", "3", "4", "5"])
+        self.assertEqual(len(panel.rows), 5)
+        self.assertFalse(any(label.text() in {"1", "2", "3", "4", "5"}
+                             for label in panel.findChildren(type(panel.rows[1][1]))))
         self.assertEqual(len({panel.rows[r][2].height() for r in range(1, 6)}), 1)
-        self.assertNotEqual(panel.badges[1].styleSheet(), panel.badges[2].styleSheet())
+        self.assertEqual(panel.rows[1][1].styleSheet(), panel.rows[2][1].styleSheet())
         self.assertEqual(self.window.board_view.candidate_style, "lines")
         QTest.mouseClick(self.window.board_view, Qt.MouseButton.LeftButton,
                          pos=self.window.board_view.square_rect(parse_square("d4")).center().toPoint())

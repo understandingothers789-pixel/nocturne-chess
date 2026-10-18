@@ -1,8 +1,14 @@
 # Active roadmap
 
+0.5.7.8 removes analysis-panel rank badges and rank coloring, with subtle side-to-
+move text tints. Board overlays retain the approved appearance.
+
 0.5.7.7 (download 3) keeps metadata in the backend/export while Game Moves shows
 numbers and SAN. Dev → Show raw PGN data enables a separate read-only view;
 default off. Three cumulative feature commits and Windows downloads are retained.
+All three native builds passed their full tests twice plus packaged launch checks.
+Final version: 158 passed, 5 optional skips per native run; user-machine trust/DPI
+and real-engine desktop interactions remain manual checks.
 
 0.5.7.6 (download 2) adds reference-style teal/green candidate lines and numbered
 circles, colored MultiPV rows and a once-only default marker migration.

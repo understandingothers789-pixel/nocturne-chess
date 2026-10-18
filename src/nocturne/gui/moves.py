@@ -6,7 +6,7 @@ import math
 from PySide6.QtCore import QEvent, Signal, Qt
 from PySide6.QtGui import QTextDocument
 from PySide6.QtWidgets import QTextBrowser
-from .theme import candidate_color, palette
+from .theme import palette
 
 
 class MoveText(QTextBrowser):
@@ -98,9 +98,7 @@ class MoveText(QTextBrowser):
             if self.candidate_rank is not None:
                 side = self.candidate_turn if index % 2 else -self.candidate_turn
                 if side < 0:
-                    move_color = "#8e514a" if light else "#dfaaa3"
-                if index == 1:
-                    move_color = candidate_color(self.candidate_rank, light)
+                    move_color = "#302d2b" if light else "#e5e3e2"
             style = (f'color: {colors["selected_text"]}; background-color: {colors["selection"]};'
                      if index == current else f"color: {move_color};")
             tokens.append(f'<a href="move:{index}" style="{style} text-decoration:none;">{escape(text)}</a>')

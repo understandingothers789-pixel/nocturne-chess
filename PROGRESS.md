@@ -1882,3 +1882,44 @@ This is the third and final requested feature commit. Windows CI will test this
 exact source and create download 3 after native validation. The previous two
 verified downloads remain available independently. No build/signing/dependency
 or security-policy change; actual desktop trust acceptance is not claimed.
+
+## 2026-10-18 — Download 3 verified; three-commit delivery complete
+
+Third commit 9236c785e9cded1ea7b39e3f2693ac9077ce6db4 passed Windows run
+39098023371/job 117588388622. Both full runs completed 163 tests: 158 passed and
+5 optional skips each, in 113.465s and 128.494s. Ruff passed twice. Native
+PyInstaller packaging and offline/external-UCI/Game Review frozen smoke checks
+passed before upload. No Windows test/build failure occurred in this series.
+
+Artifact 12125303892 is Nocturne-0.5.7.7-Windows-x64-unsigned, from the exact
+tested source, 55,156,789 bytes, non-expired and retained until 2026-11-17.
+SHA-256: 221126c71b044e1b8f5f946af5e1aaf41bf902127db7e83c2d25e58b64644ba0.
+https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39098023371/artifacts/12125303892
+
+Verified exactly three published feature commits: 3229377 (previews), 7a4169e
+(MultiPV presentation), 9236c78 (clean moves/raw view). All three source-specific
+downloads remain independent. Application files match the final tested commit.
+Final artifact receipts/download links are recorded in the workspace docs without
+adding a fourth commit. Refreshed local source archive/checksums after those docs;
+wheel/source integrity, 24-piece inventory and no-launcher checks passed. Desktop
+Smart App Control acceptance remains unverified; no signing/security changes.
+
+## 2026-10-18 — 0.5.7.8 subtle analysis-panel text
+
+User approved the board hints but requested no numbered badges/rank colors on
+the analysis side and a barely noticeable White/Black move-text distinction.
+Changed candidates.py to remove row badges and use neutral gray headings;
+moves.py removes the rank-one color override and uses near-neutral warm grays
+for Black moves (dark #e5e3e2 versus White #ededed; light #302d2b versus #262626).
+Removed the unused rank-text palette helper from theme.py. BoardWidget and its
+teal/green connecting lines/numbered circles are unchanged. Fixed three-line PV
+slots, hover snapshots and internal candidate ranks remain in place.
+
+Updated the existing five-candidate GUI regression for unnumbered neutral rows,
+while retaining destination execution checks. Two focused checks passed in
+1.081s; all 45 GUI tests passed in 58.476s. Ruff passed. Offline and absolute-path
+external-UCI/Game Review app smoke checks exited 0. Captured and inspected real
+Qt five-PV dark/light views (subtle-analysis-dark.png, subtle-analysis-light.png),
+explicitly labelled protocol-simulator test data. No test failures. Updated
+README/CHANGELOG/TODO and version/artifact metadata to 0.5.7.8. Native full tests
+and frozen launch checks will validate the exact Windows build before delivery.

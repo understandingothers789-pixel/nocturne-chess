@@ -1,10 +1,10 @@
 """Interactive engine candidate rows. Only actual, legally validated PV data is shown."""
 
 from PySide6.QtCore import Signal, Qt, QTimer
-from PySide6.QtWidgets import QLabel, QMenu, QHBoxLayout, QVBoxLayout, QWidget, QLayout, QSizePolicy
+from PySide6.QtWidgets import QLabel, QMenu, QVBoxLayout, QWidget, QLayout, QSizePolicy
 from ..engine.uci_types import score_label
 from .moves import MoveText
-from .theme import CANDIDATE_MARKERS, candidate_color
+from .theme import palette
 
 
 class CandidatePanel(QWidget):
@@ -23,7 +23,6 @@ class CandidatePanel(QWidget):
         self.primary = primary
         self.primary.reserve_lines(3)
         self.rows = {}
-        self.badges = {}
         self.light = False
         self.lines = {}
         self.pinned = set()
@@ -45,7 +44,6 @@ class CandidatePanel(QWidget):
                 self.primary.setParent(self)
             widgets[0].deleteLater()
         self.rows = {}
-        self.badges = {}
         self.lines = {}
         self.pinned.clear()
         self.slot_count = 0
@@ -68,21 +66,9 @@ class CandidatePanel(QWidget):
         layout.setSpacing(2)
         header = QLabel("Waiting for engine")
         header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
-        header.setFixedHeight(header.fontMetrics().height() + 6)
-        heading = QHBoxLayout()
-        heading.setContentsMargins(0, 0, 0, 0)
-        heading.setSpacing(9)
-        badge = QLabel(str(rank))
-        badge.setFixedSize(22, 22)
-        badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        badge.setAccessibleName(f"Candidate rank {rank}")
-        color = CANDIDATE_MARKERS[0 if rank == 1 else 1]
-        badge.setStyleSheet(f"background: {color}; color: #17251d; border-radius: 11px; font-weight: 600;")
-        heading.addWidget(badge)
-        heading.addWidget(header, 1)
-        self.badges[rank] = badge
-        header.setStyleSheet(f"color: {candidate_color(rank, self.light)};")
-        layout.addLayout(heading)
+        header.setFixedHeight(max(22, header.fontMetrics().height() + 6))
+        header.setStyleSheet(f"color: {palette(self.light)['muted']};")
+        layout.addWidget(header)
         moves = self.primary if rank == 1 else MoveText(auto_fit=True, reserved_lines=3)
         moves.candidate_rank = rank
         layout.addWidget(moves)
@@ -110,8 +96,8 @@ class CandidatePanel(QWidget):
         if self.light == light:
             return
         self.light = light
-        for rank, (_, header, _) in self.rows.items():
-            header.setStyleSheet(f"color: {candidate_color(rank, light)};")
+        for _, header, _ in self.rows.values():
+            header.setStyleSheet(f"color: {palette(light)['muted']};")
 
     def _hover(self, rank, ply):
         if rank not in self.lines:

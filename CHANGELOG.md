@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7.8 — Quieter MultiPV analysis panel
+
+- Remove analysis-row rank badges and teal/green rank coloring.
+- Use neutral headings and barely different White/Black move-text tints in both
+  appearances. Keep the board's existing candidate colors, circles and lines.
+- Preserve fixed three-line PV slots, hover snapshots and destination clicks.
+
 ## 0.5.7.7 — Download 3: clean Game Moves and optional raw PGN
 
 - Show only move numbers/SAN and branch parentheses in the bottom Game Moves

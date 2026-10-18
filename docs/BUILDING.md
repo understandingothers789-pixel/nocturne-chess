@@ -4,12 +4,16 @@ Three cumulative feature commits have separate Windows artifacts:
 
 1. [0.5.7.5: live Studio previews](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39097285528/artifacts/12125655113).
 2. [0.5.7.6: previews and MultiPV circles/colors](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39097588959/artifacts/12125422408).
-3. [0.5.7.7: all above plus clean Game Moves/raw PGN](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
+3. [0.5.7.7: all above plus clean Game Moves/raw PGN](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39098023371/artifacts/12125303892).
 
 Select the matching versioned artifact after the workflow succeeds. The 0.5.7.5
 run passed both 160-test Windows runs (155 passed/5 skipped each), and 0.5.7.6
 passed both 162-test runs (157 passed/5 skipped each). Both passed packaged launch
-checks. The last run validates the third source commit before upload.
+checks. The last run passed 163 tests twice (158 passed/5 optional skips each),
+Ruff and both frozen launch checks for source 9236c785e9cded1ea7b39e3f2693ac9077ce6db4.
+Final run 39098023371/job 117588388622 took 113.465s / 128.494s for the suites.
+Artifact 12125303892 is 55,156,789 bytes; SHA-256:
+`221126c71b044e1b8f5f946af5e1aaf41bf902127db7e83c2d25e58b64644ba0`.
 The existing unsigned packaging/build tools are retained for all three downloads;
 Windows Smart App Control acceptance cannot be established by CI.
 

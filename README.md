@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.7
+# Nocturne Analysis · 0.5.7.8
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -6,12 +6,21 @@ Stockfish or another UCI executable. **The desktop app has no built-in engine.**
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
-![Real Qt application, using explicitly labelled simulated UCI test data](docs/preview.png)
+![Real Qt application, using explicitly labelled simulated UCI test data](docs/subtle-analysis-dark.png)
 
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
+
+**0.5.7.8: quieter analysis text.** The analysis panel has no numbered badges or
+rank colors. Headings are neutral gray, and White/Black move text differs only
+by a very subtle gray tint. The board's teal/green lines and numbered circles
+are retained, along with stable three-line PV slots and hover previews.
+
+[Download Windows 0.5.7.8](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml)
+from its successful run's versioned artifact. [Light-mode capture](docs/subtle-analysis-light.png).
+The earlier three builds below remain available as fallbacks.
 
 **Download 3 · 0.5.7.7 includes all three changes.**
 The bottom Game Moves strip shows move numbers and SAN, with variations and hover
@@ -22,10 +31,11 @@ navigation. Clock tags, comments and review metadata remain in saved/exported PG
 | --- | --- |
 | [1 · 0.5.7.5](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39097285528/artifacts/12125655113) | Live settings previews |
 | [2 · 0.5.7.6](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39097588959/artifacts/12125422408) | Previews + teal/green MultiPV |
-| [3 · 0.5.7.7](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml) | All above + clean moves and optional raw PGN |
+| [3 · 0.5.7.7](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39098023371/artifacts/12125303892) | All above + clean moves and optional raw PGN |
 
-Select the corresponding versioned artifact from its successful run. GitHub sign-in
-is required. These are three cumulative source commits and three separate builds.
+All three builds passed native Windows tests twice and packaged launch checks.
+GitHub sign-in is required. These are three cumulative source commits and three
+separate builds. The latest passed 158 tests with 5 optional skips in each run.
 
 ![Actual Qt imported-clock PGN with clean Game Moves](docs/clean-game-moves.png)
 

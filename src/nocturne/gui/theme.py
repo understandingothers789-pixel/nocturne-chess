@@ -15,12 +15,6 @@ BOARD_THEMES = {
 CANDIDATE_MARKERS = ("#65a9ab", "#62a460")
 
 
-def candidate_color(rank: int, light: bool = False) -> str:
-    if light:
-        return "#286c72" if rank == 1 else "#3b7039"
-    return "#81c3c7" if rank == 1 else "#9ac58a"
-
-
 def palette(light: bool = False) -> dict[str, str]:
     if light:
         return dict(bg="#efefed", panel="#fafaf8", raised="#e7e7e4", text="#262626",
