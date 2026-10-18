@@ -2214,3 +2214,44 @@ earlier requests were dropped; no signing or launcher changes.
 
 **Next:** complete full/native verification and deliver the newest cumulative
 Windows artifact. Physical Windows DPI/trackpad/trust checks remain manual.
+
+
+### 0.5.7.14 — Local full result and native timing failures
+
+The compact cumulative local suite ran **177 tests: 166 passed, 11 skipped**,
+148.638s, no failures. Windows 0.5.7.12 run 39102285548/job 117600840590 passed
+its first 174-test suite (169 passed/5 skips, 143.637s), but its repeated suite
+failed `test_review_panel_grades_accuracy_navigation_and_saved_restore` at the
+fixture's 10-second completion deadline (190.767s full run). No artifact uploaded.
+Windows 0.5.7.13 run 39102557054/job 117601614434 failed `test_request_spacing`: 
+63ms observed between arrivals versus a 75ms lower bound, 176 tests/84.274s,
+5 optional skips. No artifact uploaded. These are recorded failures, not passes.
+
+## 2026-10-18 — 0.5.7.15: labelled timing-regression fix phase
+
+**Implemented:** `gui/explorer_client.py` uses Qt PreciseTimer and checks the
+monotonic debounce/last-send interval/Retry-After deadline at dispatch. Early
+callbacks rearm instead of sending, enforcing pacing independently of platform
+timer precision. `tests/test_explorer.py` adds an offline regression simulating
+an early callback and active backoff before any network access.
+
+`tests/test_external_analysis.py` gives the six-move review fixture 20 seconds
+for two permitted five-second cold handshakes, bounded searches and disk/UI work.
+All six labels, completion, accuracy, navigation and saved-restore assertions
+remain; failures now include connection phase/review state/recent protocol log.
+**Real Game Review is still per-position, without a total 10/20-second cap.**
+User explicitly confirmed longer games should take longer; no production
+review limit was added or shortened.
+
+**Executed:** the offline early-timer regression passed (1 test, 0.006s); the
+full review-panel grading/restore integration passed (1 test, 1.484s). Ruff
+passed. Both source launch checks completed successfully. Full cumulative suite
+is running; a new native Windows build follows this separate version-labelled
+fix commit. No appearance changes from the reviewed compact/piece/graph builds.
+
+**Files:** explorer client, explorer/external integration tests, version/build
+metadata and README/CHANGELOG/TODO/BUILDING/PROGRESS.
+
+**Next:** verify full/local/native results and frozen launches before providing
+the latest download. Earlier timing failures remain documented. Windows trust,
+physical DPI/trackpad feel and authenticated Lichess access remain manual checks.

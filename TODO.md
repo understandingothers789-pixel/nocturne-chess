@@ -1,5 +1,10 @@
 # Active roadmap
 
+0.5.7.15 fixes an early database-dispatch timer caught on Windows and adjusts
+a review integration-test cold-start allowance. Real reviews have no total
+10/20-second cap. Focused regressions pass; final cumulative verification pending.
+0.5.7.12/13 native runs failed timing checks and produced no delivery artifacts.
+
 0.5.7.14 compacts game/history spacing most, with narrower equal analysis slots
 and comfortable leading. Four focused layout/hover/click checks passed; full
 cumulative validation/native packaging pending. Prior requests remain included.

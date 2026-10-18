@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.14
+# Nocturne Analysis · 0.5.7.15
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -12,6 +12,16 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
+
+**0.5.7.15: cumulative validation fixes.** Database requests now recheck their
+monotonic dispatch deadline, guarding against early Windows timer delivery.
+Game Review works through the whole game with the configured **per-position**
+search time; there is no 10- or 20-second total review limit. The automated
+six-move integration fixture permits 20 seconds for cold startup, all searches
+and saved evidence; grading/completion assertions are unchanged.
+
+This build includes all the separately committed appearance, pieces, graph and
+spacing changes below. Windows validation/build pending.
 
 **0.5.7.14: denser move spacing.** Game history uses single spaces and tighter
 line/panel spacing. Analysis keeps its text size and padded equal-width SAN

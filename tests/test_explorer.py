@@ -96,6 +96,34 @@ class HttpFixture(QTcpServer):
 
 
 class DataTests(unittest.TestCase):
+    def test_early_timer_rearms_before_network_dispatch(self):
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as directory:
+            client = ExplorerClient(ExplorerCache(Path(directory) / "cache.sqlite3"), interval_ms=90)
+            client.query = ExplorerQuery(Game().board.fen())
+            client.last_sent = 10.0
+            client._send_after = 10.09
+            try:
+                with patch("nocturne.gui.explorer_client.time.monotonic", return_value=10.063), \
+                        patch.object(client, "request_for") as request:
+                    client._send()
+                    request.assert_not_called()
+                    self.assertTrue(client.timer.isActive())
+                    self.assertGreater(client.timer.remainingTime(), 0)
+                with patch("nocturne.gui.explorer_client.time.monotonic", return_value=10.091), \
+                        patch.object(client, "request_for", side_effect=RuntimeError("dispatch reached")):
+                    with self.assertRaisesRegex(RuntimeError, "dispatch reached"):
+                        client._send()
+                client.blocked_until = 12.0
+                with patch("nocturne.gui.explorer_client.time.monotonic", return_value=11.0), \
+                        patch.object(client, "request_for") as request:
+                    client._send()
+                    request.assert_not_called()
+            finally:
+                client.close()
+                client.deleteLater()
+                app.processEvents()
+
     def test_chessdb_query_is_read_only_and_scores_remain_distinct_from_game_counts(self):
         query = ExplorerQuery(Game().board.fen(), "chessdb")
         params = parse_qs(urlsplit(query.url()).query)

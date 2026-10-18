@@ -5,7 +5,7 @@ import math
 import re
 import time
 
-from PySide6.QtCore import QObject, QTimer, QUrl, Signal
+from PySide6.QtCore import QObject, QTimer, QUrl, Signal, Qt
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkProxyFactory, QNetworkReply, QNetworkRequest
 
 from .. import __version__
@@ -25,6 +25,7 @@ class ExplorerClient(QObject):
         self.network = QNetworkAccessManager(self)
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
+        self.timer.setTimerType(Qt.TimerType.PreciseTimer)
         self.timer.timeout.connect(self._send)
         self.deadline = QTimer(self)
         self.deadline.setSingleShot(True)
@@ -33,6 +34,7 @@ class ExplorerClient(QObject):
         self.query = None
         self.generation = 0
         self.last_sent = -math.inf
+        self._send_after = -math.inf
         self.blocked_until = 0
         self.saved = None
         self._lichess_token = ""
@@ -91,9 +93,19 @@ class ExplorerClient(QObject):
             return
         self.status.emit(query.key, f"Loading {query.label}…")
         wait = max(self.debounce_ms, self.interval_ms - (time.monotonic() - self.last_sent) * 1000)
+        self._send_after = time.monotonic() + max(0, wait) / 1000
         self.timer.start(max(0, math.ceil(wait)))
 
     def _send(self):
+        if self.query is None:
+            return
+        # Qt/platform timers can fire early. Enforce pacing using the clock at
+        # dispatch, including debounce and Retry-After, rather than timer accuracy.
+        now = time.monotonic()
+        due = max(self._send_after, self.last_sent + self.interval_ms / 1000, self.blocked_until)
+        if now < due:
+            self.timer.start(max(1, math.ceil((due - now) * 1000)))
+            return
         query, generation = self.query, self.generation
         request = self.request_for(query)
         self.last_sent = time.monotonic()

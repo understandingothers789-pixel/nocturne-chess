@@ -563,7 +563,14 @@ class QtIntegration(unittest.TestCase):
             original = window.game.board.fen()
             panel.seconds.setValue(0.1)
             QTest.mouseClick(panel.run, Qt.MouseButton.LeftButton)
-            self.wait_until(lambda: window._review is None and summarize(rows(window.game))["reviewed"] == 6, 10)
+            # Allow both five-second cold UCI/ready handshakes plus the full
+            # sequence of bounded searches and disk/UI work on slower CI hosts.
+            # Completion, all six grades and restored evidence are still required.
+            try:
+                self.wait_until(lambda: window._review is None and summarize(rows(window.game))["reviewed"] == 6, 20)
+            except AssertionError as exc:
+                self.fail(f"{exc}; phase={window.engine.connection.phase}; review={window._review}\n"
+                          + "\n".join(list(window.engine.connection.log)[-40:]))
             self.assertEqual(window.game.board.fen(), original)
             summary = summarize(rows(window.game))
             self.assertTrue(all(count == 1 for count in summary["counts"].values()))

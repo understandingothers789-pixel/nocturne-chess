@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.7.15 — Enforce database pacing and allow cold CI startup
+
+- Use a precise Qt timer and recheck debounce/interval/backoff monotonic deadlines
+  before sending database requests; early callbacks rearm without dispatch.
+- Add an offline regression for early callbacks and backoff, retaining real HTTP pacing checks.
+- Allow the six-move review fixture 20 seconds for permitted cold handshakes,
+  searches and UI/disk work, with full grading/restore assertions and diagnostics.
+- Real reviews remain per-position and continue to the end without a total time cap.
+
 ## 0.5.7.14 — Compact game history and comfortable analysis spacing
 
 - Reduce SAN slot width and inter-move gaps to fit eight analysis columns at 800px.

@@ -1,4 +1,8 @@
-# Windows 11 desktop builds · 0.5.7.14
+# Windows 11 desktop builds · 0.5.7.15
+
+0.5.7.15 cumulative native validation/build pending. It fixes database pacing
+and permits legitimate cold-start time in the review fixture. Production Game
+Review has no total 10/20-second cap. Earlier failed builds were not uploaded.
 
 0.5.7.14 native validation/build pending. It includes compact move spacing,
 dotted ±1-pawn graph guides, exact Nibbler pieces, blue metrics and 10% shading.
@@ -122,7 +126,7 @@ the installed python-chess Python source and notices.
 Outputs:
 
 - `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
-- `dist/Nocturne-0.5.7.14-source.zip`: source, tests, documentation, rules-library source.
+- `dist/Nocturne-0.5.7.15-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI
 executable/native table reader are not part of this distribution. Source installation
