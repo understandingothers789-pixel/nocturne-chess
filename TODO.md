@@ -1,8 +1,10 @@
 # Active roadmap
 
-**In progress: 0.5.7.19.** Apply the same high-DPI SVG pipeline to Cburnett and
-future registered piece styles; verify every piece at 1×/2×/3× before Windows
-packaging. The latest verified Windows build remains 0.5.7.18.
+**Current: 0.5.7.19 delivered.** Cburnett and the registered SVG piece styles
+use antialiased vector rendering at 1×/2×/3× DPI. All 36 vectors passed both
+native Windows runs; Ruff, PyInstaller and packaged launch checks passed.
+Download: see the current Windows link in [README](README.md) and the full
+[build receipt](docs/BUILDING.md).
 
 **Previous: 0.5.7.18 delivered.** Independent database display/statistics, the
 opt-in Dev cursor hover board and native-resolution Nibbler-style vectors are

@@ -1,8 +1,20 @@
 # Windows 11 desktop builds · 0.5.7.19
 
-The 0.5.7.19 Cburnett high-DPI update is being validated; use the latest verified
-[Windows 0.5.7.18 build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39110217241/artifacts/12130256462)
-while it runs. Extract All, then open **Nocturne/Nocturne.exe**.
+[Download Windows 0.5.7.19](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39157138583/artifacts/12147706406).
+Extract All, then open **Nocturne/Nocturne.exe**. This cumulative build includes
+the high-resolution Cburnett rendering and vector registry.
+
+Source commit `7e87722d699f6515592624b62c2b371393202715`, run **39157138583**,
+job **117762569570** succeeded. Both native runs passed: **184 tests, 179
+passed / 5 optional skips** (96.046s and 96.660s). Ruff passed twice; PyInstaller
+and both packaged launch checks passed. The all-piece vector/DPI test passed in
+both runs.
+
+Artifact **12147706406**, `Nocturne-0.5.7.19-Windows-x64-unsigned`, 57,885,440
+bytes, expires 2026-11-17. SHA-256:
+`8133e254d93a6911f9480232afb5b263ea877182bf2fff180157e196cc960e86`.
+This is an unsigned test build. The workflow also reports Lichess requires a
+user token for authenticated statistics; ChessDB returned 29 legal moves.
 
 Tested source `6339a03daf29939c69628164449bc26616ea6489`, run **39110217241**,
 job **117624541482** succeeded. Both native suites: **184 tests, 179 passed /
@@ -19,9 +31,9 @@ returned 29 validated legal moves. Fixture statistics remain labelled test data.
 Only documentation changed after the tested source commit. No new launcher or
 security-policy change was introduced. The artifact remains an unsigned build.
 
-The feature commits are labelled 0.5.7.16 (database), 0.5.7.17 (cursor preview)
-and 0.5.7.18 (vector pieces/cumulative verification). The first two intentionally
-skipped CI; the cumulative build validates all three together.
+Feature commits are labelled 0.5.7.16 (database), 0.5.7.17 (cursor preview),
+0.5.7.18 (Nibbler SVG pieces) and 0.5.7.19 (Cburnett/vector registry). The
+newest cumulative build validates the full application.
 
 ## Previous verified download · 0.5.7.15
 

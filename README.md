@@ -46,9 +46,11 @@ The separate statistics switch provides an explicit offline opt-out.
 
 ## Windows: download and open
 
-The Cburnett update is being validated for its cumulative Windows download.
-The latest verified download remains [Windows 0.5.7.18](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39110217241/artifacts/12130256462).
-Extract All, then open **Nocturne/Nocturne.exe**. See [build receipt](docs/BUILDING.md) and [development log](PROGRESS.md).
+[Download Windows 0.5.7.19](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39157138583/artifacts/12147706406).
+Extract All, then open **Nocturne/Nocturne.exe**. The Windows run passed
+twice: 184 tests each (179 passed / 5 optional skips), Ruff, PyInstaller and
+both packaged launch checks. See the [build receipt](docs/BUILDING.md) and
+[development log](PROGRESS.md).
 
 [Previous verified Windows 0.5.7.15](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39107769865/artifacts/12129033459)
 remains available as a fallback.
