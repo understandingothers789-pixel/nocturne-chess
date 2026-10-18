@@ -28,6 +28,8 @@ class SettingsTests(unittest.TestCase):
         self.assertFalse(normalize({"show_clocks": False})["show_clocks"])
         self.assertFalse(normalize({"show_raw_pgn": "yes"})["show_raw_pgn"])
         self.assertTrue(normalize({"show_raw_pgn": True})["show_raw_pgn"])
+        self.assertFalse(normalize({"expand_pv": "true"})["expand_pv"])
+        self.assertTrue(normalize({"expand_pv": True})["expand_pv"])
         self.assertEqual(normalize({"piece_set": "Original"})["piece_set"], "Original")
         self.assertEqual(normalize({"piece_set": "missing"})["piece_set"], "Cburnett")
 

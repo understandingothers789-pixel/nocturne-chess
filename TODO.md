@@ -1,5 +1,8 @@
 # Active roadmap
 
+0.5.7.9 adds padded equal-width analysis move slots and a persistent Dev option
+to expand PVs beyond three rows. Native Windows validation/build pending.
+
 0.5.7.8 removes analysis-panel rank badges and rank coloring, with subtle side-to-
 move text tints. Board overlays retain the approved appearance.
 All 45 local GUI tests and both native full runs passed (158 passed/5 optional

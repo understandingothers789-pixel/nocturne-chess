@@ -1941,3 +1941,28 @@ checks. The board.py hash matches approved 0.5.7.7. No application source change
 follow native validation; only these release notes/links are updated. Source ZIP
 integrity, 24-piece inventory and no-launcher checks passed. Signing/build tools
 and dependencies are unchanged. User-machine trust acceptance remains unverified.
+
+
+## 2026-10-18 — 0.5.7.9: padded SAN slots and expandable PVs
+
+**Implemented:** `gui/moves.py` uses equal-width nonbreaking SAN anchors with
+clickable horizontal padding, larger line spacing and vertical hit padding.
+Three-row measurement excludes a clipped fourth line. `gui/candidates.py`
+applies fixed/expanded mode to existing and new rows. `gui/window.py` adds
+**Dev → Expand analysis beyond three rows**; `settings.py` validates and stores
+the preference, off by default. No engine restart or board-style change.
+
+**Validation so far:** original 45 GUI tests passed in 59.547s. Initial new hover
+test failed because its separate offscreen top-level window did not receive
+mouse moves; switched to the actual application analysis widget. The equal-slot
+width/padded click test, full-PV expansion test, and fixed-slot hover stability
+test then each passed. Ruff and both offline/external-UCI source smoke commands
+passed. Full local suite and native Windows packaging are pending.
+
+**Files:** move/candidate/window/settings components, GUI/settings tests, preview
+capture helper and real Qt screenshots, version/build metadata, README, changelog,
+roadmap and this log. No launcher scripts or signing-policy changes.
+
+**Next:** finish full validation and native Windows build, record the exact test
+results and artifact, then deliver its download. Actual Windows trust decisions
+and high-DPI appearance still require user-machine verification.

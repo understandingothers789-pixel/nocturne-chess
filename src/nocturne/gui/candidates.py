@@ -20,6 +20,7 @@ class CandidatePanel(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
         self.layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+        self.expanded = False
         self.primary = primary
         self.primary.reserve_lines(3)
         self.rows = {}
@@ -51,6 +52,12 @@ class CandidatePanel(QWidget):
         self._clearing = False
         self.changed.emit()
 
+    def set_expanded(self, expanded):
+        self.expanded = bool(expanded)
+        self.primary.reserve_lines(0 if self.expanded else 3)
+        for _, _, moves in self.rows.values():
+            moves.reserve_lines(0 if self.expanded else 3)
+
     def reserve_slots(self, count):
         count = max(1, min(32, count))
         if count < self.slot_count:
@@ -70,6 +77,7 @@ class CandidatePanel(QWidget):
         header.setStyleSheet(f"color: {palette(self.light)['muted']};")
         layout.addWidget(header)
         moves = self.primary if rank == 1 else MoveText(auto_fit=True, reserved_lines=3)
+        moves.reserve_lines(0 if self.expanded else 3)
         moves.candidate_rank = rank
         layout.addWidget(moves)
         moves.show()

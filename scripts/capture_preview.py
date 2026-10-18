@@ -23,6 +23,7 @@ def main():
     parser.add_argument("--light", action="store_true")
     parser.add_argument("--hide-clocks", action="store_true")
     parser.add_argument("--board-theme", choices=tuple(BOARD_THEMES), default="Classic")
+    parser.add_argument("--expand-pv", action="store_true")
     parser.add_argument("--lines", action="store_true")
     parser.add_argument("--multipv", type=int, choices=range(1, 33), default=6)
     parser.add_argument("--review", action="store_true", help="Game Review with explicitly labelled test scores")
@@ -41,6 +42,7 @@ def main():
         window.timer.stop()
         window.autosave_timer.stop()
         window.config.update(
+            expand_pv=args.expand_pv,
             mode="analysis",
             light=args.light,
             show_clocks=not args.hide_clocks,

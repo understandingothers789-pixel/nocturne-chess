@@ -1,6 +1,6 @@
-# Windows 11 desktop builds · 0.5.7.8
+# Windows 11 desktop builds · 0.5.7.9
 
-[Download Windows 0.5.7.8](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39099441736/artifacts/12124934909).
+[Download Windows 0.5.7.9](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39099441736/artifacts/12124934909).
 This version removes analysis-panel badges/rank colors and softens White/Black
 text tints, preserving the approved board renderer exactly. Source commit
 6e12832ff813f74c4946d0cb018e04e6c698fbf8 passed Windows run 39099441736/job
@@ -88,7 +88,7 @@ the installed python-chess Python source and notices.
 Outputs:
 
 - `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
-- `dist/Nocturne-0.5.7.8-source.zip`: source, tests, documentation, rules-library source.
+- `dist/Nocturne-0.5.7.9-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI
 executable/native table reader are not part of this distribution. Source installation

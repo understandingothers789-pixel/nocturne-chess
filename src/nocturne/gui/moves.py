@@ -3,8 +3,8 @@
 from html import escape
 import math
 
-from PySide6.QtCore import QEvent, Signal, Qt
-from PySide6.QtGui import QTextDocument
+from PySide6.QtCore import QEvent, Signal, Qt, QUrl
+from PySide6.QtGui import QTextDocument, QTextCursor, QTextOption
 from PySide6.QtWidgets import QTextBrowser
 from .theme import palette
 
@@ -33,6 +33,7 @@ class MoveText(QTextBrowser):
         self.candidate_rank = None
         self.candidate_turn = 1
         self._candidate_style = None
+        self._pressed_move = None
         if auto_fit:
             self.document().setDocumentMargin(2)
             self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -87,6 +88,8 @@ class MoveText(QTextBrowser):
         self._hovered = None
         self._items, self._current, self._light = signature
         self._candidate_style = candidate_style
+        if self.candidate_rank is not None:
+            self.setWordWrapMode(QTextOption.WrapMode.WordWrap)
         colors = palette(light)
         color = colors["text"]
         tokens = []
@@ -101,10 +104,57 @@ class MoveText(QTextBrowser):
                     move_color = "#302d2b" if light else "#e5e3e2"
             style = (f'color: {colors["selected_text"]}; background-color: {colors["selection"]};'
                      if index == current else f"color: {move_color};")
-            tokens.append(f'<a href="move:{index}" style="{style} text-decoration:none;">{escape(text)}</a>')
-        size, spacing = (16, 145) if self._auto_fit else (14, 160)
+            # Keep SAN slots identical across candidates and updates. Nonbreaking
+            # padding belongs to the anchor, so the whole slot is interactive.
+            label = ("\u00a0" + text + "\u00a0" * max(1, 9 - len(text))
+                     if self.candidate_rank is not None else text)
+            tokens.append(f'<a href="move:{index}" style="{style} text-decoration:none;">{escape(label)}</a>')
+        size, spacing = (16, 175) if self._auto_fit else (14, 160)
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'
                      + " &nbsp; ".join(tokens) + "</div>")
+
+    def _move_at(self, point):
+        """Include the padding above and below each candidate anchor."""
+        block = self.document().begin()
+        while block.isValid():
+            iterator = block.begin()
+            while not iterator.atEnd():
+                fragment = iterator.fragment()
+                if fragment.isValid() and fragment.charFormat().isAnchor():
+                    cursor = QTextCursor(self.document())
+                    cursor.setPosition(fragment.position())
+                    start = self.cursorRect(cursor)
+                    cursor.setPosition(fragment.position() + fragment.length() - 1)
+                    end = self.cursorRect(cursor)
+                    rect = start.united(end).adjusted(0, -3, 9, 3)
+                    if rect.contains(point):
+                        return QUrl(fragment.charFormat().anchorHref())
+                iterator += 1
+            block = block.next()
+        return QUrl()
+
+    def mouseMoveEvent(self, event):
+        if self.candidate_rank is None:
+            return super().mouseMoveEvent(event)
+        url = self._move_at(event.position().toPoint())
+        self.viewport().setCursor(Qt.CursorShape.PointingHandCursor if not url.isEmpty()
+                                  else Qt.CursorShape.ArrowCursor)
+        self._highlight(url)
+
+    def mousePressEvent(self, event):
+        if self.candidate_rank is None or event.button() != Qt.MouseButton.LeftButton:
+            return super().mousePressEvent(event)
+        self._pressed_move = self._move_at(event.position().toPoint())
+        event.accept()
+
+    def mouseReleaseEvent(self, event):
+        if self.candidate_rank is None or event.button() != Qt.MouseButton.LeftButton:
+            return super().mouseReleaseEvent(event)
+        url = self._move_at(event.position().toPoint())
+        pressed, self._pressed_move = self._pressed_move, None
+        if url == pressed and not url.isEmpty():
+            self._click(url)
+        event.accept()
 
     def cancel_preview(self):
         self._hovered = None
@@ -117,12 +167,17 @@ class MoveText(QTextBrowser):
                 if not self._reserved_measurement or self._reserved_measurement[0] != key:
                     probe = QTextDocument()
                     probe.setDocumentMargin(self.document().documentMargin())
-                    probe.setHtml('<div style="font-family:Consolas,monospace; font-size:16px; line-height:145%;">'
+                    probe.setHtml('<div style="font-family:Consolas,monospace; font-size:16px; line-height:175%;">'
                                   + '<br/>'.join(['Hg'] * self._reserved_lines) + '</div>')
-                    self._reserved_measurement = (key, math.ceil(probe.size().height()) + 4)
+                    probe.size()  # Force Qt to lay out the three sample lines.
+                    layout = probe.begin().layout()
+                    last = layout.lineAt(layout.lineCount() - 1)
+                    height = math.ceil(last.y() + last.height() + 2 * probe.documentMargin()) + 4
+                    self._reserved_measurement = (key, height)
                 height = self._reserved_measurement[1]
                 self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
             else:
+                self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
                 height = max(25, math.ceil(self.document().size().height()) + 4)
             if height != self.height():
                 self.setFixedHeight(height)

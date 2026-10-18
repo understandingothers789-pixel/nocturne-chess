@@ -16,7 +16,7 @@ from nocturne.core.notation import san
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 try:
     from PySide6.QtCore import QEvent, QPointF, QTimer, Qt
-    from PySide6.QtGui import QMouseEvent
+    from PySide6.QtGui import QMouseEvent, QTextDocument
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QMenu, QScrollArea, QWidget
     from nocturne.gui.window import MainWindow
@@ -362,6 +362,63 @@ class GuiTests(unittest.TestCase):
         self._show_external_info(base | {"multipv": 2, "pv": ["f1c4", "g8f6"]}, job)
         self.app.processEvents()
         return base, job
+
+    def test_candidate_slots_have_equal_width_and_padded_hit_targets(self):
+        self._three_pvs()
+        view = self.window.candidates.rows[1][2]
+        view.set_moves([("e4", 1), ("Qxe4", 2), ("O-O-O+", 3)])
+        self.app.processEvents()
+        starts = []
+        for word in ("e4", "Qxe4", "O-O-O+"):
+            cursor = view.document().find(word)
+            cursor.setPosition(cursor.selectionStart())
+            starts.append(view.cursorRect(cursor).x())
+        self.assertAlmostEqual(starts[1] - starts[0], starts[2] - starts[1], delta=1)
+        cursor = view.document().find("e4")
+        cursor.setPosition(cursor.selectionEnd() + 3)
+        point = view.cursorRect(cursor).center()
+        hovered, clicked = [], []
+        view.move_hovered.connect(hovered.append)
+        view.move_clicked.connect(clicked.append)
+        QTest.mouseMove(view.viewport(), view.viewport().rect().bottomRight())
+        QTest.qWait(20)
+        QTest.mouseMove(view.viewport(), point)
+        QTest.qWait(20)
+        QTest.mouseClick(view.viewport(), Qt.MouseButton.LeftButton, pos=point)
+        self.assertEqual(hovered, [1])
+        self.assertEqual(clicked, [1])
+
+    def test_dev_expanded_pvs_fit_full_lines_and_restore_three_rows(self):
+        base, job = self._three_pvs()
+        panel = self.window.candidates
+        long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
+        self._show_external_info(base | {"multipv": 1, "pv": long_pv}, job)
+        self.app.processEvents()
+        fixed_height = panel.rows[1][2].height()
+        fen, node = self.window.game.board.fen(), self.window.game.current_node
+        self.window.expand_pv_action.trigger()
+        self.app.processEvents()
+        moves = panel.rows[1][2]
+        self.assertTrue(self.window.config["expand_pv"])
+        self.assertTrue(self.window.store.get("settings", {})["expand_pv"])
+        self.assertGreater(moves.height(), fixed_height)
+        self.assertEqual(moves.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        last = moves.document().find("Ng8", moves.document().characterCount() - 1,
+                                    QTextDocument.FindFlag.FindBackward)
+        self.assertFalse(last.isNull())
+        self.assertLess(moves.cursorRect(last).bottom(), moves.viewport().height())
+        panel.reserve_slots(4)
+        self.assertEqual(panel.rows[4][2]._reserved_lines, 0)
+        self.assertEqual(self.window.game.board.fen(), fen)
+        self.assertEqual(self.window.game.current_node, node)
+        self.window.expand_pv_action.trigger()
+        self.app.processEvents()
+        self.assertFalse(self.window.config["expand_pv"])
+        self.assertEqual(moves.height(), fixed_height)
+        self.assertEqual(len({row[2].height() for row in panel.rows.values()}), 1)
+        panel.clear()
+        panel.reserve_slots(2)
+        self.assertEqual(panel.rows[2][2]._reserved_lines, 3)
 
     def test_five_colored_candidates_keep_slots_and_destination_execution(self):
         self._analysis_game("1.e4 e5 *")

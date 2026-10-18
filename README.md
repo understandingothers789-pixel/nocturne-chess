@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.8
+# Nocturne Analysis · 0.5.7.9
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -12,6 +12,14 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
+
+**0.5.7.9: easier-to-hit, aligned analysis moves.** Each suggested move uses an
+identical padded slot, so `e4` and `Qxe4` occupy the same width. Three reserved
+rows remain the default. **Dev → Expand analysis beyond three rows** lets each
+candidate grow to show its entire engine line; this preference is remembered.
+Board markers and subtle White/Black text colors are unchanged.
+
+Windows 0.5.7.9 validation/build is pending. The verified prior build is below.
 
 **0.5.7.8: quieter analysis text.** The analysis panel has no numbered badges or
 rank colors. Headings are neutral gray, and White/Black move text differs only

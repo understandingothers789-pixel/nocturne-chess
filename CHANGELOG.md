@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7.9 — Padded move slots and expandable analysis
+
+- Give analysis SAN moves equal-width, nonbreaking padded hit areas and more vertical room.
+- Keep three reserved rows by default; Dev → Expand analysis beyond three rows
+  fits each full PV without an inner scrollbar, including newly created rows.
+- Remember the display preference without restarting engine analysis.
+
 ## 0.5.7.8 — Quieter MultiPV analysis panel
 
 - Remove analysis-row rank badges and teal/green rank coloring.

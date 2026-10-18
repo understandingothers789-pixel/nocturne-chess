@@ -697,6 +697,8 @@ class MainWindow(QMainWindow):
         dev = self.menuBar().addMenu("&Dev")
         self.raw_pgn_action = add(dev, "Show raw PGN data", self._set_raw_pgn)
         self.raw_pgn_action.setCheckable(True)
+        self.expand_pv_action = add(dev, "Expand analysis beyond three rows", self._set_expand_pv)
+        self.expand_pv_action.setCheckable(True)
         add(dev, "Engine diagnostics…", self._diagnostics)
         # Retain explicit references for menu state and interaction checks.
         self.shortcut_overrides = self.store.get("shortcuts", {}) if self.store else {}
@@ -713,6 +715,12 @@ class MainWindow(QMainWindow):
             "Play": play,
             "Dev": dev,
         }
+
+    def _set_expand_pv(self, enabled):
+        self.config["expand_pv"] = bool(enabled)
+        self.candidates.set_expanded(enabled)
+        self.expand_pv_action.setChecked(bool(enabled))
+        self._save()
 
     def _set_raw_pgn(self, enabled):
         self.config["show_raw_pgn"] = bool(enabled)
@@ -1700,6 +1708,8 @@ class MainWindow(QMainWindow):
 
         self._sync_explorer()
         self._sync_raw_pgn()
+        self.candidates.set_expanded(self.config.get("expand_pv", False))
+        self.expand_pv_action.setChecked(self.config.get("expand_pv", False))
 
     def _sync_workspace_layout(self):
         analysis = self.analysis_mode
