@@ -61,6 +61,7 @@ from ..review import classify, chance
 from .explorer_panel import OpeningExplorer
 from ..explorer import RATINGS, SPEEDS
 from .moves import MoveText
+from .hover_preview import HoverPreview
 from .wheel import WheelSteps
 from .theme import ASSETS, palette, stylesheet
 from .widgets import EvaluationBar, EvaluationGraph
@@ -168,6 +169,9 @@ class MainWindow(QMainWindow):
         self._pv_identity = None
         self._preview_source = None
         self._build()
+        self.hover_preview = HoverPreview(self)
+        self.candidates.pointer_moved.connect(self._move_cursor_preview)
+        self.analysis_history.pointer_moved.connect(self._move_cursor_preview)
         self.engine = EngineController(self)
         self.engine.message.connect(self._engine_message)
         self.engine.discovered.connect(self._engine_discovered)
@@ -712,6 +716,8 @@ class MainWindow(QMainWindow):
         self.raw_pgn_action.setCheckable(True)
         self.expand_pv_action = add(dev, "Expand analysis beyond three rows", self._set_expand_pv)
         self.expand_pv_action.setCheckable(True)
+        self.cursor_preview_action = add(dev, "Preview moves on a small board near cursor", self._set_cursor_preview)
+        self.cursor_preview_action.setCheckable(True)
         add(dev, "Engine diagnostics…", self._diagnostics)
         # Retain explicit references for menu state and interaction checks.
         self.shortcut_overrides = self.store.get("shortcuts", {}) if self.store else {}
@@ -734,6 +740,19 @@ class MainWindow(QMainWindow):
         self.candidates.set_expanded(enabled)
         self.expand_pv_action.setChecked(bool(enabled))
         self._save()
+
+    def _set_cursor_preview(self, enabled):
+        for view in {self.analysis_history, self.pv_label, *(row[2] for row in self.candidates.rows.values())}:
+            view.cancel_preview()
+        self.explorer._end_preview()
+        self._clear_move_preview()
+        self.config["cursor_preview"] = bool(enabled)
+        self.cursor_preview_action.setChecked(bool(enabled))
+        self._save()
+
+    def _move_cursor_preview(self, point):
+        if self.hover_preview.isVisible():
+            self.hover_preview.move_near(point)
 
     def _set_raw_pgn(self, enabled):
         self.config["show_raw_pgn"] = bool(enabled)
@@ -819,6 +838,8 @@ class MainWindow(QMainWindow):
                 action.setChecked(self.config.get(key) == value)
             for menu in self.explorer_filter_menus:
                 menu.setEnabled(self.config.get("explorer_source") == "lichess")
+        if self._explorer_active and not active:
+            self.explorer._end_preview()
         self.explorer.setVisible(active)
         self.explorer.set_position(self.game.board, self._position_identity(), lookup,
                                    self.config.get("explorer_source", "masters"),
@@ -856,8 +877,7 @@ class MainWindow(QMainWindow):
             position.push(move)
         except ValueError:
             return
-        self._preview_source = "explorer"
-        self.board_view.show_preview(position, move, "Opening database · temporary preview")
+        self._show_move_preview("explorer", position, move, "Opening database preview")
 
     def eventFilter(self, watched, event):
         if hasattr(self, "history") and watched is self.history.viewport():
@@ -1073,8 +1093,7 @@ class MainWindow(QMainWindow):
                 board.push(board.parse_uci(text))
         except ValueError:
             return
-        self._preview_source = "candidate"
-        self.board_view.show_preview(board, caption=f"Temporary candidate #{rank} · ply {ply}")
+        self._show_move_preview("candidate", board, caption=f"Candidate preview · ply {ply}")
 
     def _sync_candidate_markers(self):
         if self._candidate_identity != self._position_identity():
@@ -1752,6 +1771,7 @@ class MainWindow(QMainWindow):
         self._sync_raw_pgn()
         self.candidates.set_expanded(self.config.get("expand_pv", False))
         self.expand_pv_action.setChecked(self.config.get("expand_pv", False))
+        self.cursor_preview_action.setChecked(self.config.get("cursor_preview", False))
 
     def _sync_workspace_layout(self):
         analysis = self.analysis_mode
@@ -1759,8 +1779,7 @@ class MainWindow(QMainWindow):
         if self._analysis_layout_active == signature:
             return
         self._analysis_layout_active = signature
-        self.board_view.clear_preview()
-        self._preview_source = None
+        self._clear_move_preview()
         for widget in (
             self.sidebar,
             self.workspace_header,
@@ -1817,16 +1836,28 @@ class MainWindow(QMainWindow):
 
     def _end_preview(self, source):
         if self._preview_source == source:
-            self._preview_source = None
+            self._clear_move_preview()
+
+    def _clear_move_preview(self):
+        self._preview_source = None
+        self.board_view.clear_preview()
+        self.hover_preview.hide()
+
+    def _show_move_preview(self, source, position, last_move=None, caption="Move preview"):
+        self._preview_source = source
+        if self.config.get("cursor_preview", False):
             self.board_view.clear_preview()
+            self.hover_preview.show_position(position, last_move, self.board_view, caption)
+        else:
+            self.hover_preview.hide()
+            self.board_view.show_preview(position, last_move, caption)
 
     def _preview_history(self, node_id):
         if not self.analysis_mode or not 1 <= node_id < len(self.game.nodes):
             return
         node = self.game.nodes[node_id]
         position = self.game.position_at_node(node_id)
-        self._preview_source = "history"
-        self.board_view.show_preview(position, node.move, f"History preview · {node.san}")
+        self._show_move_preview("history", position, node.move, f"History preview · {node.san}")
 
     def _preview_pv(self, ply):
         if (
@@ -1839,8 +1870,7 @@ class MainWindow(QMainWindow):
         position = self._pv_root.copy(history=False)
         for move in self._pv_moves[:ply]:
             position.push(move)
-        self._preview_source = "pv"
-        self.board_view.show_preview(position, self._pv_moves[ply - 1], f"Suggested line preview · ply {ply}")
+        self._show_move_preview("pv", position, self._pv_moves[ply - 1], f"Suggested line preview · ply {ply}")
 
     def changeEvent(self, event):
         if (
@@ -1848,9 +1878,13 @@ class MainWindow(QMainWindow):
             and not self.isActiveWindow()
             and hasattr(self, "board_view")
         ):
-            self._preview_source = None
-            self.board_view.clear_preview()
+            self._clear_move_preview()
         super().changeEvent(event)
+
+    def hideEvent(self, event):
+        if hasattr(self, "hover_preview"):
+            self._clear_move_preview()
+        super().hideEvent(event)
 
     def _human_move(self, move: Move):
         if not self.board_view.interactive or self.board_view.preview_board is not None:
@@ -1872,7 +1906,7 @@ class MainWindow(QMainWindow):
         self._register_study()
         self._update_review_panel()
         self._sync_workspace_layout()
-        self._preview_source = None
+        self._clear_move_preview()
         if self._pgn_game_id != self.game.id or not self.pgn_editor.document().isModified():
             text = self.game.pgn()
             if self.pgn_editor.toPlainText() != text:
@@ -2758,6 +2792,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self._closing = True
+        self._clear_move_preview()
         self._explorer_active = False
         self.timer.stop()
         self.autosave_timer.stop()

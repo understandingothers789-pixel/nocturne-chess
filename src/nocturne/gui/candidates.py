@@ -3,7 +3,7 @@
 from html import escape
 import math
 
-from PySide6.QtCore import Signal, Qt, QTimer
+from PySide6.QtCore import QPoint, Signal, Qt, QTimer
 from PySide6.QtGui import QTextDocument
 from PySide6.QtWidgets import QLabel, QMenu, QVBoxLayout, QWidget, QLayout, QSizePolicy
 from ..engine.uci_types import score_label
@@ -15,6 +15,7 @@ from .theme import palette
 class CandidatePanel(QWidget):
     preview = Signal(int, int)
     preview_end = Signal()
+    pointer_moved = Signal(QPoint)
     navigate = Signal(int, int)
     action = Signal(int, str)
     changed = Signal()
@@ -104,6 +105,7 @@ class CandidatePanel(QWidget):
             moves.move_hovered.connect(lambda ply, r=rank: self._hover(r, ply))
             moves.preview_ended.connect(lambda r=rank: self._end_hover(r))
             moves.move_clicked.connect(lambda ply, r=rank: self.navigate.emit(r, ply))
+            moves.pointer_moved.connect(self.pointer_moved)
             if rank == 1:
                 self._primary_connected = True
         for widget in (frame, header, moves):

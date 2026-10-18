@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.16
+# Nocturne Analysis · 0.5.7.17
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -10,6 +10,16 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application.*
+
+**0.5.7.17: experimental small hover board.** Enable **Dev → Preview moves on a
+small board near cursor**. History, database and MultiPV previews use a small
+mouse-transparent board, keeping the main board at its selected position. It
+copies your piece style, palette and orientation, follows the pointer and stays
+inside the window/screen. Wheel previews and clicks use the frozen displayed
+line; leaving, navigating, closing or disabling the option removes the preview.
+The preference is remembered and starts off by default.
+[Actual Qt cursor-board capture](docs/cursor-hover-preview.png), using explicitly
+labelled simulator moves and fixture database counts.
 
 **0.5.7.16: database statistics without the lower explorer panel.**
 **Database → Show database explorer** only shows/hides the table. API win and

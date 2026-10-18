@@ -615,6 +615,97 @@ class GuiTests(unittest.TestCase):
         panel.reserve_slots(4)
         self.assertFalse(panel.rows[4][2].wheel_navigation)
 
+    def test_cursor_preview_keeps_main_board_and_snapshot_click_with_wheel(self):
+        base, job = self._three_pvs()
+        window, panel = self.window, self.window.candidates
+        self.assertFalse(window.cursor_preview_action.isChecked())
+        window.cursor_preview_action.trigger()
+        self.assertTrue(window.store.get("settings")["cursor_preview"])
+        fen, node = window.game.board.fen(), window.game.current_node
+        third = panel.rows[3][2]
+        self._hover_word(third, "Nc3")
+        popup = window.hover_preview
+        expected = window.game.board.copy()
+        expected.push(expected.parse_uci("b1c3"))
+        self.assertTrue(popup.isVisible())
+        self.assertEqual(popup.board.display_board.fen(), expected.fen())
+        self.assertEqual(window.board_view.display_board.fen(), fen)
+        self.assertIsNone(window.board_view.preview_board)
+        self.assertEqual(window.game.current_node, node)
+        self.assertTrue(popup.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents))
+        self._wheel(third.viewport(), -120)
+        expected.push(expected.parse_uci("g8f6"))
+        self.assertEqual(popup.board.display_board.fen(), expected.fen())
+        self.assertEqual(window.board_view.display_board.fen(), fen)
+        self._show_external_info(base | {"multipv": 3, "pv": ["d2d4"]}, job)
+        self.assertEqual(panel.lines[3]["pv"][0], "b1c3")
+        cursor = third.document().find("Nc3")
+        cursor.setPosition(cursor.selectionStart() + 1)
+        QTest.mouseClick(third.viewport(), Qt.MouseButton.LeftButton, pos=third.cursorRect(cursor).center())
+        self.app.processEvents()
+        self.assertEqual(window.game.sans, ["e4", "e5", "Nc3"])
+        self.assertFalse(popup.isVisible())
+        self.assertFalse(panel.pending)
+
+    def test_cursor_preview_history_orientation_appearance_bounds_and_toggle(self):
+        self._analysis_game()
+        window = self.window
+        window._set_cursor_preview(True)
+        window._set_display("theme", "Slate")
+        window._set_display("piece_set", "Original")
+        window.board_view.flipped = True
+        fen, node = window.game.board.fen(), window.game.current_node
+        self._hover_word(window.analysis_history, "e4")
+        popup = window.hover_preview
+        self.assertTrue(popup.isVisible())
+        self.assertEqual(popup.board.display_board.fen(), window.game.position_at_node(1).fen())
+        self.assertEqual(popup.board.theme, "Slate")
+        self.assertEqual(popup.board.piece_set, "Original")
+        self.assertTrue(popup.board.flipped)
+        self.assertEqual(window.board_view.display_board.fen(), fen)
+        self.assertEqual(window.game.current_node, node)
+        for point in (QPoint(8, 8), window.rect().bottomRight() - QPoint(8, 8)):
+            global_point = window.mapToGlobal(point)
+            popup.move_near(global_point)
+            self.assertTrue(window.rect().contains(popup.geometry()))
+            self.assertTrue(window.screen().availableGeometry().contains(
+                popup.rect().translated(popup.mapToGlobal(QPoint()))))
+            self.assertFalse(popup.geometry().contains(point))
+        window.analysis_history.cancel_preview()
+        self.assertFalse(popup.isVisible())
+        window._preview_history(1)
+        window.cursor_preview_action.trigger()
+        self.assertFalse(popup.isVisible())
+        self.assertFalse(window.store.get("settings")["cursor_preview"])
+        window._preview_history(1)
+        self.assertIsNotNone(window.board_view.preview_board)
+        self.assertFalse(popup.isVisible())
+        window._end_preview("history")
+        self.assertIsNone(window.board_view.preview_board)
+
+    def test_cursor_preview_clears_on_navigation_deactivation_and_hide(self):
+        self._three_pvs()
+        window = self.window
+        window._set_cursor_preview(True)
+        window._preview_candidate(3, 1)
+        self.assertTrue(window.hover_preview.isVisible())
+        window._navigate(1)
+        self.assertFalse(window.hover_preview.isVisible())
+        window._preview_history(2)
+        self.assertTrue(window.hover_preview.isVisible())
+        # A real activation change hides all reversible previews.
+        window.hide()
+        self.app.processEvents()
+        self.assertFalse(window.hover_preview.isVisible())
+        self.assertIsNone(window.board_view.preview_board)
+        self.assertIsNone(window._preview_source)
+        window.show()
+        window._preview_history(2)
+        QTest.mouseMove(window.analysis_history.viewport(), window.analysis_history.viewport().rect().bottomRight())
+        self.app.processEvents()
+        window._end_preview("history")
+        self.assertFalse(window.hover_preview.isVisible())
+
     def test_text_colors_distinguish_sides_and_history_in_both_appearances(self):
         from nocturne.gui.theme import palette
         self._three_pvs()

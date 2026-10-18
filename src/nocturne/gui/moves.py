@@ -3,7 +3,7 @@
 from html import escape
 import math
 
-from PySide6.QtCore import QEvent, Signal, Qt, QUrl
+from PySide6.QtCore import QEvent, QPoint, Signal, Qt, QUrl
 from PySide6.QtGui import QTextDocument, QTextCursor, QTextOption
 from PySide6.QtWidgets import QTextBrowser
 from .theme import palette
@@ -15,6 +15,7 @@ class MoveText(QTextBrowser):
     move_hovered = Signal(int)
     move_clicked = Signal(int)
     preview_ended = Signal()
+    pointer_moved = Signal(QPoint)
 
     def __init__(self, parent=None, *, auto_fit=False, reserved_lines=0):
         super().__init__(parent)
@@ -138,6 +139,7 @@ class MoveText(QTextBrowser):
         return QUrl()
 
     def mouseMoveEvent(self, event):
+        self.pointer_moved.emit(event.globalPosition().toPoint())
         if self.candidate_rank is None:
             return super().mouseMoveEvent(event)
         url = self._move_at(event.position().toPoint())

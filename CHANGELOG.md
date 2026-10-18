@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7.17 — Experimental cursor hover board
+
+- Add an opt-in, remembered Dev setting to preview on a small mouse-transparent board near the pointer.
+- Keep the main board fixed and copy its appearance/orientation for history, PV and database previews.
+- Clamp placement to the window/screen; dismiss on leave, navigation, deactivation, hide, close or toggle.
+- Preserve candidate snapshot freezing, queued updates, click activation and wheel previews.
+
 ## 0.5.7.16 — Keep database statistics when hiding the explorer
 
 - Separate explorer visibility from database lookup opt-in; preserve API win, frequency and source metadata while hidden.

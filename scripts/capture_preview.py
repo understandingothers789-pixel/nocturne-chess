@@ -25,6 +25,8 @@ def main():
     parser.add_argument("--board-theme", choices=tuple(BOARD_THEMES), default="Classic")
     parser.add_argument("--graph-fixture", action="store_true", help="Clearly labelled compressed-scale test scores")
     parser.add_argument("--expand-pv", action="store_true")
+    parser.add_argument("--cursor-preview", action="store_true")
+    parser.add_argument("--hide-explorer", action="store_true")
     parser.add_argument("--lines", action="store_true")
     parser.add_argument("--multipv", type=int, choices=range(1, 33), default=6)
     parser.add_argument("--review", action="store_true", help="Game Review with explicitly labelled test scores")
@@ -44,6 +46,7 @@ def main():
         window.autosave_timer.stop()
         window.config.update(
             expand_pv=args.expand_pv,
+            cursor_preview=args.cursor_preview,
             mode="analysis",
             light=args.light,
             show_clocks=not args.hide_clocks,
@@ -62,7 +65,7 @@ def main():
         if args.explorer_fixture or args.chessdb_fixture:
             from nocturne.explorer import ExplorerQuery
             source = "chessdb" if args.chessdb_fixture else "lichess"
-            window.config.update(explorer_enabled=True, explorer_statistics=True, explorer_source=source, explorer_speed="rapid", explorer_rating=1800)
+            window.config.update(explorer_enabled=not args.hide_explorer, explorer_statistics=True, explorer_source=source, explorer_speed="rapid", explorer_rating=1800)
             query = ExplorerQuery(window.game.board.fen(), source, "rapid", 1800)
             payload = {
                 "white": 250, "draws": 150, "black": 100,
@@ -117,17 +120,28 @@ def main():
                 window.graph.set_samples({0: 0, 1: 35, 2: -60, 3: 110, 4: 380, 5: -250, 6: 650, 7: 900}, 4, 7)
                 window.statusBar().showMessage("Evaluation graph fixture · test cp values, not engine analysis")
             actual_fen = window.game.board.fen()
+            if args.cursor_preview and window.candidates.lines:
+                from PySide6.QtTest import QTest
+                view = window.candidates.rows[1][2]
+                first = view.document().find(view._items[0][0])
+                first.setPosition(first.selectionStart() + 1)
+                QTest.mouseMove(view.viewport(), view.cursorRect(first).center())
+                QTest.qWait(30)
+                assert window.hover_preview.isVisible()
+                assert window.board_view.display_board.fen() == actual_fen
             if args.preview_ply is not None:
                 window._preview_history(args.preview_ply)
             if args.explorer_fixture or args.chessdb_fixture:
                 window.explorer.status_label.setText("Cached · test data (not live database results)")
+                window.statusBar().showMessage("Database fixture · test counts, not live results" +
+                                               (" · Graph fixture: test cp values" if args.graph_fixture else ""))
             if args.review and args.simulate:
                 window.review_panel.status.setText("Review complete · UCI simulator test scores, not measured chess analysis")
             assert window.game.board.fen() == actual_fen
             args.output.parent.mkdir(parents=True, exist_ok=True)
             if not window.grab().save(str(args.output)):
                 raise RuntimeError("Could not save Qt capture")
-            window.board_view.clear_preview()
+            window._clear_move_preview()
             assert window.board_view.display_board.fen() == actual_fen
             print("Captured real Qt window: " + str(args.output), flush=True)
             window.close()

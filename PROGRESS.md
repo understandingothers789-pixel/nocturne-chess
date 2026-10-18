@@ -2337,3 +2337,30 @@ No failed checks in this phase; native cumulative validation is pending.
 **Next:** Dev cursor-board hover experiment, then vector piece rendering. Hidden
 lookups still require internet/authentication for uncached service data; no
 statistics or database results are invented.
+
+## 2026-10-18 — 0.5.7.17: experimental cursor preview board
+
+**Created/modified:** `gui/hover_preview.py`, `window.py`, `moves.py`,
+`candidates.py`, settings, GUI/settings/explorer regressions, capture helper,
+`docs/cursor-hover-preview.png`, version metadata and documentation. Added a
+remembered, default-off Dev option for a mouse-transparent miniature board near
+the pointer. It copies board style/orientation, clamps to window/screen bounds,
+and never changes the selected study board. History, PV and database hover all
+use it; snapshot clicks, queued engine updates and wheel previews are retained.
+Leaving/navigation/deactivation/hide/close/toggle clear it. Closing the explorer
+explicitly dismisses its preview while statistics remain available.
+
+**Executed:** focused `test_gui.py -k cursor_preview -v`: three passed (2.276 s).
+`QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests -p
+test_gui.py -q`: all **61 passed** (115.183 s). Settings suite: seven passed.
+Ruff passed. Native Qt capture command: `scripts/capture_preview.py --simulate
+--explorer-fixture --hide-explorer --cursor-preview --lines --multipv 5 --layout
+analysis-left --width 1440 --height 1040 --output docs/cursor-hover-preview.png`.
+The image is an actual application capture with explicitly labelled fixture
+statistics and UCI simulator moves; no measured engine-strength claim.
+
+**Known limits/next:** physical Windows DPI/multi-monitor interaction is a manual
+check; cumulative native tests/build still pending. The mini board is an experiment
+and the prior main-board hover remains the default. Compared all twelve Nibbler
+PNGs against the included shaded Merida vectors using Qt rendering; same style.
+Switch to those vectors next to remove the fixed bitmap resolution ceiling.
