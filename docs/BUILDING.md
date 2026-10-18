@@ -1,8 +1,24 @@
 # Windows 11 desktop builds · 0.5.7.21
 
-The 0.5.7.21 Windows build is being validated. The latest verified build is
-[0.5.7.20](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39161047849/artifacts/12149276470).
-Extract All, then open **Nocturne/Nocturne.exe**.
+## Download Windows 0.5.7.21
+
+[Download the Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39165248055/artifacts/12150402048).
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Feature commit `fbdccac4817f61fc1ba694c93d667d4cb08ab08d` adds two-row MultiPV
+with independent per-candidate expansion. Follow-up commit
+`d1c1b019ec931a0559a10b1e6016d6b246d146c7` passes database loading, empty-result
+and service-error status to the candidate footer. Windows run
+[39165248055](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39165248055)
+passed **186 tests (181 passed / 5 optional skips)** in 205.575 seconds, Ruff,
+PyInstaller and packaged launch checks. The optional live database check also
+completed; ChessDB returned 29 legal moves.
+
+Artifact **12150402048**, `Nocturne-0.5.7.21-Windows-x64-unsigned`,
+57,894,483 bytes, expires 2026-11-17. SHA-256:
+`87f3dae9f32423bda6c92aeb89fd436e9f46c732316f272517c580c99ea79212`.
+
+# Download Windows 0.5.7.20
 
 # Download Windows 0.5.7.20
 

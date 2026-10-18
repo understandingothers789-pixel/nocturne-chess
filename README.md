@@ -58,10 +58,9 @@ The separate statistics switch provides an explicit offline opt-out.
 
 ## Windows: download and open
 
-The 0.5.7.21 Windows build is being validated. The latest verified build is
-[Windows 0.5.7.20](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39161047849/artifacts/12149276470).
-Extract All, then open **Nocturne/Nocturne.exe**. See the [build receipt](docs/BUILDING.md)
-and [development log](PROGRESS.md).
+Download [Windows 0.5.7.21](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39165248055/artifacts/12150402048).
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+See the [build receipt](docs/BUILDING.md) and [development log](PROGRESS.md).
 
 [Previous verified Windows 0.5.7.15](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39107769865/artifacts/12129033459)
 remains available as a fallback.

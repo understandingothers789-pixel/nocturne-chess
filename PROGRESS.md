@@ -2551,5 +2551,11 @@ empty-result and service-error wording. Version metadata and build labels are
 
 **Validation:** 186 tests passed overall (175 passed, 11 optional skips).
 Focused GUI regressions passed and Ruff passed. The 209-entry source archive
-passed ZIP integrity checks and contains no script launchers. Windows build is
-pending.
+passed ZIP integrity checks and contains no script launchers. Windows run
+39165248055 passed **186 tests (181 passed / 5 optional skips)** in 205.575
+seconds; Ruff, PyInstaller, packaged launch checks and the live database check
+passed. Artifact **12150402048** is 57,894,483 bytes, expires 2026-11-17, and
+has SHA-256 `87f3dae9f32423bda6c92aeb89fd436e9f46c732316f272517c580c99ea79212`.
+The build is unsigned. The published two-row PV feature commit is
+`fbdccac4817f61fc1ba694c93d667d4cb08ab08d`; database-status follow-up is
+`d1c1b019ec931a0559a10b1e6016d6b246d146c7`.
