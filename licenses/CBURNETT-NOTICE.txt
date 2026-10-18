@@ -9,5 +9,5 @@ The COPYING exceptions table credits Colin M.L. Burnett and GPLv2+ for this set.
 
 Files are copied verbatim, with only filename case normalized for Nocturne.
 Original preferred modifiable SVG sources are distributed in assets/pieces and
-in the accompanying source archive. No Chess.com or Nibbler artwork is included.
+in the accompanying source archive. These files are separate from the Nibbler/Merida set in the nibbler subdirectory.
 No endorsement by Lichess is implied. See the adjacent GPL text and COPYING.

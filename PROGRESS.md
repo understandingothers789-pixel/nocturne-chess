@@ -2102,3 +2102,48 @@ No launcher or signing-policy changes.
 **Next:** full tests, frozen offline/external-UCI checks and native Windows build,
 then publish the verified artifact/results. Real Windows trust/high-DPI appearance
 and authenticated live Lichess data remain user-machine checks.
+
+
+### 0.5.7.11 — Local full validation
+
+`QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests -q`:
+**172 tests, 161 passed, 11 skipped**, 138.249s, no failures. Six socket-based
+HTTP tests skip in this sandbox; five skips are optional. Both offline and
+external-UCI source smoke commands passed. Windows run 39101814543 / job
+117599461444 passed its first full suite and is packaging. User added the exact
+Nibbler piece request while that build ran; continued cumulatively as 0.5.7.12.
+
+## 2026-10-18 — 0.5.7.12: original Nibbler pieces as default
+
+**Source inspected:** rooklift/nibbler commit
+`6eb0f066402c0cf53d08d682dbc394acd9cb5fb9`, `files/src/pieces`. The white knight
+visually matches the supplied reference exactly. Downloaded all 12 PNGs via the
+GitHub connector, checked each original Git blob SHA-1 and retained original
+names/bytes. Nibbler credits Lichess; Lichess lists Merida as Armando Hernandez
+Marroquin / GPLv2+. Added artist/provenance notice, GPL2+ text and 12 upstream
+editable Merida SVGs from pinned lila commit
+`cd2656d2787a766ba743da8da1dd3b24975e6329`. No Nibbler application code copied.
+
+**Implemented:** `board.py` supports cached PNG/QPixmap rendering alongside SVG,
+with smooth scaling and upstream transparent padding. Promotion choices resolve
+the active set's file. Dialog/window/settings default to Nibbler; normalization
+selects it once on upgrade, preserving later explicit alternatives. Wheel, blue
+API headers, neutral depth and 10% last-move adjustment retained. Package-data
+and manifest include PNGs and source SVGs; spec already recursively includes
+assets/licenses. Updated distribution/research notices to remove old no-assets
+claims. Added actual dark/light Qt captures, labelled simulator/fixture data.
+
+**Executed:** new all-twelve PNG/default/style-switch GUI test passed; existing
+underpromotion test passed with four nonempty PNG icons; Studio live preview/
+Cancel/Save test passed. All **6 settings tests passed**, including one-time
+migration and retaining later user choices. Ruff passed. Full local tests, wheel
+contents/source/frozen launch checks and native Windows build pending.
+
+**Files:** 12 original PNGs and 12 upstream SVGs; board/dialog/window/settings;
+GUI/settings tests; pyproject/MANIFEST/version metadata; license/provenance files;
+README/CHANGELOG/TODO/BUILDING/research/PROGRESS and real Qt captures.
+
+**Next:** finish full verification and Windows packaging; record actual artifact
+results. Native PNG resolution is 240×240; extreme enlargement can soften images.
+Physical Windows trust/high-DPI behavior remains a user-machine check. No launcher
+or signing-policy changes; all prior requested changes remain included.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.7.12 — Exact Nibbler pieces by default
+
+- Bundle all twelve unmodified Nibbler PNGs with verified upstream blob hashes,
+  artist/license notices and upstream editable Merida SVGs.
+- Use smoothly scaled original images in board, drag/animation, settings preview
+  and promotion icons. Retain optional Cburnett and Original SVG styles.
+- Select Nibbler once on upgrade, then respect later saved piece choices.
+- Retain blue analysis/database headers, neutral depth, 10% square shading and wheel navigation.
+
 ## 0.5.7.11 — Blue analysis metrics and clearer move shading
 
 - Color evaluation, API win and frequency blue in suggested-line headers; keep

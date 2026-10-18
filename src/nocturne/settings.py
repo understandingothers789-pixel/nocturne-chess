@@ -14,7 +14,8 @@ DEFAULTS = {
     "white_engine": "external",
     "black_engine": "external",
     "theme": "Classic",
-    "piece_set": "Cburnett",
+    "piece_set": "Nibbler",
+    "piece_set_version": 1,
     "appearance_version": 1,
     "light": False,
     "coordinates": True,
@@ -64,7 +65,7 @@ def normalize(data) -> dict:
         "explorer_speed": ("all", "ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence"),
         "explorer_rating": (0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500),
         "theme": ("Classic", "Grey", "Walnut", "Slate", "Forest", "Midnight"),
-        "piece_set": ("Cburnett", "Original"),
+        "piece_set": ("Nibbler", "Cburnett", "Original"),
         "white_engine": ("custom", "external"),
         "black_engine": ("custom", "external"),
     }
@@ -76,6 +77,8 @@ def normalize(data) -> dict:
     # Upgrade the old default once; later explicit palette choices are retained.
     if data.get("appearance_version") != 1 and data.get("theme", "Forest") == "Forest":
         result["theme"] = "Classic"
+    if data.get("piece_set_version") != 1:
+        result["piece_set"] = "Nibbler"
     if data.get("candidate_marker_version") != 1:
         result["candidate_style"] = "lines"
     for key in (

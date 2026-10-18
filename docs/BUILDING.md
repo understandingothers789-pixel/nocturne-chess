@@ -1,4 +1,8 @@
-# Windows 11 desktop builds · 0.5.7.11
+# Windows 11 desktop builds · 0.5.7.12
+
+0.5.7.12 native validation/build pending. It includes the exact Nibbler PNG set
+as default, blue metrics and 10% square shading. The spec recursively includes
+all artwork and licenses; package data also covers PNGs and editable SVG sources.
 
 0.5.7.11 native build/validation is pending. This version adds blue analysis/API
 metrics with neutral depth and 10% palette-relative move shading. The verified
@@ -114,7 +118,7 @@ the installed python-chess Python source and notices.
 Outputs:
 
 - `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
-- `dist/Nocturne-0.5.7.11-source.zip`: source, tests, documentation, rules-library source.
+- `dist/Nocturne-0.5.7.12-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI
 executable/native table reader are not part of this distribution. Source installation

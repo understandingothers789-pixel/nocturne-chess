@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import QEasingCurve, QPointF, QRectF, QSize, Qt, QVariantAnimation, Signal
-from PySide6.QtGui import QColor, QFont, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QPolygonF
+from PySide6.QtGui import QColor, QFont, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QPolygonF, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QMenu, QWidget
 
@@ -56,7 +56,7 @@ class BoardWidget(QWidget):
         self._renderers = {}
         self._renderer_sets = {}
         self.piece_set = ""
-        self.set_piece_set("Cburnett")
+        self.set_piece_set("Nibbler")
         self._animation = QVariantAnimation(self)
         self._animation.setDuration(170)
         self._animation.setEasingCurve(QEasingCurve.Type.OutCubic)
@@ -68,10 +68,17 @@ class BoardWidget(QWidget):
 
     def piece_directory(self):
         directory = ASSETS / "pieces"
-        return directory / "original" if self.piece_set == "Original" else directory
+        return directory / "nibbler" if self.piece_set == "Nibbler" else (
+            directory / "original" if self.piece_set == "Original" else directory)
+
+    def piece_path(self, piece):
+        kind = PIECE_CHARS[abs(piece)]
+        if self.piece_set == "Nibbler":
+            return self.piece_directory() / (("_" if piece < 0 else "") + kind.upper() + ".png")
+        return self.piece_directory() / (("w" if piece > 0 else "b") + kind.lower() + ".svg")
 
     def set_piece_set(self, name):
-        name = name if name in ("Cburnett", "Original") else "Cburnett"
+        name = name if name in ("Nibbler", "Cburnett", "Original") else "Nibbler"
         if name == self.piece_set:
             return
         self.piece_set = name
@@ -82,8 +89,8 @@ class BoardWidget(QWidget):
         renderers = {}
         for color in (1, -1):
             for kind in range(1, 7):
-                file = ("w" if color == 1 else "b") + PIECE_CHARS[kind].lower() + ".svg"
-                renderers[color * kind] = QSvgRenderer(str(self.piece_directory() / file), self)
+                path = str(self.piece_path(color * kind))
+                renderers[color * kind] = QPixmap(path) if name == "Nibbler" else QSvgRenderer(path, self)
         self._renderer_sets[name] = self._renderers = renderers
         self.update()
 
@@ -205,8 +212,13 @@ class BoardWidget(QWidget):
         self.update()
 
     def _piece(self, painter: QPainter, piece: int, rect: QRectF):
-        inset = rect.width() * 0.045
-        self._renderers[piece].render(painter, rect.adjusted(inset, inset, -inset, -inset))
+        image = self._renderers[piece]
+        if isinstance(image, QPixmap):
+            # The upstream PNG already contains the intended transparent padding.
+            painter.drawPixmap(rect, image, QRectF(image.rect()))
+        else:
+            inset = rect.width() * 0.045
+            image.render(painter, rect.adjusted(inset, inset, -inset, -inset))
 
     def _arrow(self, painter: QPainter, src: int, dst: int, color: QColor, unit: float, *, subtle=False):
         if src == dst:
@@ -259,6 +271,7 @@ class BoardWidget(QWidget):
         last_move = self.preview_last_move if preview else self.last_move
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         rect, unit = self._geometry()
         painter.setPen(Qt.PenStyle.NoPen)
         colors = palette(self.light)
@@ -394,12 +407,11 @@ class BoardWidget(QWidget):
         if len(candidates) > 1:
             menu = QMenu(self)
             chosen = {}
-            color = "w" if self.board.turn == 1 else "b"
             for move in candidates:
                 if move.promotion:
                     kind = PIECE_CHARS[move.promotion].lower()
                     name = {"q": "Queen", "r": "Rook", "b": "Bishop", "n": "Knight"}[kind]
-                    action = menu.addAction(QIcon(str(self.piece_directory() / f"{color}{kind}.svg")), name)
+                    action = menu.addAction(QIcon(str(self.piece_path(self.board.turn * move.promotion))), name)
                 else:
                     from ..core.notation import san
 

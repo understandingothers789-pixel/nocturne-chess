@@ -16,7 +16,7 @@ from nocturne.core.notation import san
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 try:
     from PySide6.QtCore import QEvent, QPoint, QPointF, QTimer, Qt
-    from PySide6.QtGui import QMouseEvent, QTextDocument, QWheelEvent, QColor
+    from PySide6.QtGui import QMouseEvent, QTextDocument, QWheelEvent, QColor, QPixmap
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QMenu, QScrollArea, QWidget
     from nocturne.gui.window import MainWindow
@@ -195,6 +195,33 @@ class GuiTests(unittest.TestCase):
         self.assertFalse(self.window.analysis_clocks.isVisible())
         self.assertEqual(self.window.game.time_control, TimeControl(300, 2))
         self.assertEqual(self.window.game.clock_values(), {1: 280, -1: 290})
+
+    def test_nibbler_default_has_all_twelve_original_images_and_live_style_switching(self):
+        from nocturne.gui.dialogs import SettingsDialog
+        board = self.window.board_view
+        self.assertEqual(self.window.config["piece_set"], "Nibbler")
+        self.assertEqual(board.piece_set, "Nibbler")
+        self.assertEqual(len(board._renderers), 12)
+        for piece, image in board._renderers.items():
+            self.assertIsInstance(image, QPixmap)
+            self.assertFalse(image.isNull())
+            self.assertEqual((image.width(), image.height()), (240, 240))
+            self.assertTrue(image.hasAlphaChannel())
+            self.assertTrue(board.piece_path(piece).is_file())
+        self.assertEqual(board.piece_path(2).name, "N.png")
+        self.assertEqual(board.piece_path(-2).name, "_N.png")
+        dialog = SettingsDialog(self.window.config, self.window)
+        try:
+            self.assertEqual(dialog.pieces.itemText(0), "Nibbler")
+            self.assertEqual(dialog.preview.piece_set, "Nibbler")
+            dialog.pieces.setCurrentText("Cburnett")
+            self.assertEqual(dialog.preview.piece_set, "Cburnett")
+            dialog.pieces.setCurrentText("Nibbler")
+            self.assertEqual(dialog.preview.piece_set, "Nibbler")
+            self.assertFalse(dialog.preview._renderers[2].isNull())
+        finally:
+            dialog.close()
+            dialog.deleteLater()
 
     def test_studio_appearance_preview_cancel_and_save(self):
         from nocturne.gui.dialogs import SettingsDialog
@@ -1043,9 +1070,12 @@ class GuiTests(unittest.TestCase):
         self.window.game = Game("4k3/P7/8/8/8/8/8/4K3 w - - 0 1")
         self.window._refresh()
 
+        icons = []
+
         def choose_knight():
             menu = QApplication.activePopupWidget()
             if isinstance(menu, QMenu):
+                icons.extend(not action.icon().pixmap(48, 48).isNull() for action in menu.actions())
                 target = menu.actionGeometry(menu.actions()[-1]).center()
                 QTest.mouseClick(menu, Qt.MouseButton.LeftButton, pos=target)
 
@@ -1060,6 +1090,7 @@ class GuiTests(unittest.TestCase):
         self._click("a8")
         self.assertEqual(self.window.game.board.cells[parse_square("a8")], 2)
         self.assertEqual(self.window.game.sans, ["a8=N"])
+        self.assertEqual(icons, [True] * 4)
 
     def test_stale_position_result_cannot_commit_a_move(self):
         generation = self.window.engine.generation

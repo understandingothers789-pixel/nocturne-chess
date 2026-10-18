@@ -4,6 +4,18 @@ from nocturne.settings import DEFAULTS, normalize
 
 
 class SettingsTests(unittest.TestCase):
+    def test_nibbler_piece_default_upgrades_once_then_keeps_user_choice(self):
+        self.assertEqual(normalize({})["piece_set"], "Nibbler")
+        for old in ("Cburnett", "Original"):
+            upgraded = normalize({"piece_set": old, "theme": "Slate", "multipv": 5,
+                                  "analysis_menu_version": 1})
+            self.assertEqual(upgraded["piece_set"], "Nibbler")
+            self.assertEqual(upgraded["piece_set_version"], 1)
+            self.assertEqual(upgraded["theme"], "Slate")
+            self.assertEqual(upgraded["multipv"], 5)
+            upgraded["piece_set"] = old
+            self.assertEqual(normalize(upgraded)["piece_set"], old)
+
     def test_reference_markers_upgrade_once_then_keep_explicit_arrow_choice(self):
         self.assertEqual(normalize({"candidate_style": "arrows"})["candidate_style"], "lines")
         self.assertEqual(normalize({"candidate_style": "arrows", "candidate_marker_version": 1})["candidate_style"], "arrows")
@@ -33,8 +45,8 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(normalize({"wheel_game_moves": "false"})["wheel_game_moves"])
         self.assertFalse(normalize({"wheel_game_moves": False})["wheel_game_moves"])
         self.assertFalse(normalize({"wheel_analysis_moves": False})["wheel_analysis_moves"])
-        self.assertEqual(normalize({"piece_set": "Original"})["piece_set"], "Original")
-        self.assertEqual(normalize({"piece_set": "missing"})["piece_set"], "Cburnett")
+        self.assertEqual(normalize({"piece_set": "Original", "piece_set_version": 1})["piece_set"], "Original")
+        self.assertEqual(normalize({"piece_set": "missing"})["piece_set"], "Nibbler")
 
     def test_menu_migration_preserves_effective_line_count(self):
         self.assertEqual(normalize({"analysis_kind": "infinite", "multipv": 3})["multipv"], 1)

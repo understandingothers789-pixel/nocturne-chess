@@ -1707,7 +1707,7 @@ class MainWindow(QMainWindow):
         light = appearance.get("light", False)
         QApplication.instance().setStyleSheet(stylesheet(light))
         self.board_view.theme = appearance.get("theme", "Classic")
-        self.board_view.set_piece_set(appearance.get("piece_set", "Cburnett"))
+        self.board_view.set_piece_set(appearance.get("piece_set", "Nibbler"))
         self.board_view.coordinates = appearance.get("coordinates", True)
         self.board_view.animations = appearance.get("animations", True)
         self.board_view.overlays = appearance.get("overlays", True)

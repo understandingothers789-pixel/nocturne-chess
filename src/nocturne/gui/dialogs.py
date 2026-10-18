@@ -175,8 +175,8 @@ class SettingsDialog(QDialog):
         self.theme.setCurrentText(config.get("theme", "Classic"))
         form.addRow("Board palette", self.theme)
         self.pieces = QComboBox()
-        self.pieces.addItems(["Cburnett", "Original"])
-        self.pieces.setCurrentText(config.get("piece_set", "Cburnett"))
+        self.pieces.addItems(["Nibbler", "Cburnett", "Original"])
+        self.pieces.setCurrentText(config.get("piece_set", "Nibbler"))
         form.addRow("Piece style", self.pieces)
         self.checks = {}
         for key, label, default in (

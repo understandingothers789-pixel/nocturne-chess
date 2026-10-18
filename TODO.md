@@ -1,5 +1,10 @@
 # Active roadmap
 
+0.5.7.12 makes the exact twelve Nibbler PNGs the default, with optional legacy
+styles, preview/promotion integration and a one-time default migration. Focused
+GUI/settings checks passed; full local/native validation pending. Original PNGs
+are 240×240; unusually large high-DPI boards can exceed native image resolution.
+
 0.5.7.11 adds blue evaluation/API/frequency values in neutral-depth PV headers,
 validated position/move-specific database joins and 10% palette-relative last-
 move shading. Focused checks passed; full local/native validation pending.

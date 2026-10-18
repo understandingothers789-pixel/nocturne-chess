@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.11
+# Nocturne Analysis · 0.5.7.12
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -6,12 +6,24 @@ Stockfish or another UCI executable. **The desktop app has no built-in engine.**
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
-![Real Qt application, using explicitly labelled simulated UCI test data](docs/analysis-metrics-dark.png)
+![Real Qt application, using explicitly labelled simulated UCI test data](docs/nibbler-pieces-dark.png)
 
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
+
+**0.5.7.12: the exact Nibbler piece set is now the default.** All twelve original
+240×240 transparent PNGs are included, including the Black bishop and king needed
+to complete the reference set. Board, drag animations, settings preview
+and promotion choices use the same artwork. The upgrade selects Nibbler once;
+later saved Cburnett/Original choices are respected. Choose in **Display → Board
+appearance… → Piece style**; live preview and Cancel/Save still work.
+
+This version also includes the blue evaluation/API/frequency headers and **10%**
+last-move shading below. [Light appearance](docs/nibbler-pieces-light.png).
+Windows 0.5.7.12 validation/build pending; prior verified downloads remain below.
+Artwork sources/licenses: [Nibbler/Merida notice](licenses/NIBBLER-PIECES-NOTICE.txt).
 
 **0.5.7.11: Nibbler-inspired analysis metrics.** Each suggested-line header now
 uses blue for evaluation, API win percentage and move frequency; depth, W/D/L,
@@ -102,8 +114,9 @@ clicks keep choosing the highest-ranked move when destinations overlap.
 **Download 1 · 0.5.7.5: live Studio appearance previews.**
 Changing board palette, piece style, light/dark appearance, coordinates or overlays
 previews immediately in the dialog and on your board. Save keeps the choices;
-Cancel or closing the dialog restores the prior appearance. Cburnett remains the
-default piece set, with Nocturne's original MIT pieces as a second option.
+Cancel or closing the dialog restores the prior appearance. This older version
+used Cburnett by default; 0.5.7.12 defaults to Nibbler, with Cburnett and Original
+retained as optional styles.
 
 ![Real Qt Studio settings appearance preview](docs/studio-preview.png)
 
@@ -420,7 +433,8 @@ DPI/suspend behavior and actual Stockfish/large Syzygy collections remain unveri
 
 The combined analysis application is **GPL-3.0-or-later** because it uses
 python-chess. See [COPYING](COPYING). Original Nocturne code/assets retain their
-MIT grant in [LICENSE](LICENSE). No Nibbler code/assets or Stockfish binary is
-included. The source ZIP includes Nocturne source and the installed python-chess
+MIT grant in [LICENSE](LICENSE). Nibbler/Merida piece PNGs are included with
+upstream notices and editable Merida SVGs. No Nibbler application code or Stockfish
+binary is included. The source ZIP includes Nocturne source and the installed python-chess
 Python source. Qt/Python and dependency details are in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

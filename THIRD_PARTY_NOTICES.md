@@ -3,8 +3,9 @@
 The combined analysis application is distributed under GPL-3.0-or-later (COPYING)
 because of its runtime python-chess dependency. Original Nocturne code and application
 icon retain their MIT license grant (LICENSE). The bundled Cburnett pieces are
-GPL-2.0-or-later, credited separately below. No Nibbler implementation
-or assets, and no Stockfish executable/neural network/table files are bundled.
+GPL-2.0-or-later, credited separately below. The Nibbler/Merida piece images are
+credited below; no Nibbler implementation or Stockfish executable/neural network/
+table files are bundled.
 
 ## Runtime
 
@@ -42,9 +43,10 @@ source access when redistributing.
 - The UCI simulator is explicitly a development/test fixture, not a playing engine.
   It is not included in the application bundle.
 
-Nibbler was inspected for behavior and workflow only. Its GPL code/assets were not
-copied. User-selected external engines retain their respective licenses; this
-application does not distribute or modify them.
+Nibbler's 12 original PNG chess-piece assets are included as the Nibbler option,
+now the default. No Nibbler application code is copied. See the piece notice below.
+User-selected external engines retain their respective licenses; this application
+does not distribute or modify them.
 
 ### Lichess opening explorer service
 
@@ -85,3 +87,14 @@ Retain licenses/CBURNETT-NOTICE.txt and
 licenses/CBURNETT-GPL-2.0-or-later.txt, which accompany the native app, wheel and
 source archive. The SVGs themselves are the preferred modifiable artwork source.
 No Chess.com or Nibbler artwork is included; no Lichess endorsement is implied.
+
+
+### Nibbler / shaded Merida chess pieces (default)
+
+Exact, unmodified PNGs from rooklift/nibbler commit
+`6eb0f066402c0cf53d08d682dbc394acd9cb5fb9`, `files/src/pieces/` (GPL-3.0 repository).
+Nibbler credits Lichess for these pieces. Merida is credited by Lichess to Armando
+Hernandez Marroquin under GPL-2.0-or-later; shaded artwork also credits Felix Kling.
+See `licenses/NIBBLER-PIECES-NOTICE.txt`, `licenses/MERIDA-GPL-2.0-or-later.txt`
+and `licenses/GPL-3.0.txt`. The PNGs and upstream editable Merida SVGs are included
+in `assets/pieces/nibbler/` and the accompanying source archive. No endorsement.

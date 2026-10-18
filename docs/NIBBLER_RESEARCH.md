@@ -2,7 +2,9 @@
 
 Inspected 2026-10-17, Nibbler master tree
 `6eb0f066402c0cf53d08d682dbc394acd9cb5fb9` (GPL-3.0). This is an original
-implementation: no Nibbler code or assets are copied.
+implementation: no Nibbler application code is copied. As of 0.5.7.12, the exact
+Nibbler PNG chess-piece set is bundled by user request, with licenses and upstream
+Merida SVG references; see `licenses/NIBBLER-PIECES-NOTICE.txt`.
 
 ## Verified behavior, beyond the README
 

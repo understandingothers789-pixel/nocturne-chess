@@ -1,0 +1,33 @@
+# Nibbler / shaded Merida pieces
+
+The twelve PNGs in assets/pieces/nibbler are copied verbatim from:
+https://github.com/rooklift/nibbler/tree/6eb0f066402c0cf53d08d682dbc394acd9cb5fb9/files/src/pieces
+Nibbler repository license: GPL-3.0; see licenses/GPL-3.0.txt.
+Nibbler's README credits Lichess for the piece artwork.
+
+Merida: Armando Hernandez Marroquin; shaded artwork: Felix Kling.
+Lichess lists Merida under GPL-2.0-or-later:
+https://github.com/lichess-org/lila/blob/cd2656d2787a766ba743da8da1dd3b24975e6329/COPYING.md
+Editable upstream SVGs are included in assets/pieces/nibbler/source from:
+https://github.com/lichess-org/lila/tree/cd2656d2787a766ba743da8da1dd3b24975e6329/public/piece/merida
+See licenses/MERIDA-GPL-2.0-or-later.txt.
+
+Runtime images retain original names and bytes: uppercase KQRBNP are White;
+an underscore prefix denotes Black. No artwork edits. Rendering scales the
+original 240x240 PNGs smoothly; the SVGs provide upstream editable sources.
+No endorsement by Nibbler, Lichess or the artists is implied.
+
+Upstream Git blob SHA-1 checksums (original PNGs):
+af26984b20341079570f30ed25120ff72ee62d39  B.png
+edfc26c4be854b3fab57ae663e254297f708f6e8  K.png
+b26ea378177301e44a636347083086668b9f0dc6  N.png
+7cb0d6451dea682ec79e93c4db8e8c325c9e4c63  P.png
+febbbf073be3e8aedea65f6cf24141e707eed4df  Q.png
+fb6862accc545ed7564dcf05934b48e88cbaf7dd  R.png
+70a1ada2b92d2b5aef1e1d27f6d6d267cfe2c166  _B.png
+cb28bc00558e581d06f26ba6d70609495f4fcc4a  _K.png
+f324754e3a4a3983a55ce7fc5a375eddf50c2f28  _N.png
+e36d5d1d6a567e029aeb8f2a2474e998c013be56  _P.png
+962545f336d05e557b360400a8353f735fe71175  _Q.png
+a28d2287c74e5a6efbfb36ae56ab84e083f88aff  _R.png
+
