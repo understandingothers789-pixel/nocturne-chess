@@ -1,24 +1,20 @@
 # Windows 11 desktop builds · 0.5.7.20
 
-The 0.5.7.20 Windows build is being validated. The last verified download is
-[0.5.7.19](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39157138583/artifacts/12147706406).
-Extract All, then open **Nocturne/Nocturne.exe**.
+# Download Windows 0.5.7.20
 
-[Download Windows 0.5.7.19](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39157138583/artifacts/12147706406).
-Extract All, then open **Nocturne/Nocturne.exe**. This cumulative build includes
-the high-resolution Cburnett rendering and vector registry.
+[Download the Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39161047849/artifacts/12149276470).
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
 
-Source commit `7e87722d699f6515592624b62c2b371393202715`, run **39157138583**,
-job **117762569570** succeeded. Both native runs passed: **184 tests, 179
-passed / 5 optional skips** (96.046s and 96.660s). Ruff passed twice; PyInstaller
-and both packaged launch checks passed. The all-piece vector/DPI test passed in
-both runs.
+Feature commit `4e4b04456ca108547e774b1e0c3c0127370bb854`, run
+**39161047849**, job **117774243507**, succeeded. The native suite passed with
+**184 tests (179 passed / 5 optional skips)**; Ruff, PyInstaller and packaged
+launch checks passed. The source ZIP is included in the artifact.
 
-Artifact **12147706406**, `Nocturne-0.5.7.19-Windows-x64-unsigned`, 57,885,440
-bytes, expires 2026-11-17. SHA-256:
-`8133e254d93a6911f9480232afb5b263ea877182bf2fff180157e196cc960e86`.
-This is an unsigned test build. The workflow also reports Lichess requires a
-user token for authenticated statistics; ChessDB returned 29 legal moves.
+Artifact **12149276470**, `Nocturne-0.5.7.20-Windows-x64-unsigned`,
+57,888,497 bytes, expires 2026-11-17. SHA-256:
+`91a6a0683a862a652a647668b3b435813c3baf6e1eeb685c4340f165613d9cc1`.
+The optional live API check reported that authenticated Lichess Masters and
+Players results require a user access token; ChessDB returned 29 legal moves.
 
 Tested source `6339a03daf29939c69628164449bc26616ea6489`, run **39110217241**,
 job **117624541482** succeeded. Both native suites: **184 tests, 179 passed /

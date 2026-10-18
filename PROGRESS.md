@@ -2518,4 +2518,13 @@ Version metadata and release notes are labeled 0.5.7.20.
   no `.bat`, `.cmd` or `.ps1` launcher files; SHA-256
   `122af3baffb637e37efa61a3cc9b3cf323a799bc8cda275f3010021c3643ddab`.
 
-**Windows CI:** pending.
+**Windows CI:** feature commit `4e4b04456ca108547e774b1e0c3c0127370bb854`
+passed run **39161047849**, job **117774243507**. Native Windows validation:
+**184 tests, 179 passed / 5 optional skips**; Ruff, PyInstaller, and packaged
+launch checks all passed. Artifact **12149276470** (`Nocturne-0.5.7.20-Windows-
+x64-unsigned`) is **57,888,497 bytes**, expires 2026-11-17, SHA-256
+`91a6a0683a862a652a647668b3b435813c3baf6e1eeb685c4340f165613d9cc1`.
+[Download the Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39161047849/artifacts/12149276470);
+extract it and open `Nocturne/Nocturne.exe`. The build is unsigned. Lichess
+Masters/Players live API checks require a session access token; ChessDB returned
+29 legal moves.

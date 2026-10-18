@@ -50,12 +50,11 @@ The separate statistics switch provides an explicit offline opt-out.
 
 ## Windows: download and open
 
-The 0.5.7.20 Windows build is in validation. The [last verified Windows build
-is 0.5.7.19](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39157138583/artifacts/12147706406).
-Extract All, then open **Nocturne/Nocturne.exe**. The Windows run passed
-twice: 184 tests each (179 passed / 5 optional skips), Ruff, PyInstaller and
-both packaged launch checks. See the [build receipt](docs/BUILDING.md) and
-[development log](PROGRESS.md).
+The Windows 0.5.7.20 build passed native validation: 184 tests (179 passed, 5
+optional skips), Ruff, PyInstaller and packaged launch checks.
+[Download Windows 0.5.7.20](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39161047849/artifacts/12149276470).
+Extract All, then open **Nocturne/Nocturne.exe**. See the [build receipt](docs/BUILDING.md)
+and [development log](PROGRESS.md).
 
 [Previous verified Windows 0.5.7.15](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39107769865/artifacts/12129033459)
 remains available as a fallback.
