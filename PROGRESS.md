@@ -1745,5 +1745,24 @@ refreshed after final docs. Only documentation follows the passing build; no
 application source changes after final native validation. Next is user desktop
 verification of the new appearance and Display clock toggle, including Windows
 trust/DPI, real engine interaction and the tracked narrow Play-sidebar layout
-limitation. PGN clock-comment import remains deferred. No claim of a signed or
-Smart App Control-verified executable.
+limitation. PGN clock-comment import was added in the following 0.5.7.4 phase.
+No claim of a signed or Smart App Control-verified executable.
+
+## 2026-10-18 — 0.5.7.4 imported PGN clock display (validation in progress)
+
+User supplied a PGN with standard `[%clk ...]` and `[%timestamp ...]` comments;
+the Display → Clocks strip showed infinity and the move list printed raw tags.
+Added tolerant clock parsing, per-position/per-variation latest-known values,
+clean per-move clock labels when enabled, em dashes for unrecorded positions in
+tagged games, and raw machine-tag hiding while preserving PGN comments for export
+and save/restore. Untimed games without clock annotations retain infinity. No live
+timer or time-control is inferred from imported clock comments.
+
+Changed core/notation.py and core/game.py for parsing and variation-aware display
+data; gui/window.py connects the data to the existing toggle, board strip and
+analysis move line. Updated README, CHANGELOG, architecture, build notes, TODO and
+this log; version metadata is 0.5.7.4. Regression tests cover hours/minutes and
+tenths parsing, invalid clock tags, branch-specific clock values, the display
+toggle, preservation on PGN export and game save/restore. Focused rules and GUI
+tests passed (1 each); Ruff passed. Full local and native Windows validation has
+not yet run. The Windows build artifact will be linked after CI verifies it.

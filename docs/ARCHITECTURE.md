@@ -12,7 +12,8 @@ Qt QProcess supplies asynchronous, safe child-process transport. See the
 - `core/game.py`, `variation.py`: authoritative study/clock state, ordered branches,
   node annotations/evaluations, validated schema-2 saves with schema-1 migration.
 - `core/notation.py`: SAN and python-chess PGN import/export, strict structure
-  checks, multi-game parsing, comments/NAGs/evaluation annotation preservation.
+  checks, multi-game parsing, comments/NAGs/evaluation and PGN clock annotation
+  preservation. Imported clock tags are read-only position data, not active timers.
 - `engine/uci_types.py`: typed advertised options, score/bound/WDL parsing and limits.
   It contains no search or position evaluation.
 - `gui/uci_connection.py`: persistent QProcess, asynchronous lifecycle, stop/ready
@@ -144,3 +145,6 @@ Analysis retains its existing paused timing semantics and untimed games show
 infinity. Player clocks keep a stable content margin when active styling changes.
 Changing light/dark appearance recolors all candidate views, including pinned
 rows, without changing their three-line measurement or move snapshots.
+# PGN clock comments are parsed as read-only position data. The mainline or
+# selected variation determines the last known clock for each color. The display
+# does not turn imported annotations into an active timer or infer missing times.

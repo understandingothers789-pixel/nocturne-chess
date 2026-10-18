@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from .rules import Board
 from .board import Move, Outcome, START_FEN, SQUARES, KING, PAWN, ROOK, QUEEN, BISHOP, KNIGHT
-from .notation import PgnGame, read_pgn, san, write_pgn
+from .notation import PgnGame, pgn_clock, read_pgn, san, write_pgn
 from .variation import Node, build_nodes, mainline, ordered_edges, tree_tokens
 
 
@@ -42,6 +42,7 @@ class Game:
         self.declared: Outcome | None = None
         self.evaluations: dict[int, int] = {}
         self.metadata: dict[str, Any] = {}
+        self.has_pgn_clocks = False
         self.nodes = [Node(None, None, clock=self._remaining.copy())]
         self._line_nodes = [0]
         self._main_result = "*"
@@ -156,6 +157,20 @@ class Game:
         for child in self.node_path(index)[1:]:
             board.push(self.nodes[child].move)
         return board
+
+    def pgn_clock_values(self, index=None):
+        """Clock annotations known at a position, keyed by chess color."""
+        values = {1: None, -1: None}
+        if not self.has_pgn_clocks:
+            return values
+        path = self.node_path(self.current_node if index is None else index)
+        turn = Board(self.initial_fen).turn
+        for child in path[1:]:
+            clock = pgn_clock(self.nodes[child].comment)
+            if clock is not None:
+                values[turn] = clock
+            turn = -turn
+        return values
 
     def select_node(self, index):
         path = self.node_path(index)
@@ -344,6 +359,7 @@ class Game:
                     node.analysis = {"score_type": "mate", "white_value": mate}
                 else:
                     node.evaluation = round(float(value) * 100)
+        game.has_pgn_clocks = any(pgn_clock(node.comment) is not None for node in game.nodes)
         game.evaluations = {0: game.nodes[0].evaluation} if game.nodes[0].evaluation is not None else {}
         game._line_nodes = [0]
         game.select_node(mainline(game.nodes)[-1])
@@ -490,6 +506,7 @@ class Game:
                 if 0 <= int(k) <= len(game.moves)
             }
             game.metadata = dict(data.get("metadata", {}))
+            game.has_pgn_clocks = any(pgn_clock(node.comment) is not None for node in game.nodes)
             game._sync_tree_state()
             return game
         except (KeyError, TypeError, IndexError, OverflowError, AttributeError) as exc:

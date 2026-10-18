@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.3
+# Nocturne Analysis · 0.5.7.4
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -13,28 +13,29 @@ analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
 
-**0.5.7.3 uses a neutral interface and adds Display → Clocks.**
+**0.5.7.4 shows clocks recorded in imported PGNs.**
+The Display → Clocks option now updates the board clock strip and shows a clean
+clock value beside each annotated move; raw `[%clk]` and `[%timestamp]` tags are
+kept in exported PGNs but hidden from the move display. Clock values follow the
+selected variation. The previous 0.5.7.3 neutral interface, classic board colors,
+and persistent clock toggle remain.
 The default board is classic brown and cream, with a Grey option under
 **Display → Board appearance… → Board palette**. Dark mode uses charcoal panels;
 light mode uses neutral whites/greys. Move text, graphs, menus, highlights and the
 application icon use the same neutral styling. The working Cburnett pieces and
 fixed three-line MultiPV behavior are retained.
-The working 0.5.7.2 download is retained below as a fallback.
+The previously verified 0.5.7.3 download is retained below as a fallback.
 These remain unsigned developer builds; acceptance by the user's Windows setup
 must be checked on that computer.
 
-[Download the tested, unsigned Windows 0.5.7.3 ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39095336406/artifacts/12124810527) (GitHub sign-in required).
-
-[All Windows builds](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
-Select **Nocturne-0.5.7.3-Windows-x64-unsigned** under Artifacts (GitHub sign-in required).
-Windows validation passed twice: 152 tests passed, 5 skipped per run; packaged app and external-UCI
-protocol-fixture/Game Review smoke checks passed. Real Stockfish/manual interaction verification remains open.
+[Download the Windows 0.5.7.4 build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml) from its successful run under Artifacts (GitHub sign-in required).
+The previous verified Windows build is available below as a fallback.
 Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
 change is provided. The ZIP also includes the corresponding source archive.
 
-[Working Windows 0.5.7.2 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39089980725/artifacts/12122595914) — retained as a fallback.
+[Working Windows 0.5.7.3 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39095336406/artifacts/12124810527) — retained as a fallback.
 
 ## Appearance and clocks
 
@@ -43,8 +44,9 @@ has a compact White/Black strip above the board; Play uses the existing player
 clocks. Hiding the display does not pause/reset a timed game or change its
 position. Set a time control and increment through **File → New game…** in a
 playing mode. Analysis pauses the game clocks; untimed games show ∞. Returning
-to a saved game retains its time control and remaining times. PGN clock-comment
-import is not implemented: a PGN without saved clock state does not invent times.
+to a saved game retains its time control and remaining times. Imported PGN clock
+annotations (`[%clk]`) show the recorded time at each move and selected position;
+positions with no recorded value show an em dash.
 
 ![Native Play board portion: actual running local 5+2 game after e4](docs/clocks-play.png)
 

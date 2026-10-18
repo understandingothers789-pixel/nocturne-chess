@@ -3,7 +3,8 @@
 import unittest
 import random
 from nocturne.core.board import Board, START_FEN, perft, parse_square
-from nocturne.core.notation import PgnGame, parse_san, read_pgn, san, write_pgn
+from nocturne.core.game import Game
+from nocturne.core.notation import PgnGame, parse_san, pgn_clock, read_pgn, san, write_pgn
 
 class RulesTests(unittest.TestCase):
 
@@ -163,3 +164,17 @@ class RulesTests(unittest.TestCase):
             with self.subTest(text=text):
                 with self.assertRaises(ValueError):
                     read_pgn(text)
+
+    def test_pgn_clock_annotations_are_parsed_and_round_trip(self):
+        self.assertEqual(pgn_clock("[%clk 0:04:59.3]"), (299.3, "0:04:59.3"))
+        self.assertEqual(pgn_clock("[%clk 12:03:04]"), (43384.0, "12:03:04"))
+        self.assertEqual(pgn_clock("[%clk 90:00]"), (5400.0, "90:00"))
+        self.assertIsNone(pgn_clock("[%clk 0:04:60]"))
+        self.assertIsNone(pgn_clock("[%clk unknown]"))
+        text = '1. e4 {[%clk 0:04:59.3][%timestamp 7]} e5 {[%clk 0:04:58.9]} *'
+        game = Game.from_pgn(text)
+        self.assertEqual(game.pgn_clock_values(), {1: (299.3, "0:04:59.3"), -1: (298.9, "0:04:58.9")})
+        self.assertTrue(game.has_pgn_clocks)
+        restored = Game.from_dict(game.to_dict())
+        self.assertEqual(restored.pgn_clock_values(), game.pgn_clock_values())
+        self.assertIn("[%clk 0:04:59.3]", restored.pgn())

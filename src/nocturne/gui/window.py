@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import random
+import re
 
 from PySide6.QtCore import QEvent, QStandardPaths, Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence
@@ -45,6 +46,7 @@ from .. import __version__
 from ..core.board import Move, SQUARES
 from ..core.rules import Board
 from ..core.game import Game, TimeControl
+from ..core.notation import pgn_clock
 from ..core.notation import parse_san
 from ..engine.uci_types import AnalysisLimits as SearchLimits, score_label, plot_score_label as score_text
 from ..settings import normalize
@@ -1095,6 +1097,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(buttons)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             node.comment = comment.toPlainText()
+            self.game.has_pgn_clocks = any(pgn_clock(item.comment) is not None for item in self.game.nodes)
             node.nags = [n for n in node.nags if n not in range(1, 7)]
             if symbols.currentData():
                 node.nags.append(symbols.currentData())
@@ -1708,8 +1711,14 @@ class MainWindow(QMainWindow):
                         {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}.get(n, f" ${n}")
                         for n in node.nags
                     )
-                if node.comment:
-                    text += " {" + node.comment[:100] + ("…" if len(node.comment) > 100 else "") + "}"
+                if self.config.get("show_clocks", True):
+                    move_clock = pgn_clock(node.comment)
+                    if move_clock is not None:
+                        text += f" [{move_clock[1]}]"
+                comment = re.sub(r"\s*\[%\s*(?:clk|timestamp)\s+[^\]]*\]", "", node.comment)
+                comment = " ".join(comment.split())
+                if comment:
+                    text += " {" + comment[:100] + ("…" if len(comment) > 100 else "") + "}"
                 records = self.game.metadata.get("review", {})
                 review = records.get(str(index)) if isinstance(records, dict) else None
                 if isinstance(review, dict) and isinstance(review.get("label"), str):
@@ -1867,10 +1876,18 @@ class MainWindow(QMainWindow):
         self.bottom_clock.setVisible(clocks_visible)
         top_color = 1 if self.board_view.flipped else -1
         values = self.game.clock_values()
+        pgn_values = self.game.pgn_clock_values()
         for color, value in self.analysis_clock_values.items():
             title = "White" if color == 1 else "Black"
             self.analysis_clock_names[color].setText(title)
-            value.setText(self._clock_text(values[color]) if self.game.time_control.seconds else "∞")
+            if self.game.time_control.seconds:
+                value.setText(self._clock_text(values[color]))
+            elif pgn_values[color] is not None:
+                value.setText(pgn_values[color][1])
+            elif self.game.has_pgn_clocks:
+                value.setText("—")
+            else:
+                value.setText("∞")
         material = sum(
             (1 if self.game.board.cells[s] > 0 else -1) * (0, 1, 3, 3, 5, 9, 0)[abs(self.game.board.cells[s])]
             for s in SQUARES

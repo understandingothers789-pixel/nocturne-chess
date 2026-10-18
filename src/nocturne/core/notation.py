@@ -53,6 +53,24 @@ def _normalized_san(text: str) -> str:
     return re.sub(r"[+#?!]+$", "", text.strip().replace("0", "O"))
 
 
+def pgn_clock(comment: str) -> tuple[float, str] | None:
+    """Return the first standard [%clk] value and a readable clock string."""
+    match = re.search(r"\[%clk\s+((?:\d+:)?\d{1,2}:\d{1,2}(?:\.\d+)?)\s*\]", comment)
+    if not match:
+        return None
+    value = match.group(1)
+    fields = value.split(":")
+    try:
+        seconds = float(fields[-1]) + 60 * int(fields[-2])
+        if len(fields) == 3:
+            seconds += 3600 * int(fields[0])
+    except ValueError:
+        return None
+    if seconds < 0 or float(fields[-1]) >= 60 or (len(fields) == 3 and int(fields[1]) >= 60):
+        return None
+    return seconds, value
+
+
 def parse_san(board: Board, text: str) -> Move:
     if hasattr(board, "native"):
         from .rules import wrapped

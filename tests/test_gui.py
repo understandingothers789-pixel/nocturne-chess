@@ -196,6 +196,40 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(self.window.game.time_control, TimeControl(300, 2))
         self.assertEqual(self.window.game.clock_values(), {1: 280, -1: 290})
 
+    def test_imported_pgn_clocks_follow_selected_position_and_display_toggle(self):
+        text = (
+            '1. e4 {[%clk 0:04:59.3][%timestamp 7]} '
+            'e5 {[%clk 0:04:58.9]} (1... c5 {[%clk 0:04:59.1]}) '
+            '2. Nf3 {[%clk 0:04:58.4]} *'
+        )
+        self.assertTrue(self.window._import_text(text))
+        self.assertEqual(self.window.analysis_clock_values[1].text(), "0:04:58.4")
+        self.assertEqual(self.window.analysis_clock_values[-1].text(), "0:04:58.9")
+        visible_moves = self.window.analysis_history.toPlainText()
+        self.assertIn("[0:04:59.3]", visible_moves)
+        self.assertIn("[0:04:58.9]", visible_moves)
+        self.assertNotIn("[%clk", visible_moves)
+        self.assertNotIn("[%timestamp", visible_moves)
+
+        self.window.game.select_node(0)
+        self.window._refresh()
+        self.assertEqual(self.window.analysis_clock_values[1].text(), "—")
+        self.assertEqual(self.window.analysis_clock_values[-1].text(), "—")
+        self.window.game.select_node(next(i for i, node in enumerate(self.window.game.nodes) if node.san == "Nf3"))
+        self.window._refresh()
+
+        c5 = next(i for i, node in enumerate(self.window.game.nodes) if node.san == "c5")
+        self.window.game.select_node(c5)
+        self.window._refresh()
+        self.assertEqual(self.window.analysis_clock_values[1].text(), "0:04:59.3")
+        self.assertEqual(self.window.analysis_clock_values[-1].text(), "0:04:59.1")
+
+        self.window.display_actions["show_clocks"].trigger()
+        self.assertFalse(self.window.analysis_clocks.isVisible())
+        self.assertNotIn("[0:04:59.1]", self.window.analysis_history.toPlainText())
+        self.window.display_actions["show_clocks"].trigger()
+        self.assertEqual(self.window.analysis_clock_values[-1].text(), "0:04:59.1")
+
     def test_hiding_play_clocks_keeps_elapsed_time_and_saved_game(self):
         from nocturne.core.game import TimeControl
 

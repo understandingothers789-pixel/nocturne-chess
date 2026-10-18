@@ -1,19 +1,14 @@
-# Windows 11 desktop builds · 0.5.7.3
+# Windows 11 desktop builds · 0.5.7.4
 
-[Download the tested, unsigned 0.5.7.3 Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39095336406/artifacts/12124810527).
-
-Alternatively, select the successful **Nocturne-0.5.7.3-Windows-x64-unsigned** artifact from
-[Windows Actions](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml).
+[Select the successful **Nocturne-0.5.7.4-Windows-x64-unsigned** artifact](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml)
+from its Windows Actions run.
 Sign into GitHub, download, Extract All, then open **Nocturne/Nocturne.exe**.
 Keep the full folder. No Python, compiler or batch launcher is needed to play/analyze.
 You select your own Stockfish executable from the Engine menu.
 
-Windows run 39095336406 succeeded for GUI commit e99f58e900285e2646caa3204f90249d709e4d5b.
-Both test runs passed 152 tests with 5 skips (98.932s / 99.584s). Ruff,
-PyInstaller and both packaged explorer/study/save/UCI/Game Review smoke checks passed.
-All six loopback HTTP tests ran on native Windows. The unsigned artifact is
-54,693,152 bytes, retained until 2026-11-17. SHA-256:
-`f00beba4ee0cbb9136cfff848e7a3510947e371b01938a279d57c623aafe0d3e`.
+The 0.5.7.4 Windows workflow runs Ruff and the full test suite twice, creates the
+native executable, then runs offline and external-UCI packaged smoke checks before
+uploading. Check the successful run and its artifact metadata for exact results.
 
 Live authenticated Lichess data requires a user session token. Separate live
 connectivity checks distinguish protected responses from actual returned data;
@@ -29,11 +24,13 @@ a one-time legacy-default migration, and saved Display → Clocks visibility.
 The working Cburnett pieces, three-line PV slots, UCI/rules/game model, build
 script/specification and dependencies are retained. Timed Play clocks continue
 when hidden; Analysis pauses them and untimed games show infinity. Configure a
-time control in File → New game in a playing mode. PGN clock comments are not
-imported as clock state. Full clock persistence/elapsed-time and migration tests
-passed twice on native Windows for the final source, plus frozen GUI checks.
+time control in File → New game in a playing mode. 0.5.7.4 reads standard PGN
+`[%clk]` annotations and shows the last recorded time for each side at the selected
+mainline or variation position. Missing values use an em dash; annotations remain
+read-only and do not create a running clock. See the workflow result for current
+native Windows validation evidence.
 
-[Working Windows 0.5.7.2 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39089980725/artifacts/12122595914) remains available as a fallback.
+[Working Windows 0.5.7.3 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39095336406/artifacts/12124810527) remains available as a fallback.
 These are unsigned test builds. The user confirms 0.5.7.2 runs on their computer;
 acceptance of the new executable on that setup is unverified here. No signing,
 certificate, launcher or security-policy change is included. Manual Windows DPI
@@ -59,7 +56,7 @@ the installed python-chess Python source and notices.
 Outputs:
 
 - `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
-- `dist/Nocturne-0.5.7.3-source.zip`: source, tests, documentation, rules-library source.
+- `dist/Nocturne-0.5.7.4-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI
 executable/native table reader are not part of this distribution. Source installation

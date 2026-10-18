@@ -72,4 +72,5 @@ and both frozen GUI/UCI/Game Review checks passed. Source/wheel/license checks
 passed and the 0.5.7.3 Windows download is verified against the tested commit. Verify manual
 Windows trust/DPI and saved-default migration. Follow up Play sidebar minimum
 width/content clipping; analysis PV space and both player clocks are unaffected.
-PGN clock-comment parsing remains a separate future feature.
+PGN clock comments now display in the board clock strip and beside annotated
+moves. They follow the selected variation; validate with additional user PGNs.

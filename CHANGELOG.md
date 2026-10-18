@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.7.4 — Show imported PGN clock annotations
+
+- Read standard `[%clk …]` comments for each move and variation, display the
+  latest recorded White/Black times at the selected position, and show clean
+  per-move clock values when Display → Clocks is enabled.
+- Hide raw clock/timestamp directives in move text while preserving them in PGN
+  import/export and saved games. Untagged positions display an em dash in a game
+  that contains clock annotations; ordinary untimed games continue to show ∞.
+- Add regression coverage for clock parsing/formatting, variation navigation,
+  save/restore, PGN preservation and the Display toggle.
+
 ## 0.5.7.3 — Neutral appearance and optional chess clocks
 
 - Replace the green interface with charcoal/neutral light palettes, classic
