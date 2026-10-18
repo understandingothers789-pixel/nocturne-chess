@@ -223,6 +223,18 @@ class MoveText(QTextBrowser):
         self._reserved_lines = count
         self._fit_height()
 
+    def wrapped_line_count(self):
+        """Return the PV's current visual line count at this widget's width."""
+        if not self._auto_fit:
+            return 0
+        # Force the rich text document to lay out against the visible width;
+        # the candidate expander is shown only when the two fixed rows clip it.
+        document = self.document()
+        document.setTextWidth(max(1, self.viewport().width()))
+        document.documentLayout().documentSize()
+        block = document.begin()
+        return block.layout().lineCount() if block.isValid() and block.layout() else 0
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._fit_height()

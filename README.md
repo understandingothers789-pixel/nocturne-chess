@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.20
+# Nocturne Analysis · 0.5.7.21
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -12,9 +12,17 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
+**0.5.7.21: two-row MultiPV with per-line expansion.** Each candidate reserves
+two move rows by default, with an arrow at the end of the second row to expand
+only that candidate to its complete current engine line. Click again to collapse
+it; other candidates remain compact. Expansion resets when the suggested first
+move changes. The Dev menu can still expand all candidates together.
+Database footers distinguish lookups that are still loading, completed
+positions with no matching games, and service or connection errors.
+
 **0.5.7.20: clearer MultiPV evaluation and depth.** The evaluation and depth
 appear together above each principal variation; W/D/L, API win rate, frequency
-and source information sit in a fixed footer below the three reserved move lines.
+and source information sit in a fixed footer below the reserved move lines.
 
 **0.5.7.19: crisp Cburnett and future piece styles.** Cburnett uses the same
 direct vector rendering as the Nibbler default. The renderer follows each
@@ -50,9 +58,8 @@ The separate statistics switch provides an explicit offline opt-out.
 
 ## Windows: download and open
 
-The Windows 0.5.7.20 build passed native validation: 184 tests (179 passed, 5
-optional skips), Ruff, PyInstaller and packaged launch checks.
-[Download Windows 0.5.7.20](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39161047849/artifacts/12149276470).
+The 0.5.7.21 Windows build is being validated. The latest verified build is
+[Windows 0.5.7.20](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39161047849/artifacts/12149276470).
 Extract All, then open **Nocturne/Nocturne.exe**. See the [build receipt](docs/BUILDING.md)
 and [development log](PROGRESS.md).
 
@@ -393,10 +400,11 @@ moving pieces or using the engine. Service availability and data coverage vary.
   available in the Engine menu; logs and output queues are bounded.
 
 The default workspace is board left, a wide analysis pane on the right with the
-graph at its foot, and game moves below. Each MultiPV rank reserves exactly three
-text lines, even for a one-line PV, so updates do not push lower candidates around.
-Ranks reserve their places before results arrive. Longer PVs scroll within their
-slot and still copy in full. A hovered PV keeps its displayed moves until you
+graph at its foot, and game moves below. Each MultiPV rank reserves exactly two
+text lines by default, even for a one-line PV, so updates do not push lower
+candidates around. A per-line arrow expands just that candidate's full current PV;
+the Dev menu can still expand all lines. Ranks reserve their places before results
+arrive. A hovered PV keeps its displayed moves until you
 leave it; the latest queued update then appears. Clicking uses the displayed
 move, and navigation discards pending updates for the old position. Engine settings and per-line button bars occupy no
 analysis space. The PGN tab bar appears when editing PGN and hides during analysis.

@@ -5,11 +5,16 @@ import math
 
 from PySide6.QtCore import QPoint, Signal, Qt, QTimer
 from PySide6.QtGui import QTextDocument
-from PySide6.QtWidgets import QLabel, QMenu, QVBoxLayout, QWidget, QLayout, QSizePolicy
+from PySide6.QtWidgets import (
+    QLabel, QMenu, QVBoxLayout, QWidget, QLayout, QSizePolicy, QGridLayout, QToolButton,
+)
 from ..engine.uci_types import score_label
 from ..explorer import chessdb_score
 from .moves import MoveText
 from .theme import palette
+
+DEFAULT_PV_LINES = 2
+EXPANDER_WIDTH = 26
 
 
 class CandidatePanel(QWidget):
@@ -29,9 +34,11 @@ class CandidatePanel(QWidget):
         self.expanded = False
         self.wheel_navigation = True
         self.primary = primary
-        self.primary.reserve_lines(3)
+        self.primary.reserve_lines(DEFAULT_PV_LINES)
         self.rows = {}
         self.footers = {}
+        self.expand_buttons = {}
+        self.expanded_ranks = set()
         self.light = False
         self.database = None
         self.details = {}
@@ -56,10 +63,14 @@ class CandidatePanel(QWidget):
             widgets[0].deleteLater()
         self.rows = {}
         self.footers = {}
+        self.expand_buttons = {}
+        self.expanded_ranks.clear()
         self.lines = {}
         self.details.clear()
         self.pinned.clear()
         self.slot_count = 0
+        self.primary.setViewportMargins(0, 0, 0, 0)
+        self.primary.reserve_lines(0 if self.expanded else DEFAULT_PV_LINES)
         self.primary.set_moves([])
         self._clearing = False
         self.changed.emit()
@@ -72,9 +83,8 @@ class CandidatePanel(QWidget):
 
     def set_expanded(self, expanded):
         self.expanded = bool(expanded)
-        self.primary.reserve_lines(0 if self.expanded else 3)
-        for _, _, moves in self.rows.values():
-            moves.reserve_lines(0 if self.expanded else 3)
+        for rank in self.rows:
+            self._apply_expansion(rank)
 
     def reserve_slots(self, count):
         count = max(1, min(32, count))
@@ -99,11 +109,31 @@ class CandidatePanel(QWidget):
         )
         header.setFixedHeight(self._header_height(header))
         layout.addWidget(header)
-        moves = self.primary if rank == 1 else MoveText(auto_fit=True, reserved_lines=3)
-        moves.reserve_lines(0 if self.expanded else 3)
+        moves = self.primary if rank == 1 else MoveText(
+            auto_fit=True, reserved_lines=DEFAULT_PV_LINES
+        )
+        moves.reserve_lines(0 if self.expanded or rank in self.expanded_ranks else DEFAULT_PV_LINES)
         moves.wheel_navigation = self.wheel_navigation
         moves.candidate_rank = rank
-        layout.addWidget(moves)
+        # Keep a narrow strip free at the end of both displayed rows for this
+        # candidate's own expand/collapse arrow.
+        moves.setViewportMargins(0, 0, EXPANDER_WIDTH, 0)
+        pv_area = QWidget()
+        pv_layout = QGridLayout(pv_area)
+        pv_layout.setContentsMargins(0, 0, 0, 0)
+        pv_layout.setSpacing(0)
+        expand_button = QToolButton(pv_area)
+        expand_button.setAutoRaise(True)
+        expand_button.setFixedSize(EXPANDER_WIDTH, 22)
+        expand_button.setArrowType(Qt.ArrowType.UpArrow if rank in self.expanded_ranks
+                                   else Qt.ArrowType.DownArrow)
+        expand_button.setAccessibleName(f"Expand candidate {rank} full principal variation")
+        self._style_expander(expand_button)
+        expand_button.clicked.connect(lambda checked=False, r=rank: self.toggle_expansion(r))
+        pv_layout.addWidget(moves, 0, 0)
+        pv_layout.addWidget(expand_button, 0, 0, Qt.AlignmentFlag.AlignRight |
+                            Qt.AlignmentFlag.AlignBottom)
+        layout.addWidget(pv_area)
         footer = QLabel()
         footer.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         footer.setTextFormat(Qt.TextFormat.RichText)
@@ -122,7 +152,7 @@ class CandidatePanel(QWidget):
             moves.pointer_moved.connect(self.pointer_moved)
             if rank == 1:
                 self._primary_connected = True
-        for widget in (frame, header, moves, footer):
+        for widget in (frame, header, moves, footer, expand_button):
             widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
             if widget is self.primary and getattr(self, "_primary_menu_connected", False):
                 continue
@@ -133,6 +163,9 @@ class CandidatePanel(QWidget):
                 self._primary_menu_connected = True
         self.rows[rank] = (frame, header, moves)
         self.footers[rank] = footer
+        self.expand_buttons[rank] = expand_button
+        self._refresh_expander(rank)
+        QTimer.singleShot(0, lambda r=rank: self._refresh_expander(r))
         self.layout.addWidget(frame)
 
     def recolor(self, light):
@@ -147,7 +180,17 @@ class CandidatePanel(QWidget):
             self.footers[rank].setStyleSheet(
                 f"color: {palette(light)['metadata']}; font-size: 13px;"
             )
+            self._style_expander(self.expand_buttons[rank])
             self._render_header(rank)
+
+    def _style_expander(self, button):
+        colors = palette(self.light)
+        button.setStyleSheet(
+            f"""QToolButton {{ color: {colors['metadata']}; border: none;
+                background: transparent; padding: 1px; }}
+                QToolButton:hover {{ background: {colors['hover']};
+                border-radius: 4px; }}"""
+        )
 
     def _hover(self, rank, ply):
         if rank not in self.lines:
@@ -182,6 +225,7 @@ class CandidatePanel(QWidget):
         if self.hovered == rank:
             self.pending[rank] = (info.copy(), turn, light, detailed)
             return
+        previous = self.lines.get(rank)
         if rank > self.slot_count:
             self.reserve_slots(rank)
         self.pending.pop(rank, None)
@@ -193,10 +237,16 @@ class CandidatePanel(QWidget):
         frame, header, moves = self.rows[rank]
         moves.candidate_turn = turn
         moves.set_moves([(text, i + 1) for i, text in enumerate(info["san"])], light=light)
+        if (previous and previous.get("pv")
+                and (not info.get("pv") or previous["pv"][0] != info["pv"][0])):
+            self.expanded_ranks.discard(rank)
+            self._apply_expansion(rank)
+        self._refresh_expander(rank)
+        QTimer.singleShot(0, lambda r=rank: self._refresh_expander(r))
         self.changed.emit()
 
-    def set_database(self, query=None, data=None, origin=""):
-        value = (query, data, origin) if query else None
+    def set_database(self, query=None, data=None, origin="", status=""):
+        value = (query, data, origin, status) if query else None
         if value == self.database:
             return
         self.database = value
@@ -233,11 +283,19 @@ class CandidatePanel(QWidget):
         source = "Database off"
         cloud_score = ""
         if self.database:
-            query, data, origin = self.database
+            query, data, origin, status = self.database
             source = query.label + (" · Cached" if origin.startswith("Cached") else
                                     " · Live" if origin.startswith("Live") else "")
             if data is None:
-                source += " · awaiting data"
+                if status.lower().startswith("loading"):
+                    source += " · Loading"
+                elif status:
+                    detail = status
+                    if detail.startswith(query.label):
+                        detail = detail[len(query.label):].strip(" ·")
+                    source += " · " + (detail or "No games found")
+                else:
+                    source += " · Loading"
             else:
                 row = next((row for row in data["moves"] if info.get("pv") and row["uci"] == info["pv"][0]), None)
                 if query.source == "chessdb":
@@ -251,7 +309,7 @@ class CandidatePanel(QWidget):
                 elif row and row["total"] == 0:
                     sample = " &nbsp; [0 games]"
                 else:
-                    source += " · no move sample"
+                    source += " · " + ("No scored move" if query.source == "chessdb" else "No games found")
         metadata += (f" &nbsp; API win ({side}) {blue(win)} &nbsp; Freq {blue(frequency)}"
                      f"{sample} &nbsp; {escape(source)}{cloud_score}")
         footer = self.footers[rank]
@@ -284,6 +342,42 @@ class CandidatePanel(QWidget):
         for rank, (_, header, _) in self.rows.items():
             header.setFixedHeight(self._header_height(header))
             self.footers[rank].setFixedHeight(self._footer_height(self.footers[rank]))
+            QTimer.singleShot(0, lambda r=rank: self._refresh_expander(r))
+
+    def _apply_expansion(self, rank):
+        if rank not in self.rows:
+            return
+        moves = self.rows[rank][2]
+        expanded = self.expanded or rank in self.expanded_ranks
+        moves.reserve_lines(0 if expanded else DEFAULT_PV_LINES)
+        button = self.expand_buttons.get(rank)
+        if button:
+            button.setArrowType(Qt.ArrowType.UpArrow if rank in self.expanded_ranks
+                                else Qt.ArrowType.DownArrow)
+            button.setAccessibleName(
+                f"Collapse candidate {rank} principal variation" if rank in self.expanded_ranks
+                else f"Expand candidate {rank} full principal variation"
+            )
+            button.setVisible(not self.expanded)
+        self._refresh_expander(rank)
+
+    def _refresh_expander(self, rank):
+        button = self.expand_buttons.get(rank)
+        if button is None or rank not in self.lines:
+            return
+        moves = self.rows[rank][2]
+        expanded = rank in self.expanded_ranks
+        button.setVisible(not self.expanded and (expanded or moves.wrapped_line_count() > DEFAULT_PV_LINES))
+
+    def toggle_expansion(self, rank):
+        if self.expanded or rank not in self.lines:
+            return
+        if rank in self.expanded_ranks:
+            self.expanded_ranks.remove(rank)
+        else:
+            self.expanded_ranks.add(rank)
+        self._apply_expansion(rank)
+        self.changed.emit()
 
     def _action(self, rank, action):
         if action == "pin":

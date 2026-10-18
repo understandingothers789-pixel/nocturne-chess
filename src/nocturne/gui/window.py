@@ -714,7 +714,7 @@ class MainWindow(QMainWindow):
         dev = self.menuBar().addMenu("&Dev")
         self.raw_pgn_action = add(dev, "Show raw PGN data", self._set_raw_pgn)
         self.raw_pgn_action.setCheckable(True)
-        self.expand_pv_action = add(dev, "Expand analysis beyond three rows", self._set_expand_pv)
+        self.expand_pv_action = add(dev, "Expand all analysis lines", self._set_expand_pv)
         self.expand_pv_action.setCheckable(True)
         self.cursor_preview_action = add(dev, "Preview moves on a small board near cursor", self._set_cursor_preview)
         self.cursor_preview_action.setCheckable(True)
@@ -854,7 +854,8 @@ class MainWindow(QMainWindow):
         explorer = self.explorer
         if (explorer.query and explorer.identity == self._position_identity()
                 and self._candidate_identity == self._position_identity()):
-            self.candidates.set_database(explorer.query, explorer.statistics, explorer.statistics_origin)
+            self.candidates.set_database(explorer.query, explorer.statistics, explorer.statistics_origin,
+                                         explorer.statistics_status)
         else:
             self.candidates.set_database()
 

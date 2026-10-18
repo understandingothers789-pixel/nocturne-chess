@@ -1,9 +1,14 @@
 # Active roadmap
 
-**Current: 0.5.7.20 delivered.** MultiPV rows lead with evaluation and depth
-close together, reserve three move lines, then show W/D/L and database metrics
-in a fixed footer. Windows tests, lint, PyInstaller and packaged checks passed.
-Download: see the current [Windows link in README](README.md).
+**Current: 0.5.7.21 in validation.** MultiPV rows reserve two move lines by
+default. Each row's arrow expands only that suggested line to its full current
+engine PV; it collapses back independently. The developer option still expands
+all candidates.
+
+**Previous: 0.5.7.20 delivered.** Evaluation and depth lead each candidate, with
+W/D/L, API win rate, frequency and database details in a fixed footer. Windows
+tests, lint, PyInstaller and packaged checks passed. Download: see the current
+[Windows link in README](README.md).
 
 **Previous: 0.5.7.19 delivered.** Cburnett and the registered SVG piece styles
 use antialiased vector rendering at 1×/2×/3× DPI. All 36 vectors passed both

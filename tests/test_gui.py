@@ -520,7 +520,7 @@ class GuiTests(unittest.TestCase):
             pv = self.window.candidates.rows[3][2]
             self.assertEqual(header.font().pixelSize(), 16)
             self.assertIn("font-size:16px", pv.toHtml().replace(" ", ""))
-            self.assertIn("no move sample", self._header_document(1).toPlainText())
+            self.assertIn("No games found", self._header_document(1).toPlainText())
         self.window._set_explorer_option("explorer_enabled", False)
         self.assertFalse(explorer.isVisible())
         self.assertIs(explorer.query, query)
@@ -537,6 +537,28 @@ class GuiTests(unittest.TestCase):
         self.assertIn("50.0%", self._header_document(3).toPlainText())
         self.assertEqual(third.mapToGlobal(third.rect().topLeft()), before)
         self.assertEqual(self.window.candidates.hovered, 3)
+
+    def test_candidate_database_status_distinguishes_loading_errors_and_empty_samples(self):
+        from nocturne.explorer import parse_statistics
+        self._three_pvs()
+        self.window.config.update(explorer_enabled=True, explorer_statistics=True, explorer_source="masters")
+        with patch.object(self.window.explorer.client, "load"):
+            self.window._sync_explorer()
+        explorer = self.window.explorer
+        query = explorer.query
+        explorer._status(query.key, "Loading Lichess Masters…")
+        self.assertIn("Loading", self._candidate_footer_text(1))
+        self.assertNotIn("awaiting data", self._candidate_footer_text(1).lower())
+        explorer._clear_statistics()
+        explorer._status(query.key, "Lichess Masters unavailable (HTTP 503)")
+        footer = self._candidate_footer_text(1)
+        self.assertIn("unavailable (HTTP 503)", footer)
+        self.assertNotIn("No games found", footer)
+        empty = parse_statistics({"white": 0, "draws": 0, "black": 0, "moves": []}, query)
+        explorer._result(query.key, empty, "Live · Lichess Masters")
+        footer = self._candidate_footer_text(1)
+        self.assertIn("No games found", footer)
+        self.assertNotIn("Loading", footer)
 
     def test_candidate_api_counts_follow_black_pov_and_reject_stale_results(self):
         from nocturne.explorer import parse_statistics
@@ -859,7 +881,7 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(hovered, [1])
         self.assertEqual(clicked, [1])
 
-    def test_dev_expanded_pvs_fit_full_lines_and_restore_three_rows(self):
+    def test_dev_expanded_pvs_fit_full_lines_and_restore_two_rows(self):
         base, job = self._three_pvs()
         panel = self.window.candidates
         long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
@@ -889,7 +911,54 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(len({row[2].height() for row in panel.rows.values()}), 1)
         panel.clear()
         panel.reserve_slots(2)
-        self.assertEqual(panel.rows[2][2]._reserved_lines, 3)
+        self.assertEqual(panel.rows[2][2]._reserved_lines, 2)
+
+    def test_candidate_arrow_expands_only_its_pv_and_collapses_to_two_rows(self):
+        base, job = self._three_pvs()
+        panel = self.window.candidates
+        self.assertEqual({panel.rows[rank][2]._reserved_lines for rank in (1, 2, 3)}, {2})
+        moves = panel.rows[1][2]
+        long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
+        self._show_external_info(base | {"multipv": 1, "pv": long_pv}, job)
+        self.app.processEvents()
+        fixed_height = moves.height()
+        self.assertEqual([panel.rows[rank][2]._reserved_lines for rank in (1, 2, 3)],
+                         [2, 2, 2])
+        button = panel.expand_buttons[1]
+        self.assertTrue(button.isVisible())
+        self.assertEqual(button.toolTip(), "")
+        self.assertEqual(button.arrowType(), Qt.ArrowType.DownArrow)
+        fen, node = self.window.game.board.fen(), self.window.game.current_node
+
+        QTest.mouseClick(button, Qt.MouseButton.LeftButton)
+        self.app.processEvents()
+        self.assertEqual(panel.expanded_ranks, {1})
+        self.assertEqual(moves._reserved_lines, 0)
+        self.assertGreater(moves.height(), fixed_height)
+        self.assertEqual(moves.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.assertEqual(panel.rows[2][2]._reserved_lines, 2)
+        self.assertEqual(panel.rows[3][2]._reserved_lines, 2)
+        self.assertEqual(button.arrowType(), Qt.ArrowType.UpArrow)
+        last = moves.document().find("Ng8", moves.document().characterCount() - 1,
+                                    QTextDocument.FindFlag.FindBackward)
+        self.assertFalse(last.isNull())
+        self.assertLess(moves.cursorRect(last).bottom(), moves.viewport().height())
+        self.assertEqual(self.window.game.board.fen(), fen)
+        self.assertEqual(self.window.game.current_node, node)
+
+        QTest.mouseClick(button, Qt.MouseButton.LeftButton)
+        self.app.processEvents()
+        self.assertFalse(panel.expanded_ranks)
+        self.assertEqual(moves._reserved_lines, 2)
+        self.assertEqual(moves.height(), fixed_height)
+
+        # A changed suggested first move is a different candidate variation;
+        # its row returns to the compact state rather than inheriting expansion.
+        self._show_external_info(base | {"multipv": 1, "pv": ["d2d4", "e5d4"]}, job)
+        self.app.processEvents()
+        self.assertNotIn(1, panel.expanded_ranks)
+        self.assertEqual(moves._reserved_lines, 2)
+        self.assertFalse(button.isVisible())
 
     def test_five_colored_candidates_keep_slots_and_destination_execution(self):
         self._analysis_game("1.e4 e5 *")
@@ -910,7 +979,7 @@ class GuiTests(unittest.TestCase):
                          pos=self.window.board_view.square_rect(parse_square("d4")).center().toPoint())
         self.assertEqual(self.window.game.sans[-1], "d4")
 
-    def test_three_line_pv_slots_preserve_hover_and_apply_latest_update_after_leaving(self):
+    def test_two_line_pv_slots_preserve_hover_and_apply_latest_update_after_leaving(self):
         base, job = self._three_pvs()
         panel = self.window.candidates
         self.assertEqual(list(panel.rows), [1, 2, 3])

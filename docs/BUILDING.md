@@ -1,4 +1,8 @@
-# Windows 11 desktop builds · 0.5.7.20
+# Windows 11 desktop builds · 0.5.7.21
+
+The 0.5.7.21 Windows build is being validated. The latest verified build is
+[0.5.7.20](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39161047849/artifacts/12149276470).
+Extract All, then open **Nocturne/Nocturne.exe**.
 
 # Download Windows 0.5.7.20
 

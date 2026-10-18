@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.7.21 — Two-row MultiPV with per-line expansion
+
+Candidate lines now reserve two move rows by default. A small arrow at the end
+of each candidate's second row expands only that line to show its full current
+engine PV; the arrow collapses it back to two rows. Other candidates stay
+compact, and expansion resets when that row's suggested first move changes.
+The existing developer option can still expand every candidate at once.
+
+Lichess Masters and player database status now distinguishes a query that is
+still loading, a completed position with no matching game sample, and a real
+service or connection error. Empty results say “No games found.”
+
 ## 0.5.7.20 — Clearer MultiPV evaluation and depth hierarchy
 
 MultiPV rows now lead with a prominent evaluation and its search depth placed

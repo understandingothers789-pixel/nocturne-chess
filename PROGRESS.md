@@ -2528,3 +2528,28 @@ x64-unsigned`) is **57,888,497 bytes**, expires 2026-11-17, SHA-256
 extract it and open `Nocturne/Nocturne.exe`. The build is unsigned. Lichess
 Masters/Players live API checks require a session access token; ChessDB returned
 29 legal moves.
+
+## 2026-10-18 — 0.5.7.21: two-row PVs with a per-candidate expand arrow
+
+**Phase:** reserve two move rows for each MultiPV candidate. Put a small
+expand/collapse arrow at the end of its second row. Expanding shows the full PV
+reported for only that candidate; other candidate rows stay compact. Collapse
+returns it to two rows. If the candidate's suggested first move changes, clear
+that row's expansion so it does not carry over to a different variation. Keep
+the existing developer setting for expanding every line.
+
+**Files changed:** `candidates.py` now owns an independent expansion state and
+arrow for each rank, keeps a narrow control area clear, and recalculates whether
+the arrow is needed from the current wrapped PV length. `moves.py` measures
+wrapped lines at the visible width. `window.py` renames the developer option to
+**Expand all analysis lines**. `explorer_panel.py` passes live loading and
+terminal error state to candidate footers; completed empty Lichess results say
+**No games found**. GUI tests cover two-row default, per-row toggling, full PV
+visibility, unaffected ranks, line replacement and board state, plus loading,
+empty-result and service-error wording. Version metadata and build labels are
+0.5.7.21.
+
+**Validation:** 186 tests passed overall (175 passed, 11 optional skips).
+Focused GUI regressions passed and Ruff passed. The 209-entry source archive
+passed ZIP integrity checks and contains no script launchers. Windows build is
+pending.
