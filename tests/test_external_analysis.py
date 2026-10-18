@@ -596,7 +596,20 @@ class QtIntegration(unittest.TestCase):
                 window.game = Game.from_pgn("1.e3 *")
                 window._show_review()
                 window._begin_review(0.1)
-                self.wait_until(lambda: window._review and window._review["paused"])
+                # Include cold subprocess startup: the transport itself permits
+                # five seconds per handshake, longer than the helper's default.
+                try:
+                    self.wait_until(lambda: window._review and window._review["paused"], 10)
+                except AssertionError as exc:
+                    self.fail(
+                        f"{exc}; phase={window.engine.connection.phase}; review={window._review}\n"
+                        + "\n".join(window.engine.connection.log)
+                    )
+                # An engine timeout also pauses review; it must not satisfy this
+                # test. Require the intended rejection, after a completed search.
+                self.assertEqual(window.engine.connection.phase, "idle")
+                self.assertEqual(window._review["message"],
+                                 "No exact score for the requested move; review paused.")
                 self.assertEqual(summarize(rows(window.game))["reviewed"], 0)
                 self.assertEqual(window.review_panel.scores[None][0].text(), "—")
                 self.assertIn("paused", window.review_panel.status.text())

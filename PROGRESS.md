@@ -1504,3 +1504,31 @@ Pip's unwritable-cache notice and Qt/offscreen/font warnings are environmental;
 negative SAN parsing tests emit expected warnings. No test failure discovered.
 Next: publish this isolated patch as a new commit without rewriting history and
 verify Windows tests/PyInstaller/frozen checks before updating the download.
+
+
+## 2026-10-18 — 0.5.7.1 Windows validation timeout investigation
+
+Initial Windows run 39088139853/job 117558949162 for application commit
+d0c968211a9cb8ce3fb6d2d6c865d806aab383a0: first full run passed 148 tests with
+5 optional skips (153 total, 97.027s). Builder's second full run had 147 passed,
+5 skipped and one failure (153 total, 116.049s). Failure:
+test_external_analysis.QtIntegration.test_review_rejects_bound_scores_and_wrong_targeted_moves,
+bounds subtest, timed out waiting for the review's paused state. All new MultiPV
+tests passed. Packaging/upload correctly stopped; no patch EXE was delivered.
+
+Reproduced the external suite locally: all 23 passed in 24.140s. Repeated the
+original failing test 12 times: all passed in 36.083s. Exact Windows transient
+cause is unconfirmed because the original wait lacked protocol diagnostics.
+Found a test-budget mismatch: wait_until defaults to four seconds while the
+existing transport permits five seconds for an engine handshake. Updated only
+this test to allow ten seconds including cold subprocess startup, report phase,
+review state and bounded protocol log on timeout, and require the exact intended
+score-rejection message and idle transport. A connection timeout also pauses
+review and can no longer falsely satisfy the test. Application source, startup
+budgets, original packaging/dependencies/pieces/clocks are unchanged. Ruff passed.
+Next: execute the revised external suite and repeat native validation; do not
+claim Windows packaging passed until it actually completes.
+
+Revised external suite command completed: 23 tests passed in 26.173s, no failures.
+Only tests/test_external_analysis.py and this log change after the initial native
+attempt. Retrying the unchanged application with stronger test diagnostics.
