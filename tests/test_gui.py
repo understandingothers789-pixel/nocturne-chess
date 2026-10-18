@@ -462,8 +462,20 @@ class GuiTests(unittest.TestCase):
 
     def _header_document(self, rank):
         document = QTextDocument()
-        document.setHtml(self.window.candidates.rows[rank][1].text())
+        header = self.window.candidates.rows[rank][1].text()
+        footer = self.window.candidates.footers[rank].text()
+        document.setHtml(f"{header}<br/>{footer}")
         return document
+
+    def _candidate_header_text(self, rank):
+        document = QTextDocument()
+        document.setHtml(self.window.candidates.rows[rank][1].text())
+        return document.toPlainText()
+
+    def _candidate_footer_text(self, rank):
+        document = QTextDocument()
+        document.setHtml(self.window.candidates.footers[rank].text())
+        return document.toPlainText()
 
     def test_candidate_headers_color_real_api_metrics_and_keep_depth_neutral(self):
         from nocturne.explorer import parse_statistics
@@ -485,6 +497,14 @@ class GuiTests(unittest.TestCase):
             self.window._apply_settings()
             document = self._header_document(3)
             text = document.toPlainText().replace("\u00a0", " ")
+            headline = self._candidate_header_text(3).replace("\u00a0", " ")
+            footer = self._candidate_footer_text(3).replace("\u00a0", " ")
+            self.assertIn("+0.22 Depth 31/46", headline)
+            self.assertNotIn("W/D/L", headline)
+            self.assertNotIn("API win", headline)
+            self.assertIn("W/D/L 10.0/20.0/70.0% White", footer)
+            self.assertIn("API win (White) 25.0%", footer)
+            self.assertIn("Freq 40.0%", footer)
             self.assertIn("Depth 31/46", text)
             self.assertIn("W/D/L 10.0/20.0/70.0% White", text)
             self.assertIn("API win (White) 25.0%", text)
@@ -496,6 +516,10 @@ class GuiTests(unittest.TestCase):
                 self.assertEqual(color, QColor(palette(light)["metric"]))
             self.assertNotEqual(document.find("Depth").charFormat().foreground().color(),
                                 QColor(palette(light)["metric"]))
+            header = self.window.candidates.rows[3][1]
+            pv = self.window.candidates.rows[3][2]
+            self.assertEqual(header.font().pixelSize(), 16)
+            self.assertIn("font-size:16px", pv.toHtml().replace(" ", ""))
             self.assertIn("no move sample", self._header_document(1).toPlainText())
         self.window._set_explorer_option("explorer_enabled", False)
         self.assertFalse(explorer.isVisible())
@@ -561,6 +585,7 @@ class GuiTests(unittest.TestCase):
             pv_heights = {row[2].height() for row in panel.rows.values()}
             self.assertEqual(len(pv_heights), 1)
             self.assertEqual(len({row[1].height() for row in panel.rows.values()}), 1)
+            self.assertEqual(len({panel.footers[rank].height() for rank in panel.rows}), 1)
             for _, header, _ in panel.rows.values():
                 document = QTextDocument()
                 document.setDefaultFont(header.font())
@@ -568,6 +593,13 @@ class GuiTests(unittest.TestCase):
                 document.setHtml(header.text())
                 document.setTextWidth(header.width())
                 self.assertLessEqual(document.size().height(), header.height())
+            for footer in panel.footers.values():
+                document = QTextDocument()
+                document.setDefaultFont(footer.font())
+                document.setDocumentMargin(0)
+                document.setHtml(footer.text())
+                document.setTextWidth(footer.width())
+                self.assertLessEqual(document.size().height(), footer.height())
 
     def _wheel(self, widget, delta, *, pixel=0, shift=False, point=None):
         point = point or widget.rect().center()

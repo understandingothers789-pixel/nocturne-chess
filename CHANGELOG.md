@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.20 — Clearer MultiPV evaluation and depth hierarchy
+
+MultiPV rows now lead with a prominent evaluation and its search depth placed
+closely beside it. The three reserved move lines stay in a fixed middle section;
+W/D/L, API win rate, frequency and database details move to a consistent footer.
+This makes the score and depth easier to scan without shifting candidate lines
+as analysis updates.
+
 ## 0.5.7.19 — High-resolution Cburnett and registered SVG piece sets
 
 - Draw Cburnett directly from its licensed SVG artwork at device resolution, using its own viewBox spacing without an extra inset.

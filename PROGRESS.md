@@ -2492,3 +2492,30 @@ documentation and Cburnett capture.
 Updated README, CHANGELOG, TODO, BUILDING, ARCHITECTURE and this log with the
 final results. No runtime files changed after the tested feature commit. Remaining
 manual validation is on the user's own Windows screen scaling and trust settings.
+
+## 2026-10-18 — 0.5.7.20: evaluation and depth lead each MultiPV row
+
+**Phase:** apply the selected combination of mockups A and B: keep the eval and
+search depth as the first, prominent items in each candidate, place them close
+together, keep the three reserved PV lines in a fixed middle block, and put
+W/D/L, API win rate, frequency, sample and source in a fixed footer.
+
+**Files changed:** `src/nocturne/gui/candidates.py` splits each candidate's
+existing header and metadata into a compact eval/depth header and a footer.
+The existing move slots remain three lines high. Header and footer font styles
+are applied before measuring their reserved heights. `tests/test_gui.py` now
+checks field ordering, colors, font sizing and fixed geometry at two widths.
+Version metadata and release notes are labeled 0.5.7.20.
+
+**Commands/results:**
+
+- Focused candidate rendering and width tests — passed.
+- `QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests -v` —
+  **184 tests, passed (11 optional skips)** in 161.136 s.
+- `.venv/bin/ruff check src tests scripts` — passed.
+- Offline and external-UCI smoke tests — both exited 0.
+- Source ZIP `dist/Nocturne-0.5.7.20-source.zip` — integrity passed, 209 entries,
+  no `.bat`, `.cmd` or `.ps1` launcher files; SHA-256
+  `122af3baffb637e37efa61a3cc9b3cf323a799bc8cda275f3010021c3643ddab`.
+
+**Windows CI:** pending.

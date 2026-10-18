@@ -1,6 +1,10 @@
 # Active roadmap
 
-**Current: 0.5.7.19 delivered.** Cburnett and the registered SVG piece styles
+**Current: 0.5.7.20 in validation.** MultiPV rows lead with evaluation and
+depth close together, reserve three move lines, then show W/D/L and database
+metrics in a fixed footer.
+
+**Previous: 0.5.7.19 delivered.** Cburnett and the registered SVG piece styles
 use antialiased vector rendering at 1×/2×/3× DPI. All 36 vectors passed both
 native Windows runs; Ruff, PyInstaller and packaged launch checks passed.
 Download: see the current Windows link in [README](README.md) and the full

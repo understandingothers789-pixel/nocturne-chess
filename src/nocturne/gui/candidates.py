@@ -31,6 +31,7 @@ class CandidatePanel(QWidget):
         self.primary = primary
         self.primary.reserve_lines(3)
         self.rows = {}
+        self.footers = {}
         self.light = False
         self.database = None
         self.details = {}
@@ -54,6 +55,7 @@ class CandidatePanel(QWidget):
                 self.primary.setParent(self)
             widgets[0].deleteLater()
         self.rows = {}
+        self.footers = {}
         self.lines = {}
         self.details.clear()
         self.pinned.clear()
@@ -90,15 +92,27 @@ class CandidatePanel(QWidget):
         header = QLabel("Waiting for engine")
         header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         header.setTextFormat(Qt.TextFormat.RichText)
-        header.setWordWrap(True)
+        header.setWordWrap(False)
+        header.setStyleSheet(
+            f"color: {palette(self.light)['metadata']};"
+            "font-family: Consolas, monospace; font-size: 16px;"
+        )
         header.setFixedHeight(self._header_height(header))
-        header.setStyleSheet(f"color: {palette(self.light)['metadata']};")
         layout.addWidget(header)
         moves = self.primary if rank == 1 else MoveText(auto_fit=True, reserved_lines=3)
         moves.reserve_lines(0 if self.expanded else 3)
         moves.wheel_navigation = self.wheel_navigation
         moves.candidate_rank = rank
         layout.addWidget(moves)
+        footer = QLabel()
+        footer.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        footer.setTextFormat(Qt.TextFormat.RichText)
+        footer.setWordWrap(True)
+        footer.setStyleSheet(
+            f"color: {palette(self.light)['metadata']}; font-size: 13px;"
+        )
+        footer.setFixedHeight(self._footer_height(footer))
+        layout.addWidget(footer)
         moves.show()
         # The primary widget survives clear/reuse, so wire it exactly once.
         if rank != 1 or not getattr(self, "_primary_connected", False):
@@ -108,7 +122,7 @@ class CandidatePanel(QWidget):
             moves.pointer_moved.connect(self.pointer_moved)
             if rank == 1:
                 self._primary_connected = True
-        for widget in (frame, header, moves):
+        for widget in (frame, header, moves, footer):
             widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
             if widget is self.primary and getattr(self, "_primary_menu_connected", False):
                 continue
@@ -118,6 +132,7 @@ class CandidatePanel(QWidget):
             if widget is self.primary:
                 self._primary_menu_connected = True
         self.rows[rank] = (frame, header, moves)
+        self.footers[rank] = footer
         self.layout.addWidget(frame)
 
     def recolor(self, light):
@@ -125,7 +140,13 @@ class CandidatePanel(QWidget):
             return
         self.light = light
         for rank, (_, header, _) in self.rows.items():
-            header.setStyleSheet(f"color: {palette(light)['metadata']};")
+            header.setStyleSheet(
+                f"color: {palette(light)['metadata']};"
+                "font-family: Consolas, monospace; font-size: 16px;"
+            )
+            self.footers[rank].setStyleSheet(
+                f"color: {palette(light)['metadata']}; font-size: 13px;"
+            )
             self._render_header(rank)
 
     def _hover(self, rank, ply):
@@ -192,14 +213,21 @@ class CandidatePanel(QWidget):
         wdl = info.get("wdl")
         if wdl and self.turn < 0:
             wdl = wdl[::-1]
-        first = ("★ " if rank in self.pinned else "") + blue(score_label(info, self.turn))
-        first += f" &nbsp; Depth {info['depth']}/{info['seldepth']}"
+        first = blue(score_label(info, self.turn))
+        if rank in self.pinned:
+            first += " ★"
+        # Keep the first two things a player wants to scan close together:
+        # evaluation, then depth. Avoid the old oversized gap before depth.
+        first += f"&nbsp;<span style=\"color:{colors['metadata']};\">Depth {info['depth']}/{info['seldepth']}</span>"
+        header = self.rows[rank][1]
+        header.setText(f"<div>{first}</div>")
+        header.setAccessibleName(f"Candidate {rank} evaluation and search depth")
         if wdl:
-            first += f" &nbsp; W/D/L {wdl[0] / 10:.1f}/{wdl[1] / 10:.1f}/{wdl[2] / 10:.1f}% White"
+            metadata = f"W/D/L {wdl[0] / 10:.1f}/{wdl[1] / 10:.1f}/{wdl[2] / 10:.1f}% White"
         else:
-            first += " &nbsp; W/D/L —"
+            metadata = "W/D/L —"
         if self.details.get(rank):
-            first += f" &nbsp; {info['nodes']:,} nodes"
+            metadata += f" &nbsp; {info['nodes']:,} nodes"
         side = "White" if self.turn > 0 else "Black"
         win, frequency, sample = "—", "—", ""
         source = "Database off"
@@ -224,10 +252,11 @@ class CandidatePanel(QWidget):
                     sample = " &nbsp; [0 games]"
                 else:
                     source += " · no move sample"
-        second = f"API win ({side}) {blue(win)} &nbsp; Freq {blue(frequency)}{sample} &nbsp; {escape(source)}{cloud_score}"
-        header = self.rows[rank][1]
-        header.setText(f"<div>{first} &nbsp; {second}</div>")
-        header.setAccessibleName(f"Candidate {rank} evaluation, search and database metrics")
+        metadata += (f" &nbsp; API win ({side}) {blue(win)} &nbsp; Freq {blue(frequency)}"
+                     f"{sample} &nbsp; {escape(source)}{cloud_score}")
+        footer = self.footers[rank]
+        footer.setText(f"<div>{metadata}</div>")
+        footer.setAccessibleName(f"Candidate {rank} WDL and database metrics")
 
     def _header_height(self, header):
         # Reserve identical metadata space from width, never from arriving PVs.
@@ -235,17 +264,26 @@ class CandidatePanel(QWidget):
         probe = QTextDocument()
         probe.setDefaultFont(header.font())
         probe.setDocumentMargin(0)
-        probe.setHtml("<div>★ +123.45 &nbsp; Depth 128/256 &nbsp; W/D/L 100.0/100.0/100.0% White"
-                      " &nbsp; 9,999,999,999 nodes &nbsp; "
-                      "API win (White) 100.0% &nbsp; Freq 100.0% &nbsp; "
-                      "[999,999,999 / 999,999,999 games] &nbsp; Lichess players · Cached · no move sample</div>")
+        probe.setHtml("<div>+123.45 ★ &nbsp; Depth 128/256</div>")
         probe.setTextWidth(max(160, self.width()))
         return math.ceil(probe.size().height()) + 6
 
+    def _footer_height(self, footer):
+        probe = QTextDocument()
+        probe.setDefaultFont(footer.font())
+        probe.setDocumentMargin(0)
+        probe.setHtml("<div>W/D/L 100.0/100.0/100.0% White &nbsp; 9,999,999,999 nodes"
+                      " &nbsp; API win (White) 100.0% &nbsp; Freq 100.0%"
+                      " [999,999,999 / 999,999,999 games]"
+                      " &nbsp; Lichess players · Cached · no move sample</div>")
+        probe.setTextWidth(max(160, self.width()))
+        return math.ceil(probe.size().height()) + 4
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        for _, header, _ in self.rows.values():
+        for rank, (_, header, _) in self.rows.items():
             header.setFixedHeight(self._header_height(header))
+            self.footers[rank].setFixedHeight(self._footer_height(self.footers[rank]))
 
     def _action(self, rank, action):
         if action == "pin":

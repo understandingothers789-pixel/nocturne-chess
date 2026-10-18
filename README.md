@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.19
+# Nocturne Analysis · 0.5.7.20
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -11,6 +11,10 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
+
+**0.5.7.20: clearer MultiPV evaluation and depth.** The evaluation and depth
+appear together above each principal variation; W/D/L, API win rate, frequency
+and source information sit in a fixed footer below the three reserved move lines.
 
 **0.5.7.19: crisp Cburnett and future piece styles.** Cburnett uses the same
 direct vector rendering as the Nibbler default. The renderer follows each
@@ -46,7 +50,8 @@ The separate statistics switch provides an explicit offline opt-out.
 
 ## Windows: download and open
 
-[Download Windows 0.5.7.19](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39157138583/artifacts/12147706406).
+The 0.5.7.20 Windows build is in validation. The [last verified Windows build
+is 0.5.7.19](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39157138583/artifacts/12147706406).
 Extract All, then open **Nocturne/Nocturne.exe**. The Windows run passed
 twice: 184 tests each (179 passed / 5 optional skips), Ruff, PyInstaller and
 both packaged launch checks. See the [build receipt](docs/BUILDING.md) and
