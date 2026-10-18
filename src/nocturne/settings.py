@@ -16,6 +16,7 @@ DEFAULTS = {
     "theme": "Forest",
     "light": False,
     "coordinates": True,
+    "show_clocks": True,
     "animations": True,
     "overlays": True,
     "hash_mb": 32,
@@ -67,6 +68,7 @@ def normalize(data) -> dict:
     for key in (
         "light",
         "coordinates",
+        "show_clocks",
         "animations",
         "overlays",
         "takebacks",

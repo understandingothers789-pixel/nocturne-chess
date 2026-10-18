@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7
+# Nocturne Analysis · 0.5.8
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -23,6 +23,20 @@ Extract the entire ZIP, open **Nocturne**, and double-click **Nocturne.exe**.
 Keep its `_internal` folder beside the executable. Python is not required.
 These are unsigned test builds; no batch/PowerShell launcher or security-policy
 change is provided. The ZIP also includes the corresponding source archive.
+
+
+The board now uses the **exact Lichess Cburnett SVG piece set** by Colin M. L.
+Burnett, included offline with its GPL-2.0-or-later license and source attribution.
+These replace the earlier Nocturne pieces throughout the board, drag animation
+and promotion chooser. See [third-party notices](THIRD_PARTY_NOTICES.md).
+
+**Display → Clocks** shows/hides the chess-clock portion and saves your preference.
+Analysis has a compact White/Black clock strip; Play uses its existing player clocks.
+Choose the time control through **File → New game…** in a playing mode. Hiding
+clocks changes visibility only: a running game keeps counting down. Analysis
+pauses the game clocks, and untimed games show ∞. PGN clock-comment import is
+not implemented, so importing a PGN without a stored time control does not invent
+clock values. Saved games retain their existing time-control/remaining-time data.
 
 ## Your saved PGNs
 
@@ -175,8 +189,13 @@ moving pieces or using the engine. Service availability and data coverage vary.
   available in the Engine menu; logs and output queues are bounded.
 
 The default workspace is board left, a wide analysis pane on the right with the
-graph at its foot, and game moves below. PV text wraps to its full height inside
-a single scrolling list. Engine settings and per-line button bars occupy no
+graph at its foot, and game moves below. Each MultiPV has a fixed three-line move viewport and a fixed metrics header.
+Short lines retain their space, and longer PVs scroll inside that viewport.
+All requested ranks reserve their slots before results arrive, including out-of-order results.
+Updates to other ranks cannot move or dismiss a hovered line. The hovered rank
+keeps its displayed moves/evidence until you leave, then applies the latest update.
+Clicking a future move uses that displayed snapshot; changing position discards
+queued updates. Engine settings and per-line button bars occupy no
 analysis space. The PGN tab bar appears when editing PGN and hides during analysis.
 Splitters resize the panels; **Display → Analysis on the left** preserves the
 previous layout. Light/dark palettes, coordinates, animations, overlay visibility,

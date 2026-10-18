@@ -157,6 +157,97 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(window.game._line_nodes, selected)
         self.assertFalse(window._analysis_enabled)
 
+    def test_display_clocks_toggle_persists_without_changing_time_or_position(self):
+        from nocturne.core.game import TimeControl
+
+        self._analysis_game()
+        window = self.window
+        window.game = Game(time_control=TimeControl(300, 2))
+        window.game._remaining = {1: 280, -1: 290}
+        window._refresh()
+        self.assertTrue(window.analysis_clocks.isVisible())
+        self.assertEqual(window.analysis_clock_values[1].text(), "04:40")
+        self.assertEqual(window.analysis_clock_values[-1].text(), "04:50")
+        fen, generation = window.game.board.fen(), window.engine.generation
+        action = window.display_actions["show_clocks"]
+        action.trigger()
+        self.assertFalse(window.analysis_clocks.isVisible())
+        self.assertFalse(window.store.get("settings")["show_clocks"])
+        self.assertEqual(window.game.board.fen(), fen)
+        self.assertEqual(window.engine.generation, generation)
+        action.trigger()
+        self.assertTrue(window.analysis_clocks.isVisible())
+        window._workspace(False)
+        window.game.start_clock()
+        action.trigger()
+        self.assertTrue(window.game.running)
+        self.assertTrue(window.top_card.isVisible())
+        self.assertFalse(window.top_clock.isVisible())
+        self.assertFalse(window.bottom_clock.isVisible())
+        self.assertFalse(window.analysis_clocks.isVisible())
+
+    def _three_pvs(self):
+        self._analysis_game("1.e4 e5 *")
+        self.window.config["multipv"] = 3
+        job = {"turn": 1, "multipv": 3}
+        base = {"depth": 6, "seldepth": 10, "score": 15, "nodes": 500}
+        # Rank three arrives first; empty ranks still reserve their places.
+        self._show_external_info(base | {"multipv": 3, "pv": ["b1c3", "g8f6", "g1f3"]}, job)
+        self._show_external_info(base | {"multipv": 1, "pv": ["g1f3"]}, job)
+        self._show_external_info(base | {"multipv": 2, "pv": ["f1c4", "g8f6"]}, job)
+        self.app.processEvents()
+        return base, job
+
+    def test_three_line_pv_slots_preserve_hover_and_apply_latest_update_after_leaving(self):
+        base, job = self._three_pvs()
+        panel = self.window.candidates
+        self.assertEqual(list(panel.rows), [1, 2, 3])
+        heights = [widgets[2].height() for widgets in panel.rows.values()]
+        self.assertEqual(len(set(heights)), 1)
+        third = panel.rows[3][2]
+        self._hover_word(third, "Nc3")
+        preview = self.window.board_view.display_board.fen()
+        position = panel.rows[3][0].mapToGlobal(panel.rows[3][0].rect().topLeft())
+        for pv in (["g1f3", "g8f6", "f3g1", "f6g8"] * 8, ["g1f3"]):
+            self._show_external_info(base | {"multipv": 1, "pv": pv}, job)
+            self._show_external_info(base | {"multipv": 2, "pv": ["f1b5"]}, job)
+            self.app.processEvents()
+            self.assertEqual(panel.rows[3][0].mapToGlobal(panel.rows[3][0].rect().topLeft()), position)
+            self.assertEqual(self.window.board_view.display_board.fen(), preview)
+            self.assertEqual(panel.hovered, 3)
+        self._show_external_info(base | {"multipv": 3, "pv": ["d2d4", "e5d4"]}, job)
+        self.assertEqual(panel.lines[3]["pv"][0], "b1c3")
+        self.assertEqual(third._items[0][0], "Nc3")
+        QTest.mouseMove(third.viewport(), pos=third.viewport().rect().bottomRight() - QPointF(4, 4).toPoint())
+        QTest.qWait(20)
+        self.assertEqual(panel.lines[3]["pv"][0], "d2d4")
+        self.assertIsNone(self.window.board_view.preview_board)
+        self.assertIn("d2d4", [m.uci() for m, rank, _ in self.window.board_view.recommendations if rank == 3])
+        self._hover_word(third, "d4")
+        self._show_external_info(base | {"multipv": 3, "pv": ["b1c3"]}, job)
+        self.window._clear_analysis_output()
+        QTest.qWait(20)
+        self.assertFalse(panel.lines)
+        self.assertFalse(panel.pending)
+        self.assertIsNone(self.window.board_view.preview_board)
+
+    def test_clicking_hovered_candidate_uses_displayed_snapshot_not_queued_replacement(self):
+        base, job = self._three_pvs()
+        panel = self.window.candidates
+        third = panel.rows[3][2]
+        self._hover_word(third, "Nc3")
+        self._show_external_info(base | {"multipv": 3, "pv": ["d2d4"]}, job)
+        cursor = third.document().find("Nc3")
+        cursor.setPosition(cursor.selectionStart() + 1)
+        QTest.mouseClick(third.viewport(), Qt.MouseButton.LeftButton, pos=third.cursorRect(cursor).center())
+        self.app.processEvents()
+        self.assertEqual(self.window.game.sans, ["e4", "e5", "Nc3"])
+        self.assertFalse(panel.pending)
+
+    def test_cburnett_assets_are_valid_for_all_pieces_and_promotion_icons(self):
+        self.assertEqual(len(self.window.board_view._renderers), 12)
+        self.assertTrue(all(renderer.isValid() for renderer in self.window.board_view._renderers.values()))
+
     def test_click_move_updates_model_board_and_san_history(self):
         self._click("e2")
         self.assertEqual(self.window.board_view.selected, parse_square("e2"))
@@ -257,7 +348,7 @@ class GuiTests(unittest.TestCase):
             "score_type": "cp",
             "score_value": info["score"],
             "bound": "exact",
-            "multipv": 1,
+            "multipv": info.get("multipv", 1),
             "pv": pv,
             "san": texts,
         }
@@ -634,7 +725,7 @@ class GuiTests(unittest.TestCase):
         self.window.pv_label.move_clicked.emit(1)
         self.assertEqual(clicks, [(1, 1)])
 
-    def test_long_pvs_wrap_fully_and_copy_from_context_menu(self):
+    def test_long_pvs_have_three_reserved_lines_scroll_and_copy_from_context_menu(self):
         from PySide6.QtGui import QTextDocument
         self._analysis_game("1.e4 e5 *")
         info = {"depth": 6, "seldepth": 10, "score": 15, "nodes": 500,
@@ -644,6 +735,9 @@ class GuiTests(unittest.TestCase):
         view = self.window.pv_label
         self.assertEqual(len(view._items), 40)
         last = view.document().find("Ng8", view.document().characterCount() - 1, QTextDocument.FindFlag.FindBackward)
+        self.assertGreater(view.verticalScrollBar().maximum(), 0)
+        view.setTextCursor(last)
+        view.ensureCursorVisible()
         self.assertLessEqual(view.cursorRect(last).bottom(), view.viewport().height())
         from PySide6.QtWidgets import QPushButton
         self.assertFalse(self.window.candidates.rows[1][0].findChildren(QPushButton))

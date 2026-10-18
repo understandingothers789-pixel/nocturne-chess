@@ -1334,3 +1334,57 @@ space. Actual Stockfish quality calibration, manual Windows/DPI interactions and
 large-tree profiling remain open. Percentages are Nocturne estimates, not official
 Chess.com/Lichess scores or evidence of engine strength. Next is user desktop
 verification with the installed engine and adequate review budgets.
+
+
+## 2026-10-18 — 0.5.8 Cburnett pieces, clocks and stable MultiPV
+
+Replaced all twelve board SVGs with the exact Lichess Cburnett sources by Colin
+M. L. Burnett at lila commit cd2656d2787a766ba743da8da1dd3b24975e6329.
+Verified each local Git blob hash against that pinned upstream directory: all
+12 match. Only filenames are normalized to lowercase. Official lila COPYING
+identifies this set as GPLv2+; included its attribution and GPL-2.0-or-later
+license in licenses/, wheel metadata, source archive and existing native bundle
+license collection. No Chess.com or Nibbler artwork is copied. board.py uses the
+SVGs' own margins for board, drag/animation and promotion rendering.
+
+Added persisted Display → Clocks in settings.py/window.py and a compact White/
+Black strip above the analysis board, with theme.py styling. Play retains its
+player-card clocks. Visibility does not pause/reset a running game or change its
+position/time control; Analysis keeps its existing paused behavior. Untimed games
+show infinity. PGN clock-comment import remains unsupported and is documented.
+
+Changed gui/moves.py and candidates.py to reserve three text lines per MultiPV
+rank, including waiting ranks, using a cached font/DPI-aware fixed viewport.
+Long PVs scroll inside the slot and copy in full. Headers have a fixed one-line
+height. The hovered rank retains its visible PV until leaving; newer updates
+queue without displacing its move. Fixed an actual preview-loss bug: updates in
+another rank previously ended the active rank's preview. A queued replacement
+also cannot change the move under a click. Context changes invalidate pending
+callbacks. window.py synchronizes arrows and destination clicks to the displayed
+snapshot, including after queued updates. No tooltip or script launcher added.
+
+Executed focused GUI discovery: 41 tests passed in 43.930s. External-analysis
+suite: 23 passed in 29.738s. Final full command:
+QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests -q
+ran 155 tests in 81.774s: 144 passed, 11 skipped, no failures. Six HTTP tests skip
+because this sandbox cannot bind loopback sockets; five optional historical
+checks skip. New regressions cover fixed heights, out-of-order rank arrival,
+other-rank updates during hover, queued own-rank updates, safe clicks, stale
+context invalidation, actual SVG/promotion rendering and clock persistence with
+running timers. Replaced the old full-height-PV expectation with the requested
+three-line viewport behavior. Ruff check src tests scripts passed.
+
+Both python -m nocturne --smoke-test and the --smoke-engine path using the local
+UCI simulator exited 0, including full two-move Game Review coverage. Captured
+and visually inspected actual Qt dark (1920×1040), compact (1024×660), light
+(1440×1040) and clocks-hidden views. Updated the corresponding docs previews;
+simulated analysis is explicitly labelled. No measured strength claim is made.
+
+Built the 0.5.8 wheel with pip wheel --no-deps --no-build-isolation; archive
+integrity and inclusion of both Cburnett license/credit files plus notices
+passed. Version files, Windows workflow paths, README, CHANGELOG, architecture
+and roadmap are updated. Next: publish the tested source and verify native
+Windows tests, PyInstaller and packaged GUI/UCI smoke checks before updating the
+download link. Manual Windows/DPI, real Stockfish hover interaction and very
+large MultiPV lists remain to verify on a desktop. Narrow fixed headers may
+clip some optional statistics; the main telemetry remains available.

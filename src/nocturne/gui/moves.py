@@ -4,6 +4,7 @@ from html import escape
 import math
 
 from PySide6.QtCore import QEvent, Signal, Qt
+from PySide6.QtGui import QTextDocument
 from PySide6.QtWidgets import QTextBrowser
 
 
@@ -12,9 +13,11 @@ class MoveText(QTextBrowser):
     move_clicked = Signal(int)
     preview_ended = Signal()
 
-    def __init__(self, parent=None, *, auto_fit=False):
+    def __init__(self, parent=None, *, auto_fit=False, reserved_lines=0):
         super().__init__(parent)
         self._auto_fit = auto_fit
+        self._reserved_lines = reserved_lines
+        self._reserved_measurement = None
         self.setOpenLinks(False)
         self.setOpenExternalLinks(False)
         self.setMouseTracking(True)
@@ -47,8 +50,10 @@ class MoveText(QTextBrowser):
     def _click(self, url):
         text = url.toString()
         if text.startswith("move:") and text[5:].isdigit():
-            self.preview_ended.emit()
+            # Activate the displayed snapshot before ending hover can apply a
+            # queued engine update. Otherwise a click could play another PV.
             self.move_clicked.emit(int(text[5:]))
+            self.cancel_preview()
 
     def leaveEvent(self, event):
         self._hovered = None
@@ -94,9 +99,24 @@ class MoveText(QTextBrowser):
 
     def _fit_height(self, *_):
         if self._auto_fit:
-            height = max(25, math.ceil(self.document().size().height()) + 4)
+            if self._reserved_lines:
+                key = (self.font().key(), self.logicalDpiY(), self._reserved_lines)
+                if not self._reserved_measurement or self._reserved_measurement[0] != key:
+                    probe = QTextDocument()
+                    probe.setDocumentMargin(self.document().documentMargin())
+                    probe.setHtml('<div style="font-family:Consolas,monospace; font-size:16px; line-height:145%;">'
+                                  + '<br/>'.join(['Hg'] * self._reserved_lines) + '</div>')
+                    self._reserved_measurement = (key, math.ceil(probe.size().height()) + 4)
+                height = self._reserved_measurement[1]
+                self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+            else:
+                height = max(25, math.ceil(self.document().size().height()) + 4)
             if height != self.height():
                 self.setFixedHeight(height)
+
+    def reserve_lines(self, count):
+        self._reserved_lines = count
+        self._fit_height()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

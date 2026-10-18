@@ -271,6 +271,22 @@ class MainWindow(QMainWindow):
         board_layout.setSpacing(0)
         self.top_card, self.top_name, self.top_detail, self.top_clock = self._player_card()
         board_layout.addWidget(self.top_card)
+        self.analysis_clocks = QFrame()
+        self.analysis_clocks.setObjectName("clockStrip")
+        clock_row = QHBoxLayout(self.analysis_clocks)
+        clock_row.setContentsMargins(12, 4, 12, 4)
+        self.analysis_clock_names = {}
+        self.analysis_clock_values = {}
+        for color, title in ((1, "White"), (-1, "Black")):
+            caption, value = label(title, "muted"), label("∞", "analysisClock")
+            value.setAccessibleName(title + " chess clock")
+            clock_row.addWidget(caption)
+            clock_row.addWidget(value)
+            self.analysis_clock_names[color] = caption
+            self.analysis_clock_values[color] = value
+            if color == 1:
+                clock_row.addStretch()
+        board_layout.addWidget(self.analysis_clocks)
         self.board_view = BoardWidget()
         self.board_view.move_requested.connect(self._human_move)
         board_row = QHBoxLayout()
@@ -369,13 +385,13 @@ class MainWindow(QMainWindow):
         self.engine_layout.setSpacing(0)
         self.pv_label = MoveText(auto_fit=True)
         self.pv_label.setAccessibleName("Principal variation moves")
-        self.pv_label.move_hovered.connect(self._preview_pv)
         self.pv_label.preview_ended.connect(lambda: self._end_preview("pv"))
         self.candidates = CandidatePanel(self.pv_label)
         self.candidates.preview.connect(self._preview_candidate)
         self.candidates.preview_end.connect(lambda: self._end_preview("candidate"))
         self.candidates.navigate.connect(self._insert_candidate)
         self.candidates.action.connect(self._candidate_action)
+        self.candidates.changed.connect(self._sync_candidate_markers)
         self.engine_layout.addWidget(self.candidates)
         self.engine_layout.addStretch()
         self.engine_scroll.setWidget(engine_detail)
@@ -581,6 +597,7 @@ class MainWindow(QMainWindow):
         display.addSeparator()
         for key, text in (
             ("coordinates", "Coordinates"),
+            ("show_clocks", "Clocks"),
             ("overlays", "Analysis overlays"),
             ("animations", "Move animations"),
             ("light", "Light appearance"),
@@ -969,6 +986,18 @@ class MainWindow(QMainWindow):
             return
         self._preview_source = "candidate"
         self.board_view.show_preview(board, caption=f"Temporary candidate #{rank} · ply {ply}")
+
+    def _sync_candidate_markers(self):
+        if self._candidate_identity != self._position_identity():
+            return
+        entries = []
+        for rank, line in self.candidates.lines.items():
+            try:
+                entries.append((self.game.board.parse_uci(line["pv"][0]), rank,
+                                score_label(line, self.game.board.turn)))
+            except (ValueError, IndexError):
+                continue
+        self.board_view.set_recommendations(entries)
 
     def _insert_candidate(self, rank, ply=None):
         if self._candidate_identity != self._position_identity() or rank not in self.candidates.lines:
@@ -1607,6 +1636,7 @@ class MainWindow(QMainWindow):
         if self._pv_root is not None:
             self.pv_label.set_moves(self.pv_label._items, light=self.config.get("light", False))
         self.board_view.update()
+        self._update_players()
 
         self._sync_explorer()
 
@@ -1828,8 +1858,16 @@ class MainWindow(QMainWindow):
         self._update_players()
 
     def _update_players(self):
+        clocks_visible = self.config.get("show_clocks", True)
+        self.analysis_clocks.setVisible(self.analysis_mode and clocks_visible)
+        self.top_clock.setVisible(clocks_visible)
+        self.bottom_clock.setVisible(clocks_visible)
         top_color = 1 if self.board_view.flipped else -1
         values = self.game.clock_values()
+        for color, value in self.analysis_clock_values.items():
+            title = "White" if color == 1 else "Black"
+            self.analysis_clock_names[color].setText(title)
+            value.setText(self._clock_text(values[color]) if self.game.time_control.seconds else "∞")
         material = sum(
             (1 if self.game.board.cells[s] > 0 else -1) * (0, 1, 3, 3, 5, 9, 0)[abs(self.game.board.cells[s])]
             for s in SQUARES
@@ -2440,6 +2478,7 @@ class MainWindow(QMainWindow):
         if context != self._analysis_context:
             self._clear_analysis_output()
             self._analysis_context = context
+        self.candidates.reserve_slots(count)
         try:
             generation = self.engine.start(
                 self.game,
@@ -2553,17 +2592,6 @@ class MainWindow(QMainWindow):
             self.candidates.update_line(
                 info, job["turn"], self.config.get("light", False), self.config.get("details", False)
             )
-            entries = []
-            for rank, line in self.candidates.lines.items():
-                if rank > job.get("multipv", self._effective_multipv()):
-                    continue
-                try:
-                    entries.append(
-                        (self.game.board.parse_uci(line["pv"][0]), rank, score_label(line, job["turn"]))
-                    )
-                except (ValueError, IndexError):
-                    pass
-            self.board_view.set_recommendations(entries)
             if info.get("multipv", 1) != 1:
                 return
         self._last_info = info.copy()

@@ -28,6 +28,8 @@ def stylesheet(light: bool = False) -> str:
     QLabel#eyebrow {{ color: {muted}; font-size: 10px; font-weight: 600; letter-spacing: 1.6px; }}
     QLabel#score {{ font-size: 30px; font-weight: 600; }}
     QLabel#clock {{ font-family: 'Cascadia Mono', 'Consolas', monospace; font-size: 28px; font-weight: 600; }}
+    QFrame#clockStrip {{ background: {panel}; border: 1px solid {border}; border-radius: 9px; }}
+    QLabel#analysisClock {{ font-family: 'Cascadia Mono', 'Consolas', monospace; font-size: 23px; font-weight: 600; }}
     QLabel#activeClock {{ background: #b5d99d; color: #17241b; border-radius: 8px; padding: 5px 12px;
         font-family: 'Cascadia Mono', 'Consolas', monospace; font-size: 28px; font-weight: 600; }}
     QPushButton {{ background: {raised}; border: 1px solid {border}; border-radius: 8px; padding: 9px 14px; font-weight: 500; }}

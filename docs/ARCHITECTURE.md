@@ -120,3 +120,21 @@ explorer.lichess.org and same-origin redirect policy applies. ChessDB and custom
 test endpoints never receive it. HTTP 401/403 explains the native token menu.
 The optional live check reports unauthenticated sources as protected, separately
 from successful data queries; it never substitutes a fabricated response.
+
+
+### Stable MultiPV presentation and piece assets (0.5.8)
+
+CandidatePanel allocates ranks in numerical order before streaming data. Each
+MoveText PV measures a three-line document once per font/DPI and reserves that
+viewport; longer documents scroll internally. Fixed-height single-line headers
+prevent changing metrics from moving later ranks. A hovered rank holds its
+displayed data, not just its rendered text, so preview and click use the same PV.
+Only that rank's end event clears its preview. A zero-delay, revision-guarded
+flush applies the newest pending result after leaving; clear invalidates pending
+callbacks. Changed data signals refresh legal candidate markers.
+
+The default vector pieces are unmodified, pinned Lichess Cburnett sources under
+GPL-2.0-or-later, distinct from the MIT application icon/original code. Licenses
+and asset attribution are included in native packages, source archives and wheel
+license metadata. Display-only clock visibility is separate from Game's clock
+state: toggling visibility neither starts, pauses nor resets clocks.

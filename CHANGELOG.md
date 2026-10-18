@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.8 — Familiar pieces, optional clocks and steady MultiPV slots
+
+- Use the exact Lichess Cburnett SVG set, with upstream attribution, GPLv2+
+  license and preferred modifiable sources included in distributions.
+- Add persistent Display → Clocks; show a compact analysis strip and toggle
+  existing Play clocks without changing the time control or pausing a game.
+- Reserve three move-text lines plus a fixed metrics header for every requested
+  PV rank before results arrive. Long PVs scroll within their fixed viewport.
+- Keep hovered PV data stable, apply the newest queued update after leaving,
+  and prevent other ranks' updates from ending the current preview.
+- Execute clicks against the displayed snapshot; discard queued data on position
+  changes and synchronize candidate markers when pending data is applied.
+
 ## 0.5.7 — Optional Game Review and accuracy estimates
 
 - Add Analysis → Game Review and a button above PVs, with White/Black/overall

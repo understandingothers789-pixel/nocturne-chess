@@ -46,3 +46,10 @@ persisted evidence passed full local/native Windows checks. Native: 146 passed,
 5 optional skips twice, plus frozen Game Review/UCI smoke checks. Validate review
 judgments with actual Stockfish/user games and manual Windows/DPI; official site
 score parity is not claimed.
+
+
+0.5.8 exact Lichess Cburnett pieces, persisted Display → Clocks and fixed
+three-line MultiPV slots/hover snapshots passed 144 local tests (11 skips),
+focused GUI/external suites, Ruff and both app smoke checks. Native Windows
+packaging is next. Verify the clock strip, piece scale, internal PV scrolling
+and hover behavior manually at Windows DPI settings with a real engine.
