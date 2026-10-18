@@ -18,8 +18,9 @@ rank colors. Headings are neutral gray, and White/Black move text differs only
 by a very subtle gray tint. The board's teal/green lines and numbered circles
 are retained, along with stable three-line PV slots and hover previews.
 
-[Download Windows 0.5.7.8](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml)
-from its successful run's versioned artifact. [Light-mode capture](docs/subtle-analysis-light.png).
+[Download Windows 0.5.7.8](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39099441736/artifacts/12124934909).
+Both native test runs passed 158 tests with 5 optional skips; packaged GUI/UCI
+launch checks passed. [Light-mode capture](docs/subtle-analysis-light.png).
 The earlier three builds below remain available as fallbacks.
 
 **Download 3 · 0.5.7.7 includes all three changes.**

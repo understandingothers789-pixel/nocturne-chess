@@ -2,6 +2,8 @@
 
 0.5.7.8 removes analysis-panel rank badges and rank coloring, with subtle side-to-
 move text tints. Board overlays retain the approved appearance.
+All 45 local GUI tests and both native full runs passed (158 passed/5 optional
+skips per native run), plus frozen launch checks. Desktop trust/DPI remain manual.
 
 0.5.7.7 (download 3) keeps metadata in the backend/export while Game Moves shows
 numbers and SAN. Dev → Show raw PGN data enables a separate read-only view;

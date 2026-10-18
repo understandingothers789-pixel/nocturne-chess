@@ -1923,3 +1923,21 @@ Qt five-PV dark/light views (subtle-analysis-dark.png, subtle-analysis-light.png
 explicitly labelled protocol-simulator test data. No test failures. Updated
 README/CHANGELOG/TODO and version/artifact metadata to 0.5.7.8. Native full tests
 and frozen launch checks will validate the exact Windows build before delivery.
+
+### 0.5.7.8 Windows delivery verified
+
+Source 6e12832ff813f74c4946d0cb018e04e6c698fbf8 passed native run 39099441736/job
+117592505281. Both full discoveries ran 163 tests: 158 passed, 5 optional skips
+each, in 134.600s and 137.800s. Ruff passed twice; native packaging, offline and
+external-UCI/Game Review frozen launch checks passed. No test/build failures.
+Verified the artifact's source SHA, versioned name and non-expired status:
+12124934909, Nocturne-0.5.7.8-Windows-x64-unsigned, 55,392,327 bytes, retained
+until 2026-11-17. SHA-256:
+0ca9a00c0e5470b6f068bfcefb9ce3a7114352d3e7df523a935e9b7bd0501ba7.
+https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39099441736/artifacts/12124934909
+
+README/BUILDING link the verified build; TODO and this log record the actual
+checks. The board.py hash matches approved 0.5.7.7. No application source changes
+follow native validation; only these release notes/links are updated. Source ZIP
+integrity, 24-piece inventory and no-launcher checks passed. Signing/build tools
+and dependencies are unchanged. User-machine trust acceptance remains unverified.
