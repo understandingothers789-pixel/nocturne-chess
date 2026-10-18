@@ -48,6 +48,7 @@ class OpeningExplorer(QWidget):
         self.rows = []
         self.statistics = None
         self.statistics_origin = ""
+        self.statistics_status = ""
         self._hover = None
         self.setMinimumHeight(170)
         layout = QVBoxLayout(self)
@@ -99,6 +100,7 @@ class OpeningExplorer(QWidget):
     def _clear_statistics(self):
         self.statistics = None
         self.statistics_origin = ""
+        self.statistics_status = ""
         self.statistics_changed.emit()
 
     def set_position(self, board, identity, enabled, source="masters", speed="all", rating=0):
@@ -151,6 +153,7 @@ class OpeningExplorer(QWidget):
         self._end_preview()
         self.statistics = data
         self.statistics_origin = origin
+        self.statistics_status = origin
         self.statistics_changed.emit()
         self.rows = data["moves"]
         self.table.setRowCount(len(self.rows))
@@ -178,6 +181,9 @@ class OpeningExplorer(QWidget):
 
     def _status(self, key, message):
         if self.query and self.query.key == key:
+            if self.statistics_status != message:
+                self.statistics_status = message
+                self.statistics_changed.emit()
             self.status_label.setText(message)
 
     def _click(self, row, column):
