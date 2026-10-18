@@ -61,7 +61,8 @@ from ..review import classify, chance
 from .explorer_panel import OpeningExplorer
 from ..explorer import RATINGS, SPEEDS
 from .moves import MoveText
-from .theme import ASSETS, stylesheet
+from .wheel import WheelSteps
+from .theme import ASSETS, palette, stylesheet
 from .widgets import EvaluationBar, EvaluationGraph
 
 
@@ -290,6 +291,7 @@ class MainWindow(QMainWindow):
         board_layout.addWidget(self.analysis_clocks)
         self.board_view = BoardWidget()
         self.board_view.move_requested.connect(self._human_move)
+        self.board_view.wheel_navigated.connect(self._wheel_game)
         board_row = QHBoxLayout()
         board_row.setContentsMargins(0, 0, 0, 0)
         board_row.setSpacing(0)
@@ -332,6 +334,8 @@ class MainWindow(QMainWindow):
         moves_layout = QVBoxLayout(moves_page)
         moves_layout.setContentsMargins(0, 10, 0, 0)
         self.history = QTableWidget(0, 3)
+        self._history_wheel = WheelSteps()
+        self.history.viewport().installEventFilter(self)
         self.history.setHorizontalHeaderLabels(["#", "White", "Black"])
         self.history.verticalHeader().hide()
         self.history.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
@@ -508,6 +512,7 @@ class MainWindow(QMainWindow):
         self.analysis_history.setMinimumHeight(45)
         self.analysis_history.move_hovered.connect(self._preview_history)
         self.analysis_history.move_clicked.connect(self._navigate_node)
+        self.analysis_history.wheel_navigated.connect(self._wheel_game)
         self.analysis_history.preview_ended.connect(lambda: self._end_preview("history"))
         history_layout.addWidget(self.analysis_history, 1)
         self.workspace_splitter.addWidget(self.analysis_moves_panel)
@@ -629,6 +634,8 @@ class MainWindow(QMainWindow):
             ("smart_move", "Smart Move · click recommended destinations"),
             ("branch_arrows", "Show saved continuation arrows"),
             ("details", "Detailed analysis statistics"),
+            ("wheel_game_moves", "Wheel navigates game moves"),
+            ("wheel_analysis_moves", "Wheel previews analysis moves"),
         ]:
             action = add(display, text, lambda checked, k=key: self._set_display(k, checked))
             action.setCheckable(True)
@@ -835,6 +842,17 @@ class MainWindow(QMainWindow):
         self.board_view.show_preview(position, move, "Opening database · temporary preview")
 
     def eventFilter(self, watched, event):
+        if hasattr(self, "history") and watched is self.history.viewport():
+            if event.type() == QEvent.Type.Leave:
+                self._history_wheel.reset()
+            if event.type() == QEvent.Type.Wheel and self.config.get("wheel_game_moves", True):
+                steps = self._history_wheel.consume(event)
+                if steps is not None:
+                    event.accept()
+                    if steps:
+                        self._wheel_game(steps)
+                    return True
+
         if (
             watched in (getattr(self, "pgn_editor", None), getattr(self, "raw_pgn_text", None))
             and event.type() == QEvent.Type.ShortcutOverride
@@ -1683,6 +1701,7 @@ class MainWindow(QMainWindow):
         self.board_view.coordinates = appearance.get("coordinates", True)
         self.board_view.animations = appearance.get("animations", True)
         self.board_view.overlays = appearance.get("overlays", True)
+        self.history.setStyleSheet(f"QTableWidget {{ color: {palette(light)['history']}; }}")
         self.graph.light = self.board_view.light = light
         self.graph.update()
         self.eval_bar.setVisible(self.board_view.overlays)
@@ -1706,6 +1725,9 @@ class MainWindow(QMainWindow):
         self._refresh_engine_menus()
         self._update_players()
 
+        self.board_view.wheel_navigation = self.config.get("wheel_game_moves", True)
+        self.analysis_history.wheel_navigation = self.config.get("wheel_game_moves", True)
+        self.candidates.set_wheel_navigation(self.config.get("wheel_analysis_moves", True))
         self._sync_explorer()
         self._sync_raw_pgn()
         self.candidates.set_expanded(self.config.get("expand_pv", False))
@@ -2075,6 +2097,11 @@ class MainWindow(QMainWindow):
             self._refresh()
             self._save()
             self._schedule_engine()
+
+    def _wheel_game(self, steps):
+        cursor = max(0, min(len(self.game.moves), self.game.cursor + steps))
+        if cursor != self.game.cursor:
+            self._navigate(cursor)
 
     def _navigate(self, cursor):
         if not self.analysis_mode and not self.config.get("takebacks", True):

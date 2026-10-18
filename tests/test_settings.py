@@ -30,6 +30,9 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(normalize({"show_raw_pgn": True})["show_raw_pgn"])
         self.assertFalse(normalize({"expand_pv": "true"})["expand_pv"])
         self.assertTrue(normalize({"expand_pv": True})["expand_pv"])
+        self.assertTrue(normalize({"wheel_game_moves": "false"})["wheel_game_moves"])
+        self.assertFalse(normalize({"wheel_game_moves": False})["wheel_game_moves"])
+        self.assertFalse(normalize({"wheel_analysis_moves": False})["wheel_analysis_moves"])
         self.assertEqual(normalize({"piece_set": "Original"})["piece_set"], "Original")
         self.assertEqual(normalize({"piece_set": "missing"})["piece_set"], "Cburnett")
 

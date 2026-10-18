@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.7.10 — Restrained colors, quieter hints and wheel navigation
+
+- Lower UI text brightness; distinguish White/Black PV moves with ivory/warm
+  tints and game history with soft blue in both appearances.
+- Thin candidate rods and shrink numbered circles. Replace fixed yellow last-
+  move overlays with a hue-preserving five-point HSV brightness adjustment.
+- Add persistent Display toggles for wheel game navigation and reversible PV
+  previews. Preserve branches, hover snapshots and three-row slots.
+- Accumulate partial wheel/trackpad gestures; Shift keeps ordinary scrolling.
+
 ## 0.5.7.9 — Padded move slots and expandable analysis
 
 - Give analysis SAN moves equal-width, nonbreaking padded hit areas and more vertical room.

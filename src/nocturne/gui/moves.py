@@ -7,9 +7,11 @@ from PySide6.QtCore import QEvent, Signal, Qt, QUrl
 from PySide6.QtGui import QTextDocument, QTextCursor, QTextOption
 from PySide6.QtWidgets import QTextBrowser
 from .theme import palette
+from .wheel import WheelSteps
 
 
 class MoveText(QTextBrowser):
+    wheel_navigated = Signal(int)
     move_hovered = Signal(int)
     move_clicked = Signal(int)
     preview_ended = Signal()
@@ -34,6 +36,8 @@ class MoveText(QTextBrowser):
         self.candidate_turn = 1
         self._candidate_style = None
         self._pressed_move = None
+        self.wheel_navigation = True
+        self._wheel_steps = WheelSteps()
         if auto_fit:
             self.document().setDocumentMargin(2)
             self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -61,6 +65,7 @@ class MoveText(QTextBrowser):
             self.cancel_preview()
 
     def leaveEvent(self, event):
+        self._wheel_steps.reset()
         self._hovered = None
         self.preview_ended.emit()
         super().leaveEvent(event)
@@ -91,7 +96,7 @@ class MoveText(QTextBrowser):
         if self.candidate_rank is not None:
             self.setWordWrapMode(QTextOption.WrapMode.WordWrap)
         colors = palette(light)
-        color = colors["text"]
+        color = colors["history"]
         tokens = []
         for text, index in self._items:
             if index is None:
@@ -100,8 +105,7 @@ class MoveText(QTextBrowser):
             move_color = color
             if self.candidate_rank is not None:
                 side = self.candidate_turn if index % 2 else -self.candidate_turn
-                if side < 0:
-                    move_color = "#302d2b" if light else "#e5e3e2"
+                move_color = colors["analysis_white" if side > 0 else "analysis_black"]
             style = (f'color: {colors["selected_text"]}; background-color: {colors["selection"]};'
                      if index == current else f"color: {move_color};")
             # Keep SAN slots identical across candidates and updates. Nonbreaking
@@ -155,6 +159,37 @@ class MoveText(QTextBrowser):
         if url == pressed and not url.isEmpty():
             self._click(url)
         event.accept()
+
+    def wheelEvent(self, event):
+        steps = self._wheel_steps.consume(event) if self.wheel_navigation else None
+        if steps is None:
+            return super().wheelEvent(event)
+        event.accept()
+        if not steps:
+            return
+        if self.candidate_rank is None:
+            self.cancel_preview()
+            self.wheel_navigated.emit(steps)
+            return
+        last = max((index for _, index in self._items if index is not None), default=0)
+        if not last:
+            return
+        ply = max(0, min(last, (self._hovered or 0) + steps))
+        self._highlight(QUrl(f"move:{ply}"))
+        # Keep the previewed move visible even when the three-row slot scrolls.
+        block = self.document().begin()
+        while block.isValid():
+            iterator = block.begin()
+            while not iterator.atEnd():
+                fragment = iterator.fragment()
+                if fragment.isValid() and fragment.charFormat().anchorHref() == f"move:{ply}":
+                    cursor = QTextCursor(self.document())
+                    cursor.setPosition(fragment.position())
+                    self.setTextCursor(cursor)
+                    self.ensureCursorVisible()
+                    return
+                iterator += 1
+            block = block.next()
 
     def cancel_preview(self):
         self._hovered = None

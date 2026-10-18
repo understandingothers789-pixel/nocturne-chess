@@ -1997,3 +1997,38 @@ without a user token. No engine, board marker, launcher or signing-policy change
 **Completed:** requested display phase and Windows delivery. README, BUILDING,
 TODO and this log now record actual results; application code is unchanged
 after the successful build. Next: user feedback on target sizes and spacing.
+
+
+## 2026-10-18 — 0.5.7.10: quiet colors, palette-relative highlights and wheel moves
+
+**Phase implemented:** `theme.py` lowers text brightness and supplies separate
+White/Black PV, game-history and muted metadata colors for both appearances.
+`moves.py` renders those colors. `board.py` makes candidate rods 1–2px and
+number circles smaller; last-move squares preserve their own hue/saturation
+with +/-0.05 HSV value (darken pale squares, lighten dark ones). Check and manual
+annotation colors retain their distinct meaning. Real Qt dark/light captures
+are `docs/quiet-studio-*.png`, labelled with UCI simulator data.
+
+**Navigation:** shared `gui/wheel.py` accumulates wheel and trackpad deltas,
+respecting Shift for ordinary scrolling. Board and game-history wheel steps use
+the existing selected-branch navigation. PV wheel steps preview the frozen
+displayed candidate, bound to root/end; leaving restores the real board.
+`window.py`, `candidates.py` and `settings.py` add independent persistent Display
+toggles (default on), including newly created candidate slots and the Play table.
+No position edits or variation insertion during PV preview.
+
+**Executed:** focused GUI tests for game/PV wheel navigation, actual rendered
+White/Black/history colors, and last-move pixels across all six board themes:
+**4 tests passed**. Ruff passed; both source offline/external-UCI smoke checks
+passed. Initial tests/lint caught a missing palette import, fixed before these
+passes. Full local suite and native Windows build pending.
+
+**Modified:** board/move/candidate/window/theme/settings components, new wheel
+helper, GUI/settings regression tests, version/build metadata, screenshots and
+README/CHANGELOG/TODO/BUILDING/PROGRESS. No batch/PowerShell launchers or changes
+to signing/trust policy.
+
+**Next:** finish the full suite and native Windows pipeline, publish its actual
+test results and download. Physical trackpad feel, high-DPI contrast and Windows
+trust acceptance remain user-machine checks. Expanded PV mode can still change
+row heights by design; fixed three-row mode remains the default.

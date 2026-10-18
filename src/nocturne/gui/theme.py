@@ -17,16 +17,18 @@ CANDIDATE_MARKERS = ("#65a9ab", "#62a460")
 
 def palette(light: bool = False) -> dict[str, str]:
     if light:
-        return dict(bg="#efefed", panel="#fafaf8", raised="#e7e7e4", text="#262626",
-                    muted="#666666", border="#cececa", accent="#486984", hover="#ddddda",
+        return dict(bg="#efefed", panel="#fafaf8", raised="#e7e7e4", text="#393c40",
+                    muted="#687580", border="#cececa", accent="#486984", hover="#ddddda",
                     pressed="#d0d0cc", selection="#d4dfeb", selected_text="#20344b",
                     primary="#3d4a56", primary_text="#ffffff", primary_hover="#526373",
-                    scroll="#a9a9a5")
-    return dict(bg="#171717", panel="#222222", raised="#2c2c2c", text="#ededed",
-                muted="#a3a3a3", border="#3c3c3c", accent="#b5c8da", hover="#383838",
-                pressed="#444444", selection="#394b5d", selected_text="#f6f7f8",
+                    scroll="#a9a9a5", analysis_white="#43484e", analysis_black="#6a5d55",
+                    history="#476987")
+    return dict(bg="#171717", panel="#222222", raised="#2c2c2c", text="#c9cdd2",
+                muted="#97a6b2", border="#3c3c3c", accent="#b5c8da", hover="#383838",
+                pressed="#444444", selection="#394b5d", selected_text="#d8e3ee",
                 primary="#dedbd4", primary_text="#202020", primary_hover="#f0ede7",
-                scroll="#575757")
+                scroll="#575f67", analysis_white="#c9cdd2", analysis_black="#b4a99f",
+                history="#a4bace")
 
 
 def stylesheet(light: bool = False) -> str:

@@ -10,11 +10,13 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QMenu, QWidget
 
 from ..core.board import Board, Move, PIECE_CHARS, SQUARES
+from .wheel import WheelSteps
 from .theme import ASSETS, BOARD_THEMES, CANDIDATE_MARKERS, palette
 
 
 class BoardWidget(QWidget):
     move_requested = Signal(object)
+    wheel_navigated = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -27,6 +29,8 @@ class BoardWidget(QWidget):
         self.flipped = False
         self.coordinates = True
         self.theme = "Classic"
+        self.wheel_navigation = True
+        self._wheel_steps = WheelSteps()
         self.light = False
         self.interactive = True
         self.animations = True
@@ -225,6 +229,30 @@ class BoardWidget(QWidget):
         normal = QPointF(-dy, dx) * head_width
         painter.drawPolygon(QPolygonF([b, base + normal, base - normal]))
 
+    @staticmethod
+    def last_move_color(base):
+        # Keep the square's hue/saturation. Move HSV brightness by five points,
+        # darkening pale squares and lightening dark ones, independent of theme.
+        color = QColor(base)
+        hue, saturation, value, alpha = color.getHsvF()
+        value = max(0.0, min(1.0, value + (-0.05 if value >= 0.5 else 0.05)))
+        color.setHsvF(hue, saturation, value, alpha)
+        return color
+
+    def wheelEvent(self, event):
+        if not self.wheel_navigation or self.square_at(event.position()) is None:
+            return super().wheelEvent(event)
+        steps = self._wheel_steps.consume(event)
+        if steps is None:
+            return super().wheelEvent(event)
+        event.accept()
+        if steps:
+            self.wheel_navigated.emit(steps)
+
+    def leaveEvent(self, event):
+        self._wheel_steps.reset()
+        super().leaveEvent(event)
+
     def paintEvent(self, event):
         board = self.display_board
         preview = self.preview_board is not None
@@ -243,9 +271,10 @@ class BoardWidget(QWidget):
         light, dark = BOARD_THEMES.get(self.theme, BOARD_THEMES["Classic"])
         for square in SQUARES:
             square_rect = self.square_rect(square)
-            painter.fillRect(square_rect, QColor(dark if ((square >> 4) + (square & 7)) % 2 == 0 else light))
+            base = QColor(dark if ((square >> 4) + (square & 7)) % 2 == 0 else light)
             if last_move and square in (last_move.from_sq, last_move.to_sq):
-                painter.fillRect(square_rect, QColor(230, 191, 71, 100))
+                base = self.last_move_color(base)
+            painter.fillRect(square_rect, base)
             if not preview and square in self.marks:
                 painter.fillRect(square_rect, QColor(114, 150, 180, 120))
             if not preview and square == self.selected:
@@ -298,18 +327,18 @@ class BoardWidget(QWidget):
                 color = QColor(CANDIDATE_MARKERS[0 if rank == 1 else 1])
                 color.setAlpha(175 if rank == 1 else 145)
                 if self.candidate_style == "lines":
-                    painter.setPen(QPen(color, max(1.4, min(3.5, unit * 0.04)), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                    painter.setPen(QPen(color, max(1.0, min(2.0, unit * 0.025)), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
                     painter.drawLine(self.square_rect(move.from_sq).center(), self.square_rect(self._destination(move)).center())
                 else:
                     self._arrow(painter, move.from_sq, self._destination(move), color, unit, subtle=True)
                 if best_rank[self._destination(move)] != rank:
                     continue
                 destination = self.square_rect(self._destination(move))
-                diameter = max(12.0, min(27.0, unit * 0.25))
+                diameter = max(11.0, min(21.0, unit * 0.20))
                 center = destination.center()
                 badge = QRectF(center.x() - diameter / 2, center.y() - diameter / 2, diameter, diameter)
                 badge_color = QColor(CANDIDATE_MARKERS[0 if rank == 1 else 1])
-                badge_color.setAlpha(230)
+                badge_color.setAlpha(205)
                 painter.setBrush(badge_color)
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawEllipse(badge)

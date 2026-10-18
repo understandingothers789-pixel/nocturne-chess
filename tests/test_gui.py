@@ -15,8 +15,8 @@ from nocturne.core.notation import san
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 try:
-    from PySide6.QtCore import QEvent, QPointF, QTimer, Qt
-    from PySide6.QtGui import QMouseEvent, QTextDocument
+    from PySide6.QtCore import QEvent, QPoint, QPointF, QTimer, Qt
+    from PySide6.QtGui import QMouseEvent, QTextDocument, QWheelEvent, QColor
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QMenu, QScrollArea, QWidget
     from nocturne.gui.window import MainWindow
@@ -362,6 +362,116 @@ class GuiTests(unittest.TestCase):
         self._show_external_info(base | {"multipv": 2, "pv": ["f1c4", "g8f6"]}, job)
         self.app.processEvents()
         return base, job
+
+    def _wheel(self, widget, delta, *, pixel=0, shift=False, point=None):
+        point = point or widget.rect().center()
+        event = QWheelEvent(QPointF(point), QPointF(widget.mapToGlobal(point)),
+                            QPoint(0, pixel), QPoint(0, delta), Qt.MouseButton.NoButton,
+                            Qt.KeyboardModifier.ShiftModifier if shift else Qt.KeyboardModifier.NoModifier,
+                            Qt.ScrollPhase.NoScrollPhase, False)
+        self.app.sendEvent(widget, event)
+        self.app.processEvents()
+
+    def test_wheel_board_and_history_navigate_selected_branch_with_bounds_and_toggle(self):
+        self._analysis_game("1.e4 e5 (1...Nf6 2.Nc3) 2.Nf3 Nc6 *")
+        self.window.game.select_node(next(i for i, n in enumerate(self.window.game.nodes) if n.san == "Nc3"))
+        self.window._refresh()
+        board = self.window.board_view
+        point = board.square_rect(parse_square("e4")).center().toPoint()
+        original_nodes = len(self.window.game.nodes)
+        with patch.object(self.window, "_schedule_engine"):
+            self._wheel(board, 120, point=point)
+            self.assertEqual(self.window.game.nodes[self.window.game.current_node].san, "Nf6")
+            self._wheel(self.window.analysis_history.viewport(), -120)
+            self.assertEqual(self.window.game.nodes[self.window.game.current_node].san, "Nc3")
+            self._wheel(board, -120, point=point)
+            self.assertEqual(self.window.game.cursor, 3)
+            self._wheel(board, 60, point=point)
+            self.assertEqual(self.window.game.cursor, 3)
+            self._wheel(board, 60, point=point)
+            self.assertEqual(self.window.game.cursor, 2)
+            self.window._set_display("wheel_game_moves", False)
+            self._wheel(board, 120, point=point)
+            self._wheel(self.window.analysis_history.viewport(), 120)
+            self.assertEqual(self.window.game.cursor, 2)
+            self.window._set_display("wheel_game_moves", True)
+            self._wheel(board, 120, shift=True, point=point)
+            self.assertEqual(self.window.game.cursor, 2)
+            self._wheel(self.window.history.viewport(), 120)
+            self.assertEqual(self.window.game.cursor, 1)
+            self._wheel(board, 0, pixel=-20, point=point)
+            self.assertEqual(self.window.game.cursor, 1)
+            self._wheel(board, 0, pixel=-20, point=point)
+            self.assertEqual(self.window.game.cursor, 2)
+        self.assertEqual(len(self.window.game.nodes), original_nodes)
+
+    def test_wheel_analysis_previews_frozen_line_without_editing_game(self):
+        base, job = self._three_pvs()
+        panel = self.window.candidates
+        third = panel.rows[3][2]
+        self._hover_word(third, "Nc3")
+        node, fen, count = self.window.game.current_node, self.window.game.board.fen(), len(self.window.game.nodes)
+        root = self.window.game.board.copy()
+        root.push(root.parse_uci("b1c3"))
+        root.push(root.parse_uci("g8f6"))
+        self._wheel(third.viewport(), -120)
+        self.assertEqual(self.window.board_view.display_board.fen(), root.fen())
+        self._show_external_info(base | {"multipv": 3, "pv": ["d2d4"]}, job)
+        self.assertEqual(panel.lines[3]["pv"][0], "b1c3")
+        self._wheel(third.viewport(), 120)
+        self.assertEqual(third._hovered, 1)
+        self._wheel(third.viewport(), 120)
+        self.assertEqual(self.window.board_view.display_board.fen(), fen)
+        self.assertEqual(self.window.game.current_node, node)
+        self.assertEqual(len(self.window.game.nodes), count)
+        third.cancel_preview()
+        QTest.qWait(20)
+        self.assertIsNone(self.window.board_view.preview_board)
+        self.assertEqual(panel.lines[3]["pv"][0], "d2d4")
+        self.window._set_display("wheel_analysis_moves", False)
+        self._wheel(third.viewport(), -120)
+        self.assertIsNone(self.window.board_view.preview_board)
+        panel.reserve_slots(4)
+        self.assertFalse(panel.rows[4][2].wheel_navigation)
+
+    def test_text_colors_distinguish_sides_and_history_in_both_appearances(self):
+        from nocturne.gui.theme import palette
+        self._three_pvs()
+        for light in (False, True):
+            self.window.config["light"] = light
+            self.window._apply_settings()
+            view = self.window.candidates.rows[3][2]
+            white = view.document().find("Nc3").charFormat().foreground().color()
+            black = view.document().find("Nf6").charFormat().foreground().color()
+            history = self.window.analysis_history.document().find("e4").charFormat().foreground().color()
+            self.assertEqual(white, QColor(palette(light)["analysis_white"]))
+            self.assertEqual(black, QColor(palette(light)["analysis_black"]))
+            self.assertEqual(history, QColor(palette(light)["history"]))
+            self.assertEqual(len({white.name(), black.name(), history.name()}), 3)
+            view.candidate_turn = -1
+            view.set_moves(view._items, light=light)
+            self.assertEqual(view.document().find("Nc3").charFormat().foreground().color(), black)
+            view.candidate_turn = 1
+
+    def test_last_move_highlight_follows_each_board_palette(self):
+        from nocturne.gui.theme import BOARD_THEMES
+        self._analysis_game("1.e4 *")
+        board = self.window.board_view
+        for theme, (light, dark) in BOARD_THEMES.items():
+            board.theme = theme
+            self.app.processEvents()
+            image = board.grab().toImage()
+            point = board.square_rect(parse_square("e2")).topLeft().toPoint() + QPoint(8, 8)
+            base = QColor(light)  # e2 is a light square, now empty.
+            actual = image.pixelColor(point)
+            expected = board.last_move_color(base)
+            self.assertEqual(actual.name(), expected.name(), theme)
+            self.assertAlmostEqual(abs(expected.valueF() - base.valueF()), 0.05, delta=0.005)
+            for square_color in (light, dark):
+                source = QColor(square_color)
+                target = board.last_move_color(source)
+                self.assertAlmostEqual(source.hsvSaturationF(), target.hsvSaturationF(), delta=0.005)
+                self.assertEqual(source.hsvHue(), target.hsvHue())
 
     def test_candidate_slots_have_equal_width_and_padded_hit_targets(self):
         self._three_pvs()

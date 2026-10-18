@@ -1,5 +1,10 @@
 # Active roadmap
 
+0.5.7.10 adds softer distinct text colors, palette-relative last-move shading,
+thinner candidate hints and independent game/PV wheel controls. Focused tests,
+Ruff and source launch checks passed; full/native validation pending. Physical
+Windows display, trackpad feel and executable trust remain manual checks.
+
 0.5.7.9 adds padded equal-width analysis move slots and a persistent Dev option
 to expand PVs beyond three rows. Native Windows validation/build passed:
 160 passed/5 optional skips twice, Ruff twice, both frozen launch checks.

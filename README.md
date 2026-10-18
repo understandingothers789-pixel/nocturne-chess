@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.9
+# Nocturne Analysis · 0.5.7.10
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -6,12 +6,28 @@ Stockfish or another UCI executable. **The desktop app has no built-in engine.**
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
-![Real Qt application, using explicitly labelled simulated UCI test data](docs/aligned-analysis.png)
+![Real Qt application, using explicitly labelled simulated UCI test data](docs/quiet-studio-dark.png)
 
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application.*
 
 ## Windows: download and open
+
+**0.5.7.10: softer colors and wheel navigation.** White analysis moves use muted
+ivory; Black moves a slightly darker warm tint. Saved game moves use soft blue.
+Metadata uses restrained blue-gray instead of bright white. Candidate rods and
+number circles are thinner/smaller. Last-move squares retain their own palette
+hue/saturation with only a five-point HSV brightness shift, rather than yellow.
+
+**Display → Wheel navigates game moves** enables previous/next navigation over
+the board or Game Moves. **Display → Wheel previews analysis moves** steps through
+the suggested line under the pointer without editing the game. Up goes backward,
+down forward; leaving the line restores the real position. Both are on by default
+and remembered. Hold **Shift** for normal scrolling. Trackpad deltas accumulate
+into individual moves. Analysis previews freeze their displayed line until you leave.
+
+Windows 0.5.7.10 validation/build pending; prior verified downloads are below.
+[Light appearance](docs/quiet-studio-light.png).
 
 **0.5.7.9: easier-to-hit, aligned analysis moves.** Each suggested move uses an
 identical padded slot, so `e4` and `Qxe4` occupy the same width. Three reserved

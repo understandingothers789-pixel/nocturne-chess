@@ -21,6 +21,7 @@ class CandidatePanel(QWidget):
         self.layout.setSpacing(0)
         self.layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         self.expanded = False
+        self.wheel_navigation = True
         self.primary = primary
         self.primary.reserve_lines(3)
         self.rows = {}
@@ -52,6 +53,12 @@ class CandidatePanel(QWidget):
         self._clearing = False
         self.changed.emit()
 
+    def set_wheel_navigation(self, enabled):
+        self.wheel_navigation = bool(enabled)
+        self.primary.wheel_navigation = self.wheel_navigation
+        for _, _, moves in self.rows.values():
+            moves.wheel_navigation = self.wheel_navigation
+
     def set_expanded(self, expanded):
         self.expanded = bool(expanded)
         self.primary.reserve_lines(0 if self.expanded else 3)
@@ -78,6 +85,7 @@ class CandidatePanel(QWidget):
         layout.addWidget(header)
         moves = self.primary if rank == 1 else MoveText(auto_fit=True, reserved_lines=3)
         moves.reserve_lines(0 if self.expanded else 3)
+        moves.wheel_navigation = self.wheel_navigation
         moves.candidate_rank = rank
         layout.addWidget(moves)
         moves.show()
