@@ -1,6 +1,7 @@
 """Native Qt integration tests. Explicitly skipped if the binding is absent."""
 
 import os
+import math
 import sys
 from copy import deepcopy
 from pathlib import Path
@@ -16,7 +17,7 @@ from nocturne.core.notation import san
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 try:
     from PySide6.QtCore import QEvent, QPoint, QPointF, QTimer, Qt
-    from PySide6.QtGui import QMouseEvent, QTextDocument, QWheelEvent, QColor, QPixmap
+    from PySide6.QtGui import QMouseEvent, QTextDocument, QWheelEvent, QColor, QPixmap, QFontMetricsF
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QMenu, QScrollArea, QWidget
     from nocturne.gui.window import MainWindow
@@ -644,15 +645,21 @@ class GuiTests(unittest.TestCase):
                 self.assertAlmostEqual(source.hsvSaturationF(), target.hsvSaturationF(), delta=0.005)
                 self.assertEqual(source.hsvHue(), target.hsvHue())
 
-    def test_compact_spacing_fits_eight_analysis_columns_and_tighter_history(self):
+    def test_compact_spacing_fits_eight_font_scaled_columns_and_tighter_history(self):
         from nocturne.gui.moves import MoveText
         analysis = MoveText(auto_fit=True, reserved_lines=3)
         history = MoveText()
         analysis.candidate_rank = 1
         items = [(text, i + 1) for i, text in enumerate(
             ("e4", "Qxe4", "O-O-O+", "Nf3", "Bxe5+", "Rae1", "d8=Q+", "Qh4xe1#"))]
+        analysis.set_moves(items)
+        # CSS font metrics differ with the native Windows offscreen DPI. Use a
+        # fixed 82-character viewport budget rather than assuming 96 DPI. The
+        # old 13-character slots need 104 characters for eight columns and fail.
+        font = analysis.document().find("e4").charFormat().font()
+        width = math.ceil(QFontMetricsF(font).horizontalAdvance("M" * 82)) + 8
         for view in (analysis, history):
-            view.resize(800, 100)
+            view.resize(width, 100)
             view.set_moves(items)
             view.show()
         self.app.processEvents()

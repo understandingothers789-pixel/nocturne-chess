@@ -2255,3 +2255,20 @@ metadata and README/CHANGELOG/TODO/BUILDING/PROGRESS.
 **Next:** verify full/local/native results and frozen launches before providing
 the latest download. Earlier timing failures remain documented. Windows trust,
 physical DPI/trackpad feel and authenticated Lichess access remain manual checks.
+
+
+### 0.5.7.15 — Windows DPI validation follow-up
+
+0.5.7.14 Windows run 39102726551/job 117602120950 failed the new spacing test:
+eight SAN columns occupied two lines at the fixture's hard-coded 800px width
+(177 tests/125.782s, 5 optional skips). Other tests passed; no artifact uploaded.
+The assertion assumed the Linux 96-DPI font metrics. Replaced it with a native
+font-scaled 82-character viewport budget: eight new slots fit, while the previous
+13-character pitches require 104 characters and fail. History must still be
+tighter; actual text sizes and product spacing are unchanged. README now avoids
+promising a fixed column count independent of platform DPI.
+
+The timing-fix local suite ran **178 tests: 167 passed, 11 skipped**, 142.659s.
+No failures. This further validation commit retains version 0.5.7.15 and uses a
+descriptive version-prefixed title, following the user's commit-labelling request.
+Native validation of the final follow-up is required before delivery.

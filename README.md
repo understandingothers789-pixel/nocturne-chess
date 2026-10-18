@@ -25,7 +25,8 @@ spacing changes below. Windows validation/build pending.
 
 **0.5.7.14: denser move spacing.** Game history uses single spaces and tighter
 line/panel spacing. Analysis keeps its text size and padded equal-width SAN
-slots, with smaller gaps and modestly tighter rows—eight columns fit at 800px.
+slots, with smaller gaps and modestly tighter rows—typically one or two extra columns,
+depending on window width and DPI.
 Three fixed PV rows, hover snapshots, colors and wheel navigation remain.
 [Compact light appearance](docs/compact-studio-light.png).
 
