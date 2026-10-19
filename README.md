@@ -12,14 +12,15 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
-**0.5.7.30: recorded move destinations and full engine details.** Smart Move
+**[0.5.7.30](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39196589327/artifacts/12161284918): recorded move destinations and full engine details.** Smart Move
 can now play the game's recorded next move by destination, even when it is
 outside MultiPV. The engine status shows the full UCI name. **F11** starts
 self-play from the current position (10 million nodes per move by default);
 **F12** evaluates the line (200 million nodes per position). Normal analysis
 defaults to 1 billion nodes. Returning from a variation to a shared main-line
-position resumes the main line. The Windows build is being prepared; its
-download link will appear here when available.
+position resumes the main line. Extract the unsigned ZIP and open
+`Nocturne/Nocturne.exe`. See the [Windows build receipt](docs/BUILDING.md) for
+validation details and the checksum.
 
 **[0.5.7.28](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39191809527/artifacts/12159804179): compact analysis by default.** Expand all analysis lines is now
 off by default, including for existing profiles that had an older saved value.

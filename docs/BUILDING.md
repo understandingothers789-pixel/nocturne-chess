@@ -1,3 +1,22 @@
+# Windows 11 desktop builds · 0.5.7.30
+
+## [Download Windows 0.5.7.30](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39196589327/artifacts/12161284918)
+
+[Download the Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39196589327/artifacts/12161284918).
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+This release can play the recorded game move by destination even when it falls
+outside the selected MultiPV. It also shows the full engine name reported by
+UCI and includes F11 self-play, F12 line evaluation and the updated node limits.
+Ordinary navigation back to a shared main-line position resumes the main line;
+game review continues to preserve its selected variation.
+
+Windows run [39196589327](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39196589327)
+passed lint, all 200 tests, packaged build and smoke checks, and the live
+database API check. Artifact **12161284918**, `Nocturne-0.5.7.30-Windows-x64-unsigned`,
+57,911,876 bytes, expires 2026-11-18. SHA-256:
+`1fcf142c0174ac4e950832da5aae67c3f9fbfcdff72c12e78a68b74f93125316`.
+
 # Windows 11 desktop builds · 0.5.7.28
 
 ## [Download Windows 0.5.7.28](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39191809527/artifacts/12159804179)
