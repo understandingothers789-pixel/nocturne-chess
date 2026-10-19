@@ -70,7 +70,7 @@ class EngineController(QObject):
             go = f"go nodes {limits.nodes}"
         else:
             go = f"go depth {limits.depth} movetime {max(1, int(limits.seconds * 1000))}"
-        if limits.nodes:
+        if limits.nodes and not nodes_only:
             go += " nodes " + str(limits.nodes)
         if searchmoves:
             valid = [self.board.parse_uci(m).uci() for m in searchmoves]

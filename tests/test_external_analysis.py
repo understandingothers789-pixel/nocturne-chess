@@ -554,7 +554,7 @@ class QtIntegration(unittest.TestCase):
             window._refresh()
             window._auto_evaluate_line()
             self.wait_until(lambda: window._review is None, 8)
-            self.assertIn("> go nodes 100", "\n".join(window.engine.connection.log))
+            self.assertIn("> go nodes 100", window.engine.connection.log)
             self.assertEqual(len(window.game.nodes[0].analysis["multipv_lines"]), 3)
             self.assertEqual(len(window.game.nodes[1].analysis["multipv_lines"]), 3)
 

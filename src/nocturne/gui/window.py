@@ -782,11 +782,6 @@ class MainWindow(QMainWindow):
         self.reanalyze_navigation_action.setChecked(bool(enabled))
         self._save()
 
-    def _set_auto_eval_nodes(self, nodes):
-        self.config["auto_eval_nodes"] = int(nodes)
-        self._save()
-        self._refresh_engine_menus()
-
     def _sync_raw_pgn(self):
         enabled = self.config.get("show_raw_pgn", False)
         index = self.tabs.indexOf(self.raw_pgn_page)
