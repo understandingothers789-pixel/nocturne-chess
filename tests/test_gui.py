@@ -557,6 +557,7 @@ class GuiTests(unittest.TestCase):
         document = QTextDocument()
         document.setHtml(self.window.telemetry.text())
         telemetry = document.toPlainText()
+        self.assertLess(telemetry.index("+0.24"), telemetry.index("Depth 18"))
         self.assertIn("Depth 18", telemetry)
         self.assertNotIn("18/38", telemetry)
         self.assertIn("Nodes 2,345,678", telemetry)
@@ -1059,6 +1060,36 @@ class GuiTests(unittest.TestCase):
         self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
         panel.set_multipv(4)
         self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
+
+    def test_compact_candidate_rows_stay_three_lines_during_long_pv_updates(self):
+        base, job = self._three_pvs()
+        panel = self.window.candidates
+        panel.set_multipv(4)
+        self.app.processEvents()
+        fixed_heights = {rank: panel.rows[rank][2].height() for rank in panel.rows}
+        next_row_y = panel.rows[2][0].mapToGlobal(panel.rows[2][0].rect().topLeft()).y()
+        long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
+
+        # A changing, much longer engine line must scroll inside its reserved
+        # three-row slot and leave every other candidate in the same place.
+        self._show_external_info(base | {"multipv": 1, "pv": long_pv}, job)
+        self.app.processEvents()
+        moves = panel.rows[1][2]
+        self.assertEqual(moves._reserved_lines, 3)
+        self.assertEqual(moves.height(), fixed_heights[1])
+        self.assertGreater(moves.wrapped_line_count(), 3)
+        self.assertTrue(panel.expand_buttons[1].isVisible())
+        self.assertEqual(
+            panel.rows[2][0].mapToGlobal(panel.rows[2][0].rect().topLeft()).y(), next_row_y
+        )
+
+        shorter_pv = long_pv[:8]
+        self._show_external_info(base | {"multipv": 1, "pv": shorter_pv}, job)
+        self.app.processEvents()
+        self.assertEqual(moves.height(), fixed_heights[1])
+        self.assertEqual(
+            panel.rows[2][0].mapToGlobal(panel.rows[2][0].rect().topLeft()).y(), next_row_y
+        )
         panel.set_multipv(5)
         self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {2})
         panel.reserve_slots(5)

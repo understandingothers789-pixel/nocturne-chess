@@ -1,12 +1,17 @@
 # Active roadmap
 
-**Current: 0.5.7.25 delivered.** Candidate rows and top telemetry show
-main search depth without selective depth by default. **Display → Show selective
-depth (seldepth)** reveals it in both places. Top depth, nodes and nodes/second
-are slightly larger and blue-accented. Local: 191 tests passed with 11
-environment/optional skips; Ruff passed. Windows: 191 tests passed with 5
-optional skips, Ruff, PyInstaller and packaged launch checks passed. See the
-[build receipt](docs/BUILDING.md).
+**Current: 0.5.7.26 pending CI.** Top telemetry leads with evaluation before
+depth, followed by nodes and nodes/second. One to four MultiPV candidates keep
+fixed three-row compact slots as long PVs update; each arrow reveals the rest
+of that candidate's line. Selective depth remains optional in **Display → Show
+selective depth (seldepth)**. Local: 181 tests passed, 11 skipped; Ruff passed.
+See the [build receipt](docs/BUILDING.md) for Windows validation.
+
+**Previous: 0.5.7.25 delivered.** Candidate headers and top telemetry hide
+selective depth by default and use a subtle blue emphasis for search metrics.
+Local: 191 tests passed with 11 environment/optional skips; Ruff passed.
+Windows: 191 tests passed with 5 optional skips, Ruff, PyInstaller, and
+packaged launch checks passed. See the [build receipt](docs/BUILDING.md).
 
 **Previous: 0.5.7.24 delivered.** Candidate wheel browsing ignores tiny mouse
 movement that stays over the same move; pointer movement to another move still

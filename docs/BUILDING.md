@@ -1,3 +1,13 @@
+# Windows 11 desktop builds · 0.5.7.26
+
+## Download Windows 0.5.7.26
+
+Build pending.
+
+Evaluation now appears before depth in top engine telemetry, and compact
+MultiPV candidates keep their three-row slots stable for up to four lines.
+Workflow and artifact details will be recorded here after CI completes.
+
 # Windows 11 desktop builds · 0.5.7.25
 
 ## Download Windows 0.5.7.25

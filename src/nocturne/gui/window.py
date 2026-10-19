@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from html import escape
 from pathlib import Path
 import random
 
@@ -162,6 +163,7 @@ class MainWindow(QMainWindow):
         self._lab = None
         self._benchmark_report = None
         self._last_info = None
+        self._last_info_turn = 1
         self._history_signature = None
         self._analysis_layout_active = None
         self._pv_root = None
@@ -1757,7 +1759,7 @@ class MainWindow(QMainWindow):
         self._apply_appearance(self._appearance_config())
         self.candidates.set_show_seldepth(self.config.get("show_seldepth", False))
         if self._last_info:
-            self._render_telemetry(self._last_info)
+            self._render_telemetry(self._last_info, self._last_info_turn)
         self.tablebase_label.setVisible(bool(self.config.get("syzygy_path")))
         self.board_view.smart_move = self.config.get("smart_move", True)
         self.board_view.candidate_style = self.config.get("candidate_style", "lines")
@@ -2680,6 +2682,7 @@ class MainWindow(QMainWindow):
         self._pv_root = None
         self._pv_moves = []
         self._last_info = None
+        self._last_info_turn = 1
         self._pv_identity = None
         self.eval_label.setText("—")
         self.telemetry.setText("Waiting for engine output")
@@ -2759,6 +2762,7 @@ class MainWindow(QMainWindow):
             if info.get("multipv", 1) != 1:
                 return
         self._last_info = info.copy()
+        self._last_info_turn = job["turn"]
         if "score_type" in info:
             self._store_analysis(self.game, self.game.current_node, info, job["turn"], job)
             self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
@@ -2767,7 +2771,9 @@ class MainWindow(QMainWindow):
             score_label(info, job["turn"]) if "score_type" in info else score_text(white_score)
         )
         self.eval_bar.set_score(white_score)
-        self._render_telemetry(info)
+        evaluation = (score_label(info, job["turn"]) if "score_type" in info
+                      else score_text(white_score))
+        self._render_telemetry(info, job["turn"], evaluation)
         position = self.game.board.copy()
         self._pv_root = self.game.board.copy(history=False)
         self._pv_identity = self._position_identity()
@@ -2785,11 +2791,14 @@ class MainWindow(QMainWindow):
         self.board_view.best_move = first
         self.board_view.update()
 
-    def _render_telemetry(self, info):
+    def _render_telemetry(self, info, turn=1, evaluation=None):
         colors = palette(self._appearance_config().get("light", False))
         depth = str(info["depth"])
         if self.config.get("show_seldepth", False):
             depth += f"/{info['seldepth']}"
+        if evaluation is None:
+            evaluation = (score_label(info, turn) if "score_type" in info
+                          else score_text(info.get("score", 0) * turn))
 
         def metric(label_text, value):
             return (
@@ -2800,6 +2809,8 @@ class MainWindow(QMainWindow):
 
         separator = f'<span style="color:{colors["metadata"]};"> · </span>'
         values = [
+            f'<span style="color:{colors["metric"]};font-size:15px;'
+            f'font-weight:600;">{escape(str(evaluation))}</span>',
             metric("Depth", depth),
             metric("Nodes", f"{info['nodes']:,}"),
             metric("Nodes/second", f"{info.get('nps', 0):,}"),

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.26 — Evaluation-first telemetry and stable compact PV rows
+
+Show the current evaluation to the left of depth in the top engine telemetry,
+matching the evaluation-then-depth order used by each MultiPV candidate. Keep
+compact candidate slots at a fixed three move rows for one to four MultiPV
+lines while longer engine variations update; use each candidate's arrow to
+view the remaining moves.
+
 ## 0.5.7.25 — Cleaner depth labels and clearer engine telemetry
 
 Hide selective depth by default in candidate headers and top telemetry, with an

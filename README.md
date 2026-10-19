@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.25
+# Nocturne Analysis · 0.5.7.26
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -12,13 +12,14 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
-**0.5.7.25: clearer engine telemetry.** Depth shows only its main value by
-default; use **Display → Show selective depth (seldepth)** to include the
-selective-depth denominator in candidate headers and top telemetry. Depth,
-nodes and nodes per second stand out with a subtle blue tint and slightly larger
-text. Download the unsigned [Windows build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39186772633/artifacts/12158418237)
-and launch `Nocturne/Nocturne.exe` after extracting the ZIP. See the
-[build receipt](docs/BUILDING.md) for its checksum and validation details.
+**0.5.7.26: evaluation-first telemetry and stable MultiPV rows.** The top
+engine metrics now show the evaluation immediately before depth. With one to
+four MultiPV lines selected, each compact variation stays within its three
+reserved move rows as the engine updates; use that variation's arrow to reveal
+its full line. Depth shows only its main value by default; use **Display → Show
+selective depth (seldepth)** to include selective depth in candidate headers
+and top telemetry. Windows build and validation details will be added to the
+[build receipt](docs/BUILDING.md) after CI completes.
 
 **0.5.7.24: steady wheel previews.** Scrolling through a candidate stays on
 the selected ply while the pointer moves within the same move. Moving to a
