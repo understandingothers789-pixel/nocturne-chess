@@ -36,6 +36,11 @@ class Store:
                     result TEXT NOT NULL, plies INTEGER NOT NULL, payload TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS preferences (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS analysis_snapshots (
+                    game_id TEXT NOT NULL, position_key TEXT NOT NULL,
+                    milestone TEXT NOT NULL, payload TEXT NOT NULL,
+                    PRIMARY KEY (game_id, position_key, milestone)
+                );
                 PRAGMA user_version=1;
             """)
         except sqlite3.Error as exc:
@@ -138,10 +143,35 @@ class Store:
         try:
             with self.db:
                 self.db.execute("DELETE FROM games WHERE id=?", (game_id,))
+                self.db.execute("DELETE FROM analysis_snapshots WHERE game_id=?", (game_id,))
                 if self.get("resume_id") == game_id:
                     self.db.execute("DELETE FROM preferences WHERE key='resume_id'")
         except sqlite3.Error as exc:
             raise StorageError(f"Cannot delete saved game: {exc}") from exc
+
+    def save_snapshot(self, game_id, key, record):
+        try:
+            payload = json.dumps(record, ensure_ascii=False, allow_nan=False)
+            with self.db:
+                self.db.execute("INSERT OR IGNORE INTO analysis_snapshots VALUES (?, ?, ?, ?)",
+                                (game_id, key, str(record["milestone"]), payload))
+        except (sqlite3.Error, ValueError, TypeError, KeyError) as exc:
+            raise StorageError(f"Cannot save analysis snapshot: {exc}") from exc
+
+    def snapshots(self, game_id, key):
+        try:
+            records = [json.loads(row[0]) for row in self.db.execute(
+                "SELECT payload FROM analysis_snapshots WHERE game_id=? AND position_key=?", (game_id, key))]
+            return sorted(records, key=lambda record: record["milestone"])
+        except (sqlite3.Error, ValueError, TypeError, KeyError) as exc:
+            raise StorageError(f"Cannot read analysis snapshots: {exc}") from exc
+
+    def clear_snapshots(self, game_id, key):
+        try:
+            with self.db:
+                self.db.execute("DELETE FROM analysis_snapshots WHERE game_id=? AND position_key=?", (game_id, key))
+        except sqlite3.Error as exc:
+            raise StorageError(f"Cannot clear analysis snapshots: {exc}") from exc
 
     def match_stats(self) -> dict[str, int]:
         stats = {"white_wins": 0, "black_wins": 0, "draws": 0, "unfinished": 0}

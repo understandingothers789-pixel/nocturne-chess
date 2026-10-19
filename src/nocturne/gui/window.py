@@ -50,6 +50,8 @@ from ..core.notation import pgn_clock
 from ..core.notation import parse_san
 from ..engine.uci_types import AnalysisLimits as SearchLimits, score_label, plot_score_label as score_text
 from ..settings import normalize
+from ..analysis_jobs import checkpoint as checkpoint_job, restore as restore_job
+from ..snapshots import position_key
 from ..storage import Store, StorageError
 from .board import BoardWidget
 from .dialogs import NewGameDialog, SettingsDialog, TextDialog
@@ -61,6 +63,7 @@ from .review_panel import ReviewPanel
 from ..review import classify, chance
 from .explorer_panel import OpeningExplorer
 from .opening_coverage import OpeningCoverage
+from .snapshot_dialog import SnapshotDialog
 from ..explorer import RATINGS, SPEEDS
 from .moves import MoveText
 from .hover_preview import HoverPreview
@@ -138,6 +141,7 @@ class MainWindow(QMainWindow):
         self.game = Game()
         self.game.metadata = self.config.copy()
         self.paused = False
+        resumed = None
         if self.store:
             try:
                 resumed = self.store.resume()
@@ -159,7 +163,8 @@ class MainWindow(QMainWindow):
         self.analysis_mode = self.config.get("mode") == "analysis"
         if self.analysis_mode:
             self.paused = False
-        self._analysis_enabled = self.analysis_mode
+        self._analysis_enabled = self.analysis_mode and resumed is None
+        self._review = restore_job(self.game)
         self._auto_play_active = False
         self._auto_play_paused = False
         self._job = None
@@ -186,6 +191,8 @@ class MainWindow(QMainWindow):
         self._apply_settings()
         self.pause_button.setText("Continue" if self.paused else "Pause")
         self._refresh()
+        if self._review:
+            self.quick_analysis_button.setText("Resume auto-evaluation")
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._tick)
         self.timer.start(100)
@@ -745,6 +752,9 @@ class MainWindow(QMainWindow):
         add(play, "Offer / claim draw…", self._draw)
         add(play, "Resign…", self._resign)
         dev = self.menuBar().addMenu("&Dev")
+        self.snapshot_capture_action = add(dev, "Save analysis snapshots at node milestones", self._set_snapshot_capture)
+        self.snapshot_capture_action.setCheckable(True)
+        add(dev, "Compare saved analysis snapshots…", self._compare_snapshots)
         self.raw_pgn_action = add(dev, "Show raw PGN data", self._set_raw_pgn)
         self.raw_pgn_action.setCheckable(True)
         self.reanalyze_navigation_action = add(
@@ -1001,7 +1011,8 @@ class MainWindow(QMainWindow):
         self._save()
         self.game = self._study_games[key]
         self.analysis_mode = True
-        self._analysis_enabled = True
+        self._analysis_enabled = bool(self.config.get("reanalyze_on_navigation", False))
+        self._review = restore_job(self.game)
         self._history_signature = None
         self.paused = False
         self._refresh()
@@ -1306,6 +1317,71 @@ class MainWindow(QMainWindow):
         self.config["review_confirm"] = bool(enabled)
         self._save()
 
+    def _set_snapshot_capture(self, enabled):
+        self.config["analysis_snapshots"] = bool(enabled)
+        self.engine.set_snapshot_capture(enabled)
+        self._save()
+
+    def _compare_snapshots(self):
+        if not self.store:
+            self._error("Library unavailable", self._storage_message)
+            return
+        game_id, key = self.game.id, position_key(self.game)
+        try:
+            SnapshotDialog(lambda: self.store.snapshots(game_id, key),
+                           self.config.get("light", False), self).exec()
+        except StorageError as exc:
+            self._error("Cannot read snapshots", str(exc))
+
+    def _save_snapshot(self, generation, payload):
+        if (not self.store or not self.config.get("analysis_snapshots", False)
+                or generation != self.engine.generation):
+            return
+        state = self._review
+        if (state and state.get("kind") == "auto_eval" and state.get("generation") == generation
+                and state["game_id"] == self.game.id):
+            node_id = state["line"][state["index"]]
+            context = state
+        elif (self._job and self._job["generation"] == generation and self._job["kind"] == "analysis"
+              and self._job["identity"] == self._position_identity()):
+            node_id, context = self.game.current_node, self._job
+        else:
+            return
+        from datetime import datetime, timezone
+
+        key = position_key(self.game, node_id)
+        position = self.game.position_at_node(node_id)
+        record = {"observed_nodes": payload["observed_nodes"], "lines": payload["lines"],
+                  "requested_multipv": context.get("multipv", self._effective_multipv()),
+                  "turn": position.turn, "fen": position.fen(), "profile": context.get("profile", ""),
+                  "options": dict(context.get("options", {})),
+                  "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+        try:
+            for milestone in payload["milestones"]:
+                self.store.save_snapshot(self.game.id, key, record | {"milestone": milestone})
+            lines = {info["multipv"]: info for info in payload["lines"]}
+            if 1 in lines:
+                self._store_analysis(self.game, node_id, lines[1], position.turn, context | {"lines": lines})
+            # Save the displayed/frozen PGN as well, so a crash can recover it
+            # together with a checkpoint written before the periodic autosave.
+            self._save()
+        except StorageError as exc:
+            self.statusBar().showMessage(str(exc))
+
+    def _clear_saved_analysis(self, node_ids):
+        for node_id in node_ids:
+            node = self.game.nodes[node_id]
+            node.analysis = {}
+            node.evaluation = None
+            if self.store:
+                try:
+                    self.store.clear_snapshots(self.game.id, position_key(self.game, node_id))
+                except StorageError as exc:
+                    self.statusBar().showMessage(str(exc))
+        self.game.evaluations = {ply: value for ply, value in self.game.evaluations.items()
+                                 if self.game._line_nodes[ply] not in node_ids}
+        self._clear_analysis_output()
+
     def _edit_annotation(self):
         dialog = QDialog(self)
         dialog.setWindowTitle("Move comment and annotations")
@@ -1426,6 +1502,7 @@ class MainWindow(QMainWindow):
         self.paused = False
         self._analysis_enabled = False
         self.game.pause_clock()
+        self._clear_saved_analysis(self.game._line_nodes)
         self._review = {
             "kind": "auto_eval",
             "game_id": self.game.id,
@@ -1439,6 +1516,8 @@ class MainWindow(QMainWindow):
             "depth": 128,
             "nodes": self.config.get("auto_eval_nodes") or None,
             "multipv": self._effective_multipv(),
+            "job_profile": self._profile()["id"],
+            "job_options": dict(self._profile().get("values", {})),
         }
         self.analysis_nav.setChecked(True)
         self.play_nav.setChecked(False)
@@ -1579,9 +1658,13 @@ class MainWindow(QMainWindow):
             cursor=len(path) - 1,
             board=position,
         )
-        profile = self._profile()
+        profile = (next((p for p in self.profiles if p["id"] == state.get("job_profile")), None)
+                   if state.get("kind") == "auto_eval" and state.get("job_profile") else self._profile())
         if not profile:
-            self._cancel_review()
+            state["paused"] = True
+            state["message"] = "Saved job's engine is unavailable · restore its engine profile or start a new analysis"
+            self.statusBar().showMessage(state["message"])
+            self._update_review_panel()
             return
         searchmoves = None
         if state["stage"] in ("played", "confirm_played"):
@@ -1597,7 +1680,7 @@ class MainWindow(QMainWindow):
                 temporary,
                 limits,
                 profile["path"],
-                options=profile.get("values", {}),
+                options=state.get("job_options", profile.get("values", {})),
                 multipv=state.get("multipv", 1),
                 infinite=state.get("kind") == "auto_eval" and state["nodes"] is None,
                 nodes_only=state.get("kind") == "auto_eval" or confirming,
@@ -1612,10 +1695,11 @@ class MainWindow(QMainWindow):
             return
         state["generation"] = generation
         state["info"] = None
+        state["lines"] = {}
         state.pop("message", None)
         state["turn"] = position.turn
         state["profile"] = profile["id"]
-        state["options"] = dict(profile.get("values", {}))
+        state["options"] = dict(state.get("job_options", profile.get("values", {})))
         self.quick_analysis_button.setText(
             "Pause auto-evaluation" if state.get("kind") == "auto_eval" else "Pause review"
         )
@@ -1646,6 +1730,10 @@ class MainWindow(QMainWindow):
             return True
         if kind == "info":
             state["info"] = payload.copy()
+            if state.get("kind") == "auto_eval":
+                state.setdefault("lines", {})[payload["multipv"]] = payload.copy()
+                if 1 in state["lines"]:
+                    self._store_analysis(self.game, state["line"][state["index"]], state["lines"][1], state["turn"], state)
             return True
         if kind != "result":
             return True
@@ -2118,6 +2206,8 @@ class MainWindow(QMainWindow):
         self.candidates.set_expanded(self.config.get("expand_pv", False))
         self.expand_pv_action.setChecked(self.config.get("expand_pv", False))
         self.cursor_preview_action.setChecked(self.config.get("cursor_preview", False))
+        self.snapshot_capture_action.setChecked(self.config.get("analysis_snapshots", False))
+        self.engine.set_snapshot_capture(self.config.get("analysis_snapshots", False))
         self.confirm_review_action.setChecked(self.config.get("review_confirm", True))
 
     def _sync_workspace_layout(self):
@@ -2777,6 +2867,11 @@ class MainWindow(QMainWindow):
     def _save(self):
         if not self.store:
             return
+        saved_job = checkpoint_job(self._review)
+        if saved_job:
+            self.game.metadata["auto_eval_job"] = saved_job
+        else:
+            self.game.metadata.pop("auto_eval_job", None)
         try:
             self.store.set("settings", self.config)
             self.store.set("engine_profiles", self.profiles)
@@ -2836,7 +2931,8 @@ class MainWindow(QMainWindow):
             self.game = game
             self._load_game_config()
             self.analysis_mode = self.config.get("mode") == "analysis"
-            self._analysis_enabled = self.analysis_mode
+            self._analysis_enabled = bool(self.config.get("reanalyze_on_navigation", False)) and self.analysis_mode
+            self._review = restore_job(self.game)
             self._history_signature = None
             self.paused = True
             if self.analysis_mode:
@@ -2921,9 +3017,13 @@ class MainWindow(QMainWindow):
         self._stop_engine()
 
     def _start_analysis(self):
+        self._cancel_review()
+        self._stop_engine()
         self._workspace(True)
+        self._clear_saved_analysis([self.game.current_node])
         self._analysis_enabled = True
         self.tabs.setCurrentIndex(1)
+        self._save()
         self._schedule_engine()
 
     def _engine_lab(self):
@@ -3106,6 +3206,9 @@ class MainWindow(QMainWindow):
     def _engine_message(self, generation: int, kind: str, payload: dict):
         if self._closing:
             return
+        if kind == "snapshot":
+            self._save_snapshot(generation, payload)
+            return
         if self._review and self._review_message(generation, kind, payload):
             return
         job = self._job
@@ -3267,6 +3370,8 @@ class MainWindow(QMainWindow):
         QMessageBox.warning(self, title, text)
 
     def closeEvent(self, event):
+        if self.engine.busy and self.config.get("analysis_snapshots", False):
+            self.engine._flush_snapshot()
         self._closing = True
         self._clear_move_preview()
         self._explorer_active = False

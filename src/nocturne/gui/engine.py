@@ -5,6 +5,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Signal
 
 from ..core.notation import san
+from ..snapshots import milestones
 from .uci_connection import UciConnection
 
 
@@ -18,6 +19,7 @@ class EngineController(QObject):
         self.generation = 0
         self.connection = UciConnection(self)
         self.connection.information.connect(self._info)
+        self.connection.observation.connect(self._observe)
         self.connection.completed.connect(self._result)
         self.connection.failed.connect(self._error)
         self.connection.discovered.connect(self.discovered)
@@ -26,10 +28,22 @@ class EngineController(QObject):
         self.board = None
         self.lines = {}
         self.exact_lines = {}
+        self._snapshot_lines = {}
+        self._snapshot_nodes = 0
+        self._snapshot_pending = []
+        self._snapshot_required = 1
 
     @property
     def busy(self):
         return self._busy
+
+    def set_snapshot_capture(self, enabled):
+        if self.connection.observe_nodes == bool(enabled):
+            return
+        self.connection.observe_nodes = bool(enabled)
+        self._snapshot_pending = []
+        self._snapshot_lines = {rank: dict(info) for rank, info in self.lines.items()}
+        self._snapshot_nodes = max((info.get("nodes", 0) for info in self.lines.values()), default=0)
 
     def connect_engine(self, path, arguments=None):
         self.stop()
@@ -55,6 +69,10 @@ class EngineController(QObject):
         self.board = game.board.copy()
         self.lines = {}
         self.exact_lines = {}
+        self._snapshot_lines = {}
+        self._snapshot_nodes = 0
+        self._snapshot_pending = []
+        self._snapshot_required = min(multipv, sum(1 for _ in self.board.legal_moves()))
         desired = dict(options or {})
         desired["MultiPV"] = multipv
         desired["UCI_AnalyseMode"] = kind == "analysis" or infinite
@@ -81,9 +99,7 @@ class EngineController(QObject):
         self.connection.request(self.generation, position, go, desired, game.id)
         return self.generation
 
-    def _info(self, generation, info):
-        if generation != self.generation or not self._busy:
-            return
+    def _validated_info(self, info):
         position = self.board.copy()
         pv, texts = [], []
         for text in info["pv"][:128]:
@@ -95,11 +111,39 @@ class EngineController(QObject):
             except ValueError:
                 break
         if not pv:
-            return
-        info = dict(
+            return None
+        return dict(
             info, pv=pv, san=texts, engine=self.connection.name,
             applied_options={k: v for k, v in self.connection.confirmed.items() if k != "__study"},
         )
+
+    def _observe(self, generation, info):
+        if generation != self.generation or not self._busy:
+            return
+        self._snapshot_lines[info["multipv"]] = dict(info)
+        nodes = info.get("nodes", 0)
+        self._snapshot_pending.extend(milestones(self._snapshot_nodes, nodes))
+        self._snapshot_nodes = max(self._snapshot_nodes, nodes)
+        if len(self._snapshot_lines) >= self._snapshot_required:
+            self._flush_snapshot()
+
+    def _flush_snapshot(self):
+        if not self._snapshot_pending:
+            return
+        lines = [self._validated_info(self._snapshot_lines[rank]) for rank in sorted(self._snapshot_lines)]
+        lines = [line for line in lines if line]
+        if lines:
+            targets, self._snapshot_pending = self._snapshot_pending, []
+            self.message.emit(self.generation, "snapshot", {
+                "milestones": targets, "observed_nodes": self._snapshot_nodes, "lines": lines,
+            })
+
+    def _info(self, generation, info):
+        if generation != self.generation or not self._busy:
+            return
+        info = self._validated_info(info)
+        if info is None:
+            return
         self.lines[info["multipv"]] = info
         if info.get("bound", "exact") == "exact":
             self.exact_lines[info["multipv"]] = info.copy()
@@ -108,6 +152,7 @@ class EngineController(QObject):
     def _result(self, generation, bestmove):
         if generation != self.generation or not self._busy:
             return
+        self._flush_snapshot()
         self._busy = False
         try:
             if bestmove == "0000" and any(self.board.legal_moves()):
@@ -131,6 +176,8 @@ class EngineController(QObject):
         self.message.emit(self.generation, "error", {"message": message})
 
     def stop(self):
+        if self._busy and self.connection.observe_nodes:
+            self._flush_snapshot()
         self.generation += 1
         self._busy = False
         self.lines = {}

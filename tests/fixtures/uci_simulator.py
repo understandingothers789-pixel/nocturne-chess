@@ -57,7 +57,9 @@ def search(position, command, event):
                     value = 140 if "searchmoves" in tokens else 150
                 score = f"cp {value}"
             send(
-                f"info depth {depth} seldepth {depth + 3} time {depth * 5} nodes {depth * 100} nps 20000 score {score} wdl 400 500 100 multipv {rank} pv {pv}"
+                f"info depth {depth} seldepth {depth + 3} time {depth * 5} "
+                f"nodes {[1_000_000, 2_000_000, 5_000_000, 10_000_000][depth - 1] if mode == 'snapshot-nodes' else depth * 100} "
+                f"nps 20000 score {score} wdl 400 500 100 multipv {rank} pv {pv}"
             )
         time.sleep(0.015)
     if "infinite" in tokens or mode == "hold":

@@ -12,6 +12,7 @@ from ..engine.uci_types import parse_info, parse_option
 class UciConnection(QObject):
     discovered = Signal(object)
     information = Signal(int, object)
+    observation = Signal(int, object)
     completed = Signal(int, str)
     failed = Signal(str)
     status = Signal(str)
@@ -43,6 +44,7 @@ class UciConnection(QObject):
         self._prepared = None
         self._quitting = False
         self._last_info = {}
+        self.observe_nodes = False
         self._last_exact_info = {}
         self._flush = QTimer(self)
         self._flush.setInterval(80)
@@ -204,6 +206,8 @@ class UciConnection(QObject):
                     self._safe_prepare()
         elif self.phase == "search" and self.running:
             if info := parse_info(line):
+                if self.observe_nodes:
+                    self.observation.emit(self.running[0], info)
                 self._last_info[info["multipv"]] = (self.running[0], info)
                 if info.get("bound", "exact") == "exact":
                     self._last_exact_info[info["multipv"]] = (self.running[0], info)

@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.7.35 — Durable analysis and optional node snapshots
+
+- Reopening a saved study restores its analysis paused, without automatically
+  starting a new search and replacing the results. An interrupted F12 job saves
+  its frozen line, unfinished position, engine profile/options and requested
+  budget. Press F12 after reopening to resume without repeating completed positions;
+  the unfinished position starts a fresh engine search at its original budget.
+- Dev → Save analysis snapshots at node milestones is disabled by default.
+  When enabled, normal analysis and F12 save 1M, 2M, 5M, 10M, 20M, 50M, 100M,
+  200M, 500M, 1B, 2B, 5B, 10B, 20B, 50B, etc., following 1/2/5 indefinitely.
+  Capture runs before display throttling. Snapshots retain each PV's reported
+  depth/bound, actual nodes, engine options and timestamp. Targets use the first
+  engine report reaching them; overshoot is shown, never disguised as exact work.
+- Dev → Compare saved analysis snapshots… shows two selectable checkpoints
+  side by side, with evaluation, depth, full PVs, observed nodes and a move/score
+  comparison. Refresh adds checkpoints saved while the window is open.
+- Checkpoints are separate SQLite library records, scoped to the PGN and move
+  path (including repetition history). They survive close/reopen, navigation,
+  variation node renumbering and disabling capture. A fresh Analyze clears the
+  current position's saved results/checkpoints; starting a new F12 job clears its
+  chosen line. Pausing/resuming F12 retains them. Selecting another PGN shows
+  that study's own saved data. Deleting a library game deletes its checkpoints.
+
 ## 0.5.7.34 — Partial analysis, deeper review and position tools
 
 - F12 retains the latest result for every PV, including unfinished iterations
