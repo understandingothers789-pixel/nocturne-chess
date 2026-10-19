@@ -12,7 +12,7 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
-**0.5.7.31: a synced evaluation graph and separate engine node limits.** The
+**[0.5.7.31](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39198947442/artifacts/12163735077): a synced evaluation graph and separate engine node limits.** The
 graph timeline follows the selected PGN position. Engine now has distinct
 limits for normal analysis (1 billion nodes), auto-evaluation (200 million),
 and self-play (10 million per move).
