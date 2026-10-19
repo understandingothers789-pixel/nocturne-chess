@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.35
+# Nocturne Analysis · 0.5.7.36
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -11,6 +11,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
+
+**[0.5.7.36](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39296780043/artifacts/12209442411): automatic out-of-book highlighting.** With Masters statistics enabled and a session access token in use, the first PGN move that leaves the database is gold and underlined in Game Moves. Hover it for an Out of book tooltip. Coverage runs automatically; failed requests do not count as zero games. Windows validation and packaging passed. Extract the ZIP and open `Nocturne/Nocturne.exe`. See the [build receipt](docs/BUILDING.md).
 
 **[0.5.7.35](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39211281773/artifacts/12168345473): durable analysis and optional snapshots.** Reopening restores saved
 analysis paused. Interrupted F12 jobs resume at the unfinished position without

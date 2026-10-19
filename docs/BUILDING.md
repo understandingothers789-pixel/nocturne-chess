@@ -1,4 +1,24 @@
-# Windows 11 desktop builds · 0.5.7.35
+# Windows 11 desktop builds · 0.5.7.36
+
+## [0.5.7.36 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39296780043/artifacts/12209442411)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`5ea7d0f`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/5ea7d0f)
+includes automatic Masters coverage with authenticated statistics enabled, a gold
+and underlined out-of-book PGN move, and a hover tooltip. The highlight remains
+visible on the selected move. Disabling statistics or clearing the session token
+removes it; changing lines resets coverage. Errors never stand in for zero games.
+Entering a token restarts coverage if it previously stopped before authentication.
+
+Windows run [39296780043](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39296780043)
+passed lint, the full test suite, packaging, packaged smoke checks and the live
+database check. Locally, four focused coverage/GUI checks passed, as did the
+version-resource consistency check after synchronizing the Windows metadata.
+
+Artifact **12209442411**, `Nocturne-0.5.7.36-Windows-x64-unsigned`,
+57,963,210 bytes, expires 2026-11-18. GitHub artifact SHA-256:
+`6152674761c8c051e3a437493cc9fd3f315bd02d7dfec6395adcea4bbc713130`.
 
 ## [0.5.7.35 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39211281773/artifacts/12168345473)
 
