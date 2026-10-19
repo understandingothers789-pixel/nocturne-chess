@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.7.40 — Preview saved games
+
+- The saved games window shows a preview of the hovered or selected game: its
+  final main-line board position and the first six full moves in PGN notation.
+
 ## 0.5.7.39 — Keep candidate slots aligned
 
 - The shared evaluation, depth and database header keeps the same reserved

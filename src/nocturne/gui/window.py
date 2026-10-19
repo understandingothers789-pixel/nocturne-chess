@@ -46,6 +46,7 @@ from .. import __version__
 from ..core.board import Move, SQUARES
 from ..core.rules import Board
 from ..core.game import Game, TimeControl
+from ..core.variation import mainline
 from ..core.notation import pgn_clock
 from ..core.notation import parse_san
 from ..engine.uci_types import AnalysisLimits as SearchLimits, score_label, plot_score_label as score_text
@@ -66,7 +67,7 @@ from .opening_coverage import OpeningCoverage
 from .snapshot_dialog import SnapshotDialog
 from ..explorer import RATINGS, SPEEDS
 from .moves import MoveText
-from .hover_preview import HoverPreview
+from .hover_preview import HoverPreview, MiniBoard
 from .wheel import WheelSteps
 from .theme import ASSETS, palette, stylesheet
 from .widgets import EvaluationBar, EvaluationGraph
@@ -2910,24 +2911,88 @@ class MainWindow(QMainWindow):
         dialog = QDialog(self)
         self._save()
         dialog.setWindowTitle("Saved PGNs and games")
-        dialog.resize(640, 430)
+        dialog.resize(980, 560)
+        dialog.setMinimumSize(780, 480)
         layout = QVBoxLayout(dialog)
         layout.addWidget(label("Saved PGNs & games", "title"))
         layout.addWidget(label("Games and studies are saved automatically on this device.", "muted", True))
         layout.addWidget(button("Open PGN folder", self._open_pgn_folder))
-        listing = QListWidget()
         try:
             games = self.store.list_games()
         except StorageError as exc:
             self._error("Library unavailable", str(exc))
             return
+        content = QSplitter(Qt.Orientation.Horizontal)
+        listing = QListWidget()
+        listing.setMouseTracking(True)
+        listing.setMinimumWidth(300)
         for record in games:
             item = QListWidgetItem(
                 f"{record['title']}\n{record['updated'][:16].replace('T', ' ')} UTC · {record['plies']} plies · {record['result']}"
             )
             item.setData(Qt.ItemDataRole.UserRole, record["id"])
             listing.addItem(item)
-        layout.addWidget(listing)
+        content.addWidget(listing)
+
+        preview = QFrame()
+        preview.setObjectName("panel")
+        preview_layout = QHBoxLayout(preview)
+        preview_layout.setContentsMargins(12, 12, 12, 12)
+        mini_board = MiniBoard(preview)
+        mini_board.setMinimumSize(0, 0)
+        mini_board.setFixedSize(244, 244)
+        mini_board.coordinates = self.board_view.coordinates
+        mini_board.interactive = mini_board.animations = mini_board.overlays = False
+        mini_board.wheel_navigation = False
+        mini_board.theme, mini_board.light = self.board_view.theme, self.board_view.light
+        mini_board.set_piece_set(self.board_view.piece_set)
+        preview_layout.addWidget(mini_board, 0, Qt.AlignmentFlag.AlignTop)
+
+        move_preview = QVBoxLayout()
+        preview_title = label("Hover over a saved game to preview it", "subtitle", True)
+        move_preview.addWidget(preview_title)
+        move_preview.addWidget(label("Opening · first six moves", "eyebrow"))
+        opening = label("", "", True)
+        opening.setStyleSheet("font-family: Consolas, monospace; font-size: 14px;")
+        opening.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        move_preview.addWidget(opening, 1)
+        preview_layout.addLayout(move_preview, 1)
+        content.addWidget(preview)
+        content.setStretchFactor(0, 4)
+        content.setStretchFactor(1, 6)
+        layout.addWidget(content, 1)
+
+        preview_cache = {}
+
+        def show_game_preview(item, *_):
+            if item is None:
+                return
+            game_id = item.data(Qt.ItemDataRole.UserRole)
+            try:
+                game = preview_cache.get(game_id)
+                if game is None:
+                    game = preview_cache[game_id] = self.store.load(game_id)
+            except StorageError as exc:
+                preview_title.setText("Cannot preview this game")
+                opening.setText(str(exc))
+                return
+            line = mainline(game.nodes)
+            end_node = line[-1]
+            final_move = game.nodes[end_node].move if end_node else None
+            mini_board.set_position(game.position_at_node(end_node), final_move)
+            preview_title.setText(f"Final position · {game.metadata.get('title', 'Saved game')}")
+            position = game.position_at_node(0)
+            moves = []
+            for node_id in line[1:13]:
+                node = game.nodes[node_id]
+                move_number = position.fullmove
+                notation = f"{move_number}. {node.san}" if position.turn > 0 else f"{move_number}... {node.san}"
+                moves.append(notation)
+                position.push(node.move)
+            opening.setText(" ".join(moves) if moves else "No moves in this game.")
+
+        listing.itemEntered.connect(show_game_preview)
+        listing.currentItemChanged.connect(show_game_preview)
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Open | QDialogButtonBox.StandardButton.Cancel
         )
