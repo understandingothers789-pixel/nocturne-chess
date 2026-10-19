@@ -46,6 +46,7 @@ class EngineController(QObject):
         multipv=1,
         searchmoves=None,
         arguments=None,
+        nodes_only=False,
     ):
         if not external:
             raise ValueError("Select your Stockfish or another UCI executable first")
@@ -63,11 +64,12 @@ class EngineController(QObject):
         position = "position fen " + game.initial_fen
         if game.cursor:
             position += " moves " + " ".join(m.uci() for m in game.moves[: game.cursor])
-        go = (
-            "go infinite"
-            if infinite
-            else f"go depth {limits.depth} movetime {max(1, int(limits.seconds * 1000))}"
-        )
+        if infinite:
+            go = "go infinite"
+        elif nodes_only and limits.nodes:
+            go = f"go nodes {limits.nodes}"
+        else:
+            go = f"go depth {limits.depth} movetime {max(1, int(limits.seconds * 1000))}"
         if limits.nodes:
             go += " nodes " + str(limits.nodes)
         if searchmoves:
@@ -111,7 +113,12 @@ class EngineController(QObject):
             self._error("Engine returned an illegal or outdated move: " + bestmove)
             return
         self.message.emit(
-            generation, "result", {"move": move, "info": self.lines.get(1, {}), "stopped": False}
+            generation, "result", {
+                "move": move,
+                "info": self.lines.get(1, {}),
+                "lines": {rank: info.copy() for rank, info in self.lines.items()},
+                "stopped": False,
+            }
         )
 
     def _error(self, message):

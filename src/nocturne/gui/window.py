@@ -614,7 +614,8 @@ class MainWindow(QMainWindow):
         analysis.addSeparator()
         add(analysis, "Go", self._start_analysis, "Ctrl+G")
         add(analysis, "Halt", self._halt_analysis, "Ctrl+H")
-        add(analysis, "Analyze entire line…", self._analyze_game, "F12")
+        add(analysis, "Auto-evaluate entire line", self._auto_evaluate_line, "F12")
+        add(analysis, "Analyze entire line…", self._analyze_game)
         add(analysis, "Pause / resume game analysis", self._pause_review)
         add(analysis, "Cancel game analysis", self._cancel_review)
         add(analysis, "Analyze all legal moves again", self._clear_focus)
@@ -675,6 +676,7 @@ class MainWindow(QMainWindow):
         self.multipv_menu = engine.addMenu("MultiPV")
         self.profile_menu = engine.addMenu("Active engine")
         self.search_mode_menu = engine.addMenu("Analysis limits")
+        self.auto_eval_limit_menu = engine.addMenu("Auto-evaluation nodes per position")
         self.resource_status_action = engine.addAction("")
         self.resource_status_action.setEnabled(False)
         engine.addSeparator()
@@ -724,6 +726,12 @@ class MainWindow(QMainWindow):
         dev = self.menuBar().addMenu("&Dev")
         self.raw_pgn_action = add(dev, "Show raw PGN data", self._set_raw_pgn)
         self.raw_pgn_action.setCheckable(True)
+        self.reanalyze_navigation_action = add(
+            dev,
+            "Automatically analyze when selecting a position",
+            self._set_reanalyze_navigation,
+        )
+        self.reanalyze_navigation_action.setCheckable(True)
         add(dev, "Engine diagnostics…", self._diagnostics)
         # Retain explicit references for menu state and interaction checks.
         self.shortcut_overrides = self.store.get("shortcuts", {}) if self.store else {}
@@ -768,6 +776,16 @@ class MainWindow(QMainWindow):
             self.tabs.setCurrentWidget(self.raw_pgn_page)
         self._analysis_tab_changed()
         self._save()
+
+    def _set_reanalyze_navigation(self, enabled):
+        self.config["reanalyze_on_navigation"] = bool(enabled)
+        self.reanalyze_navigation_action.setChecked(bool(enabled))
+        self._save()
+
+    def _set_auto_eval_nodes(self, nodes):
+        self.config["auto_eval_nodes"] = int(nodes)
+        self._save()
+        self._refresh_engine_menus()
 
     def _sync_raw_pgn(self):
         enabled = self.config.get("show_raw_pgn", False)
@@ -1285,6 +1303,39 @@ class MainWindow(QMainWindow):
         self._refresh()
         self._save()
 
+    def _auto_evaluate_line(self):
+        if not self._profile():
+            self._manage_engines()
+            return
+        self._cancel_review()
+        self._stop_engine()
+        self._ensure_analysis_copy()
+        self.analysis_mode = True
+        self.paused = False
+        self._analysis_enabled = False
+        self.game.pause_clock()
+        self._review = {
+            "kind": "auto_eval",
+            "game_id": self.game.id,
+            "line": self.game._line_nodes.copy(),
+            "index": 0,
+            "stage": "best",
+            "seconds": 600,
+            "paused": False,
+            "info": None,
+            "generation": None,
+            "depth": 128,
+            "nodes": self.config.get("auto_eval_nodes") or None,
+            "multipv": self._effective_multipv(),
+        }
+        self.analysis_nav.setChecked(True)
+        self.play_nav.setChecked(False)
+        self._refresh()
+        self.quick_analysis_button.setText("Stop auto-evaluation")
+        self._render_move_history()
+        self._save()
+        self._review_next()
+
     def _analyze_game(self):
         from PySide6.QtWidgets import QInputDialog
 
@@ -1356,7 +1407,12 @@ class MainWindow(QMainWindow):
         if state["index"] >= len(state["line"]):
             self._review = None
             self.quick_analysis_button.setText("Analyze")
-            self.statusBar().showMessage("Game analysis complete · evaluations and review evidence saved")
+            message = (
+                "Auto-evaluation complete · MultiPV results saved for every position"
+                if state.get("kind") == "auto_eval"
+                else "Game analysis complete · evaluations and review evidence saved"
+            )
+            self.statusBar().showMessage(message)
             self._save()
             self._render_move_history()
             self._update_review_panel()
@@ -1396,7 +1452,9 @@ class MainWindow(QMainWindow):
                 limits,
                 profile["path"],
                 options=profile.get("values", {}),
-                multipv=1,
+                multipv=state.get("multipv", 1),
+                infinite=state.get("kind") == "auto_eval" and state["nodes"] is None,
+                nodes_only=state.get("kind") == "auto_eval",
                 kind="analysis",
                 searchmoves=searchmoves,
                 arguments=profile.get("arguments", []),
@@ -1412,10 +1470,17 @@ class MainWindow(QMainWindow):
         state["turn"] = position.turn
         state["profile"] = profile["id"]
         state["options"] = dict(profile.get("values", {}))
-        self.quick_analysis_button.setText("Pause review")
-        self.statusBar().showMessage(
-            f"Game analysis {state['index'] + 1}/{len(state['line'])} · {state['stage']} search"
+        self.quick_analysis_button.setText(
+            "Pause auto-evaluation" if state.get("kind") == "auto_eval" else "Pause review"
         )
+        if state.get("kind") == "auto_eval":
+            self.statusBar().showMessage(
+                f"Auto-evaluating position {state['index'] + 1}/{len(state['line'])}"
+            )
+        else:
+            self.statusBar().showMessage(
+                f"Game analysis {state['index'] + 1}/{len(state['line'])} · {state['stage']} search"
+            )
         self._update_review_panel()
 
     def _review_message(self, generation, kind, payload):
@@ -1453,6 +1518,18 @@ class MainWindow(QMainWindow):
         state["generation"] = None
         line = state["line"]
         node_id = line[index]
+        if state.get("kind") == "auto_eval":
+            lines = payload.get("lines") or {1: info}
+            self._store_analysis(self.game, node_id, info, state["turn"], state)
+            self.game.nodes[node_id].analysis["multipv_lines"] = [
+                dict(lines[rank]) for rank in sorted(lines)
+            ]
+            state["index"] += 1
+            self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
+            self._save()
+            self._render_move_history()
+            QTimer.singleShot(0, self._review_next)
+            return True
         if state["stage"] == "best":
             self._store_analysis(self.game, node_id, info, state["turn"], state)
             state["best"] = info.copy()
@@ -1496,7 +1573,11 @@ class MainWindow(QMainWindow):
         if self._review["paused"]:
             self.engine.stop()
             self._review["generation"] = None
-            self.quick_analysis_button.setText("Resume review")
+            self.quick_analysis_button.setText(
+                "Resume auto-evaluation"
+                if self._review.get("kind") == "auto_eval"
+                else "Resume review"
+            )
             self._save()
         else:
             self._review_next()
@@ -1607,6 +1688,24 @@ class MainWindow(QMainWindow):
         self._refresh_engine_menus()
         self._schedule_engine()
 
+    def _set_auto_eval_limit(self, nodes):
+        self.config["auto_eval_nodes"] = int(nodes)
+        self._save()
+        self._refresh_engine_menus()
+
+    def _custom_auto_eval_limit(self):
+        nodes, accepted = QInputDialog.getInt(
+            self,
+            "Auto-evaluation node limit",
+            "Maximum nodes for each position (0 means unlimited):",
+            self.config.get("auto_eval_nodes", 10_000_000),
+            0,
+            2_000_000_000,
+            1_000_000,
+        )
+        if accepted:
+            self._set_auto_eval_limit(nodes)
+
     def _edit_analysis_limits(self):
         dialog = QDialog(self)
         dialog.setWindowTitle("Analysis limits")
@@ -1651,6 +1750,27 @@ class MainWindow(QMainWindow):
             action.triggered.connect(lambda checked=False, m=mode: self._set_analysis_limit(m))
         self.search_mode_menu.addSeparator()
         self.search_mode_menu.addAction("Set limits…", self._edit_analysis_limits)
+        self.auto_eval_limit_menu.clear()
+        auto_eval_nodes = self.config.get("auto_eval_nodes", 10_000_000)
+        limit_label = "Unlimited" if auto_eval_nodes == 0 else f"{auto_eval_nodes:,}"
+        self.auto_eval_limit_menu.setTitle(f"Auto-evaluation nodes per position · {limit_label}")
+        for title, nodes in (
+            ("Unlimited · stop manually", 0),
+            ("1,000,000,000", 1_000_000_000),
+            ("100,000,000", 100_000_000),
+            ("10,000,000", 10_000_000),
+            ("1,000,000", 1_000_000),
+            ("100,000", 100_000),
+            ("10,000", 10_000),
+        ):
+            action = self.auto_eval_limit_menu.addAction(title)
+            action.setCheckable(True)
+            action.setChecked(auto_eval_nodes == nodes)
+            action.triggered.connect(
+                lambda checked=False, value=nodes: self._set_auto_eval_limit(value)
+            )
+        self.auto_eval_limit_menu.addSeparator()
+        self.auto_eval_limit_menu.addAction("Custom…", self._custom_auto_eval_limit)
         self.multipv_menu.clear()
         profile = self._profile()
         option = profile.get("options", {}).get("MultiPV") if profile else None
@@ -1771,6 +1891,10 @@ class MainWindow(QMainWindow):
             action.setChecked(key == self.board_view.candidate_style)
         for key, action in self.display_actions.items():
             action.setChecked(bool(self.config.get(key, False)))
+        if hasattr(self, "reanalyze_navigation_action"):
+            self.reanalyze_navigation_action.setChecked(
+                bool(self.config.get("reanalyze_on_navigation", False))
+            )
         if not self._profile() and self.profiles:
             self.config["engine_id"] = self.profiles[0]["id"]
         self._refresh_engine_menus()
@@ -2138,9 +2262,16 @@ class MainWindow(QMainWindow):
         self._refresh()
         self._schedule_engine()
 
+    def _navigation_should_analyze(self):
+        return bool(
+            self.config.get("reanalyze_on_navigation", False)
+            or (self.analysis_mode and self._analysis_enabled and not self.paused)
+        )
+
     def _undo(self):
         if not self.analysis_mode and not self.config.get("takebacks", True):
             return
+        analyze = self._navigation_should_analyze()
         self._stop_engine()
         if self.game.undo():
             if not self.analysis_mode and self.config.get("mode") == "human_ai":
@@ -2148,18 +2279,23 @@ class MainWindow(QMainWindow):
                     self.game.undo()
             self._refresh()
             self._save()
+            self._analysis_enabled = analyze
+            if analyze:
+                self.paused = False
             self._schedule_engine()
 
     def _redo(self):
         if self.game.cursor >= len(self.game.moves):
             return
+        analyze = self._navigation_should_analyze()
         self._stop_engine()
         self._ensure_analysis_copy()
         if self.game.redo():
             if not self.analysis_mode:
                 self.analysis_mode = True
-                self._analysis_enabled = True
-            self.paused = False
+            self._analysis_enabled = analyze
+            if analyze:
+                self.paused = False
             self._refresh()
             self._save()
             self._schedule_engine()
@@ -2172,12 +2308,14 @@ class MainWindow(QMainWindow):
     def _navigate(self, cursor):
         if not self.analysis_mode and not self.config.get("takebacks", True):
             return
+        analyze = self._navigation_should_analyze()
         self._stop_engine()
         self._ensure_analysis_copy()
         self.game.navigate(cursor)
         self.analysis_mode = True
-        self._analysis_enabled = True
-        self.paused = False
+        self._analysis_enabled = analyze
+        if analyze:
+            self.paused = False
         self.analysis_nav.setChecked(True)
         self.title_label.setText("Room to explore.")
         self._refresh()
@@ -2186,12 +2324,14 @@ class MainWindow(QMainWindow):
     def _navigate_node(self, node_id):
         if not self.analysis_mode and not self.config.get("takebacks", True):
             return
+        analyze = self._navigation_should_analyze()
         self._stop_engine()
         self._ensure_analysis_copy()
         self.game.select_node(node_id)
         self.analysis_mode = True
-        self._analysis_enabled = True
-        self.paused = False
+        self._analysis_enabled = analyze
+        if analyze:
+            self.paused = False
         self._refresh()
         self._save()
         self._schedule_engine()

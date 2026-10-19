@@ -50,6 +50,8 @@ DEFAULTS = {
     "explorer_rating": 0,
     "engine_id": "",
     "analysis_nodes": 0,
+    "auto_eval_nodes": 10_000_000,
+    "reanalyze_on_navigation": False,
     "external_path": "",
     "syzygy_path": "",
     "watch_delay_ms": 500,
@@ -109,6 +111,7 @@ def normalize(data) -> dict:
         "show_seldepth",
         "explorer_enabled",
         "explorer_statistics",
+        "reanalyze_on_navigation",
     ):
         if isinstance(data.get(key), bool):
             result[key] = data[key]
@@ -121,6 +124,7 @@ def normalize(data) -> dict:
         ("analysis_depth", 1, 128),
         ("multipv", 1, 32),
         ("analysis_nodes", 0, 2_000_000_000),
+        ("auto_eval_nodes", 0, 2_000_000_000),
         ("analysis_seconds", 0.05, 600),
         ("review_seconds", 0.05, 600),
         ("seconds", 0, 86400),

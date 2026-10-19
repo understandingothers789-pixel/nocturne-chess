@@ -94,6 +94,20 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(window.game.sans[4:], ["Nc3"])
         self.assertIn("(", window.game.pgn())
 
+    def test_move_navigation_reanalysis_is_opt_in(self):
+        window = self.window
+        window.game = Game.from_pgn("1.e4 e5 2.Nf3 *")
+        window.analysis_mode = True
+        window._analysis_enabled = False
+        window._navigate(1)
+        self.assertFalse(window._analysis_enabled)
+        self.assertFalse(window.config["reanalyze_on_navigation"])
+        window.config["reanalyze_on_navigation"] = True
+        window._navigate(2)
+        self.assertTrue(window._analysis_enabled)
+        action = window.menu_actions["Automatically analyze when selecting a position"]
+        self.assertFalse(action.isChecked())
+
     def test_backspace_deletes_current_branch_selects_sibling_and_saves(self):
         self._analysis_game("1.e4 e5 (1...Nf6 2.d4) 2.Nf3 (2.Bc4) *")
         window = self.window

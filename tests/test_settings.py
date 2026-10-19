@@ -4,6 +4,14 @@ from nocturne.settings import DEFAULTS, normalize
 
 
 class SettingsTests(unittest.TestCase):
+    def test_auto_evaluation_and_navigation_preferences(self):
+        self.assertEqual(DEFAULTS["auto_eval_nodes"], 10_000_000)
+        self.assertFalse(DEFAULTS["reanalyze_on_navigation"])
+        settings = normalize({"auto_eval_nodes": 3_000_000_000, "reanalyze_on_navigation": True})
+        self.assertEqual(settings["auto_eval_nodes"], 2_000_000_000)
+        self.assertTrue(settings["reanalyze_on_navigation"])
+        self.assertFalse(normalize({"reanalyze_on_navigation": "yes"})["reanalyze_on_navigation"])
+
     def test_nibbler_piece_default_upgrades_once_then_keeps_user_choice(self):
         self.assertEqual(normalize({})["piece_set"], "Nibbler")
         for old in ("Cburnett", "Original"):

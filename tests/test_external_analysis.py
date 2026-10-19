@@ -539,6 +539,25 @@ class QtIntegration(unittest.TestCase):
             restored = Game.from_pgn(exported)
             self.assertEqual(len(restored.evaluations), len(window.game.evaluations))
 
+    def test_auto_evaluate_line_uses_multipv_node_caps_and_saves_lines(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            window.autosave_timer.stop()
+            profile = self.profile()
+            profile["options"] = {"MultiPV": {"maximum": 8}}
+            window.profiles = [profile]
+            window.config.update(
+                engine_id="simulator", multipv=3, auto_eval_nodes=100, analysis_kind="infinite"
+            )
+            window._apply_settings()
+            window.game = Game.from_pgn("1.e3 e5 *")
+            window._refresh()
+            window._auto_evaluate_line()
+            self.wait_until(lambda: window._review is None, 8)
+            self.assertIn("> go nodes 100", "\n".join(window.engine.connection.log))
+            self.assertEqual(len(window.game.nodes[0].analysis["multipv_lines"]), 3)
+            self.assertEqual(len(window.game.nodes[1].analysis["multipv_lines"]), 3)
+
     def test_review_panel_grades_accuracy_navigation_and_saved_restore(self):
         from nocturne.review import rows, summarize
 
