@@ -1,5 +1,20 @@
 # Windows 11 desktop builds
 
+## [0.5.7.46 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39328994908/artifacts/12223857949)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Right-click Game Moves to copy the current PGN. Candidate line copy commands
+identify the selected line; the candidate menu also copies a standalone PGN for
+that line.
+
+Windows run [39328994908](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39328994908)
+passed lint, the full test suite, Windows packaging and packaged smoke checks.
+
+Artifact **12223857949**, `Nocturne-0.5.7.46-Windows-x64-unsigned`,
+58,000,493 bytes, expires 2026-11-18. GitHub artifact SHA-256:
+`2b6d0a823c79f07d73fa59b53c1553380346c2340c710eb8d0934ed423b875e0`.
+
 ## [0.5.7.45 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39324878577/artifacts/12222670020)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
