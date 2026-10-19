@@ -1,11 +1,12 @@
 # Active roadmap
 
-**Current: 0.5.7.26 pending CI.** Top telemetry leads with evaluation before
+**Current: 0.5.7.26 delivered.** Top telemetry leads with evaluation before
 depth, followed by nodes and nodes/second. One to four MultiPV candidates keep
 fixed three-row compact slots as long PVs update; each arrow reveals the rest
 of that candidate's line. Selective depth remains optional in **Display → Show
 selective depth (seldepth)**. Local: 181 tests passed, 11 skipped; Ruff passed.
-See the [build receipt](docs/BUILDING.md) for Windows validation.
+Windows: 192 tests passed with 5 optional skips, Ruff, PyInstaller, packaged
+launch and live database checks passed. See the [build receipt](docs/BUILDING.md).
 
 **Previous: 0.5.7.25 delivered.** Candidate headers and top telemetry hide
 selective depth by default and use a subtle blue emphasis for search metrics.

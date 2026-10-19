@@ -2,11 +2,20 @@
 
 ## Download Windows 0.5.7.26
 
-Build pending.
+[Download the Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39188713970/artifacts/12158309732).
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
 
 Evaluation now appears before depth in top engine telemetry, and compact
 MultiPV candidates keep their three-row slots stable for up to four lines.
-Workflow and artifact details will be recorded here after CI completes.
+Feature commit [`6de684f`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/6de684f59e5316fc5d3d67180294d91582e66602).
+Windows run [39188713970](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39188713970)
+passed **192 tests (187 passed / 5 optional skips)**, Ruff, PyInstaller,
+packaged launch checks and the live database API check. Local validation passed
+**181 tests with 11 skips** and Ruff.
+
+Artifact **12158309732**, `Nocturne-0.5.7.26-Windows-x64-unsigned`,
+57,902,068 bytes, expires 2026-11-18. SHA-256:
+`94cfa100a1f806f4781716aa95d5efe28529ec2ad424680e110445f77c35cc90`.
 
 # Windows 11 desktop builds · 0.5.7.25
 

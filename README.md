@@ -18,8 +18,13 @@ four MultiPV lines selected, each compact variation stays within its three
 reserved move rows as the engine updates; use that variation's arrow to reveal
 its full line. Depth shows only its main value by default; use **Display → Show
 selective depth (seldepth)** to include selective depth in candidate headers
-and top telemetry. Windows build and validation details will be added to the
-[build receipt](docs/BUILDING.md) after CI completes.
+and top telemetry. Download the unsigned [Windows build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39188713970/artifacts/12158309732)
+and launch `Nocturne/Nocturne.exe` after extracting the ZIP. See the
+[build receipt](docs/BUILDING.md) for its checksum and Windows validation.
+
+**0.5.7.25: clearer engine telemetry.** Depth shows only its main value by
+default, while **Display → Show selective depth (seldepth)** reveals the
+denominator. Depth, nodes and nodes per second have a restrained blue emphasis.
 
 **0.5.7.24: steady wheel previews.** Scrolling through a candidate stays on
 the selected ply while the pointer moves within the same move. Moving to a
