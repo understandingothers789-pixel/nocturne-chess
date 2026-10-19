@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.45 — Normal PGN imports and clearer candidate markers
+
+- Clipboard and file imports show Engine analysis with moves in Game Moves.
+  Raw PGN is hidden by default, including a one-time reset of older preferences.
+- Apply PGN and Load current explain their effects in tooltips.
+- Candidate rods are thicker with larger numbered endpoints; inferior moves
+  at least 50 centipawns below the best reported score use yellow.
+
 ## 0.5.7.44 — Readable menus and movable game tabs
 
 - The database menu names **Lichess Masters database** as the recommended

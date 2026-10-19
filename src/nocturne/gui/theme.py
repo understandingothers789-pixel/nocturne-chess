@@ -15,7 +15,7 @@ BOARD_THEMES = {
     "Midnight": ("#98aaa1", "#3c5b50"),
 }
 
-CANDIDATE_MARKERS = ("#65a9ab", "#62a460")
+CANDIDATE_MARKERS = ("#65a9ab", "#62a460", "#d3c75d")
 
 
 class MenuStripeStyle(QProxyStyle):

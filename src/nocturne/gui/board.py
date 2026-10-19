@@ -41,6 +41,7 @@ class BoardWidget(QWidget):
         self.game_move: Move | None = None
         self._position_revision = 0
         self.recommendations = []
+        self.inferior_ranks = set()
         self.recommendation_fen = None
         self.smart_move = False
         self.candidate_style = "arrows"
@@ -126,6 +127,7 @@ class BoardWidget(QWidget):
         self.best_move = None
         self.game_move = None
         self.recommendations = []
+        self.inferior_ranks = set()
         self.recommendation_fen = None
         self.branch_moves = []
         if animate and last_move and self.animations:
@@ -133,10 +135,11 @@ class BoardWidget(QWidget):
             self._animation.start()
         self.update()
 
-    def set_recommendations(self, entries):
+    def set_recommendations(self, entries, *, inferior_ranks=()):
         legal = list(self.board.legal_moves())
         seen = set()
         self.recommendations = []
+        self.inferior_ranks = set(inferior_ranks)
         for move, rank, text in sorted(entries, key=lambda entry: entry[1]):
             if move in legal and move not in seen and 1 <= rank <= 32:
                 self.recommendations.append((move, rank, text))
@@ -235,11 +238,11 @@ class BoardWidget(QWidget):
         dx, dy = b.x() - a.x(), b.y() - a.y()
         distance = math.hypot(dx, dy)
         dx, dy = dx / distance, dy / distance
-        # Engine hints should sit quietly over the pieces. Manual annotations
-        # keep their larger geometry, while hint strokes stay thin on large boards.
-        width = max(1.0, min(2.0, unit * 0.022)) if subtle else unit * 0.115
-        head_length = unit * (0.13 if subtle else 0.37)
-        head_width = unit * (0.065 if subtle else 0.20)
+        width = max(2.0, unit * 0.060) if subtle else unit * 0.115
+        head_length = unit * (0.22 if subtle else 0.37)
+        head_width = unit * (0.13 if subtle else 0.20)
+        if subtle:
+            a += QPointF(dx, dy) * (unit * 0.25)
         end = b - QPointF(dx, dy) * (head_length * 0.85 if subtle else unit * 0.20)
         painter.setPen(QPen(color, width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         painter.drawLine(a, end)
@@ -345,21 +348,28 @@ class BoardWidget(QWidget):
                 destination = self._destination(move)
                 best_rank[destination] = min(rank, best_rank.get(destination, rank))
             for move, rank, text in reversed(entries):
-                color = QColor(CANDIDATE_MARKERS[0 if rank == 1 else 1])
-                color.setAlpha(175 if rank == 1 else 145)
+                marker = CANDIDATE_MARKERS[0 if rank == 1 else 2 if rank in self.inferior_ranks else 1]
+                color = QColor(marker)
+                color.setAlpha(225)
                 if self.candidate_style == "lines":
-                    painter.setPen(QPen(color, max(1.0, min(2.0, unit * 0.025)), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-                    painter.drawLine(self.square_rect(move.from_sq).center(), self.square_rect(self._destination(move)).center())
+                    start = self.square_rect(move.from_sq).center()
+                    end = self.square_rect(self._destination(move)).center()
+                    delta = end - start
+                    length = math.hypot(delta.x(), delta.y())
+                    if length:
+                        start += delta * (unit * 0.25 / length)
+                    painter.setPen(QPen(color, max(2.0, unit * 0.065), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                    painter.drawLine(start, end)
                 else:
                     self._arrow(painter, move.from_sq, self._destination(move), color, unit, subtle=True)
                 if best_rank[self._destination(move)] != rank:
                     continue
                 destination = self.square_rect(self._destination(move))
-                diameter = max(11.0, min(21.0, unit * 0.20))
+                diameter = max(13.0, unit * 0.245)
                 center = destination.center()
                 badge = QRectF(center.x() - diameter / 2, center.y() - diameter / 2, diameter, diameter)
-                badge_color = QColor(CANDIDATE_MARKERS[0 if rank == 1 else 1])
-                badge_color.setAlpha(205)
+                badge_color = QColor(marker)
+                badge_color.setAlpha(250)
                 painter.setBrush(badge_color)
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawEllipse(badge)

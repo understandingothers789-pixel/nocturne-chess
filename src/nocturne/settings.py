@@ -22,6 +22,7 @@ DEFAULTS = {
     "coordinates": True,
     "show_clocks": True,
     "show_raw_pgn": False,
+    "raw_pgn_version": 1,
     "expand_pv": False,
     "expand_pv_version": 1,
     "cursor_preview": False,
@@ -124,6 +125,8 @@ def normalize(data) -> dict:
     ):
         if isinstance(data.get(key), bool):
             result[key] = data[key]
+    if data.get("raw_pgn_version") != 1:
+        result["show_raw_pgn"] = False
     # Older builds could preserve the global expand-all setting. Reset it once
     # to the compact default, then respect later explicit user choices.
     if data.get("expand_pv_version") != 1:

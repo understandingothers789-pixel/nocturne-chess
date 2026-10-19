@@ -1722,6 +1722,8 @@ class GuiTests(unittest.TestCase):
             QApplication.clipboard().setText("1.d4 d5 2.c4 *")
             self.window.menu_actions["load_clipboard"].trigger()
             self.assertEqual(self.window.game.sans, ["d4", "d5", "c4"])
+            self.assertEqual(self.window.tabs.currentIndex(), 1)
+            self.assertFalse(self.window.raw_pgn_action.isChecked())
             fen = self.window.game.board.fen()
             QApplication.clipboard().setText(fen)
             self.window._load_clipboard()

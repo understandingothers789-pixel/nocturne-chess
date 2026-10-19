@@ -472,6 +472,13 @@ class MainWindow(QMainWindow):
         self.apply_pgn_button = button("Apply PGN", self._apply_pgn, "primary")
         self.load_pgn_button = button("Load current", self._load_current_pgn)
         self.load_pgn_button.setAccessibleName("Load current game into PGN editor")
+        self.apply_pgn_button.setToolTip(
+            "Import the text in this editor as a new study and show its moves on the board and in Game Moves."
+        )
+        self.load_pgn_button.setToolTip(
+            "Copy the currently open game into this editor for viewing or editing. "
+            "This replaces the editor text; it does not change the game."
+        )
         pgn_actions = QHBoxLayout()
         pgn_actions.addWidget(self.apply_pgn_button)
         pgn_actions.addWidget(self.load_pgn_button)
@@ -1335,13 +1342,17 @@ class MainWindow(QMainWindow):
         if self._candidate_identity != self._position_identity():
             return
         entries = []
+        best = self.candidates.lines.get(1, {}).get("score")
+        inferior_ranks = set()
         for rank, line in self.candidates.lines.items():
+            if best is not None and line.get("score") is not None and best - line["score"] >= 50:
+                inferior_ranks.add(rank)
             try:
                 entries.append((self.game.board.parse_uci(line["pv"][0]), rank,
                                 score_label(line, self.game.board.turn)))
             except (ValueError, IndexError):
                 continue
-        self.board_view.set_recommendations(entries)
+        self.board_view.set_recommendations(entries, inferior_ranks=inferior_ranks)
 
     def _insert_candidate(self, rank, ply=None):
         if self._candidate_identity != self._position_identity() or rank not in self.candidates.lines:
@@ -2963,8 +2974,7 @@ class MainWindow(QMainWindow):
         self._import_text(self.pgn_editor.toPlainText())
 
     def _load_clipboard(self):
-        if self._import_text(QApplication.clipboard().text()):
-            self._show_pgn()
+        self._import_text(QApplication.clipboard().text())
 
     def _open_pgn(self):
         path, _ = QFileDialog.getOpenFileName(self, "Open PGN", "", "PGN games (*.pgn);;All files (*)")
@@ -3015,6 +3025,7 @@ class MainWindow(QMainWindow):
         self.game.metadata["mode"] = "analysis"
         self._history_signature = None
         self._workspace(True)
+        self.tabs.setCurrentIndex(1)
         self.paused = False
         self._refresh()
         self._save()
