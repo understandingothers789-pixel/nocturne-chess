@@ -16,7 +16,9 @@ are explicitly labelled fixtures, not live results.*
 default; use **Display → Show selective depth (seldepth)** to include the
 selective-depth denominator in candidate headers and top telemetry. Depth,
 nodes and nodes per second stand out with a subtle blue tint and slightly larger
-text. The Windows build is being validated; see the [build receipt](docs/BUILDING.md).
+text. Download the unsigned [Windows build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39186772633/artifacts/12158418237)
+and launch `Nocturne/Nocturne.exe` after extracting the ZIP. See the
+[build receipt](docs/BUILDING.md) for its checksum and validation details.
 
 **0.5.7.24: steady wheel previews.** Scrolling through a candidate stays on
 the selected ply while the pointer moves within the same move. Moving to a

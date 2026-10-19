@@ -1,9 +1,21 @@
 # Windows 11 desktop builds · 0.5.7.25
 
-## Windows 0.5.7.25 build pending
+## Download Windows 0.5.7.25
 
-The feature commit is being validated by the Windows workflow. Its artifact
-link and checksum will be added here after the build completes.
+[Download the Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39186772633/artifacts/12158418237).
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Feature commit `eeaa0a62f1bbc1ec763aa87c7a8f9dcc385f67dd` hides selective depth
+by default and adds the **Display → Show selective depth (seldepth)** setting
+for candidate headers and top telemetry. Depth, node count, and nodes per second
+are slightly larger with a restrained blue accent. Windows run
+[39186772633](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39186772633)
+passed **191 tests (186 passed / 5 optional skips)** in 202.159 seconds, Ruff,
+PyInstaller and packaged launch checks.
+
+Artifact **12158418237**, `Nocturne-0.5.7.25-Windows-x64-unsigned`,
+57,898,979 bytes, expires 2026-11-18. SHA-256:
+`57aa87ec59554d28d5d89144c491adce7ee81751e844e3478d02a346497dfd01`.
 
 # Windows 11 desktop builds · 0.5.7.24
 
