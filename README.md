@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.40
+# Nocturne Analysis
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -12,9 +12,9 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
-**[0.5.7.39](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39301723082/artifacts/12212705129): aligned analysis headers and a quieter book marker.** Each candidate’s score, depth, W/D/L, API win, frequency and database status share one row above its moves. The row wraps to fit the pane and keeps a consistent height across candidates. The out-of-book move uses a muted slate-blue gray tint, without bolding or an underline. Windows validation and packaging passed. Extract the ZIP and open `Nocturne/Nocturne.exe`. See the [build receipt](docs/BUILDING.md).
-
 **[0.5.7.40](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39305070431/artifacts/12213946559): preview saved games.** Hover over or select a saved PGN to see its final main-line board position and the first six full moves. Windows validation and packaging passed. Extract the ZIP and open `Nocturne/Nocturne.exe`. See the [build receipt](docs/BUILDING.md).
+
+**[0.5.7.39](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39301723082/artifacts/12212705129): aligned analysis headers and a quieter book marker.** Each candidate’s score, depth, W/D/L, API win, frequency and database status share one row above its moves. The row wraps to fit the pane and keeps a consistent height across candidates. The out-of-book move uses a muted slate-blue gray tint, without bolding or an underline. Windows validation and packaging passed. Extract the ZIP and open `Nocturne/Nocturne.exe`. See the [build receipt](docs/BUILDING.md).
 
 **[0.5.7.36](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39296780043/artifacts/12209442411): automatic out-of-book highlighting.** With Masters statistics enabled and a session access token in use, the first PGN move that leaves the database is marked in Game Moves. Hover it for an Out of book tooltip. Coverage runs automatically; failed requests do not count as zero games. Windows validation and packaging passed. Extract the ZIP and open `Nocturne/Nocturne.exe`. See the [build receipt](docs/BUILDING.md).
 
