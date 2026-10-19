@@ -677,6 +677,13 @@ class MainWindow(QMainWindow):
         self.search_mode_menu = engine.addMenu("Analysis limits")
         self.resource_status_action = engine.addAction("")
         self.resource_status_action.setEnabled(False)
+        engine.addSeparator()
+        self.expand_pv_action = add(engine, "Expand all analysis lines", self._set_expand_pv)
+        self.expand_pv_action.setCheckable(True)
+        self.cursor_preview_action = add(
+            engine, "Preview moves on a small board near cursor", self._set_cursor_preview
+        )
+        self.cursor_preview_action.setCheckable(True)
         engine.aboutToShow.connect(self._refresh_engine_menus)
         engine.addSeparator()
         add(engine, "Restart selected engine", self._restart_engine)
@@ -717,8 +724,6 @@ class MainWindow(QMainWindow):
         dev = self.menuBar().addMenu("&Dev")
         self.raw_pgn_action = add(dev, "Show raw PGN data", self._set_raw_pgn)
         self.raw_pgn_action.setCheckable(True)
-        self.cursor_preview_action = add(dev, "Preview moves on a small board near cursor", self._set_cursor_preview)
-        self.cursor_preview_action.setCheckable(True)
         add(dev, "Engine diagnostics…", self._diagnostics)
         # Retain explicit references for menu state and interaction checks.
         self.shortcut_overrides = self.store.get("shortcuts", {}) if self.store else {}
@@ -743,6 +748,13 @@ class MainWindow(QMainWindow):
         self._clear_move_preview()
         self.config["cursor_preview"] = bool(enabled)
         self.cursor_preview_action.setChecked(bool(enabled))
+        self._save()
+
+    def _set_expand_pv(self, enabled):
+        self.config["expand_pv"] = bool(enabled)
+        self.config["expand_pv_version"] = 1
+        self.candidates.set_expanded(enabled)
+        self.expand_pv_action.setChecked(bool(enabled))
         self._save()
 
     def _move_cursor_preview(self, point):
@@ -1769,6 +1781,8 @@ class MainWindow(QMainWindow):
         self.candidates.set_wheel_navigation(self.config.get("wheel_analysis_moves", True))
         self._sync_explorer()
         self._sync_raw_pgn()
+        self.candidates.set_expanded(self.config.get("expand_pv", False))
+        self.expand_pv_action.setChecked(self.config.get("expand_pv", False))
         self.cursor_preview_action.setChecked(self.config.get("cursor_preview", False))
 
     def _sync_workspace_layout(self):

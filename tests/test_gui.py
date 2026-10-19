@@ -975,12 +975,21 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(hovered, [1])
         self.assertEqual(clicked, [1])
 
-    def test_candidate_rows_ignore_legacy_global_unfixed_setting(self):
+    def test_engine_expand_controls_default_off_and_expand_full_lines(self):
         base, job = self._three_pvs()
         panel = self.window.candidates
-        # A saved preference from the old global override must not bypass the
-        # compact row limits.
-        self.window.config["expand_pv"] = True
+        from nocturne.settings import normalize
+
+        self.assertFalse(self.window.config["expand_pv"])
+        self.assertFalse(normalize({"expand_pv": True})["expand_pv"])
+        engine_actions = {action.text(): action for action in self.window.menus["Engine"].actions()}
+        dev_actions = {action.text() for action in self.window.menus["Dev"].actions()}
+        self.assertIn("Expand all analysis lines", engine_actions)
+        self.assertIn("Preview moves on a small board near cursor", engine_actions)
+        self.assertNotIn("Expand all analysis lines", dev_actions)
+        self.assertNotIn("Preview moves on a small board near cursor", dev_actions)
+        self.assertFalse(self.window.expand_pv_action.isChecked())
+
         long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
         self._show_external_info(base | {"multipv": 1, "pv": long_pv}, job)
         self.app.processEvents()
@@ -990,13 +999,23 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(moves.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.assertGreater(moves.wrapped_line_count(), 3)
 
+        self.window.expand_pv_action.trigger()
+        self.app.processEvents()
+        self.assertTrue(self.window.config["expand_pv"])
+        self.assertTrue(self.window.store.get("settings", {})["expand_pv"])
+        self.assertGreater(moves.height(), height_at_three_rows)
+
+        self.window.expand_pv_action.trigger()
+        self.app.processEvents()
+        self.assertFalse(self.window.config["expand_pv"])
+        self.assertEqual(moves.height(), height_at_three_rows)
+
         panel.set_multipv(5)
         panel.reserve_slots(4)
         self.app.processEvents()
         height_at_two_rows = moves.height()
         self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {2})
         self.assertNotEqual(height_at_two_rows, height_at_three_rows)
-        self.assertFalse(hasattr(self.window, "expand_pv_action"))
 
         panel.set_multipv(4)
         self.app.processEvents()

@@ -1,3 +1,13 @@
+# Windows 11 desktop builds · 0.5.7.28
+
+## Download Windows 0.5.7.28
+
+Build not requested; the compact-default settings change was committed with CI
+skipped as requested.
+
+The global expand-all option defaults off and resets older saved values once.
+Both expand-all and cursor-preview controls are in the Engine menu.
+
 # Windows 11 desktop builds · 0.5.7.27
 
 ## Download Windows 0.5.7.27

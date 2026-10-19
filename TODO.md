@@ -1,9 +1,9 @@
 # Active roadmap
 
-**Current: 0.5.7.27 pending CI.** The old global expand-all preference no longer
-bypasses compact PV height limits. Up to four candidates stay within three rows;
-five or more stay within two. Per-line arrows still expand one PV. Top telemetry
-leads with evaluation before
+**Current: 0.5.7.28.** Global expand-all defaults off, including for legacy
+profiles. The expand-all and cursor-preview controls are in Engine. Up to four
+candidates reserve three rows, five or more reserve two, and per-line arrows
+expand one PV. Top telemetry leads with evaluation before
 depth, followed by nodes and nodes/second. One to four MultiPV candidates keep
 fixed three-row compact slots as long PVs update; each arrow reveals the rest
 of that candidate's line. Selective depth remains optional in **Display → Show

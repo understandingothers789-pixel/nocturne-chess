@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7.28 — Default analysis lines to compact and move controls to Engine
+
+Turn off the global expand-all option for the default and migrate older saved
+preferences to that default once. Move both global expansion and cursor-preview
+controls from Dev to Engine. The expansion option remains available when
+intentionally needed; per-candidate arrows continue to expand one line.
+
 ## 0.5.7.27 — Enforce compact MultiPV row limits
 
 Remove the persisted global “Expand all analysis lines” override, which could

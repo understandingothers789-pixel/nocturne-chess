@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.27
+# Nocturne Analysis · 0.5.7.28
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -12,11 +12,12 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
-**0.5.7.27: enforce compact MultiPV row limits.** Up to four candidate lines
-stay within three move rows, and five or more stay within two. Each line's
-arrow still expands that variation alone. The old global expand-all option is
-removed because it bypassed the compact limits. Build details will follow in
-the [Windows build receipt](docs/BUILDING.md).
+**0.5.7.28: compact analysis by default.** Expand all analysis lines is now
+off by default, including for existing profiles that had an older saved value.
+The global expand-all and small cursor-board preview settings are in the
+**Engine** menu. Up to four candidate lines reserve three move rows, five or
+more reserve two, and a candidate's arrow expands only that variation. Build
+details will follow in the [Windows build receipt](docs/BUILDING.md).
 
 **0.5.7.26: evaluation-first telemetry and stable MultiPV rows.** The top
 engine metrics now show the evaluation immediately before depth. With one to

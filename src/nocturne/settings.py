@@ -22,6 +22,8 @@ DEFAULTS = {
     "coordinates": True,
     "show_clocks": True,
     "show_raw_pgn": False,
+    "expand_pv": False,
+    "expand_pv_version": 1,
     "cursor_preview": False,
     "wheel_game_moves": True,
     "wheel_analysis_moves": True,
@@ -94,6 +96,7 @@ def normalize(data) -> dict:
         "coordinates",
         "show_clocks",
         "show_raw_pgn",
+        "expand_pv",
         "cursor_preview",
         "wheel_game_moves",
         "wheel_analysis_moves",
@@ -109,6 +112,10 @@ def normalize(data) -> dict:
     ):
         if isinstance(data.get(key), bool):
             result[key] = data[key]
+    # Older builds could preserve the global expand-all setting. Reset it once
+    # to the compact default, then respect later explicit user choices.
+    if data.get("expand_pv_version") != 1:
+        result["expand_pv"] = False
     for key, minimum, maximum in (
         ("hash_mb", 1, 65536),
         ("analysis_depth", 1, 128),
