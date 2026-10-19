@@ -1,12 +1,18 @@
 # Windows 11 desktop builds · 0.5.7.28
 
-## Download Windows 0.5.7.28
+## [Download Windows 0.5.7.28](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39191809527/artifacts/12159804179)
 
-Build not requested; the compact-default settings change was committed with CI
-skipped as requested.
+[Download the Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39191809527/artifacts/12159804179).
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
 
 The global expand-all option defaults off and resets older saved values once.
 Both expand-all and cursor-preview controls are in the Engine menu.
+
+Windows run [39191809527](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39191809527)
+passed lint, the full test suite, packaged build and smoke checks, and the live
+database API check. Artifact **12159804179**, `Nocturne-0.5.7.28-Windows-x64-unsigned`,
+57,908,768 bytes, expires 2026-11-18. SHA-256:
+`37ddca0a0a0a6ee65621f596e1655fd67c77a181e8914a3df4ee3c67f41e120f`.
 
 # Windows 11 desktop builds · 0.5.7.27
 

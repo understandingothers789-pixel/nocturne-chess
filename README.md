@@ -12,21 +12,21 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
-**0.5.7.28: compact analysis by default.** Expand all analysis lines is now
+**[0.5.7.28](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39191809527/artifacts/12159804179): compact analysis by default.** Expand all analysis lines is now
 off by default, including for existing profiles that had an older saved value.
 The global expand-all and small cursor-board preview settings are in the
 **Engine** menu. Up to four candidate lines reserve three move rows, five or
 more reserve two, and a candidate's arrow expands only that variation. Build
 details will follow in the [Windows build receipt](docs/BUILDING.md).
 
-**0.5.7.26: evaluation-first telemetry and stable MultiPV rows.** The top
+**[0.5.7.26](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39188713970/artifacts/12158309732): evaluation-first telemetry and stable MultiPV rows.** The top
 engine metrics now show the evaluation immediately before depth. With one to
 four MultiPV lines selected, each compact variation stays within its three
 reserved move rows as the engine updates; use that variation's arrow to reveal
 its full line. Depth shows only its main value by default; use **Display → Show
 selective depth (seldepth)** to include selective depth in candidate headers
-and top telemetry. Download the unsigned [Windows build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39188713970/artifacts/12158309732)
-and launch `Nocturne/Nocturne.exe` after extracting the ZIP. See the
+and top telemetry. Extract the unsigned ZIP and launch `Nocturne/Nocturne.exe`.
+See the
 [build receipt](docs/BUILDING.md) for its checksum and Windows validation.
 
 **0.5.7.25: clearer engine telemetry.** Depth shows only its main value by
