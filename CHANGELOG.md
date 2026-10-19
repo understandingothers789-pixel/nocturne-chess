@@ -1,12 +1,14 @@
 # Changelog
 
-## 0.5.7.29 — Full engine names and separate run limits
+## 0.5.7.30 — Recorded move destinations and full engine details
 
-Show the complete engine name reported by UCI in the status area. Add F11
-self-play from the current position, defaulting to 10 million nodes per move;
-set F12 line evaluation to 200 million nodes per position and normal analysis
-to a 1 billion node limit. When navigating back from a variation to a shared
-main-line position, continue forward along the main line.
+Allow Smart Move destination clicks to play the game's recorded next move even
+when that move is outside MultiPV. Show the complete engine name reported by
+UCI. Add F11 self-play from the current position, defaulting to 10 million
+nodes per move; set F12 line evaluation to 200 million nodes per position and
+normal analysis to a 1 billion node limit. When ordinary navigation backs out
+of a variation onto the main line, continue forward along the main line while
+preserving the selected variation during game review.
 
 ## 0.5.7.28 — Default analysis lines to compact and move controls to Engine
 

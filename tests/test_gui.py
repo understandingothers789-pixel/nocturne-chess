@@ -95,13 +95,17 @@ class GuiTests(unittest.TestCase):
         self.assertIn("(", window.game.pgn())
 
     def test_backing_out_of_variation_resumes_mainline_on_forward_navigation(self):
-        game = Game.from_pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 (3...Nf6) 4. Ba4 *")
-        alternative = next(i for i, node in enumerate(game.nodes) if node.san == "Nf6")
-        game.select_node(alternative)
-        game.navigate(5)  # Return to the shared position after 3.Bb5.
-        self.assertEqual(game.current_node, game.mainline_node(5))
-        game.navigate(6)
-        self.assertEqual(game.sans[5], "a6")
+        window = self.window
+        window.game = Game.from_pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 (3...Nf6) 4. Ba4 *")
+        alternative = next(i for i, node in enumerate(window.game.nodes) if node.san == "Nf6")
+        window.game.select_node(alternative)
+        window.game.metadata["mode"] = "analysis"
+        window.analysis_mode = True
+        window._analysis_enabled = False
+        window._navigate(5)  # Return to the shared position after 3.Bb5.
+        self.assertEqual(window.game.current_node, window.game.mainline_node(5))
+        window._navigate(6)
+        self.assertEqual(window.game.sans[5], "a6")
 
     def test_move_navigation_reanalysis_is_opt_in(self):
         window = self.window
@@ -1172,6 +1176,24 @@ class GuiTests(unittest.TestCase):
         QTest.mouseClick(self.window.board_view, Qt.MouseButton.LeftButton,
                          pos=self.window.board_view.square_rect(parse_square("d4")).center().toPoint())
         self.assertEqual(self.window.game.sans[-1], "d4")
+
+    def test_smart_destination_click_can_play_recorded_move_outside_multipv(self):
+        window = self.window
+        window.game = Game.from_pgn("1.e4 e5 2.d4 *")
+        window.game.navigate(2)
+        window.analysis_mode = True
+        window.config["multipv"] = 2
+        window._refresh()
+        board = window.board_view
+        board.set_recommendations([
+            (window.game.board.parse_uci("g1f3"), 1, "+0.3"),
+            (window.game.board.parse_uci("b1c3"), 2, "+0.2"),
+        ])
+        QTest.mouseClick(
+            board, Qt.MouseButton.LeftButton,
+            pos=board.square_rect(parse_square("d4")).center().toPoint(),
+        )
+        self.assertEqual(window.game.sans, ["e4", "e5", "d4"])
 
     def test_two_line_pv_slots_preserve_hover_and_apply_latest_update_after_leaving(self):
         base, job = self._three_pvs()

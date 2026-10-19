@@ -2066,6 +2066,12 @@ class MainWindow(QMainWindow):
             self._pgn_game_id = self.game.id
         last = self.game.moves[self.game.cursor - 1] if self.game.cursor else None
         self.board_view.set_position(self.game.board, last, animate)
+        next_game_move = (
+            self.game.moves[self.game.cursor]
+            if self.game.cursor < len(self.game.moves)
+            else None
+        )
+        self.board_view.set_game_move(next_game_move)
         self._render_move_history()
         if self._pv_identity != self._position_identity():
             self._pv_root = None
@@ -2324,9 +2330,14 @@ class MainWindow(QMainWindow):
         if not self.analysis_mode and not self.config.get("takebacks", True):
             return
         analyze = self._navigation_should_analyze()
+        previous = self.game.cursor
         self._stop_engine()
         self._ensure_analysis_copy()
         self.game.navigate(cursor)
+        # A normal rewind onto the shared main line should make its recorded
+        # continuation active, rather than resuming the branch we rewound from.
+        if cursor < previous and self.game.current_node == self.game.mainline_node(cursor):
+            self.game.select_node(self.game.current_node)
         self.analysis_mode = True
         self._analysis_enabled = analyze
         if analyze:

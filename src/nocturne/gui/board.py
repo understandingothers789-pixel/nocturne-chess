@@ -38,6 +38,7 @@ class BoardWidget(QWidget):
         self.overlays = True
         self.last_move: Move | None = None
         self.best_move: Move | None = None
+        self.game_move: Move | None = None
         self._position_revision = 0
         self.recommendations = []
         self.recommendation_fen = None
@@ -123,6 +124,7 @@ class BoardWidget(QWidget):
         self._drag_pos = None
         self.legal = list(board.legal_moves())
         self.best_move = None
+        self.game_move = None
         self.recommendations = []
         self.recommendation_fen = None
         self.branch_moves = []
@@ -142,6 +144,12 @@ class BoardWidget(QWidget):
         self.recommendation_fen = self.board.fen()
         self.update()
 
+    def set_game_move(self, move):
+        """Make the recorded continuation playable by destination click."""
+        self.game_move = move if move in self.legal else None
+        if self.recommendation_fen is None:
+            self.recommendation_fen = self.board.fen()
+
     def _destination(self, move):
         return (
             self.board.display_destination(move) if hasattr(self.board, "display_destination") else move.to_sq
@@ -153,6 +161,14 @@ class BoardWidget(QWidget):
         if not self.smart_move or self.recommendation_fen != self.board.fen():
             return False
         legal = list(self.board.legal_moves())
+        if (
+            self.game_move in legal
+            and self._destination(self.game_move) == square
+        ):
+            move = self.game_move
+            if self.interactive and self.preview_board is None:
+                self.move_requested.emit(move)
+            return True
         choices = [
             (m, r, t)
             for m, r, t in self.recommendations
