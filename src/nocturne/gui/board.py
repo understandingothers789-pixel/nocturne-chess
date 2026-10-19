@@ -362,8 +362,12 @@ class BoardWidget(QWidget):
                     painter.drawLine(start, end)
                 else:
                     self._arrow(painter, move.from_sq, self._destination(move), color, unit, subtle=True)
+            # Put every endpoint above every rod so crossing candidates cannot
+            # obscure the numbered circles.
+            for move, rank, text in reversed(entries):
                 if best_rank[self._destination(move)] != rank:
                     continue
+                marker = CANDIDATE_MARKERS[0 if rank == 1 else 2 if rank in self.inferior_ranks else 1]
                 destination = self.square_rect(self._destination(move))
                 diameter = max(13.0, unit * 0.245)
                 center = destination.center()
