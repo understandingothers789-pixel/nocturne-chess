@@ -855,6 +855,8 @@ class MainWindow(QMainWindow):
             except ValueError as exc:
                 self._error("Invalid access token", str(exc))
                 return
+            # Retry coverage that may have stopped before authentication.
+            self.opening_coverage.cancel()
             self._sync_explorer()
             if self.explorer.query and self.explorer.query.source != "chessdb":
                 self.explorer.refresh()
