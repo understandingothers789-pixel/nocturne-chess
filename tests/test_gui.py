@@ -73,6 +73,35 @@ class GuiTests(unittest.TestCase):
         )
         self.app.processEvents()
 
+    def test_authenticated_masters_automatically_marks_first_out_of_book_move(self):
+        from nocturne.explorer import ExplorerQuery
+
+        window = self.window
+        window.game = Game.from_pgn("1.e4 e5 *")
+        window.config.update(explorer_statistics=True, explorer_source="masters")
+        for node, count in zip(window.game._line_nodes, [1000, 23, 0]):
+            query = ExplorerQuery(window.game.position_at_node(node).fen())
+            window.opening_coverage.client.cache.put(
+                query.key, {"white": count, "draws": 0, "black": 0, "moves": []})
+        window._sync_explorer()
+        self.assertIsNone(window.opening_coverage.context)
+        window.explorer.client.set_lichess_token("test-token")
+        window._sync_explorer()
+        for _ in range(5):
+            self.app.processEvents()
+        self.assertEqual(window.analysis_history._book_departure, window.game.current_node)
+        self.assertIn("#d5ae69", window.analysis_history.toHtml())
+        self.assertIn("previous position: 23 games", window.opening_coverage_label.text())
+        context = window.opening_coverage.context
+        window.game.select_node(1)
+        window._sync_explorer()
+        self.assertEqual(window.opening_coverage.context, context)
+        self.assertEqual(window.analysis_history._book_departure, 2)
+        window.explorer.client.set_lichess_token("")
+        window._sync_explorer()
+        self.assertIsNone(window.analysis_history._book_departure)
+        self.assertNotIn("#d5ae69", window.analysis_history.toHtml())
+
     def test_named_bookmarks_persist_navigate_and_follow_variation_deletion(self):
         window = self.window
         window.game = Game.from_pgn("1.e4 (1.d4 d5) e5 *")

@@ -904,6 +904,22 @@ class MainWindow(QMainWindow):
         self._sync_candidate_database()
         self._update_opening_coverage()
 
+        # Follow the PGN automatically when authenticated database lookup is on.
+        # A stable context also prevents navigation from restarting the scan.
+        coverage = self.opening_coverage
+        if self._book_highlight_enabled():
+            signature = coverage.signature(self.game, "masters", self.config.get("explorer_speed", "all"),
+                                           self.config.get("explorer_rating", 0))
+            if coverage.context != signature:
+                self._scan_opening_coverage()
+        elif coverage.running:
+            coverage.cancel()
+
+    def _book_highlight_enabled(self):
+        return (self.config.get("explorer_source", "masters") == "masters"
+                and bool(self.config.get("explorer_statistics"))
+                and self.explorer.client.has_lichess_token)
+
     def _scan_opening_coverage(self):
         self.opening_coverage.start(
             self.game, self.config.get("explorer_source", "masters"),
@@ -932,6 +948,7 @@ class MainWindow(QMainWindow):
         self.opening_coverage_label.setText(text)
         self.opening_scan_action.setEnabled(not coverage.running and self.config.get("explorer_source") != "chessdb")
         self.opening_cancel_action.setEnabled(coverage.running)
+        self._render_move_history()
 
     def _sync_candidate_database(self):
         explorer = self.explorer
@@ -2268,7 +2285,9 @@ class MainWindow(QMainWindow):
 
     def _render_move_history(self):
         tokens = self.game.tree_tokens()
-        self.analysis_history.set_moves(tokens, self.game.current_node, self._appearance_config().get("light", False))
+        departure = self.opening_coverage.departure if self._book_highlight_enabled() else None
+        self.analysis_history.set_moves(tokens, self.game.current_node, self._appearance_config().get("light", False),
+                                        book_departure=departure if departure else None)
         self._refresh_raw_pgn()
 
     def _end_preview(self, source):

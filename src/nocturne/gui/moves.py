@@ -38,6 +38,7 @@ class MoveText(QTextBrowser):
         self.candidate_rank = None
         self.candidate_turn = 1
         self._candidate_style = None
+        self._book_departure = None
         self._pressed_move = None
         self.wheel_navigation = True
         self._wheel_steps = WheelSteps()
@@ -91,16 +92,19 @@ class MoveText(QTextBrowser):
             self.cancel_preview()
         return super().viewportEvent(event)
 
-    def set_moves(self, items, current=None, light=False):
+    def set_moves(self, items, current=None, light=False, *, book_departure=None):
         signature = (list(items), current, light)
         candidate_style = (self.candidate_rank, self.candidate_turn)
-        if signature == (self._items, self._current, self._light) and candidate_style == self._candidate_style:
+        if (signature == (self._items, self._current, self._light)
+                and candidate_style == self._candidate_style and book_departure == self._book_departure):
             return
         self.preview_ended.emit()
         self._hovered = None
         self._last_pointer_hovered = None
         self._items, self._current, self._light = signature
         self._candidate_style = candidate_style
+        self._book_departure = book_departure
+        self.viewport().setToolTip("")
         if self.candidate_rank is not None:
             self.setWordWrapMode(QTextOption.WrapMode.WordWrap)
         colors = palette(light)
@@ -116,11 +120,15 @@ class MoveText(QTextBrowser):
                 move_color = colors["analysis_white" if side > 0 else "analysis_black"]
             style = (f'color: {colors["selected_text"]}; background-color: {colors["selection"]};'
                      if index == current else f"color: {move_color};")
+            if index == book_departure:
+                tint = "#85601f" if light else "#d5ae69"
+                style += f"color: {tint}; font-weight: bold; text-decoration: underline;"
             # Keep SAN slots identical across candidates and updates. Nonbreaking
             # padding belongs to the anchor, so the whole slot is interactive.
             label = ("\u00a0" + text + "\u00a0" * max(1, 8 - len(text))
                      if self.candidate_rank is not None else text)
-            tokens.append(f'<a href="move:{index}" style="{style} text-decoration:none;">{escape(label)}</a>')
+            decoration = "" if index == book_departure else "text-decoration:none;"
+            tokens.append(f'<a href="move:{index}" style="{style} {decoration}">{escape(label)}</a>')
         size, spacing = (16, 155) if self._auto_fit else (14, 140)
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'
                      + " ".join(tokens) + "</div>")
@@ -148,6 +156,10 @@ class MoveText(QTextBrowser):
     def mouseMoveEvent(self, event):
         self.pointer_moved.emit(event.globalPosition().toPoint())
         if self.candidate_rank is None:
+            anchor = self.anchorAt(event.position().toPoint())
+            self.viewport().setToolTip(
+                "Out of book: first position with no games in Lichess Masters"
+                if self._book_departure is not None and anchor == f"move:{self._book_departure}" else "")
             return super().mouseMoveEvent(event)
         url = self._move_at(event.position().toPoint())
         self.viewport().setCursor(Qt.CursorShape.PointingHandCursor if not url.isEmpty()

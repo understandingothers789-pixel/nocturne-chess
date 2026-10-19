@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.7.36 — Mark where the PGN leaves Masters
+
+- With Masters statistics enabled and a session access token present, database
+  coverage runs automatically along the selected PGN line. The first move whose
+  resulting position returns zero games is gold and underlined in Game Moves,
+  with an Out of book tooltip. The highlight stays visible when selected.
+- Requests that fail do not mark a move as out of book. Disabling database
+  statistics, clearing the token or changing databases removes the highlight.
+  The starting position cannot mark a move, and changing lines resets coverage.
+
 ## 0.5.7.35 — Durable analysis and optional node snapshots
 
 - Reopening a saved study restores its analysis paused, without automatically
