@@ -727,6 +727,30 @@ class GuiTests(unittest.TestCase):
         self.assertIsNone(self.window.board_view.preview_board)
         self.assertNotIn(3, panel.pending)
 
+    def test_small_mouse_motion_within_candidate_move_keeps_wheel_preview(self):
+        self._three_pvs()
+        view = self.window.candidates.rows[3][2]
+        self._hover_word(view, "Nc3")
+        nc3 = view.document().find("Nc3")
+        nc3.setPosition(nc3.selectionStart() + 1)
+        same_move_point = view.cursorRect(nc3).center()
+
+        self._wheel(view.viewport(), -120)
+        self.assertEqual(view.wheel_preview_ply, 2)
+        preview_fen = self.window.board_view.display_board.fen()
+        QTest.mouseMove(view.viewport(), same_move_point + QPoint(1, 0))
+        self.app.processEvents()
+        self.assertEqual(view.wheel_preview_ply, 2)
+        self.assertEqual(view._hovered, 2)
+        self.assertEqual(self.window.board_view.display_board.fen(), preview_fen)
+
+        other_move = view.document().find("Nf6")
+        other_move.setPosition(other_move.selectionStart() + 1)
+        QTest.mouseMove(view.viewport(), view.cursorRect(other_move).center())
+        self.app.processEvents()
+        self.assertIsNone(view.wheel_preview_ply)
+        self.assertEqual(view._hovered, 2)
+
     def test_cursor_preview_keeps_main_board_and_snapshot_click_with_wheel(self):
         base, job = self._three_pvs()
         window, panel = self.window, self.window.candidates

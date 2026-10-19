@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.7.24 — Preserve wheel preview during pointer jitter
+
+Candidate wheel browsing now remains on its selected ply when tiny mouse
+movement stays over the same move. Moving onto a different move resumes normal
+hover preview behavior.
+
 ## 0.5.7.23 — MultiPV-aware candidate row height
 
 Candidate lines now reserve three move rows when one to four MultiPV lines are

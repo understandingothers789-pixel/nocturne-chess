@@ -33,6 +33,7 @@ class MoveText(QTextBrowser):
         self._current = None
         self._light = False
         self._hovered = None
+        self._last_pointer_hovered = None
         self.wheel_preview_ply = None
         self.candidate_rank = None
         self.candidate_turn = 1
@@ -70,12 +71,14 @@ class MoveText(QTextBrowser):
         self._wheel_steps.reset()
         self.wheel_preview_ply = None
         self._hovered = None
+        self._last_pointer_hovered = None
         self.preview_ended.emit()
         super().leaveEvent(event)
 
     def focusOutEvent(self, event):
         self.wheel_preview_ply = None
         self._hovered = None
+        self._last_pointer_hovered = None
         self.preview_ended.emit()
         super().focusOutEvent(event)
 
@@ -95,6 +98,7 @@ class MoveText(QTextBrowser):
             return
         self.preview_ended.emit()
         self._hovered = None
+        self._last_pointer_hovered = None
         self._items, self._current, self._light = signature
         self._candidate_style = candidate_style
         if self.candidate_rank is not None:
@@ -145,12 +149,16 @@ class MoveText(QTextBrowser):
         self.pointer_moved.emit(event.globalPosition().toPoint())
         if self.candidate_rank is None:
             return super().mouseMoveEvent(event)
-        # A real pointer move starts following the hovered SAN again. Wheel
-        # browsing remains locked to its selected ply while the pointer rests.
-        self.wheel_preview_ply = None
         url = self._move_at(event.position().toPoint())
         self.viewport().setCursor(Qt.CursorShape.PointingHandCursor if not url.isEmpty()
                                   else Qt.CursorShape.ArrowCursor)
+        index = int(url.toString()[5:]) if url.toString().startswith("move:") else None
+        # Qt emits mouse-move events for tiny pointer jitters too. Keep the
+        # scroll preview until the pointer actually crosses into another move.
+        if index == self._last_pointer_hovered:
+            return
+        self._last_pointer_hovered = index
+        self.wheel_preview_ply = None
         self._highlight(url)
 
     def mousePressEvent(self, event):
@@ -203,6 +211,7 @@ class MoveText(QTextBrowser):
     def cancel_preview(self):
         self.wheel_preview_ply = None
         self._hovered = None
+        self._last_pointer_hovered = None
         self.preview_ended.emit()
 
     def _fit_height(self, *_):

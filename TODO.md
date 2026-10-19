@@ -1,6 +1,11 @@
 # Active roadmap
 
-**Current: 0.5.7.23 delivered.** Candidate rows reserve three move lines when
+**Current: 0.5.7.24 in validation.** Candidate wheel browsing now ignores tiny
+mouse movement that stays over the same move; pointer movement to another move
+still resumes hover previews. A GUI regression covers both cases; focused
+validation is underway.
+
+**Previous: 0.5.7.23 delivered.** Candidate rows reserve three move lines when
 one to four MultiPV candidates are selected and two lines at five or more.
 Per-line expansion continues to show that candidate's full PV. Local: 188 tests
 passed with 11 optional/environment skips, Ruff passed. Windows: 188 tests

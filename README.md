@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.23
+# Nocturne Analysis · 0.5.7.24
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -12,11 +12,15 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
+**0.5.7.24: steady wheel previews.** Scrolling through a candidate stays on
+the selected ply while the pointer moves within the same move. Moving to a
+different move switches back to hover preview.
+
 **0.5.7.23: MultiPV-aware candidate rows.** One to four selected candidate
 lines reserve three move rows by default; five or more reserve two. The arrow
 at each row still expands only that candidate to its full engine line. The
-[Windows download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39184268239/artifacts/12157563087)
-is an unsigned ZIP; extract it and launch `Nocturne/Nocturne.exe`.
+0.5.7.24 Windows build is being validated; the previous build is available in
+the [build receipt](docs/BUILDING.md).
 
 **0.5.7.22: stable wheel previews.** Scrolling through a candidate keeps the
 selected ply and its current PV snapshot while the engine updates that same
