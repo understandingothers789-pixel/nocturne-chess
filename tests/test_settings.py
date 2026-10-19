@@ -105,6 +105,13 @@ class SettingsTests(unittest.TestCase):
 
     def test_database_statistics_and_explorer_visibility_are_independent(self):
         self.assertEqual(normalize({})["explorer_source"], "chessdb")
+        self.assertFalse(normalize({})["explorer_enabled"])
+        # The explorer was previously enabled in some persisted profiles;
+        # this version starts them disabled once, then preserves user choice.
+        migrated = normalize({"explorer_enabled": True})
+        self.assertFalse(migrated["explorer_enabled"])
+        opted_in = normalize({"explorer_enabled": True, "explorer_enabled_version": 1})
+        self.assertTrue(opted_in["explorer_enabled"])
         self.assertFalse(normalize({})["explorer_statistics"])
         self.assertTrue(normalize({"explorer_source": "masters", "explorer_enabled": False})["explorer_statistics"])
         upgraded = normalize({"explorer_enabled": True})

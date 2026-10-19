@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7.47 — Lichess-style board framing
+
+- Board coordinates now sit inside the edge squares, leaving room for a larger
+  responsive board. The evaluation bar is on the board's right side.
+- The database explorer starts disabled, including profiles saved by older
+  versions; it remains available as an opt-in Database menu setting.
+
 ## 0.5.7.46 — Clearer copy commands
 
 - Right-clicking Game Moves offers **Copy PGN** for the current game.

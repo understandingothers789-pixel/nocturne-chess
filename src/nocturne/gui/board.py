@@ -96,7 +96,9 @@ class BoardWidget(QWidget):
         return QSize(690, 690)
 
     def _geometry(self) -> tuple[QRectF, float]:
-        edge = min(self.width(), self.height()) - 48
+        # Coordinates are painted over the edge squares, so only a narrow
+        # breathing room for the rounded board border is needed.
+        edge = max(0, min(self.width(), self.height()) - 12)
         return QRectF((self.width() - edge) / 2, (self.height() - edge) / 2, edge, edge), edge / 8
 
     def square_rect(self, square: int) -> QRectF:
@@ -400,23 +402,44 @@ class BoardWidget(QWidget):
                 self.preview_caption,
             )
         if self.coordinates:
-            painter.setFont(QFont("Segoe UI", 10))
-            painter.setPen(QColor(colors["muted"]))
+            font = QFont("Segoe UI")
+            font.setPixelSize(max(9, int(unit * 0.14)))
+            font.setBold(True)
+            painter.setFont(font)
             for index in range(8):
-                square = index if not self.flipped else 119 - index
-                center = self.square_rect(square).center()
-                file_label = chr(97 + ((7 - index) if self.flipped else index))
-                painter.drawText(
-                    QRectF(center.x() - unit / 2, rect.bottom() + 6, unit, 18),
-                    Qt.AlignmentFlag.AlignCenter,
-                    file_label,
-                )
-                rank = index if self.flipped else 7 - index
-                painter.drawText(
-                    QRectF(rect.x() - 23, rect.y() + index * unit, 18, unit),
-                    Qt.AlignmentFlag.AlignCenter,
-                    str(rank + 1),
-                )
+                # Put file labels in the bottom row and rank labels on the
+                # outside edge (right when flipped), like Lichess.
+                x = rect.x() + (index + 0.5) * unit
+                bottom_y = rect.bottom() - unit / 2
+                bottom_square = self.square_at(QPointF(x, bottom_y))
+                if bottom_square is not None:
+                    tile = BOARD_THEMES.get(self.theme, BOARD_THEMES["Classic"])
+                    is_light = ((bottom_square >> 4) + (bottom_square & 7)) % 2 != 0
+                    color = QColor(tile[1] if is_light else tile[0])
+                    color.setAlpha(175)
+                    painter.setPen(color)
+                    painter.drawText(
+                        QRectF(x - unit / 2 + 3, rect.bottom() - unit * 0.25, unit - 6, unit * 0.2),
+                        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                        chr(97 + (bottom_square & 7)),
+                    )
+
+                y = rect.y() + (index + 0.5) * unit
+                edge_x = rect.right() - unit / 2 if self.flipped else rect.x() + unit / 2
+                rank_square = self.square_at(QPointF(edge_x, y))
+                if rank_square is not None:
+                    tile = BOARD_THEMES.get(self.theme, BOARD_THEMES["Classic"])
+                    is_light = ((rank_square >> 4) + (rank_square & 7)) % 2 != 0
+                    color = QColor(tile[1] if is_light else tile[0])
+                    color.setAlpha(175)
+                    painter.setPen(color)
+                    align = Qt.AlignmentFlag.AlignRight if self.flipped else Qt.AlignmentFlag.AlignLeft
+                    inset = 3
+                    if self.flipped:
+                        label_rect = QRectF(rect.right() - unit * 0.24, y - unit / 2 + inset, unit * 0.2, unit * 0.2)
+                    else:
+                        label_rect = QRectF(rect.x() + inset, y - unit / 2 + inset, unit * 0.2, unit * 0.2)
+                    painter.drawText(label_rect, align | Qt.AlignmentFlag.AlignTop, str((rank_square >> 4) + 1))
 
     def _request(self, src: int, dst: int, global_pos) -> bool:
         root_fen = self.board.fen()

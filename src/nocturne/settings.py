@@ -48,6 +48,7 @@ DEFAULTS = {
     "multipv": 1,
     "analysis_menu_version": 1,
     "explorer_enabled": False,
+    "explorer_enabled_version": 1,
     "explorer_statistics": False,
     "explorer_source": "chessdb",
     "explorer_speed": "all",
@@ -125,6 +126,10 @@ def normalize(data) -> dict:
     ):
         if isinstance(data.get(key), bool):
             result[key] = data[key]
+    # The database explorer used to be enabled in some saved profiles. Make
+    # the new opt-in default consistent on the first run after this change.
+    if data.get("explorer_enabled_version") != 1:
+        result["explorer_enabled"] = False
     if data.get("raw_pgn_version") != 1:
         result["show_raw_pgn"] = False
     # Older builds could preserve the global expand-all setting. Reset it once

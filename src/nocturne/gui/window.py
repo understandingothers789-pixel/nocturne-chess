@@ -327,8 +327,8 @@ class MainWindow(QMainWindow):
         board_row.setSpacing(0)
         self.eval_bar = EvaluationBar()
         self.eval_bar.board_view = self.board_view
-        board_row.addWidget(self.eval_bar)
         board_row.addWidget(self.board_view, 1)
+        board_row.addWidget(self.eval_bar)
         board_layout.addLayout(board_row, 1)
         self.bottom_card, self.bottom_name, self.bottom_detail, self.bottom_clock = self._player_card()
         board_layout.addWidget(self.bottom_card)
