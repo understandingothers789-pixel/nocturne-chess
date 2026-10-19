@@ -157,6 +157,10 @@ class MainWindow(QMainWindow):
             except StorageError as exc:
                 self._storage_message = str(exc)
         self._study_games = {self.game.id: self.game}
+        saved_tab_order = self.store.get("study_tab_order", []) if self.store else []
+        self._study_tab_order = list(dict.fromkeys(
+            item for item in saved_tab_order if isinstance(saved_tab_order, list) and isinstance(item, str)
+        )) if isinstance(saved_tab_order, list) else []
         if self.store:
             open_ids = self.store.get("open_studies", [])
             for key in (open_ids if isinstance(open_ids, list) else [])[:20]:
@@ -165,6 +169,7 @@ class MainWindow(QMainWindow):
                         self._study_games[key] = self.store.load(key)
                     except StorageError:
                         pass
+        self._order_studies_by_saved_tabs()
         self.analysis_mode = self.config.get("mode") == "analysis"
         if self.analysis_mode:
             self.paused = False
@@ -273,6 +278,7 @@ class MainWindow(QMainWindow):
         self.study_tabs = QTabBar()
         self.study_tabs.setTabsClosable(True)
         self.study_tabs.setExpanding(False)
+        self.study_tabs.setMovable(True)
         for study in self._study_games.values():
             index = self.study_tabs.addTab(study.headers.get("Event") or "Study")
             self.study_tabs.setTabData(index, study.id)
@@ -281,6 +287,7 @@ class MainWindow(QMainWindow):
         )
         self.study_tabs.currentChanged.connect(self._switch_study)
         self.study_tabs.tabCloseRequested.connect(self._close_study)
+        self.study_tabs.tabMoved.connect(self._save_study_tab_order)
         study_row.addWidget(self.study_tabs, 1)
         study_row.addWidget(button("＋", self._new_study, "quiet"))
         self.quick_analysis_button = button("Analyze", self._analyze, "primary")
@@ -735,7 +742,7 @@ class MainWindow(QMainWindow):
         self.explorer_statistics_action = add(database, "Enable database statistics", lambda checked: self._set_explorer_option("explorer_statistics", checked))
         self.explorer_statistics_action.setCheckable(True)
         self.explorer_actions = {}
-        for source, title in (("masters", "Masters database"), ("lichess", "Lichess players (Amateurs)"),
+        for source, title in (("masters", "Lichess Masters database (Recommended)"), ("lichess", "Lichess players (Amateurs)"),
                               ("chessdb", "ChessDB · cloud analysis")):
             action = add(database, title, lambda checked=False, s=source: self._choose_explorer(s))
             action.setCheckable(True)
@@ -1040,6 +1047,27 @@ class MainWindow(QMainWindow):
         self.study_tabs.setCurrentIndex(existing[self.game.id])
         self.study_tabs.setTabText(existing[self.game.id], (self.game.headers.get("Event") or "Study")[:32])
         self.study_tabs.blockSignals(False)
+        self._save_study_tab_order()
+
+    def _order_studies_by_saved_tabs(self):
+        if not self._study_tab_order:
+            return
+        ordered = {key: self._study_games[key] for key in self._study_tab_order if key in self._study_games}
+        ordered.update((key, game) for key, game in self._study_games.items() if key not in ordered)
+        self._study_games = ordered
+
+    def _save_study_tab_order(self, *_):
+        if not hasattr(self, "study_tabs"):
+            return
+        self._study_tab_order = [
+            self.study_tabs.tabData(index) for index in range(self.study_tabs.count())
+            if isinstance(self.study_tabs.tabData(index), str)
+        ]
+        if self.store:
+            try:
+                self.store.set("study_tab_order", self._study_tab_order)
+            except StorageError as exc:
+                self.statusBar().showMessage(str(exc))
 
     def _switch_study(self, index):
         if index < 0 or not hasattr(self, "engine"):
@@ -1082,6 +1110,7 @@ class MainWindow(QMainWindow):
         self.study_tabs.blockSignals(True)
         self.study_tabs.removeTab(index)
         self.study_tabs.blockSignals(False)
+        self._save_study_tab_order()
         self._save()
 
     def _rename_study(self):
@@ -2279,7 +2308,9 @@ class MainWindow(QMainWindow):
 
     def _apply_appearance(self, appearance):
         light = appearance.get("light", False)
-        QApplication.instance().setStyleSheet(stylesheet(light))
+        app = QApplication.instance()
+        app.setProperty("nocturneLightAppearance", bool(light))
+        app.setStyleSheet(stylesheet(light))
         self.board_view.theme = appearance.get("theme", "Classic")
         self.board_view.set_piece_set(appearance.get("piece_set", "Nibbler"))
         self.board_view.coordinates = appearance.get("coordinates", True)

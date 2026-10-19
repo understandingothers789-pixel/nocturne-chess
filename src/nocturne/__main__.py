@@ -13,11 +13,13 @@ def main():
     except ImportError:
         raise SystemExit("PySide6 is required for the desktop app. Install with: python -m pip install -e .")
     from .gui.window import MainWindow
+    from .gui.theme import install_menu_stripes
 
     app = QApplication(sys.argv)
     app.setApplicationName("Nocturne Chess")
     app.setOrganizationName("Nocturne")
     app.setStyle("Fusion")
+    install_menu_stripes(app)
     smoke = "--smoke-test" in sys.argv
     temporary = tempfile.TemporaryDirectory() if smoke else None
     window = MainWindow(Path(temporary.name) if temporary else None)

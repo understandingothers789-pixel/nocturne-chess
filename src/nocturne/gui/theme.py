@@ -2,6 +2,9 @@
 
 from pathlib import Path
 
+from PySide6.QtGui import QColor, QPalette
+from PySide6.QtWidgets import QApplication, QMenu, QProxyStyle, QStyle
+
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
 BOARD_THEMES = {
     "Classic": ("#f0d9b5", "#b58863"),
@@ -13,6 +16,35 @@ BOARD_THEMES = {
 }
 
 CANDIDATE_MARKERS = ("#65a9ab", "#62a460")
+
+
+class MenuStripeStyle(QProxyStyle):
+    """Add quiet alternating row fills to native menus."""
+
+    def drawControl(self, element, option, painter, widget=None):
+        if element == QStyle.ControlElement.CE_MenuItem and isinstance(widget, QMenu):
+            action = widget.actionAt(option.rect.center())
+            if action is not None and not action.isSeparator():
+                items = [candidate for candidate in widget.actions() if not candidate.isSeparator()]
+                if items.index(action) % 2:
+                    app = QApplication.instance()
+                    light = bool(app.property("nocturneLightAppearance")) if app else False
+                    base = widget.palette().color(QPalette.ColorRole.Window)
+                    stripe = base.darker(104) if light else base.lighter(118)
+                    painter.save()
+                    painter.fillRect(option.rect, stripe)
+                    painter.restore()
+        super().drawControl(element, option, painter, widget)
+
+
+def install_menu_stripes(app: QApplication) -> None:
+    """Install the menu-row style once, before the application stylesheet."""
+    if app.property("nocturneMenuStripeStyle"):
+        return
+    proxy = MenuStripeStyle(app.style())
+    proxy.setParent(app)
+    app.setStyle(proxy)
+    app.setProperty("nocturneMenuStripeStyle", True)
 
 
 def palette(light: bool = False) -> dict[str, str]:

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.44 — Readable menus and movable game tabs
+
+- The database menu names **Lichess Masters database** as the recommended
+  source. Application menus use subtle alternating row shades for easier
+  scanning without removing or rearranging menu commands.
+- Game tabs can be dragged into a preferred display order. Nocturne saves that
+  order as a separate interface preference; it does not change game or PGN data.
+
 ## 0.5.7.43 — Arrange the workspace by dragging panels
 
 - Display → Arrange panels unlocks native drag-and-drop docking for the board,
