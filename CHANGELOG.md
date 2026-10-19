@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7.37 — Keep candidate database details beside the score
+
+- Candidate evaluation, depth, W/D/L, API win, frequency and database source
+  now share a single wrapping header row above that candidate's moves. This
+  keeps database samples clearly attached to their corresponding line. The
+  row reserves consistent height across candidates and adapts to the panel width.
+
 ## 0.5.7.36 — Mark where the PGN leaves Masters
 
 - With Masters statistics enabled and a session access token present, database

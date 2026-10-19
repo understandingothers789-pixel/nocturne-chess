@@ -126,7 +126,7 @@ class CandidatePanel(QWidget):
         header = QLabel("Waiting for engine")
         header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         header.setTextFormat(Qt.TextFormat.RichText)
-        header.setWordWrap(False)
+        header.setWordWrap(True)
         header.setStyleSheet(
             f"color: {palette(self.light)['metadata']};"
             "font-family: Consolas, monospace; font-size: 16px;"
@@ -167,6 +167,7 @@ class CandidatePanel(QWidget):
         )
         footer.setFixedHeight(self._footer_height(footer))
         layout.addWidget(footer)
+        footer.hide()
         moves.show()
         # The primary widget survives clear/reuse, so wire it exactly once.
         if rank != 1 or not getattr(self, "_primary_connected", False):
@@ -313,8 +314,6 @@ class CandidatePanel(QWidget):
         depth = f"{info['depth']}/{info['seldepth']}" if self.show_seldepth else str(info["depth"])
         first += f"&nbsp;<span style=\"color:{colors['metadata']};\">Depth {depth}</span>"
         header = self.rows[rank][1]
-        header.setText(f"<div>{first}</div>")
-        header.setAccessibleName(f"Candidate {rank} evaluation and search depth")
         if wdl:
             metadata = f"W/D/L {wdl[0] / 10:.1f}/{wdl[1] / 10:.1f}/{wdl[2] / 10:.1f}% White"
         else:
@@ -355,18 +354,30 @@ class CandidatePanel(QWidget):
                     source += " · " + ("No scored move" if query.source == "chessdb" else "No games found")
         metadata += (f" &nbsp; API win ({side}) {blue(win)} &nbsp; Freq {blue(frequency)}"
                      f"{sample} &nbsp; {escape(source)}{cloud_score}")
+        header.setText(
+            f'<div>{first} &nbsp; <span style="color:{colors["metadata"]}; font-size:13px;">'
+            f'{metadata}</span></div>'
+        )
+        header.setAccessibleName(f"Candidate {rank} evaluation, depth and database metrics")
+        header.setFixedHeight(self._header_height(header))
         footer = self.footers[rank]
-        footer.setText(f"<div>{metadata}</div>")
+        footer.setText("")
         footer.setAccessibleName(f"Candidate {rank} WDL and database metrics")
 
     def _header_height(self, header):
-        # Reserve identical metadata space from width, never from arriving PVs.
-        # This keeps hovered lower candidates in place during engine/API updates.
+        # Measure the combined evaluation, depth and metadata row at a fixed
+        # worst-case width so rows stay aligned as PVs and database data update.
         probe = QTextDocument()
         probe.setDefaultFont(header.font())
         probe.setDocumentMargin(0)
-        probe.setHtml("<div>+123.45 ★ &nbsp; Depth 128/256</div>")
-        probe.setTextWidth(max(160, self.width()))
+        probe.setHtml(
+            '<div>+123.45 ★ &nbsp; Depth 128/256 &nbsp; '
+            '<span style="font-size:13px;">W/D/L 100.0/100.0/100.0% White &nbsp; '
+            '9,999,999,999 nodes &nbsp; API win (Black) 100.0% &nbsp; Freq 100.0% '
+            '[999,999,999 / 999,999,999 games] &nbsp; Lichess players · Cached · '
+            'No games found</span></div>'
+        )
+        probe.setTextWidth(max(160, header.width() or self.width()))
         return math.ceil(probe.size().height()) + 6
 
     def _footer_height(self, footer):

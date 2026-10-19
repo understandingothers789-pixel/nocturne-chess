@@ -648,8 +648,7 @@ class GuiTests(unittest.TestCase):
     def _header_document(self, rank):
         document = QTextDocument()
         header = self.window.candidates.rows[rank][1].text()
-        footer = self.window.candidates.footers[rank].text()
-        document.setHtml(f"{header}<br/>{footer}")
+        document.setHtml(header)
         return document
 
     def _candidate_header_text(self, rank):
@@ -658,9 +657,9 @@ class GuiTests(unittest.TestCase):
         return document.toPlainText()
 
     def _candidate_footer_text(self, rank):
-        document = QTextDocument()
-        document.setHtml(self.window.candidates.footers[rank].text())
-        return document.toPlainText()
+        # Kept as a helper for status assertions; candidate telemetry now shares
+        # the evaluation/depth row so the database sample stays associated.
+        return self._candidate_header_text(rank)
 
     def test_candidate_headers_color_real_api_metrics_and_keep_depth_neutral(self):
         from nocturne.explorer import parse_statistics
@@ -686,8 +685,9 @@ class GuiTests(unittest.TestCase):
             footer = self._candidate_footer_text(3).replace("\u00a0", " ")
             self.assertIn("+0.22 Depth 31", headline)
             self.assertNotIn("31/46", headline)
-            self.assertNotIn("W/D/L", headline)
-            self.assertNotIn("API win", headline)
+            self.assertIn("W/D/L 10.0/20.0/70.0% White", headline)
+            self.assertIn("API win (White) 25.0%", headline)
+            self.assertIn("Freq 40.0%", headline)
             self.assertIn("W/D/L 10.0/20.0/70.0% White", footer)
             self.assertIn("API win (White) 25.0%", footer)
             self.assertIn("Freq 40.0%", footer)
