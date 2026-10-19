@@ -1,5 +1,29 @@
 # Windows 11 desktop builds
 
+## [0.5.7.43 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39317000462/artifacts/12217972617)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`30f1c32`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/30f1c32)
+adds **Display → Arrange panels**. The board, analysis/PGN tools, game moves,
+database explorer and evaluation graph can be docked, nested, tabbed or detached
+into resizable windows. Dividers resize docked panels; floating windows resize
+from their edges and corners. The board keeps its square proportions.
+**Done** locks placement. Panel sizes, positions, tab groups and floating windows
+are saved locally and restored locked. Detached panels are brought back on-screen
+when a monitor is unavailable. **Display → Reset layout** restores the classic
+view without changing the game or analysis. The two existing layout presets
+remain available, and the default view stays unchanged until arranging is enabled.
+
+Windows run [39317000462](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39317000462)
+passed validation, packaging and packaged application smoke checks. Focused layout
+checks covered persistence, reset, tab groups, off-screen recovery, optional panel
+visibility and Play/Analysis transitions. The source workspace was visually reviewed.
+
+Artifact **12217972617**, `Nocturne-0.5.7.43-Windows-x64-unsigned`,
+57,993,583 bytes, expires 2026-11-18. GitHub artifact SHA-256:
+`87386360f2b5b1e1c41e6cf0abae743ddcf8178338fdd7fce14d5c925290caad`.
+
 ## [0.5.7.42 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39312403418/artifacts/12216473704)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
