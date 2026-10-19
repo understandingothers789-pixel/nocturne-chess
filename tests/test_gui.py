@@ -916,7 +916,7 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(hovered, [1])
         self.assertEqual(clicked, [1])
 
-    def test_dev_expanded_pvs_fit_full_lines_and_restore_two_rows(self):
+    def test_dev_expanded_pvs_fit_full_lines_and_restore_selected_default_rows(self):
         base, job = self._three_pvs()
         panel = self.window.candidates
         long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
@@ -946,19 +946,19 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(len({row[2].height() for row in panel.rows.values()}), 1)
         panel.clear()
         panel.reserve_slots(2)
-        self.assertEqual(panel.rows[2][2]._reserved_lines, 2)
+        self.assertEqual(panel.rows[2][2]._reserved_lines, 3)
 
-    def test_candidate_arrow_expands_only_its_pv_and_collapses_to_two_rows(self):
+    def test_candidate_arrow_expands_only_its_pv_and_collapses_to_three_rows(self):
         base, job = self._three_pvs()
         panel = self.window.candidates
-        self.assertEqual({panel.rows[rank][2]._reserved_lines for rank in (1, 2, 3)}, {2})
+        self.assertEqual({panel.rows[rank][2]._reserved_lines for rank in (1, 2, 3)}, {3})
         moves = panel.rows[1][2]
         long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
         self._show_external_info(base | {"multipv": 1, "pv": long_pv}, job)
         self.app.processEvents()
         fixed_height = moves.height()
         self.assertEqual([panel.rows[rank][2]._reserved_lines for rank in (1, 2, 3)],
-                         [2, 2, 2])
+                         [3, 3, 3])
         button = panel.expand_buttons[1]
         self.assertTrue(button.isVisible())
         self.assertEqual(button.toolTip(), "")
@@ -971,8 +971,8 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(moves._reserved_lines, 0)
         self.assertGreater(moves.height(), fixed_height)
         self.assertEqual(moves.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.assertEqual(panel.rows[2][2]._reserved_lines, 2)
-        self.assertEqual(panel.rows[3][2]._reserved_lines, 2)
+        self.assertEqual(panel.rows[2][2]._reserved_lines, 3)
+        self.assertEqual(panel.rows[3][2]._reserved_lines, 3)
         self.assertEqual(button.arrowType(), Qt.ArrowType.UpArrow)
         last = moves.document().find("Ng8", moves.document().characterCount() - 1,
                                     QTextDocument.FindFlag.FindBackward)
@@ -984,7 +984,7 @@ class GuiTests(unittest.TestCase):
         QTest.mouseClick(button, Qt.MouseButton.LeftButton)
         self.app.processEvents()
         self.assertFalse(panel.expanded_ranks)
-        self.assertEqual(moves._reserved_lines, 2)
+        self.assertEqual(moves._reserved_lines, 3)
         self.assertEqual(moves.height(), fixed_height)
 
         # A changed suggested first move is a different candidate variation;
@@ -992,8 +992,21 @@ class GuiTests(unittest.TestCase):
         self._show_external_info(base | {"multipv": 1, "pv": ["d2d4", "e5d4"]}, job)
         self.app.processEvents()
         self.assertNotIn(1, panel.expanded_ranks)
-        self.assertEqual(moves._reserved_lines, 2)
+        self.assertEqual(moves._reserved_lines, 3)
         self.assertFalse(button.isVisible())
+
+    def test_candidate_default_rows_follow_selected_multipv_count(self):
+        base, _ = self._three_pvs()
+        panel = self.window.candidates
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
+        panel.set_multipv(4)
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
+        panel.set_multipv(5)
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {2})
+        panel.reserve_slots(5)
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {2})
+        panel.set_multipv(4)
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
 
     def test_five_colored_candidates_keep_slots_and_destination_execution(self):
         self._analysis_game("1.e4 e5 *")

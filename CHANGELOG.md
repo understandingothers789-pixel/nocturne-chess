@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.7.23 — MultiPV-aware candidate row height
+
+Candidate lines now reserve three move rows when one to four MultiPV lines are
+selected, and two rows when five or more are selected. Per-line arrows still
+expand a candidate to its full engine variation.
+
 ## 0.5.7.22 — Stable MultiPV wheel previews during engine updates
 
 Wheel-browsing a candidate now keeps its current move and displayed PV snapshot

@@ -2634,6 +2634,7 @@ class MainWindow(QMainWindow):
         if context != self._analysis_context:
             self._clear_analysis_output()
             self._analysis_context = context
+        self.candidates.set_multipv(count)
         self.candidates.reserve_slots(count)
         try:
             generation = self.engine.start(
@@ -2741,6 +2742,7 @@ class MainWindow(QMainWindow):
             return
         if "score_type" in info and info.get("multipv", 1) > job.get("multipv", self._effective_multipv()):
             return
+        self.candidates.set_multipv(job.get("multipv", self._effective_multipv()))
         if info.get("multipv", 1) in self.candidates.pinned:
             return
         if "score_type" in info:

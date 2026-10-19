@@ -13,7 +13,7 @@ from ..explorer import chessdb_score
 from .moves import MoveText
 from .theme import palette
 
-DEFAULT_PV_LINES = 2
+DEFAULT_PV_LINES = 3
 EXPANDER_WIDTH = 26
 
 
@@ -32,9 +32,11 @@ class CandidatePanel(QWidget):
         self.layout.setSpacing(0)
         self.layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         self.expanded = False
+        self.multipv = 1
+        self.default_pv_lines = self._lines_for_multipv(self.multipv)
         self.wheel_navigation = True
         self.primary = primary
-        self.primary.reserve_lines(DEFAULT_PV_LINES)
+        self.primary.reserve_lines(self.default_pv_lines)
         self.rows = {}
         self.footers = {}
         self.expand_buttons = {}
@@ -71,7 +73,7 @@ class CandidatePanel(QWidget):
         self.pinned.clear()
         self.slot_count = 0
         self.primary.setViewportMargins(0, 0, 0, 0)
-        self.primary.reserve_lines(0 if self.expanded else DEFAULT_PV_LINES)
+        self.primary.reserve_lines(0 if self.expanded else self.default_pv_lines)
         self.primary.set_moves([])
         self._clearing = False
         self.changed.emit()
@@ -86,6 +88,26 @@ class CandidatePanel(QWidget):
         self.expanded = bool(expanded)
         for rank in self.rows:
             self._apply_expansion(rank)
+
+    @staticmethod
+    def _lines_for_multipv(count):
+        return DEFAULT_PV_LINES if count <= 4 else 2
+
+    def set_multipv(self, count):
+        """Keep compact candidate rows sized for the selected MultiPV count."""
+        count = max(1, min(32, int(count)))
+        lines = self._lines_for_multipv(count)
+        if count == self.multipv and lines == self.default_pv_lines:
+            return
+        self.multipv = count
+        self.default_pv_lines = lines
+        if 1 not in self.expanded_ranks:
+            self.primary.reserve_lines(0 if self.expanded else lines)
+        for rank, (_, _, moves) in self.rows.items():
+            expanded = self.expanded or rank in self.expanded_ranks
+            moves.reserve_lines(0 if expanded else lines)
+            self._refresh_expander(rank)
+        self.changed.emit()
 
     def reserve_slots(self, count):
         count = max(1, min(32, count))
@@ -111,12 +133,12 @@ class CandidatePanel(QWidget):
         header.setFixedHeight(self._header_height(header))
         layout.addWidget(header)
         moves = self.primary if rank == 1 else MoveText(
-            auto_fit=True, reserved_lines=DEFAULT_PV_LINES
+            auto_fit=True, reserved_lines=self.default_pv_lines
         )
-        moves.reserve_lines(0 if self.expanded or rank in self.expanded_ranks else DEFAULT_PV_LINES)
+        moves.reserve_lines(0 if self.expanded or rank in self.expanded_ranks else self.default_pv_lines)
         moves.wheel_navigation = self.wheel_navigation
         moves.candidate_rank = rank
-        # Keep a narrow strip free at the end of both displayed rows for this
+        # Keep a narrow strip free at the end of the reserved rows for this
         # candidate's own expand/collapse arrow.
         moves.setViewportMargins(0, 0, EXPANDER_WIDTH, 0)
         pv_area = QWidget()
@@ -363,7 +385,7 @@ class CandidatePanel(QWidget):
             return
         moves = self.rows[rank][2]
         expanded = self.expanded or rank in self.expanded_ranks
-        moves.reserve_lines(0 if expanded else DEFAULT_PV_LINES)
+        moves.reserve_lines(0 if expanded else self.default_pv_lines)
         button = self.expand_buttons.get(rank)
         if button:
             button.setArrowType(Qt.ArrowType.UpArrow if rank in self.expanded_ranks
@@ -381,7 +403,7 @@ class CandidatePanel(QWidget):
             return
         moves = self.rows[rank][2]
         expanded = rank in self.expanded_ranks
-        button.setVisible(not self.expanded and (expanded or moves.wrapped_line_count() > DEFAULT_PV_LINES))
+        button.setVisible(not self.expanded and (expanded or moves.wrapped_line_count() > self.default_pv_lines))
 
     def toggle_expansion(self, rank):
         if self.expanded or rank not in self.lines:
