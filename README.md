@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.28
+# Nocturne Analysis · 0.5.7.29
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -11,6 +11,15 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
+
+**0.5.7.29: full engine names, distinct self-play and analysis limits.** The
+engine status shows the full name advertised by UCI. Press **F11** to let the
+engine play both sides from the current position (10 million nodes per move by
+default), and **F12** to evaluate the current line (200 million nodes per
+position by default). Normal analysis is capped at 1 billion nodes. Returning
+from a variation to a shared main-line position resumes the main line. The
+Windows build is being prepared; its download link will appear here when
+available.
 
 **[0.5.7.28](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39191809527/artifacts/12159804179): compact analysis by default.** Expand all analysis lines is now
 off by default, including for existing profiles that had an older saved value.

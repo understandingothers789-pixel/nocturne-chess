@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.29 — Full engine names and separate run limits
+
+Show the complete engine name reported by UCI in the status area. Add F11
+self-play from the current position, defaulting to 10 million nodes per move;
+set F12 line evaluation to 200 million nodes per position and normal analysis
+to a 1 billion node limit. When navigating back from a variation to a shared
+main-line position, continue forward along the main line.
+
 ## 0.5.7.28 — Default analysis lines to compact and move controls to Engine
 
 Turn off the global expand-all option for the default and migrate older saved
