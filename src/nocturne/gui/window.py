@@ -916,27 +916,29 @@ class MainWindow(QMainWindow):
         self._sync_candidate_database()
         self._update_opening_coverage()
 
-        # Follow the PGN automatically when authenticated database lookup is on.
+        # Follow the PGN in the selected source; each source retains its results.
         # A stable context also prevents navigation from restarting the scan.
         coverage = self.opening_coverage
         if self._book_highlight_enabled():
-            signature = coverage.signature(self.game, "masters", self.config.get("explorer_speed", "all"),
+            signature = coverage.signature(self.game, self.config.get("explorer_source", "chessdb"),
+                                           self.config.get("explorer_speed", "all"),
                                            self.config.get("explorer_rating", 0))
             if coverage.context != signature:
-                self._scan_opening_coverage()
+                self._scan_opening_coverage(force=False)
         elif coverage.running:
             coverage.cancel()
 
     def _book_highlight_enabled(self):
-        return (self.config.get("explorer_source", "masters") == "masters"
-                and bool(self.config.get("explorer_statistics"))
-                and self.explorer.client.has_lichess_token)
+        return (bool(self.config.get("explorer_statistics"))
+                and (self.config.get("explorer_source", "chessdb") == "chessdb"
+                     or self.explorer.client.has_lichess_token))
 
-    def _scan_opening_coverage(self):
+    def _scan_opening_coverage(self, checked=False, *, force=True):
         self.opening_coverage.start(
             self.game, self.config.get("explorer_source", "masters"),
             self.config.get("explorer_speed", "all"), self.config.get("explorer_rating", 0),
             self.explorer.client._lichess_token,
+            force=force,
         )
 
     def _update_opening_coverage(self):
@@ -958,7 +960,7 @@ class MainWindow(QMainWindow):
                 title = f"{before.fullmove}{'.' if before.turn == 1 else '…'} {node.san}"
             text = f'Database departure: <a href="{node_id}">{escape(title)}</a> · {text}'
         self.opening_coverage_label.setText(text)
-        self.opening_scan_action.setEnabled(not coverage.running and self.config.get("explorer_source") != "chessdb")
+        self.opening_scan_action.setEnabled(not coverage.running and self._book_highlight_enabled())
         self.opening_cancel_action.setEnabled(coverage.running)
         self._render_move_history()
 
@@ -2298,8 +2300,12 @@ class MainWindow(QMainWindow):
     def _render_move_history(self):
         tokens = self.game.tree_tokens()
         departure = self.opening_coverage.departure if self._book_highlight_enabled() else None
+        markers = (self.opening_coverage.markers(
+            self.game, allow_lichess=self.explorer.client.has_lichess_token,
+            speed=self.config.get("explorer_speed", "all"), rating=self.config.get("explorer_rating", 0))
+            if self.config.get("explorer_statistics") else {})
         self.analysis_history.set_moves(tokens, self.game.current_node, self._appearance_config().get("light", False),
-                                        book_departure=departure if departure else None)
+                                        book_departure=departure if departure else None, book_departures=markers)
         self._refresh_raw_pgn()
 
     def _end_preview(self, source):

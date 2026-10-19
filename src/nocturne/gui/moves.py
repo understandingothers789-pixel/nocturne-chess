@@ -39,6 +39,7 @@ class MoveText(QTextBrowser):
         self.candidate_turn = 1
         self._candidate_style = None
         self._book_departure = None
+        self._book_departures = {}
         self._pressed_move = None
         self.wheel_navigation = True
         self._wheel_steps = WheelSteps()
@@ -92,11 +93,15 @@ class MoveText(QTextBrowser):
             self.cancel_preview()
         return super().viewportEvent(event)
 
-    def set_moves(self, items, current=None, light=False, *, book_departure=None):
+    def set_moves(self, items, current=None, light=False, *, book_departure=None, book_departures=None):
         signature = (list(items), current, light)
         candidate_style = (self.candidate_rank, self.candidate_turn)
+        departures = dict(book_departures or {})
+        if book_departure is not None and book_departure not in departures:
+            departures[book_departure] = "Lichess Masters: first position with no games found"
         if (signature == (self._items, self._current, self._light)
-                and candidate_style == self._candidate_style and book_departure == self._book_departure):
+                and candidate_style == self._candidate_style and book_departure == self._book_departure
+                and departures == self._book_departures):
             return
         self.preview_ended.emit()
         self._hovered = None
@@ -104,6 +109,7 @@ class MoveText(QTextBrowser):
         self._items, self._current, self._light = signature
         self._candidate_style = candidate_style
         self._book_departure = book_departure
+        self._book_departures = departures
         self.viewport().setToolTip("")
         if self.candidate_rank is not None:
             self.setWordWrapMode(QTextOption.WrapMode.WordWrap)
@@ -120,7 +126,7 @@ class MoveText(QTextBrowser):
                 move_color = colors["analysis_white" if side > 0 else "analysis_black"]
             style = (f'color: {colors["selected_text"]}; background-color: {colors["selection"]};'
                      if index == current else f"color: {move_color};")
-            if index == book_departure:
+            if index in departures:
                 tint = "#87713f" if light else "#c3b07c"
                 style += f"color: {tint};"
             # Keep SAN slots identical across candidates and updates. Nonbreaking
@@ -128,7 +134,8 @@ class MoveText(QTextBrowser):
             label = ("\u00a0" + text + "\u00a0" * max(1, 8 - len(text))
                      if self.candidate_rank is not None else text)
             decoration = "text-decoration:none;"
-            tokens.append(f'<a href="move:{index}" style="{style} {decoration}">{escape(label)}</a>')
+            tooltip = f' title="{escape(departures[index], quote=True)}"' if index in departures else ""
+            tokens.append(f'<a href="move:{index}" style="{style} {decoration}"{tooltip}>{escape(label)}</a>')
         size, spacing = (16, 155) if self._auto_fit else (14, 140)
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'
                      + " ".join(tokens) + "</div>")
@@ -157,9 +164,8 @@ class MoveText(QTextBrowser):
         self.pointer_moved.emit(event.globalPosition().toPoint())
         if self.candidate_rank is None:
             anchor = self.anchorAt(event.position().toPoint())
-            self.viewport().setToolTip(
-                "Out of book: first position with no games in Lichess Masters"
-                if self._book_departure is not None and anchor == f"move:{self._book_departure}" else "")
+            index = int(anchor[5:]) if anchor.startswith("move:") and anchor[5:].isdigit() else None
+            self.viewport().setToolTip(self._book_departures.get(index, ""))
             return super().mouseMoveEvent(event)
         url = self._move_at(event.position().toPoint())
         self.viewport().setCursor(Qt.CursorShape.PointingHandCursor if not url.isEmpty()

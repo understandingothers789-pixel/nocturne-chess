@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.7.42 — Separate database departure markers
+
+- Masters, Lichess players and ChessDB keep separate cached coverage results.
+  Gold moves identify their database on hover; overlapping departures list all
+  matching sources. Player speed/rating filters have separate coverage records.
+- Markers survive reopening a study and resolve by move path, rather than node
+  number, so editing another variation cannot shift a marker to the wrong move.
+- ChessDB's explicit `unknown` response marks the first position without stored
+  cloud analysis. Unscored moves, checkmate, stalemate and request failures do
+  not count as missing positions. Automatic learning stays disabled.
+
 ## 0.5.7.41 — Clearer book departure and a public database default
 
 - The first out-of-book move uses a slightly brighter, muted gold tint without

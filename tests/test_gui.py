@@ -111,6 +111,34 @@ class GuiTests(unittest.TestCase):
         self.assertIsNone(window.analysis_history._book_departure)
         self.assertNotIn("#c3b07c", window.analysis_history.toHtml())
 
+    def test_cached_departure_tooltips_keep_all_database_sources(self):
+        from nocturne.explorer import ExplorerQuery
+
+        window = self.window
+        window.game = Game.from_pgn("1.e4 e5 *")
+        window.explorer.client.set_lichess_token("test-token")
+        for source, counts in (("masters", [100, 0]), ("lichess", [1000, 20, 0]),
+                               ("chessdb", [1, 0])):
+            for node, count in zip(window.game._line_nodes, counts):
+                query = ExplorerQuery(window.game.position_at_node(node).fen(), source)
+                data = ({"status": "ok" if count else "unknown", "moves": []} if source == "chessdb"
+                        else {"white": count, "draws": 0, "black": 0, "moves": []})
+                window.opening_coverage.client.cache.put(query.key, data)
+        with patch.object(window.explorer.client, "load"):
+            for source in ("masters", "lichess", "chessdb", "masters"):
+                window._choose_explorer(source)
+                for _ in range(5):
+                    self.app.processEvents()
+        markers = window.analysis_history._book_departures
+        self.assertIn("Lichess Masters", markers[1])
+        self.assertIn("ChessDB Cloud Analysis", markers[1])
+        self.assertIn("Lichess players", markers[2])
+        cursor = window.analysis_history.document().find("e4")
+        cursor.setPosition(cursor.selectionStart())
+        QTest.mouseMove(window.analysis_history.viewport(), window.analysis_history.cursorRect(cursor).center())
+        self.assertIn("ChessDB Cloud Analysis", window.analysis_history.viewport().toolTip())
+        self.assertIn("Lichess Masters", window.analysis_history.viewport().toolTip())
+
     def test_named_bookmarks_persist_navigate_and_follow_variation_deletion(self):
         window = self.window
         window.game = Game.from_pgn("1.e4 (1.d4 d5) e5 *")

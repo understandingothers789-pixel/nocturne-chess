@@ -31,12 +31,16 @@ def main():
         window._analysis_enabled = True
         window.game = Game.from_pgn("1.e4 {Smoke annotation} (1.d4 d5) e5 *")
         from .explorer import ExplorerQuery
-        query = ExplorerQuery(window.game.board.fen())
         move = next(window.game.board.legal_moves())
-        window.explorer.client.cache.put(query.key, {
-            "white": 1, "draws": 0, "black": 0,
-            "moves": [{"uci": move.uci(), "white": 1, "draws": 0, "black": 0}],
-        })
+        # Exercise the public ChessDB default, with deterministic local data
+        # for every fixture position so coverage never depends on the network.
+        for node in range(len(window.game.nodes)):
+            position = window.game.position_at_node(node)
+            query = ExplorerQuery(position.fen(), "chessdb")
+            fixture_move = next(position.legal_moves())
+            window.explorer.client.cache.put(query.key, {
+                "status": "ok", "moves": [{"uci": fixture_move.uci(), "score": 25, "note": "Smoke fixture"}],
+            })
         window.config["explorer_enabled"] = True
         window.config["explorer_statistics"] = True
         if "--smoke-engine" in sys.argv:

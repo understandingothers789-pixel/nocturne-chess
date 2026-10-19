@@ -424,6 +424,16 @@ needs no login. Entering a Lichess token switches from ChessDB to Masters;
 clearing the token returns to ChessDB. Tokens are session-only, so reopening
 the application selects ChessDB again. Database lookup stays off unless enabled.
 
+With statistics enabled, coverage is checked in the selected database. Masters,
+Lichess players and ChessDB save separate departure markers with the study.
+Gold moves retain their source on hover, including all matching sources when
+they share a departure. Lichess player filters have separate records. ChessDB
+marks its first explicit `unknown` position as **No stored cloud analysis**;
+this does not mean that no human has ever played the position. Checkmate,
+stalemate, unscored moves and failed requests do not create departure markers.
+Coverage results are cached for up to a day; the Database menu's coverage scan
+can recheck a line using the position cache.
+
 Lichess requires authentication. Use **Database → Create a Lichess access
 token…**, create a personal token with no extra permissions, then paste it into
 **Lichess access token…**. The masked token stays in memory for this session;
