@@ -12,6 +12,16 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
+**[0.5.7.33](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39207032446/artifacts/12165844502): reviewed engine, cache and graph fixes.** F11 and F12
+pause/resume from **Engine**. Normal node presets now enforce their caps and
+Unlimited runs until halted. Saved MultiPV lines reload when revisiting
+positions, including searches that finish with a Stockfish bound score. Graph
+zoom and navigation use the same timeline, and Left-arrow rewinds resume the
+main line. The Windows build passed 218 tests (5 optional skips), packaging,
+smoke checks and live database checks. Extract the unsigned ZIP and open
+`Nocturne/Nocturne.exe`. See the [review and five proposed improvements](docs/RECENT_COMMIT_REVIEW.md)
+and [build receipt](docs/BUILDING.md).
+
 **[0.5.7.31](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39198947442/artifacts/12163735077): a synced evaluation graph and separate engine node limits.** The
 graph timeline follows the selected PGN position. Engine now has distinct
 limits for normal analysis (1 billion nodes), auto-evaluation (200 million),

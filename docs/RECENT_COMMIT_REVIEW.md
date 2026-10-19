@@ -60,7 +60,10 @@ in 263.1 seconds, and Ruff passed. A final live-cache follow-up reproduced one
 additional edge case, then passed three focused checks after its correction.
 Local skips cover opt-in deep perft (2),
 loopback networking blocked by the execution sandbox (6), and unavailable real
-Syzygy fixtures (3). The Windows results are recorded in the build receipt.
+Syzygy fixtures (3). The final Windows run passed **218 tests (213 passed,
+5 optional skips)**, Ruff, packaging, executable smoke checks and live database
+API checks. The [build receipt](BUILDING.md) links the downloadable artifact and
+records its source commit and checksum.
 
 The additional real-engine check uses the official Stockfish 19 Linux binary,
 not the protocol simulator. A 100,000-node analysis returned 100,083 reported

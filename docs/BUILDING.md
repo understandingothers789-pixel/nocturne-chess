@@ -1,3 +1,30 @@
+# Windows 11 desktop builds · 0.5.7.33
+
+## [0.5.7.33 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39207032446/artifacts/12165844502)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`dc64bd3`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/dc64bd392f978ec07c09271e0d66db5a51f7b630)
+includes the recent-change review fixes and the F11/F12 toggles introduced in
+0.5.7.32. The [review report](RECENT_COMMIT_REVIEW.md) describes the confirmed
+bugs, regression coverage and five ideas that have not been implemented.
+
+Windows run [39207032446](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39207032446)
+passed Ruff, **218 tests (213 passed / 5 optional skips)** in 311.1 seconds,
+PyInstaller packaging, packaged GUI/UCI smoke checks and the live Masters,
+Lichess players and ChessDB API checks. The skips are opt-in deep perft (2)
+and unavailable real Syzygy fixtures (3). CI runs the suite once, then packages
+and smoke-tests the app without repeating the suite.
+
+Local validation passed 217 tests (206 passed / 11 skips), followed by three
+focused checks for the final live-cache fix. A separate check using official
+Stockfish 19 evaluated 21 positions with five PVs each and verified cached
+restoration, node-only analysis, Unlimited and self-play pause/resume.
+
+Artifact **12165844502**, `Nocturne-0.5.7.33-Windows-x64-unsigned`,
+57,926,081 bytes, expires 2026-11-18. GitHub artifact SHA-256:
+`112664790035e55521045e2a76baf30abd5c9f0789581d581f74bbd172f73e98`.
+
 # Windows 11 desktop builds · 0.5.7.30
 
 ## [Download Windows 0.5.7.30](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39196589327/artifacts/12161284918)
