@@ -1,4 +1,24 @@
-# Windows 11 desktop builds · 0.5.7.36
+# Windows 11 desktop builds · 0.5.7.39
+
+## [0.5.7.39 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39301723082/artifacts/12212705129)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`71f2b83`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/71f2b83)
+reserves a shared header height across candidate lines, while allowing the
+combined score, depth and database metrics to wrap above each line's moves.
+The out-of-book PGN marker uses a muted slate-blue gray tint, with no bold or
+underline.
+
+Windows run [39301723082](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39301723082)
+passed the full suite (**230 tests, 5 optional skips**), packaging, packaged
+smoke checks and live database checks.
+
+Artifact **12212705129**, `Nocturne-0.5.7.39-Windows-x64-unsigned`,
+57,965,211 bytes, expires 2026-11-18. GitHub artifact SHA-256:
+`20654acddb54a4d06ab091f50d7e2203e31f3e467b0621703dbca09ef87b8295`.
+
+## [0.5.7.36 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39296780043/artifacts/12209442411)
 
 ## [0.5.7.36 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39296780043/artifacts/12209442411)
 
