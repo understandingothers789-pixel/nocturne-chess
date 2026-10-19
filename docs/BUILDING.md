@@ -1,4 +1,22 @@
-# Windows 11 desktop builds · 0.5.7.39
+# Windows 11 desktop builds · 0.5.7.40
+
+## [0.5.7.40 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39305070431/artifacts/12213946559)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`a09ca7b`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/a09ca7b)
+adds a preview to Saved PGNs & games. Hovering or selecting a row shows the
+game's final main-line board position and the first six full moves in PGN
+notation. The miniature board follows the current piece set and board theme.
+
+Windows run [39305070431](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39305070431)
+passed the full suite, packaging, packaged smoke checks and live database checks.
+
+Artifact **12213946559**, `Nocturne-0.5.7.40-Windows-x64-unsigned`,
+57,968,757 bytes, expires 2026-11-18. GitHub artifact SHA-256:
+`679c5bbfe250cb14ceb2e5943275a185262e61afada12799b0f0c90cd54fe597`.
+
+## [0.5.7.39 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39301723082/artifacts/12212705129)
 
 ## [0.5.7.39 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39301723082/artifacts/12212705129)
 
