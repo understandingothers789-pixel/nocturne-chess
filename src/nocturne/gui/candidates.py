@@ -454,7 +454,9 @@ class CandidatePanel(QWidget):
         for title, action in (
             ("Insert line", "insert"),
             ("Unpin line" if rank in self.pinned else "Pin line", "pin"),
-            ("Copy SAN", "san"), ("Copy UCI", "uci"),
+            ("Copy PGN (this line)", "pgn"),
+            ("Copy SAN (this line)", "san"),
+            ("Copy UCI (this line)", "uci"),
             ("Analyze only this move", "focus"),
         ):
             item = menu.addAction(title)

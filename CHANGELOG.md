@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.7.46 — Clearer copy commands
+
+- Right-clicking Game Moves offers **Copy PGN** for the current game.
+- Candidate menus identify SAN, UCI and PGN copy commands as belonging to
+  the selected line; Copy PGN creates a standalone PGN for that candidate.
+
 ## 0.5.7.45 — Normal PGN imports and clearer candidate markers
 
 - Clipboard and file imports show Engine analysis with moves in Game Moves.

@@ -562,6 +562,8 @@ class MainWindow(QMainWindow):
         self.analysis_history.move_clicked.connect(self._navigate_node)
         self.analysis_history.wheel_navigated.connect(self._wheel_game)
         self.analysis_history.preview_ended.connect(lambda: self._end_preview("history"))
+        self.analysis_history.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.analysis_history.customContextMenuRequested.connect(self._history_context_menu)
         history_layout.addWidget(self.analysis_history, 1)
         self.workspace_splitter.addWidget(self.analysis_moves_panel)
         self.workspace_splitter.setStretchFactor(0, 1)
@@ -1389,6 +1391,16 @@ class MainWindow(QMainWindow):
             self._schedule_engine()
         elif action in ("san", "uci"):
             QApplication.clipboard().setText(" ".join(line[action if action == "san" else "pv"]))
+        elif action == "pgn":
+            variation = Game(self.game.board.fen())
+            variation.headers = self.game.headers.copy()
+            variation.headers["Result"] = "*"
+            try:
+                for move in line["pv"][:128]:
+                    variation.play(variation.board.parse_uci(move))
+            except ValueError:
+                return
+            QApplication.clipboard().setText(variation.pgn())
 
     def _clear_focus(self):
         self.config["searchmoves"] = []
@@ -2879,6 +2891,11 @@ class MainWindow(QMainWindow):
     def _history_clicked(self, row, column):
         if cursor := getattr(self, "_history_cells", {}).get((row, column)):
             self._navigate(cursor)
+
+    def _history_context_menu(self, position):
+        menu = QMenu(self.analysis_history)
+        menu.addAction("Copy PGN", self._copy_pgn)
+        menu.exec(self.analysis_history.mapToGlobal(position))
 
     def _flip(self):
         self.board_view.flip()
