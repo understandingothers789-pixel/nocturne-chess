@@ -1,3 +1,10 @@
+# Windows 11 desktop builds · 0.5.7.25
+
+## Windows 0.5.7.25 build pending
+
+The feature commit is being validated by the Windows workflow. Its artifact
+link and checksum will be added here after the build completes.
+
 # Windows 11 desktop builds · 0.5.7.24
 
 ## Download Windows 0.5.7.24

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7.25 — Cleaner depth labels and clearer engine telemetry
+
+Hide selective depth by default in candidate headers and top telemetry, with an
+optional Display setting to show it in both places. Emphasize depth, node count
+and nodes per second in the top telemetry with slightly larger, blue-accented
+values.
+
 ## 0.5.7.24 — Preserve wheel preview during pointer jitter
 
 Candidate wheel browsing now remains on its selected ply when tiny mouse

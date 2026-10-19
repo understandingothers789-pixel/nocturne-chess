@@ -499,13 +499,15 @@ class GuiTests(unittest.TestCase):
             text = document.toPlainText().replace("\u00a0", " ")
             headline = self._candidate_header_text(3).replace("\u00a0", " ")
             footer = self._candidate_footer_text(3).replace("\u00a0", " ")
-            self.assertIn("+0.22 Depth 31/46", headline)
+            self.assertIn("+0.22 Depth 31", headline)
+            self.assertNotIn("31/46", headline)
             self.assertNotIn("W/D/L", headline)
             self.assertNotIn("API win", headline)
             self.assertIn("W/D/L 10.0/20.0/70.0% White", footer)
             self.assertIn("API win (White) 25.0%", footer)
             self.assertIn("Freq 40.0%", footer)
-            self.assertIn("Depth 31/46", text)
+            self.assertIn("Depth 31", text)
+            self.assertNotIn("31/46", text)
             self.assertIn("W/D/L 10.0/20.0/70.0% White", text)
             self.assertIn("API win (White) 25.0%", text)
             self.assertIn("Freq 40.0%", text)  # Uses all 1,000 games, not just returned moves.
@@ -537,6 +539,38 @@ class GuiTests(unittest.TestCase):
         self.assertIn("50.0%", self._header_document(3).toPlainText())
         self.assertEqual(third.mapToGlobal(third.rect().topLeft()), before)
         self.assertEqual(self.window.candidates.hovered, 3)
+
+    def test_selective_depth_is_optional_in_headers_and_highlights_top_metrics(self):
+        from PySide6.QtGui import QTextDocument
+        from nocturne.gui.theme import palette
+
+        self._analysis_game("1.e4 e5 *")
+        self._show_external_info({
+            "depth": 18, "seldepth": 38, "score": 24, "nodes": 2_345_678,
+            "nps": 12_345, "seconds": 2.5, "hashfull": 420, "tbhits": 3,
+            "pv": ["g1f3"],
+        }, {"turn": 1, "multipv": 1})
+        action = self.window.display_actions["show_seldepth"]
+        self.assertEqual(action.text(), "Show selective depth (seldepth)")
+        self.assertFalse(action.isChecked())
+
+        document = QTextDocument()
+        document.setHtml(self.window.telemetry.text())
+        telemetry = document.toPlainText()
+        self.assertIn("Depth 18", telemetry)
+        self.assertNotIn("18/38", telemetry)
+        self.assertIn("Nodes 2,345,678", telemetry)
+        self.assertIn("Nodes/second 12,345", telemetry)
+        self.assertIn("Depth 18", self._candidate_header_text(1))
+        self.assertNotIn("18/38", self._candidate_header_text(1))
+        self.assertIn("font-size:15px", self.window.telemetry.text())
+        self.assertIn(palette(False)["metric"], self.window.telemetry.text())
+
+        action.trigger()
+        document.setHtml(self.window.telemetry.text())
+        self.assertTrue(self.window.store.get("settings")["show_seldepth"])
+        self.assertIn("Depth 18/38", document.toPlainText())
+        self.assertIn("Depth 18/38", self._candidate_header_text(1))
 
     def test_candidate_database_status_distinguishes_loading_errors_and_empty_samples(self):
         from nocturne.explorer import parse_statistics

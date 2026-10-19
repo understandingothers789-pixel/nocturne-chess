@@ -51,6 +51,11 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(normalize({"piece_set": "Original", "piece_set_version": 1})["piece_set"], "Original")
         self.assertEqual(normalize({"piece_set": "missing"})["piece_set"], "Nibbler")
 
+    def test_selective_depth_visibility_defaults_off_and_validates_boolean(self):
+        self.assertFalse(normalize({})["show_seldepth"])
+        self.assertFalse(normalize({"show_seldepth": "true"})["show_seldepth"])
+        self.assertTrue(normalize({"show_seldepth": True})["show_seldepth"])
+
     def test_database_statistics_and_explorer_visibility_are_independent(self):
         self.assertFalse(normalize({})["explorer_statistics"])
         self.assertTrue(normalize({"explorer_source": "masters", "explorer_enabled": False})["explorer_statistics"])

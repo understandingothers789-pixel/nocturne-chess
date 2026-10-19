@@ -42,6 +42,7 @@ class CandidatePanel(QWidget):
         self.expand_buttons = {}
         self.expanded_ranks = set()
         self.light = False
+        self.show_seldepth = False
         self.database = None
         self.details = {}
         self.lines = {}
@@ -289,6 +290,11 @@ class CandidatePanel(QWidget):
         for rank in self.rows:
             self._render_header(rank)
 
+    def set_show_seldepth(self, enabled):
+        self.show_seldepth = bool(enabled)
+        for rank in self.rows:
+            self._render_header(rank)
+
     def _render_header(self, rank):
         if rank not in self.lines:
             return
@@ -304,7 +310,8 @@ class CandidatePanel(QWidget):
             first += " ★"
         # Keep the first two things a player wants to scan close together:
         # evaluation, then depth. Avoid the old oversized gap before depth.
-        first += f"&nbsp;<span style=\"color:{colors['metadata']};\">Depth {info['depth']}/{info['seldepth']}</span>"
+        depth = f"{info['depth']}/{info['seldepth']}" if self.show_seldepth else str(info["depth"])
+        first += f"&nbsp;<span style=\"color:{colors['metadata']};\">Depth {depth}</span>"
         header = self.rows[rank][1]
         header.setText(f"<div>{first}</div>")
         header.setAccessibleName(f"Candidate {rank} evaluation and search depth")

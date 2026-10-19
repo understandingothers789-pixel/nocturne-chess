@@ -642,6 +642,7 @@ class MainWindow(QMainWindow):
             ("smart_move", "Smart Move · click recommended destinations"),
             ("branch_arrows", "Show saved continuation arrows"),
             ("details", "Detailed analysis statistics"),
+            ("show_seldepth", "Show selective depth (seldepth)"),
             ("wheel_game_moves", "Wheel navigates game moves"),
             ("wheel_analysis_moves", "Wheel previews analysis moves"),
         ]:
@@ -1742,6 +1743,7 @@ class MainWindow(QMainWindow):
         self.history.setStyleSheet(f"QTableWidget {{ color: {palette(light)['history']}; }}")
         self.eval_label.setStyleSheet(f"color: {palette(light)['metric']};")
         self.telemetry.setStyleSheet(f"color: {palette(light)['metadata']};")
+        self.telemetry.setTextFormat(Qt.TextFormat.RichText)
         self.graph.light = self.board_view.light = light
         self.graph.update()
         self.eval_bar.setVisible(self.board_view.overlays)
@@ -1753,6 +1755,9 @@ class MainWindow(QMainWindow):
 
     def _apply_settings(self):
         self._apply_appearance(self._appearance_config())
+        self.candidates.set_show_seldepth(self.config.get("show_seldepth", False))
+        if self._last_info:
+            self._render_telemetry(self._last_info)
         self.tablebase_label.setVisible(bool(self.config.get("syzygy_path")))
         self.board_view.smart_move = self.config.get("smart_move", True)
         self.board_view.candidate_style = self.config.get("candidate_style", "lines")
@@ -2762,17 +2767,7 @@ class MainWindow(QMainWindow):
             score_label(info, job["turn"]) if "score_type" in info else score_text(white_score)
         )
         self.eval_bar.set_score(white_score)
-        duration = info.get("seconds", 0)
-        self.telemetry.setText(
-            f"Depth {info['depth']}  ·  selective {info['seldepth']}\n"
-            f"{info['nodes']:,} nodes  ·  {info.get('nps', 0):,} nodes/sec\n"
-            f"{duration:.2f} seconds  ·  hash full {info.get('hashfull', 0) / 10:.1f}%  ·  TB hits {info.get('tbhits', 0)}"
-        )
-        if not self.config.get("details", False):
-            self.telemetry.setText(
-                f"Depth {info['depth']}/{info['seldepth']} · {info['nodes']:,} nodes · {info.get('nps', 0):,} N/s · TB {info.get('tbhits', 0)}"
-                + (" · " + self.analysis_scope if self.analysis_scope else "")
-            )
+        self._render_telemetry(info)
         position = self.game.board.copy()
         self._pv_root = self.game.board.copy(history=False)
         self._pv_identity = self._position_identity()
@@ -2789,6 +2784,42 @@ class MainWindow(QMainWindow):
                 break
         self.board_view.best_move = first
         self.board_view.update()
+
+    def _render_telemetry(self, info):
+        colors = palette(self._appearance_config().get("light", False))
+        depth = str(info["depth"])
+        if self.config.get("show_seldepth", False):
+            depth += f"/{info['seldepth']}"
+
+        def metric(label_text, value):
+            return (
+                f'<span style="color:{colors["metadata"]};">{label_text} </span>'
+                f'<span style="color:{colors["metric"]};font-size:15px;'
+                f'font-weight:600;">{value}</span>'
+            )
+
+        separator = f'<span style="color:{colors["metadata"]};"> · </span>'
+        values = [
+            metric("Depth", depth),
+            metric("Nodes", f"{info['nodes']:,}"),
+            metric("Nodes/second", f"{info.get('nps', 0):,}"),
+        ]
+        if not self.config.get("details", False):
+            values.append(
+                f'<span style="color:{colors["metadata"]};">TB hits '
+                f'{info.get("tbhits", 0)}</span>'
+            )
+        if self.analysis_scope:
+            values.append(f'<span style="color:{colors["metadata"]};">{self.analysis_scope}</span>')
+        text = separator.join(values)
+        if self.config.get("details", False):
+            extra = (
+                f'{info.get("seconds", 0):.2f} seconds  ·  '
+                f'hash full {info.get("hashfull", 0) / 10:.1f}%  ·  '
+                f'TB hits {info.get("tbhits", 0)}'
+            )
+            text += f'<br><span style="color:{colors["metadata"]};">{extra}</span>'
+        self.telemetry.setText(f"<div>{text}</div>")
 
     def _error(self, title, text):
         QMessageBox.warning(self, title, text)

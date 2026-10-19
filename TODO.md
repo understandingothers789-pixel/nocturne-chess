@@ -1,6 +1,12 @@
 # Active roadmap
 
-**Current: 0.5.7.24 delivered.** Candidate wheel browsing ignores tiny mouse
+**Current: 0.5.7.25 in validation.** Candidate rows and top telemetry show
+main search depth without selective depth by default. **Display → Show selective
+depth (seldepth)** reveals it in both places. Top depth, nodes and nodes/second
+are slightly larger and blue-accented. Focused GUI and settings tests and Ruff
+pass; full validation and Windows build are underway.
+
+**Previous: 0.5.7.24 delivered.** Candidate wheel browsing ignores tiny mouse
 movement that stays over the same move; pointer movement to another move still
 resumes hover previews. Local: 189 tests passed with 11 environment/optional
 skips; Ruff passed. Windows: 189 tests passed with 5 optional skips, Ruff,

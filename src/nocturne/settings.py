@@ -33,6 +33,7 @@ DEFAULTS = {
     "analysis_seconds": 3.0,
     "review_seconds": 3.0,
     "details": False,
+    "show_seldepth": False,
     "smart_move": True,
     "candidate_style": "lines",
     "candidate_marker_version": 1,
@@ -104,6 +105,7 @@ def normalize(data) -> dict:
         "smart_move",
         "branch_arrows",
         "details",
+        "show_seldepth",
         "explorer_enabled",
         "explorer_statistics",
     ):

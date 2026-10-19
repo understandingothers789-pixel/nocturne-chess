@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.24
+# Nocturne Analysis · 0.5.7.25
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -11,6 +11,12 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
+
+**0.5.7.25: clearer engine telemetry.** Depth shows only its main value by
+default; use **Display → Show selective depth (seldepth)** to include the
+selective-depth denominator in candidate headers and top telemetry. Depth,
+nodes and nodes per second stand out with a subtle blue tint and slightly larger
+text. The Windows build is being validated; see the [build receipt](docs/BUILDING.md).
 
 **0.5.7.24: steady wheel previews.** Scrolling through a candidate stays on
 the selected ply while the pointer moves within the same move. Moving to a
