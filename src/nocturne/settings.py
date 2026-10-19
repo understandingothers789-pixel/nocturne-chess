@@ -30,8 +30,8 @@ DEFAULTS = {
     "animations": True,
     "overlays": True,
     "hash_mb": 32,
-    "analysis_depth": 24,
-    "analysis_seconds": 3.0,
+    "analysis_depth": 128,
+    "analysis_seconds": 600.0,
     "review_seconds": 3.0,
     "details": False,
     "show_seldepth": False,
@@ -40,7 +40,7 @@ DEFAULTS = {
     "candidate_marker_version": 1,
     "branch_arrows": True,
     "layout": "classic",
-    "analysis_kind": "infinite",
+    "analysis_kind": "bounded",
     "multipv": 1,
     "analysis_menu_version": 1,
     "explorer_enabled": False,
@@ -49,8 +49,11 @@ DEFAULTS = {
     "explorer_speed": "all",
     "explorer_rating": 0,
     "engine_id": "",
-    "analysis_nodes": 0,
-    "auto_eval_nodes": 10_000_000,
+    "analysis_nodes": 1_000_000_000,
+    "analysis_limit_version": 1,
+    "auto_eval_nodes": 200_000_000,
+    "auto_eval_limit_version": 1,
+    "auto_play_nodes": 10_000_000,
     "reanalyze_on_navigation": False,
     "external_path": "",
     "syzygy_path": "",
@@ -125,6 +128,7 @@ def normalize(data) -> dict:
         ("multipv", 1, 32),
         ("analysis_nodes", 0, 2_000_000_000),
         ("auto_eval_nodes", 0, 2_000_000_000),
+        ("auto_play_nodes", 1, 2_000_000_000),
         ("analysis_seconds", 0.05, 600),
         ("review_seconds", 0.05, 600),
         ("seconds", 0, 86400),
@@ -135,6 +139,18 @@ def normalize(data) -> dict:
         if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
             value = min(maximum, max(minimum, value))
             result[key] = float(value) if key in ("analysis_seconds", "review_seconds") else int(value)
+    # Give existing installs the new useful node-based defaults once.
+    if data.get("analysis_limit_version") != 1:
+        if data.get("analysis_kind") == "infinite":
+            result["analysis_kind"] = "bounded"
+        if data.get("analysis_nodes", 0) == 0:
+            result["analysis_nodes"] = 1_000_000_000
+        if data.get("analysis_depth", 24) == 24:
+            result["analysis_depth"] = 128
+        if data.get("analysis_seconds", 3.0) == 3.0:
+            result["analysis_seconds"] = 600.0
+    if data.get("auto_eval_limit_version") != 1 and data.get("auto_eval_nodes", 10_000_000) == 10_000_000:
+        result["auto_eval_nodes"] = 200_000_000
     for key, limit in (
         ("engine_id", 128),
         ("white_name", 80),
@@ -147,4 +163,6 @@ def normalize(data) -> dict:
     # Older Live/Bounded modes always searched one PV despite the stored spin value.
     if data.get("analysis_menu_version") != 1 and data.get("analysis_kind") in ("infinite", "bounded"):
         result["multipv"] = 1
+    result["analysis_limit_version"] = 1
+    result["auto_eval_limit_version"] = 1
     return result

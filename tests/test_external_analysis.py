@@ -558,6 +558,24 @@ class QtIntegration(unittest.TestCase):
             self.assertEqual(len(window.game.nodes[0].analysis["multipv_lines"]), 3)
             self.assertEqual(len(window.game.nodes[1].analysis["multipv_lines"]), 3)
 
+    def test_f11_auto_play_runs_both_sides_with_ten_million_nodes_per_move(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            window.autosave_timer.stop()
+            window.profiles = [self.profile()]
+            window.config.update(mode="analysis", engine_id="simulator", auto_play_nodes=10_000_000)
+            window.analysis_mode = True
+            window._analysis_enabled = False
+            window.game = Game.from_pgn("1.e4 *")
+            window.game.metadata["mode"] = "analysis"
+            window._refresh()
+            window._start_auto_play()
+            self.wait_until(lambda: len(window.game.moves) >= 2)
+            window._halt_analysis()
+            self.assertIn("> go nodes 10000000", window.engine.connection.log)
+            self.assertEqual(window.game.sans[0], "e4")
+            self.assertGreaterEqual(len(window.game.moves), 2)
+
     def test_review_panel_grades_accuracy_navigation_and_saved_restore(self):
         from nocturne.review import rows, summarize
 

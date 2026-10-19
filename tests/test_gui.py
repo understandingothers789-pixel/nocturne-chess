@@ -94,6 +94,15 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(window.game.sans[4:], ["Nc3"])
         self.assertIn("(", window.game.pgn())
 
+    def test_backing_out_of_variation_resumes_mainline_on_forward_navigation(self):
+        game = Game.from_pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 (3...Nf6) 4. Ba4 *")
+        alternative = next(i for i, node in enumerate(game.nodes) if node.san == "Nf6")
+        game.select_node(alternative)
+        game.navigate(5)  # Return to the shared position after 3.Bb5.
+        self.assertEqual(game.current_node, game.mainline_node(5))
+        game.navigate(6)
+        self.assertEqual(game.sans[5], "a6")
+
     def test_move_navigation_reanalysis_is_opt_in(self):
         window = self.window
         window.game = Game.from_pgn("1.e4 e5 2.Nf3 *")
@@ -116,6 +125,9 @@ class GuiTests(unittest.TestCase):
         self.assertTrue(selected.isChecked())
         self.assertEqual(window.config["auto_eval_nodes"], 100_000_000)
         self.assertEqual(window.auto_eval_limit_menu.title(), "Auto-evaluation nodes per position · 100,000,000")
+        values = {action.text() for action in window.auto_eval_limit_menu.actions()}
+        self.assertTrue({f"{n:,}" for n in range(100_000_000, 1_000_000_001, 100_000_000)} <= values)
+        self.assertEqual(window.menu_actions["Auto-play engines from this position"].shortcut().toString(), "F11")
 
     def test_backspace_deletes_current_branch_selects_sibling_and_saves(self):
         self._analysis_game("1.e4 e5 (1...Nf6 2.d4) 2.Nf3 (2.Bc4) *")

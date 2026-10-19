@@ -5,12 +5,28 @@ from nocturne.settings import DEFAULTS, normalize
 
 class SettingsTests(unittest.TestCase):
     def test_auto_evaluation_and_navigation_preferences(self):
-        self.assertEqual(DEFAULTS["auto_eval_nodes"], 10_000_000)
+        self.assertEqual(DEFAULTS["auto_eval_nodes"], 200_000_000)
+        self.assertEqual(DEFAULTS["analysis_nodes"], 1_000_000_000)
+        self.assertEqual(DEFAULTS["auto_play_nodes"], 10_000_000)
+        self.assertEqual(DEFAULTS["analysis_kind"], "bounded")
         self.assertFalse(DEFAULTS["reanalyze_on_navigation"])
         settings = normalize({"auto_eval_nodes": 3_000_000_000, "reanalyze_on_navigation": True})
         self.assertEqual(settings["auto_eval_nodes"], 2_000_000_000)
         self.assertTrue(settings["reanalyze_on_navigation"])
         self.assertFalse(normalize({"reanalyze_on_navigation": "yes"})["reanalyze_on_navigation"])
+
+    def test_new_search_defaults_and_one_time_legacy_upgrade(self):
+        defaults = normalize({})
+        self.assertEqual(defaults["analysis_kind"], "bounded")
+        self.assertEqual(defaults["analysis_nodes"], 1_000_000_000)
+        self.assertEqual(defaults["analysis_depth"], 128)
+        self.assertEqual(defaults["analysis_seconds"], 600)
+        self.assertEqual(defaults["auto_eval_nodes"], 200_000_000)
+        old = normalize({"analysis_kind": "infinite", "analysis_nodes": 0,
+                         "auto_eval_nodes": 10_000_000})
+        self.assertEqual(old["analysis_kind"], "bounded")
+        self.assertEqual(old["analysis_nodes"], 1_000_000_000)
+        self.assertEqual(old["auto_eval_nodes"], 200_000_000)
 
     def test_nibbler_piece_default_upgrades_once_then_keeps_user_choice(self):
         self.assertEqual(normalize({})["piece_set"], "Nibbler")
@@ -86,7 +102,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(result["mode"], "analysis")
         self.assertEqual(result["hash_mb"], 65536)
         self.assertEqual(result["analysis_depth"], 1)
-        self.assertEqual(result["analysis_seconds"], 3.0)
+        self.assertEqual(result["analysis_seconds"], 600.0)
         self.assertIs(result["coordinates"], True)
         self.assertIs(result["light"], True)
         self.assertEqual(result["external_path"], "")

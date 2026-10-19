@@ -159,6 +159,7 @@ class MainWindow(QMainWindow):
         if self.analysis_mode:
             self.paused = False
         self._analysis_enabled = self.analysis_mode
+        self._auto_play_active = False
         self._job = None
         self._lab = None
         self._benchmark_report = None
@@ -615,6 +616,7 @@ class MainWindow(QMainWindow):
         add(analysis, "Go", self._start_analysis, "Ctrl+G")
         add(analysis, "Halt", self._halt_analysis, "Ctrl+H")
         add(analysis, "Auto-evaluate entire line", self._auto_evaluate_line, "F12")
+        add(analysis, "Auto-play engines from this position", self._start_auto_play, "F11")
         add(analysis, "Analyze entire line…", self._analyze_game)
         add(analysis, "Pause / resume game analysis", self._pause_review)
         add(analysis, "Cancel game analysis", self._cancel_review)
@@ -1331,6 +1333,25 @@ class MainWindow(QMainWindow):
         self._save()
         self._review_next()
 
+    def _start_auto_play(self):
+        if not self._profile():
+            self._manage_engines()
+            return
+        self._cancel_review()
+        self._stop_engine()
+        self._ensure_analysis_copy()
+        self.analysis_mode = True
+        self.paused = False
+        self._analysis_enabled = False
+        self._auto_play_active = True
+        self.game.pause_clock()
+        self.analysis_nav.setChecked(True)
+        self.play_nav.setChecked(False)
+        self._refresh()
+        self.quick_analysis_button.setText("Stop auto-play")
+        self._save()
+        self._schedule_engine()
+
     def _analyze_game(self):
         from PySide6.QtWidgets import QInputDialog
 
@@ -1746,13 +1767,12 @@ class MainWindow(QMainWindow):
         self.search_mode_menu.addSeparator()
         self.search_mode_menu.addAction("Set limits…", self._edit_analysis_limits)
         self.auto_eval_limit_menu.clear()
-        auto_eval_nodes = self.config.get("auto_eval_nodes", 10_000_000)
+        auto_eval_nodes = self.config.get("auto_eval_nodes", 200_000_000)
         limit_label = "Unlimited" if auto_eval_nodes == 0 else f"{auto_eval_nodes:,}"
         self.auto_eval_limit_menu.setTitle(f"Auto-evaluation nodes per position · {limit_label}")
         for title, nodes in (
             ("Unlimited · stop manually", 0),
-            ("1,000,000,000", 1_000_000_000),
-            ("100,000,000", 100_000_000),
+            *((f"{value:,}", value) for value in range(100_000_000, 1_000_000_001, 100_000_000)),
             ("10,000,000", 10_000_000),
             ("1,000,000", 1_000_000),
             ("100,000", 100_000),
@@ -2646,6 +2666,9 @@ class MainWindow(QMainWindow):
         dialog.deleteLater()
 
     def _analyze(self):
+        if self._auto_play_active:
+            self._halt_analysis()
+            return
         if not self._profile():
             self._manage_engines()
             return
@@ -2658,6 +2681,9 @@ class MainWindow(QMainWindow):
         self._start_analysis()
 
     def _halt_analysis(self):
+        if self._auto_play_active:
+            self._auto_play_active = False
+            self.quick_analysis_button.setText("Analyze")
         if self._review:
             if not self._review["paused"]:
                 self._pause_review()
@@ -2708,6 +2734,7 @@ class MainWindow(QMainWindow):
         return self.game.id, self.game.cursor, self.game.board.key, self.game.current_node
 
     def _stop_engine(self):
+        self._auto_play_active = False
         if self._review and not self._review.get("paused") and self._job is None:
             self.board_view.set_recommendations([])
             return
@@ -2735,7 +2762,9 @@ class MainWindow(QMainWindow):
             return
         if self._review:
             return
-        if self.analysis_mode:
+        if self._auto_play_active:
+            kind = "play"
+        elif self.analysis_mode:
             if not self._analysis_enabled:
                 return
             kind = "analysis"
@@ -2753,9 +2782,10 @@ class MainWindow(QMainWindow):
             return
         infinite = kind == "analysis" and self.config.get("analysis_kind") != "bounded"
         limits = SearchLimits(
-            depth=self.config.get("analysis_depth", 24),
-            seconds=self.config.get("analysis_seconds", 3),
-            nodes=None if infinite else (self.config.get("analysis_nodes") or None),
+            depth=128 if self._auto_play_active else self.config.get("analysis_depth", 128),
+            seconds=600 if self._auto_play_active else self.config.get("analysis_seconds", 600),
+            nodes=(self.config.get("auto_play_nodes", 10_000_000) if self._auto_play_active
+                   else None if infinite else (self.config.get("analysis_nodes") or None)),
         )
         count = self._effective_multipv() if kind == "analysis" else 1
         focus = tuple(self.config.get("searchmoves", []))
@@ -2794,6 +2824,7 @@ class MainWindow(QMainWindow):
                 multipv=count,
                 searchmoves=self.config.get("searchmoves", []),
                 tablebase_path=self.config.get("syzygy_path", ""),
+                nodes_only=self._auto_play_active,
             )
         except (OSError, RuntimeError, ValueError) as exc:
             self._error("Cannot start engine", str(exc))
@@ -2809,7 +2840,7 @@ class MainWindow(QMainWindow):
             "multipv": count,
         }
         self.engine_state.setText(profile.get("name", "UCI engine") + " · connecting / analyzing")
-        self.quick_analysis_button.setText("Stop" if kind == "analysis" else "Analyze")
+        self.quick_analysis_button.setText("Stop auto-play" if self._auto_play_active else "Stop" if kind == "analysis" else "Analyze")
         self.board_view.interactive = kind == "analysis"
 
     def _clear_analysis_output(self):
@@ -2880,8 +2911,12 @@ class MainWindow(QMainWindow):
                 self.pause_button.setText("Continue")
                 self.statusBar().showMessage(f"Move was not applied: {exc}")
             self._refresh(animate=True)
-            delay = self.config.get("watch_delay_ms", 500) if self.config.get("mode") == "ai_ai" else 80
-            QTimer.singleShot(delay, self._schedule_engine)
+            if self.game.outcome:
+                self._auto_play_active = False
+                self.quick_analysis_button.setText("Analyze")
+            else:
+                delay = self.config.get("watch_delay_ms", 500) if self._auto_play_active or self.config.get("mode") == "ai_ai" else 80
+                QTimer.singleShot(delay, self._schedule_engine)
         self._save()
 
     def _show_info(self, info, job):

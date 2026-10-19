@@ -264,10 +264,16 @@ class Game:
     def navigate(self, cursor: int) -> None:
         if not 0 <= cursor <= len(self.moves):
             raise ValueError("History index out of range")
+        previous = self.cursor
         while self.cursor > cursor:
             self.undo()
         while self.cursor < cursor:
             self.redo()
+        # When backing out of a variation onto a shared main-line position,
+        # make that position's continuation the active path. Otherwise redo
+        # would silently resume the old parenthesized variation.
+        if cursor < previous and self.current_node == self.mainline_node(cursor):
+            self.select_node(self.current_node)
 
     def resign(self, color: int | None = None) -> None:
         if self.outcome:
