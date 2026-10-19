@@ -121,13 +121,13 @@ class MoveText(QTextBrowser):
             style = (f'color: {colors["selected_text"]}; background-color: {colors["selection"]};'
                      if index == current else f"color: {move_color};")
             if index == book_departure:
-                tint = "#75858b" if light else "#a8b4b2"
+                tint = "#87713f" if light else "#c3b07c"
                 style += f"color: {tint};"
             # Keep SAN slots identical across candidates and updates. Nonbreaking
             # padding belongs to the anchor, so the whole slot is interactive.
             label = ("\u00a0" + text + "\u00a0" * max(1, 8 - len(text))
                      if self.candidate_rank is not None else text)
-            decoration = "" if index == book_departure else "text-decoration:none;"
+            decoration = "text-decoration:none;"
             tokens.append(f'<a href="move:{index}" style="{style} {decoration}">{escape(label)}</a>')
         size, spacing = (16, 155) if self._auto_fit else (14, 140)
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'

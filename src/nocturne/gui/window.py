@@ -109,6 +109,9 @@ class MainWindow(QMainWindow):
         except (StorageError, OSError) as exc:
             self._storage_message = str(exc)
         self.config = normalize(self.store.get("settings", {}) if self.store else {})
+        # Access tokens are session-only. Start with the public database even
+        # when a previous session saved a Lichess source.
+        self.config["explorer_source"] = "chessdb"
         self.profiles = self.store.get("engine_profiles", []) if self.store else []
         if not isinstance(self.profiles, list):
             self.profiles = []
@@ -856,11 +859,16 @@ class MainWindow(QMainWindow):
             except ValueError as exc:
                 self._error("Invalid access token", str(exc))
                 return
+            if not self.explorer.client.has_lichess_token:
+                self.config["explorer_source"] = "chessdb"
+            elif self.config.get("explorer_source") == "chessdb":
+                self.config["explorer_source"] = "masters"
             # Retry coverage that may have stopped before authentication.
             self.opening_coverage.cancel()
             self._sync_explorer()
             if self.explorer.query and self.explorer.query.source != "chessdb":
                 self.explorer.refresh()
+            self._save()
 
     def _clear_lichess_token(self):
         self.explorer.client.set_lichess_token("")
@@ -868,8 +876,9 @@ class MainWindow(QMainWindow):
         self.opening_coverage.client.set_lichess_token("")
         if self.explorer.query and self.explorer.query.source != "chessdb":
             self.explorer.client.cancel()
-            self.explorer.status_label.setText("Session token cleared · cached results remain available")
+        self.config["explorer_source"] = "chessdb"
         self._sync_explorer()
+        self._save()
 
     def _set_explorer_option(self, key, value):
         self.config[key] = value

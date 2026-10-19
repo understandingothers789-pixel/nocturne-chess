@@ -419,7 +419,12 @@ Game lists/individual game downloads are not included in this release.
 
 The explorer starts disabled. When enabled, it sends the current position and
 chosen filters to the selected online database, including the [Lichess opening explorer](https://lichess.org/api#tag/Opening-Explorer).
-Lichess now requires authentication. Use **Database → Create a Lichess access
+Without a session token, Nocturne starts with **ChessDB · cloud analysis**, which
+needs no login. Entering a Lichess token switches from ChessDB to Masters;
+clearing the token returns to ChessDB. Tokens are session-only, so reopening
+the application selects ChessDB again. Database lookup stays off unless enabled.
+
+Lichess requires authentication. Use **Database → Create a Lichess access
 token…**, create a personal token with no extra permissions, then paste it into
 **Lichess access token…**. The masked token stays in memory for this session;
 it is never written into settings, games, PGNs or cache. It is sent only to

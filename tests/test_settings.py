@@ -103,6 +103,7 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(normalize({"show_seldepth": True})["show_seldepth"])
 
     def test_database_statistics_and_explorer_visibility_are_independent(self):
+        self.assertEqual(normalize({})["explorer_source"], "chessdb")
         self.assertFalse(normalize({})["explorer_statistics"])
         self.assertTrue(normalize({"explorer_source": "masters", "explorer_enabled": False})["explorer_statistics"])
         upgraded = normalize({"explorer_enabled": True})

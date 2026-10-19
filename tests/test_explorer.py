@@ -329,10 +329,12 @@ class CachedGuiTests(unittest.TestCase):
         self.addCleanup(window.close)
         window._analysis_enabled = False
         client = window.explorer.client
+        self.assertEqual(window.config["explorer_source"], "chessdb")
         with patch("PySide6.QtWidgets.QInputDialog.getText", return_value=("lip_unit_test_only", True)) as dialog:
             window._lichess_token_dialog()
         from PySide6.QtWidgets import QLineEdit
         self.assertEqual(dialog.call_args.args[-1], QLineEdit.EchoMode.Password)
+        self.assertEqual(window.config["explorer_source"], "masters")
         query = ExplorerQuery(window.game.board.fen())
         self.assertEqual(bytes(client.request_for(query).rawHeader("Authorization")), b"Bearer lip_unit_test_only")
         self.assertEqual(bytes(client.request_for(ExplorerQuery(query.fen, "chessdb")).rawHeader("Authorization")), b"")
@@ -346,8 +348,24 @@ class CachedGuiTests(unittest.TestCase):
         self.assertFalse(any("lip_unit_test_only" in line for line in window.store.db.iterdump()))
         self.assertTrue(window.clear_lichess_token_action.isEnabled())
         window._clear_lichess_token()
+        self.assertEqual(window.config["explorer_source"], "chessdb")
         self.assertFalse(client.has_lichess_token)
         self.assertFalse(window.clear_lichess_token_action.isEnabled())
+
+    def test_saved_lichess_source_falls_back_to_chessdb_without_a_session_token(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        window = MainWindow(Path(directory.name))
+        self.addCleanup(window.deleteLater)
+        window.config["explorer_source"] = "lichess"
+        window._save()
+        window.close()
+        reopened = MainWindow(Path(directory.name))
+        self.addCleanup(reopened.deleteLater)
+        self.addCleanup(reopened.close)
+        self.assertFalse(reopened.explorer.client.has_lichess_token)
+        self.assertEqual(reopened.config["explorer_source"], "chessdb")
+        self.assertTrue(reopened.explorer_actions[("explorer_source", "chessdb")].isChecked())
 
     def test_chessdb_menu_uses_score_columns_and_clicks_create_variations(self):
         directory = tempfile.TemporaryDirectory()

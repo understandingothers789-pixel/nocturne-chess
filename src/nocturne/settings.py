@@ -48,7 +48,7 @@ DEFAULTS = {
     "analysis_menu_version": 1,
     "explorer_enabled": False,
     "explorer_statistics": False,
-    "explorer_source": "masters",
+    "explorer_source": "chessdb",
     "explorer_speed": "all",
     "explorer_rating": 0,
     "engine_id": "",

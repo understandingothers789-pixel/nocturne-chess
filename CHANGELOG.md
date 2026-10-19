@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.41 — Clearer book departure and a public database default
+
+- The first out-of-book move uses a slightly brighter, muted gold tint without
+  an underline or bolding.
+- ChessDB Cloud Analysis is selected on startup because Lichess access tokens
+  are session-only. Entering a token switches from ChessDB to Masters; clearing
+  it returns to ChessDB. Database lookup stays off unless enabled.
+
 ## 0.5.7.40 — Preview saved games
 
 - The saved games window shows a preview of the hovered or selected game: its

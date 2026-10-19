@@ -90,7 +90,16 @@ class GuiTests(unittest.TestCase):
         for _ in range(5):
             self.app.processEvents()
         self.assertEqual(window.analysis_history._book_departure, window.game.current_node)
-        self.assertIn("#a8b4b2", window.analysis_history.toHtml())
+        self.assertIn("#c3b07c", window.analysis_history.toHtml())
+        block = window.analysis_history.document().begin()
+        while block.isValid():
+            fragment = block.begin()
+            while not fragment.atEnd():
+                fmt = fragment.fragment().charFormat()
+                if fmt.anchorHref() == f"move:{window.game.current_node}":
+                    self.assertFalse(fmt.fontUnderline())
+                fragment += 1
+            block = block.next()
         self.assertIn("previous position: 23 games", window.opening_coverage_label.text())
         context = window.opening_coverage.context
         window.game.select_node(1)
@@ -100,7 +109,7 @@ class GuiTests(unittest.TestCase):
         window.explorer.client.set_lichess_token("")
         window._sync_explorer()
         self.assertIsNone(window.analysis_history._book_departure)
-        self.assertNotIn("#a8b4b2", window.analysis_history.toHtml())
+        self.assertNotIn("#c3b07c", window.analysis_history.toHtml())
 
     def test_named_bookmarks_persist_navigate_and_follow_variation_deletion(self):
         window = self.window
