@@ -12,6 +12,17 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
+**[0.5.7.34](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39209125609/artifacts/12166893141): partial PVs, deeper review and position tools.** F12 keeps mixed-depth
+and bound results at each candidate's actual depth. Suspected mistakes and
+blunders get a deeper confirmation search; toggle this in **Analysis**.
+**Tree → Bookmark this position… (Ctrl+B)** saves names and notes, and
+**Tree → Position bookmarks** jumps to them. **Database → Find where this
+line leaves the database** finds the first zero-game position and shows its
+previous game count. Windows passed 224 tests (5 optional skips), packaging,
+smoke and live database checks. Extract the unsigned ZIP and open
+`Nocturne/Nocturne.exe`. See the [build receipt](docs/BUILDING.md) and
+[implementation details and remaining ideas](docs/RECENT_COMMIT_REVIEW.md).
+
 **[0.5.7.33](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39207032446/artifacts/12165844502): reviewed engine, cache and graph fixes.** F11 and F12
 pause/resume from **Engine**. Normal node presets now enforce their caps and
 Unlimited runs until halted. Saved MultiPV lines reload when revisiting
