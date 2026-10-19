@@ -33,7 +33,9 @@ targeted regression review, not a guarantee that every possible bug is absent.
    depth. The 80 ms output throttle could discard the preceding exact result,
    causing F12 to pause. The transport now preserves that exact result, and
    review/auto-evaluation use its genuine completed depth. A search with only
-   bounds still pauses; bounds are never relabelled as exact scores.
+   bounds still pauses; bounds are never relabelled as exact scores. Ordinary
+   analysis also keeps every exact candidate when a later primary bound arrives,
+   rather than shrinking its saved cache to a single PV.
 4. F11 used the global game-pause flag. Self-play now has its own pause state,
    clears a previous targeted-move restriction, and F11/F12 ignore held-key
    repeat. Both shortcuts remain visible in Engine.
@@ -54,7 +56,9 @@ targeted regression review, not a guarantee that every possible bug is absent.
 The pre-fix baseline passed 203 tests with 11 optional/environment skips.
 New regression cases reproduced the gaps above despite that passing baseline.
 After the fixes, the local suite passed **217 tests (206 passed, 11 skipped)**
-in 263.1 seconds, and Ruff passed. Local skips cover opt-in deep perft (2),
+in 263.1 seconds, and Ruff passed. A final live-cache follow-up reproduced one
+additional edge case, then passed three focused checks after its correction.
+Local skips cover opt-in deep perft (2),
 loopback networking blocked by the execution sandbox (6), and unavailable real
 Syzygy fixtures (3). The Windows results are recorded in the build receipt.
 

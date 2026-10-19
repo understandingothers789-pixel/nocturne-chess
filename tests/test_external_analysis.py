@@ -642,6 +642,22 @@ class QtIntegration(unittest.TestCase):
             self.assertEqual(window.game.nodes[0].analysis["timestamp"], timestamp)
             self.assertFalse(window.engine.busy)
 
+    def test_live_bound_finish_keeps_every_exact_candidate_in_saved_cache(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            profile = self.profile()
+            profile["arguments"] = [SIMULATOR, "bound-at-limit"]
+            profile["options"] = {"MultiPV": {"maximum": 8}}
+            window.profiles = [profile]
+            window.config.update(engine_id="simulator", multipv=3, analysis_nodes=400)
+            window.game = Game.from_pgn("1.e4 *")
+            window.game.navigate(0)
+            window._apply_settings()
+            window._schedule_engine()
+            self.wait_until(lambda: not window.engine.busy and len(window.candidates.lines) == 3)
+            self.assertEqual(len(window.game.nodes[0].analysis["multipv_lines"]), 3)
+            self.assertEqual(window.game.nodes[0].analysis["depth"], 3)
+
     def test_f11_and_f12_keys_toggle_without_moving_or_restarting_the_line(self):
         with self.workspace() as window:
             window.timer.stop()

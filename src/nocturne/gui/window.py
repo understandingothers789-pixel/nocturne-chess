@@ -1196,9 +1196,10 @@ class MainWindow(QMainWindow):
             "profile": context.get("profile", ""),
             "options": dict(context.get("options", {})),
         }
-        if context.get("lines"):
+        lines = context.get("exact_lines") or context.get("lines")
+        if lines:
             node.analysis["multipv_lines"] = [
-                dict(context["lines"][rank]) for rank in sorted(context["lines"])
+                dict(lines[rank]) for rank in sorted(lines)
             ]
         if node_id in game._line_nodes:
             game.evaluations[game._line_nodes.index(node_id)] = value
@@ -3042,15 +3043,18 @@ class MainWindow(QMainWindow):
             return
         if "score_type" in info:
             if store:
-                job.setdefault("lines", {})[info.get("multipv", 1)] = info.copy()
+                rank = info.get("multipv", 1)
+                job.setdefault("lines", {})[rank] = info.copy()
+                if info.get("bound", "exact") == "exact":
+                    job.setdefault("exact_lines", {})[rank] = info.copy()
             self._candidate_identity = self._position_identity()
             self._sync_candidate_database()
             self.candidates.update_line(
                 info, job["turn"], self._appearance_config().get("light", False), self.config.get("details", False)
             )
             if info.get("multipv", 1) != 1:
-                if store and 1 in job.get("lines", {}):
-                    self._store_analysis(self.game, self.game.current_node, job["lines"][1], job["turn"], job)
+                if store and 1 in job.get("exact_lines", {}):
+                    self._store_analysis(self.game, self.game.current_node, job["exact_lines"][1], job["turn"], job)
                 return
         self._last_info = info.copy()
         self._last_info_turn = job["turn"]
