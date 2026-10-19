@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.7.39 — Keep candidate slots aligned
+
+- The shared evaluation, depth and database header keeps the same reserved
+  height across candidates during engine updates and adjusts when the panel resizes.
+
 ## 0.5.7.38 — A quieter out-of-book marker
 
 - The first out-of-book move remains tinted in Game Moves, with no underline or

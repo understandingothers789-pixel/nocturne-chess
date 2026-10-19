@@ -49,6 +49,7 @@ class CandidatePanel(QWidget):
         self.pinned = set()
         self.turn = 1
         self.slot_count = 0
+        self._header_row_height = None
         self.hovered = None
         self.pending = {}
         self._clearing = False
@@ -131,7 +132,9 @@ class CandidatePanel(QWidget):
             f"color: {palette(self.light)['metadata']};"
             "font-family: Consolas, monospace; font-size: 16px;"
         )
-        header.setFixedHeight(self._header_height(header))
+        if self._header_row_height is None:
+            self._header_row_height = self._header_height(header)
+        header.setFixedHeight(self._header_row_height)
         layout.addWidget(header)
         moves = self.primary if rank == 1 else MoveText(
             auto_fit=True, reserved_lines=self.default_pv_lines
@@ -359,7 +362,6 @@ class CandidatePanel(QWidget):
             f'{metadata}</span></div>'
         )
         header.setAccessibleName(f"Candidate {rank} evaluation, depth and database metrics")
-        header.setFixedHeight(self._header_height(header))
         footer = self.footers[rank]
         footer.setText("")
         footer.setAccessibleName(f"Candidate {rank} WDL and database metrics")
@@ -377,7 +379,7 @@ class CandidatePanel(QWidget):
             '[999,999,999 / 999,999,999 games] &nbsp; Lichess players · Cached · '
             'No games found</span></div>'
         )
-        probe.setTextWidth(max(160, header.width() or self.width()))
+        probe.setTextWidth(max(160, self.width()))
         return math.ceil(probe.size().height()) + 6
 
     def _footer_height(self, footer):
@@ -393,8 +395,9 @@ class CandidatePanel(QWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        self._header_row_height = self._header_height(next(iter(self.rows.values()))[1]) if self.rows else None
         for rank, (_, header, _) in self.rows.items():
-            header.setFixedHeight(self._header_height(header))
+            header.setFixedHeight(self._header_row_height)
             self.footers[rank].setFixedHeight(self._footer_height(self.footers[rank]))
             QTimer.singleShot(0, lambda r=rank: self._refresh_expander(r))
 
