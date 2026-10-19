@@ -108,6 +108,15 @@ class GuiTests(unittest.TestCase):
         action = window.menu_actions["Automatically analyze when selecting a position"]
         self.assertFalse(action.isChecked())
 
+    def test_auto_evaluation_limit_is_separate_and_selectable_in_engine_menu(self):
+        window = self.window
+        window._set_auto_eval_limit(100_000_000)
+        actions = window.auto_eval_limit_menu.actions()
+        selected = next(action for action in actions if action.text() == "100,000,000")
+        self.assertTrue(selected.isChecked())
+        self.assertEqual(window.config["auto_eval_nodes"], 100_000_000)
+        self.assertEqual(window.auto_eval_limit_menu.title(), "Auto-evaluation nodes per position · 100,000,000")
+
     def test_backspace_deletes_current_branch_selects_sibling_and_saves(self):
         self._analysis_game("1.e4 e5 (1...Nf6 2.d4) 2.Nf3 (2.Bc4) *")
         window = self.window
