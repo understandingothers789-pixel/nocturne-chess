@@ -9,7 +9,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(DEFAULTS["analysis_nodes"], 1_000_000_000)
         self.assertEqual(DEFAULTS["auto_play_nodes"], 10_000_000)
         self.assertEqual(DEFAULTS["auto_eval_limit_version"], 2)
-        self.assertEqual(DEFAULTS["analysis_kind"], "bounded")
+        self.assertEqual(DEFAULTS["analysis_kind"], "nodes")
         self.assertFalse(DEFAULTS["reanalyze_on_navigation"])
         settings = normalize({"auto_eval_nodes": 3_000_000_000, "reanalyze_on_navigation": True})
         self.assertEqual(settings["auto_eval_nodes"], 2_000_000_000)
@@ -18,14 +18,14 @@ class SettingsTests(unittest.TestCase):
 
     def test_new_search_defaults_and_one_time_legacy_upgrade(self):
         defaults = normalize({})
-        self.assertEqual(defaults["analysis_kind"], "bounded")
+        self.assertEqual(defaults["analysis_kind"], "nodes")
         self.assertEqual(defaults["analysis_nodes"], 1_000_000_000)
         self.assertEqual(defaults["analysis_depth"], 128)
         self.assertEqual(defaults["analysis_seconds"], 600)
         self.assertEqual(defaults["auto_eval_nodes"], 200_000_000)
         old = normalize({"analysis_kind": "infinite", "analysis_nodes": 0,
                          "auto_eval_nodes": 10_000_000})
-        self.assertEqual(old["analysis_kind"], "bounded")
+        self.assertEqual(old["analysis_kind"], "nodes")
         self.assertEqual(old["analysis_nodes"], 1_000_000_000)
         self.assertEqual(old["auto_eval_nodes"], 200_000_000)
 
@@ -36,6 +36,19 @@ class SettingsTests(unittest.TestCase):
             self.assertEqual(migrated["auto_eval_limit_version"], 2)
         custom = normalize({"auto_eval_nodes": 75_000_000, "auto_eval_limit_version": 1})
         self.assertEqual(custom["auto_eval_nodes"], 75_000_000)
+
+    def test_corrupt_limit_version_recovers_without_crashing(self):
+        for version in (None, "old", [], {}):
+            with self.subTest(version=version):
+                self.assertEqual(normalize({"auto_eval_limit_version": version})["auto_eval_nodes"],
+                                 200_000_000)
+
+    def test_node_defaults_migrate_without_overriding_custom_time_depth_limits(self):
+        default_profile = dict(DEFAULTS, analysis_kind="bounded", analysis_limit_version=1)
+        self.assertEqual(normalize(default_profile)["analysis_kind"], "nodes")
+        custom_profile = dict(default_profile, analysis_depth=20, analysis_seconds=30)
+        self.assertEqual(normalize(custom_profile)["analysis_kind"], "bounded")
+        self.assertEqual(normalize(dict(DEFAULTS, analysis_nodes=0))["analysis_kind"], "infinite")
 
     def test_nibbler_piece_default_upgrades_once_then_keeps_user_choice(self):
         self.assertEqual(normalize({})["piece_set"], "Nibbler")

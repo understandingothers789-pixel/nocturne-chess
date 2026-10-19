@@ -43,6 +43,7 @@ class UciConnection(QObject):
         self._prepared = None
         self._quitting = False
         self._last_info = {}
+        self._last_exact_info = {}
         self._flush = QTimer(self)
         self._flush.setInterval(80)
         self._flush.timeout.connect(self._emit_info)
@@ -82,6 +83,7 @@ class UciConnection(QObject):
     def request(self, generation, position, go, options, study_id=""):
         self.pending = (generation, position, go, dict(options), study_id)
         self._last_info.clear()
+        self._last_exact_info.clear()
         if self.phase == "search":
             self.running = None  # Old output becomes ineligible immediately.
             self.send("stop")
@@ -94,6 +96,7 @@ class UciConnection(QObject):
         self.pending = None
         self.running = None
         self._last_info.clear()
+        self._last_exact_info.clear()
         if self.phase == "search":
             self.send("stop")
             self.phase = "stopping"
@@ -202,6 +205,8 @@ class UciConnection(QObject):
         elif self.phase == "search" and self.running:
             if info := parse_info(line):
                 self._last_info[info["multipv"]] = (self.running[0], info)
+                if info.get("bound", "exact") == "exact":
+                    self._last_exact_info[info["multipv"]] = (self.running[0], info)
 
     def _safe_prepare(self):
         try:
@@ -211,8 +216,15 @@ class UciConnection(QObject):
 
     def _emit_info(self):
         pending, self._last_info = self._last_info, {}
+        exact_pending, self._last_exact_info = self._last_exact_info, {}
         for rank in sorted(pending):
             generation, info = pending[rank]
+            # Throttling must not discard an exact iteration when a later
+            # bound for the same rank arrives before the next UI flush.
+            exact = exact_pending.get(rank)
+            if exact and info.get("bound", "exact") != "exact":
+                if self.running and self.running[0] == exact[0]:
+                    self.information.emit(*exact)
             if self.running and self.running[0] == generation:
                 self.information.emit(generation, info)
 
@@ -236,6 +248,7 @@ class UciConnection(QObject):
         self.timer.stop()
         self.pending = self.running = None
         self._last_info.clear()
+        self._last_exact_info.clear()
         self._quitting = True
         self.process.kill()
         self.confirmed.clear()
@@ -248,6 +261,7 @@ class UciConnection(QObject):
         self.timer.stop()
         self.pending = self.running = None
         self._last_info.clear()
+        self._last_exact_info.clear()
         if self.alive:
             self.send("quit")
             # Only close/replacement waits, bounded; ordinary navigation never waits.

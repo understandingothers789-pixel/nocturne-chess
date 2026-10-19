@@ -119,6 +119,17 @@ class QtIntegration(unittest.TestCase):
         self.assertIn("> stop", log)
         self.assertIn("> isready", log)
 
+    def test_node_only_and_infinite_commands_ignore_other_caps(self):
+        controller = EngineController()
+        self.addCleanup(controller.close)
+        limits = AnalysisLimits(depth=1, seconds=0.001, nodes=123)
+        controller.start(Game(), limits, sys.executable, arguments=[SIMULATOR], nodes_only=True)
+        self.wait_until(lambda: "> go nodes 123" in controller.connection.log)
+        self.wait_until(lambda: not controller.busy)
+        controller.start(Game(), limits, sys.executable, arguments=[SIMULATOR], infinite=True)
+        self.wait_until(lambda: "> go infinite" in controller.connection.log)
+        self.assertNotIn("> go infinite nodes 123", controller.connection.log)
+
     def test_handshake_timeout_and_crash_recovery(self):
         connection = UciConnection(timeout_ms=100)
         self.addCleanup(connection.close)
@@ -556,7 +567,135 @@ class QtIntegration(unittest.TestCase):
             self.wait_until(lambda: window._review is None, 8)
             self.assertIn("> go nodes 100", window.engine.connection.log)
             self.assertEqual(len(window.game.nodes[0].analysis["multipv_lines"]), 3)
+
             self.assertEqual(len(window.game.nodes[1].analysis["multipv_lines"]), 3)
+            saved = window.store.load(window.game.id)
+            generation = window.engine.generation
+            window.game = saved
+            window._navigate(1)
+            self.assertEqual(len(window.candidates.lines), 3)
+            self.assertEqual(window.eval_label.text(), "-0.35")
+            window._navigate(0)
+            self.assertEqual(len(window.candidates.lines), 3)
+            self.assertEqual(window.eval_label.text(), "+0.35")
+            self.assertFalse(window.engine.busy)
+            self.assertGreaterEqual(window.engine.generation, generation)
+            self.assertEqual(len(window.game.nodes[0].analysis["multipv_lines"]), 3)
+
+    def test_auto_evaluation_uses_last_exact_iteration_when_node_cap_ends_with_bound(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            profile = self.profile()
+            profile["arguments"] = [SIMULATOR, "bound-at-limit"]
+            profile["options"] = {"MultiPV": {"maximum": 8}}
+            window.profiles = [profile]
+            window.config.update(engine_id="simulator", multipv=3, auto_eval_nodes=400)
+            window.game = Game.from_pgn("1.e4 e5 *")
+            window._auto_evaluate_line()
+            self.wait_until(lambda: window._review is None, 8)
+            for node in window.game.nodes:
+                self.assertEqual(node.analysis["bound"], "exact")
+                self.assertEqual(node.analysis["depth"], 3)
+                self.assertEqual(len(node.analysis["multipv_lines"]), 3)
+
+    def test_normal_node_menu_switches_from_continuous_and_unlimited_really_is_unlimited(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            window.profiles = [self.profile()]
+            window.config.update(engine_id="simulator", analysis_kind="infinite")
+            window._apply_settings()
+            window._set_node_limit("analysis_nodes", 100)
+            self.wait_until(lambda: bool(window.engine.connection.log) and
+                            "> go nodes 100" in window.engine.connection.log)
+            self.wait_until(lambda: not window.engine.busy)
+            self.assertEqual(window.game.cursor, 0)
+            window._set_node_limit("analysis_nodes", 0)
+            self.wait_until(lambda: "> go infinite" in window.engine.connection.log)
+            self.assertTrue(window.engine.busy)
+            window._halt_analysis()
+            window._set_node_limit("analysis_nodes", 200_000_000)
+            self.assertFalse(window.engine.busy)
+            self.assertEqual(window.config["auto_eval_nodes"], 200_000_000)
+            self.assertEqual(window.config["auto_play_nodes"], 10_000_000)
+
+    def test_live_multipv_cache_restores_after_navigation_without_reanalysis(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            profile = self.profile()
+            profile["options"] = {"MultiPV": {"maximum": 8}}
+            window.profiles = [profile]
+            window.config.update(engine_id="simulator", multipv=3, analysis_nodes=100)
+            window.game = Game.from_pgn("1.e4 e5 *")
+            window.game.navigate(0)
+            window._apply_settings()
+            window._schedule_engine()
+            self.wait_until(lambda: not window.engine.busy and len(window.candidates.lines) == 3)
+            window._halt_analysis()
+            window._navigate(1)
+            self.assertFalse(window.candidates.lines)
+            window._navigate(0)
+            self.assertEqual(len(window.candidates.lines), 3)
+            self.assertEqual(len(window.board_view.recommendations), 3)
+            timestamp = window.game.nodes[0].analysis["timestamp"]
+            window._refresh()
+            self.assertEqual(len(window.board_view.recommendations), 3)
+            self.assertEqual(window.game.nodes[0].analysis["timestamp"], timestamp)
+            self.assertFalse(window.engine.busy)
+
+    def test_f11_and_f12_keys_toggle_without_moving_or_restarting_the_line(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            window.autosave_timer.stop()
+            profile = self.profile()
+            profile["arguments"] = [SIMULATOR, "hold"]
+            window.profiles = [profile]
+            window.config.update(engine_id="simulator", auto_eval_nodes=100, auto_play_nodes=100)
+            window.game = Game.from_pgn("1.e4 e5 *")
+            window.game.navigate(1)
+            window.analysis_mode = True
+            window._analysis_enabled = False
+            window._refresh()
+            window.show()
+            window.activateWindow()
+            self.app.processEvents()
+            engine_actions = window.menus["Engine"].actions()
+            for title in ("Auto-play engines from this position", "Auto-evaluate entire line"):
+                action = window.menu_actions[title]
+                self.assertIn(action, engine_actions)
+                self.assertFalse(action.autoRepeat())
+            fen = window.game.board.fen()
+            window.config["searchmoves"] = ["e7e5"]
+            QTest.keyClick(window, Qt.Key.Key_F11)
+            self.wait_until(lambda: bool(window.engine.lines))
+            self.assertTrue(window._auto_play_active)
+            self.assertNotIn("searchmoves", window.engine.connection.running[2])
+            QTest.keyClick(window, Qt.Key.Key_F11)
+            self.assertFalse(window.engine.busy)
+            self.assertEqual(window.quick_analysis_button.text(), "Resume auto-play")
+            QTest.keyClick(window, Qt.Key.Key_F11)
+            self.wait_until(lambda: bool(window.engine.lines))
+            self.assertEqual(window.game.board.fen(), fen)
+            # Switching modes must clear the other mode's pause state.
+            QTest.keyClick(window, Qt.Key.Key_F12)
+            self.wait_until(lambda: bool(window.engine.lines))
+            self.assertFalse(window._auto_play_active)
+            state = window._review
+            state["index"] = 1
+            QTest.keyClick(window, Qt.Key.Key_F12)
+            self.assertTrue(state["paused"])
+            self.assertFalse(window.engine.busy)
+            QTest.keyClick(window, Qt.Key.Key_F12)
+            self.wait_until(lambda: bool(window.engine.lines))
+            self.assertIs(window._review, state)
+            self.assertEqual(state["index"], 1)
+            self.assertFalse(state["paused"])
+            self.assertEqual(window.game.board.fen(), fen)
+            window._pause_review()
+            QTest.keyClick(window, Qt.Key.Key_F11)
+            self.wait_until(lambda: bool(window.engine.lines))
+            self.assertIsNone(window._review)
+            self.assertTrue(window._auto_play_active)
+            window._halt_analysis()
 
     def test_f11_auto_play_runs_both_sides_with_ten_million_nodes_per_move(self):
         with self.workspace() as window:

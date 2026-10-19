@@ -25,6 +25,7 @@ class EngineController(QObject):
         self._busy = False
         self.board = None
         self.lines = {}
+        self.exact_lines = {}
 
     @property
     def busy(self):
@@ -53,6 +54,7 @@ class EngineController(QObject):
         self.stop()
         self.board = game.board.copy()
         self.lines = {}
+        self.exact_lines = {}
         desired = dict(options or {})
         desired["MultiPV"] = multipv
         desired["UCI_AnalyseMode"] = kind == "analysis" or infinite
@@ -70,7 +72,7 @@ class EngineController(QObject):
             go = f"go nodes {limits.nodes}"
         else:
             go = f"go depth {limits.depth} movetime {max(1, int(limits.seconds * 1000))}"
-        if limits.nodes and not nodes_only:
+        if limits.nodes and not nodes_only and not infinite:
             go += " nodes " + str(limits.nodes)
         if searchmoves:
             valid = [self.board.parse_uci(m).uci() for m in searchmoves]
@@ -99,6 +101,8 @@ class EngineController(QObject):
             applied_options={k: v for k, v in self.connection.confirmed.items() if k != "__study"},
         )
         self.lines[info["multipv"]] = info
+        if info.get("bound", "exact") == "exact":
+            self.exact_lines[info["multipv"]] = info.copy()
         self.message.emit(generation, "info", info)
 
     def _result(self, generation, bestmove):
@@ -117,6 +121,7 @@ class EngineController(QObject):
                 "move": move,
                 "info": self.lines.get(1, {}),
                 "lines": {rank: info.copy() for rank, info in self.lines.items()},
+                "exact_lines": {rank: info.copy() for rank, info in self.exact_lines.items()},
                 "stopped": False,
             }
         )
@@ -129,6 +134,7 @@ class EngineController(QObject):
         self.generation += 1
         self._busy = False
         self.lines = {}
+        self.exact_lines = {}
         self.connection.stop()
 
     def close(self):

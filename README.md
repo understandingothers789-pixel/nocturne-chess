@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.31
+# Nocturne Analysis · 0.5.7.33
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**

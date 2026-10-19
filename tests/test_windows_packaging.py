@@ -3,14 +3,25 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import tomllib
 import unittest
 from unittest.mock import patch
 import zipfile
 
 from scripts import build_windows
+from nocturne import __version__
 
 
 class WindowsPackagingTests(unittest.TestCase):
+    def test_application_package_and_windows_resource_versions_match(self):
+        root = build_windows.ROOT
+        with (root / "pyproject.toml").open("rb") as source:
+            self.assertEqual(tomllib.load(source)["project"]["version"], __version__)
+        resource = (root / "scripts/windows-version.txt").read_text()
+        self.assertIn(f"filevers={tuple(map(int, __version__.split('.')))}", resource)
+        self.assertIn(f"StringStruct('FileVersion', '{__version__}')", resource)
+        self.assertIn(f"StringStruct('ProductVersion', '{__version__}')", resource)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

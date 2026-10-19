@@ -160,6 +160,7 @@ class MainWindow(QMainWindow):
             self.paused = False
         self._analysis_enabled = self.analysis_mode
         self._auto_play_active = False
+        self._auto_play_paused = False
         self._job = None
         self._lab = None
         self._benchmark_report = None
@@ -683,8 +684,8 @@ class MainWindow(QMainWindow):
         self.resource_status_action = engine.addAction("")
         self.resource_status_action.setEnabled(False)
         engine.addSeparator()
-        add(engine, "Auto-play engines from this position", self._start_auto_play, "F11")
-        add(engine, "Auto-evaluate entire line", self._auto_evaluate_line, "F12")
+        add(engine, "Auto-play engines from this position", self._start_auto_play, "F11").setAutoRepeat(False)
+        add(engine, "Auto-evaluate entire line", self._auto_evaluate_line, "F12").setAutoRepeat(False)
         engine.addSeparator()
         self.expand_pv_action = add(engine, "Expand all analysis lines", self._set_expand_pv)
         self.expand_pv_action.setCheckable(True)
@@ -1195,6 +1196,10 @@ class MainWindow(QMainWindow):
             "profile": context.get("profile", ""),
             "options": dict(context.get("options", {})),
         }
+        if context.get("lines"):
+            node.analysis["multipv_lines"] = [
+                dict(context["lines"][rank]) for rank in sorted(context["lines"])
+            ]
         if node_id in game._line_nodes:
             game.evaluations[game._line_nodes.index(node_id)] = value
 
@@ -1342,15 +1347,13 @@ class MainWindow(QMainWindow):
 
     def _start_auto_play(self):
         if self._auto_play_active:
-            self.paused = not self.paused
-            if self.paused:
+            self._auto_play_paused = not self._auto_play_paused
+            if self._auto_play_paused:
                 self.engine.stop()
                 self.quick_analysis_button.setText("Resume auto-play")
-                self.pause_button.setText("Continue")
                 self.statusBar().showMessage("Auto-play paused · press F11 to resume")
             else:
                 self.quick_analysis_button.setText("Pause auto-play")
-                self.pause_button.setText("Pause")
                 self.statusBar().showMessage("Auto-play resumed")
                 self._schedule_engine()
             self._save()
@@ -1365,6 +1368,8 @@ class MainWindow(QMainWindow):
         self.paused = False
         self._analysis_enabled = False
         self._auto_play_active = True
+        self._auto_play_paused = False
+        self.config.pop("searchmoves", None)
         self.game.pause_clock()
         self.analysis_nav.setChecked(True)
         self.play_nav.setChecked(False)
@@ -1540,7 +1545,10 @@ class MainWindow(QMainWindow):
             return True
         if kind != "result":
             return True
-        info = payload.get("info") or state["info"]
+        # A node cap can interrupt Stockfish in an aspiration search. Keep
+        # the last exact, completed score instead of pausing on its final bound.
+        exact_lines = payload.get("exact_lines") or {}
+        info = exact_lines.get(1) or payload.get("info") or state["info"]
         valid = chance(info) is not None and bool(info.get("pv"))
         if valid and state["stage"] == "played":
             valid = info["pv"][0] == self.game.nodes[state["line"][state["index"] + 1]].move.uci()
@@ -1556,13 +1564,13 @@ class MainWindow(QMainWindow):
         line = state["line"]
         node_id = line[index]
         if state.get("kind") == "auto_eval":
-            lines = payload.get("lines") or {1: info}
+            lines = exact_lines or payload.get("lines") or {1: info}
             self._store_analysis(self.game, node_id, info, state["turn"], state)
             self.game.nodes[node_id].analysis["multipv_lines"] = [
                 dict(lines[rank]) for rank in sorted(lines)
             ]
             state["index"] += 1
-            self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
+            self._update_graph()
             self._save()
             self._render_move_history()
             QTimer.singleShot(0, self._review_next)
@@ -1582,7 +1590,7 @@ class MainWindow(QMainWindow):
             self._classify_review(line[index + 1], state["best"], info)
         state["index"] += 1
         state["stage"] = "best"
-        self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
+        self._update_graph()
         self._save()
         self._render_move_history()
         self._update_review_panel()
@@ -1719,6 +1727,8 @@ class MainWindow(QMainWindow):
         self._cancel_review()
         self._stop_engine()
         self.config["analysis_kind"] = mode
+        if mode == "nodes" and not self.config.get("analysis_nodes"):
+            self.config["analysis_nodes"] = 1_000_000_000
         self._analysis_context = None
         self._clear_analysis_output()
         self._save()
@@ -1730,21 +1740,26 @@ class MainWindow(QMainWindow):
 
     def _set_node_limit(self, key, nodes):
         self.config[key] = int(nodes)
+        if key == "analysis_nodes":
+            self.config["analysis_kind"] = "nodes" if nodes else "infinite"
         if key == "auto_eval_nodes":
             self.config["auto_eval_limit_version"] = 2
         self._save()
         self._refresh_engine_menus()
-        # Normal bounded analysis can adopt the new cap immediately. The two
+        # A running normal search can adopt the new cap immediately. The two
         # batch modes read their caps when the next run starts.
-        if key == "analysis_nodes" and self.analysis_mode and self._analysis_enabled and self.config.get("analysis_kind") == "bounded":
+        if key == "analysis_nodes" and self.analysis_mode and self._analysis_enabled and not self._review:
             self._stop_engine()
+            self._analysis_context = None
             self._schedule_engine()
 
     def _custom_node_limit(self, key, title, minimum=0):
         if key == "auto_play_nodes":
             minimum = 1
+        prompt = ("Maximum engine nodes per move:" if minimum else
+                  "Maximum engine nodes per position (0 means unlimited):")
         nodes, accepted = QInputDialog.getInt(
-            self, title, "Maximum engine nodes per position (0 means unlimited):",
+            self, title, prompt,
             self.config.get(key, 0), minimum, 2_000_000_000, 1_000_000,
         )
         if accepted:
@@ -1752,6 +1767,8 @@ class MainWindow(QMainWindow):
 
     def _populate_node_limit_menu(self, menu, key, label, values, allow_unlimited=True):
         current = self.config.get(key, 0)
+        if key == "analysis_nodes" and self.config.get("analysis_kind") in ("infinite", "explore"):
+            current = 0
         current_label = "Unlimited" if current == 0 else f"{current:,}"
         menu.setTitle(f"{label} · {current_label}")
         if allow_unlimited:
@@ -1779,7 +1796,7 @@ class MainWindow(QMainWindow):
         seconds.setValue(self.config["analysis_seconds"])
         seconds.setSuffix(" seconds")
         nodes.setRange(0, 2_000_000_000)
-        nodes.setSpecialValueText("Unlimited")
+        nodes.setSpecialValueText("No node cap")
         nodes.setValue(self.config["analysis_nodes"])
         form.addRow("Depth", depth)
         form.addRow("Time", seconds)
@@ -1804,10 +1821,12 @@ class MainWindow(QMainWindow):
         if not self.profiles:
             self.profile_menu.addAction("Choose an engine first").setEnabled(False)
         self.search_mode_menu.clear()
-        for title, mode in (("Continuous", "infinite"), ("Bounded", "bounded")):
+        for title, mode in (("Continuous", "infinite"), ("Node limit", "nodes"),
+                            ("Time / depth limits", "bounded")):
             action = self.search_mode_menu.addAction(title)
             action.setCheckable(True)
-            action.setChecked((self.config.get("analysis_kind") == "bounded") == (mode == "bounded"))
+            current_mode = self.config.get("analysis_kind")
+            action.setChecked((current_mode == mode) or (current_mode == "explore" and mode == "infinite"))
             action.triggered.connect(lambda checked=False, m=mode: self._set_analysis_limit(m))
         self.search_mode_menu.addSeparator()
         self.search_mode_menu.addAction("Set limits…", self._edit_analysis_limits)
@@ -2114,15 +2133,13 @@ class MainWindow(QMainWindow):
         self.board_view.set_game_move(next_game_move)
         self._render_move_history()
         if self._pv_identity != self._position_identity():
-            self._pv_root = None
-            self._pv_moves = []
-            self.pv_label.set_moves([])
-            self.candidates.clear()
-            self._candidate_identity = None
+            self._clear_analysis_output()
+            self.analysis_scope = ""
             self.config["searchmoves"] = []
             self.tablebase_label.setText(
                 "Syzygy: awaiting probe" if self.config.get("syzygy_path") else "Syzygy: not configured"
             )
+            self._restore_position_analysis()
         outcome = self.game.outcome
         self.board_view.branch_moves = (
             [self.game.nodes[c].move for c in self.game.nodes[self.game.current_node].children]
@@ -2132,6 +2149,7 @@ class MainWindow(QMainWindow):
         self.board_view.interactive = (
             not outcome and not self.paused and (self.analysis_mode or not self._is_engine_turn())
         )
+        self._sync_candidate_markers()
         self._sync_explorer()
         turn = "White" if self.game.board.turn == 1 else "Black"
         status = (
@@ -2155,7 +2173,7 @@ class MainWindow(QMainWindow):
         )
         if self.paused and not outcome:
             self.status_label.setText("Paused · Continue when you're ready")
-        self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
+        self._update_graph()
         if not self.engine.busy:
             self.eval_bar.set_score(self.game.evaluations.get(self.game.cursor))
         signature = tuple(self.game.sans)
@@ -2188,6 +2206,30 @@ class MainWindow(QMainWindow):
         for widget in (self.draw_button, self.resign_button, self.pause_button):
             widget.setEnabled(not outcome and not self.analysis_mode)
         self._update_players()
+
+    def _restore_position_analysis(self):
+        """Display saved engine lines without launching or rewriting a search."""
+        cached = self.game.nodes[self.game.current_node].analysis
+        count = self._effective_multipv()
+        lines = cached.get("multipv_lines") or [cached]
+        job = {"turn": self.game.board.turn, "multipv": count}
+        for info in lines:
+            if (not isinstance(info, dict) or not info.get("pv") or not info.get("san")
+                    or not {"score", "score_type", "score_value", "depth", "seldepth", "nodes"} <= info.keys()):
+                continue
+            self._show_info(info, job, store=False)
+        if self._last_info:
+            self.engine_state.setText(self._last_info.get("engine", "Engine") + " · saved analysis")
+        else:
+            value = self.game.evaluations.get(self.game.cursor)
+            self.eval_label.setText("—" if value is None else score_text(value))
+            self.telemetry.setText("No saved analysis for this position")
+
+    def _update_graph(self):
+        self.graph.set_samples(
+            self.game.evaluations, self.game.cursor, len(self.game.moves),
+            context=(self.game.id, self.game._line_nodes[-1]),
+        )
 
     def _update_players(self):
         clocks_visible = self.config.get("show_clocks", True)
@@ -2338,6 +2380,8 @@ class MainWindow(QMainWindow):
             if not self.analysis_mode and self.config.get("mode") == "human_ai":
                 if self.game.board.turn != self.config.get("human_color", 1) and self.game.cursor:
                     self.game.undo()
+            if self.analysis_mode and self.game.current_node == self.game.mainline_node(self.game.cursor):
+                self.game.select_node(self.game.current_node)
             self._refresh()
             self._save()
             self._analysis_enabled = analyze
@@ -2732,9 +2776,6 @@ class MainWindow(QMainWindow):
         self._start_analysis()
 
     def _halt_analysis(self):
-        if self._auto_play_active:
-            self._auto_play_active = False
-            self.quick_analysis_button.setText("Analyze")
         if self._review:
             if not self._review["paused"]:
                 self._pause_review()
@@ -2801,6 +2842,7 @@ class MainWindow(QMainWindow):
 
     def _stop_engine(self):
         self._auto_play_active = False
+        self._auto_play_paused = False
         if self._review and not self._review.get("paused") and self._job is None:
             self.board_view.set_recommendations([])
             return
@@ -2823,6 +2865,7 @@ class MainWindow(QMainWindow):
             or not hasattr(self, "engine")
             or self.engine.busy
             or self.paused
+            or (self._auto_play_active and self._auto_play_paused)
             or self.game.outcome
         ):
             return
@@ -2846,7 +2889,7 @@ class MainWindow(QMainWindow):
                 "Board and studies are available. Select your UCI engine for analysis."
             )
             return
-        infinite = kind == "analysis" and self.config.get("analysis_kind") != "bounded"
+        infinite = kind == "analysis" and self.config.get("analysis_kind") in ("infinite", "explore")
         limits = SearchLimits(
             depth=128 if self._auto_play_active else self.config.get("analysis_depth", 128),
             seconds=600 if self._auto_play_active else self.config.get("analysis_seconds", 600),
@@ -2890,7 +2933,7 @@ class MainWindow(QMainWindow):
                 multipv=count,
                 searchmoves=self.config.get("searchmoves", []),
                 tablebase_path=self.config.get("syzygy_path", ""),
-                nodes_only=self._auto_play_active,
+                nodes_only=self._auto_play_active or (kind == "analysis" and self.config.get("analysis_kind") == "nodes"),
             )
         except (OSError, RuntimeError, ValueError) as exc:
             self._error("Cannot start engine", str(exc))
@@ -2942,9 +2985,13 @@ class MainWindow(QMainWindow):
             self.engine_state.setText("Engine stopped · " + payload["message"])
             self.statusBar().showMessage(payload["message"])
             if job["kind"] == "play":
-                self.paused = True
-                self.game.pause_clock()
-                self.pause_button.setText("Continue")
+                if self._auto_play_active:
+                    self._auto_play_paused = True
+                    self.quick_analysis_button.setText("Resume auto-play")
+                else:
+                    self.paused = True
+                    self.game.pause_clock()
+                    self.pause_button.setText("Continue")
             else:
                 self._analysis_enabled = False
             self._refresh()
@@ -2964,7 +3011,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Search complete · evaluation from White’s perspective")
         if info:
             self._store_analysis(self.game, self.game.current_node, info, job["turn"], job)
-        self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
+        self._update_graph()
         if job["kind"] == "play" and not self.paused:
             try:
                 if payload.get("claim_draw"):
@@ -2985,7 +3032,7 @@ class MainWindow(QMainWindow):
                 QTimer.singleShot(delay, self._schedule_engine)
         self._save()
 
-    def _show_info(self, info, job):
+    def _show_info(self, info, job, *, store=True):
         if not info:
             return
         if "score_type" in info and info.get("multipv", 1) > job.get("multipv", self._effective_multipv()):
@@ -2994,18 +3041,22 @@ class MainWindow(QMainWindow):
         if info.get("multipv", 1) in self.candidates.pinned:
             return
         if "score_type" in info:
+            if store:
+                job.setdefault("lines", {})[info.get("multipv", 1)] = info.copy()
             self._candidate_identity = self._position_identity()
             self._sync_candidate_database()
             self.candidates.update_line(
                 info, job["turn"], self._appearance_config().get("light", False), self.config.get("details", False)
             )
             if info.get("multipv", 1) != 1:
+                if store and 1 in job.get("lines", {}):
+                    self._store_analysis(self.game, self.game.current_node, job["lines"][1], job["turn"], job)
                 return
         self._last_info = info.copy()
         self._last_info_turn = job["turn"]
-        if "score_type" in info:
+        if store and "score_type" in info:
             self._store_analysis(self.game, self.game.current_node, info, job["turn"], job)
-            self.graph.set_samples(self.game.evaluations, self.game.cursor, len(self.game.moves))
+            self._update_graph()
         white_score = info["score"] * job["turn"]
         self.eval_label.setText(
             score_label(info, job["turn"]) if "score_type" in info else score_text(white_score)

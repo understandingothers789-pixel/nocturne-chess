@@ -41,7 +41,7 @@ DEFAULTS = {
     "candidate_marker_version": 1,
     "branch_arrows": True,
     "layout": "classic",
-    "analysis_kind": "bounded",
+    "analysis_kind": "nodes",
     "multipv": 1,
     "analysis_menu_version": 1,
     "explorer_enabled": False,
@@ -51,7 +51,7 @@ DEFAULTS = {
     "explorer_rating": 0,
     "engine_id": "",
     "analysis_nodes": 1_000_000_000,
-    "analysis_limit_version": 1,
+    "analysis_limit_version": 2,
     "auto_eval_nodes": 200_000_000,
     "auto_eval_limit_version": 2,
     "auto_play_nodes": 10_000_000,
@@ -70,7 +70,7 @@ def normalize(data) -> dict:
         "human_color": (-1, 0, 1),
         "difficulty": ("Beginner", "Casual", "Intermediate", "Advanced", "Expert", "Maximum"),
         "layout": ("classic", "analysis-left"),
-        "analysis_kind": ("infinite", "explore", "bounded"),
+        "analysis_kind": ("infinite", "explore", "bounded", "nodes"),
         "candidate_style": ("arrows", "lines"),
         "explorer_source": ("masters", "lichess", "chessdb"),
         "explorer_speed": ("all", "ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence"),
@@ -142,7 +142,7 @@ def normalize(data) -> dict:
             value = min(maximum, max(minimum, value))
             result[key] = float(value) if key in ("analysis_seconds", "review_seconds") else int(value)
     # Give existing installs the new useful node-based defaults once.
-    if data.get("analysis_limit_version") != 1:
+    if data.get("analysis_limit_version") not in (1, 2):
         if data.get("analysis_kind") == "infinite":
             result["analysis_kind"] = "bounded"
         if data.get("analysis_nodes", 0) == 0:
@@ -151,9 +151,17 @@ def normalize(data) -> dict:
             result["analysis_depth"] = 128
         if data.get("analysis_seconds", 3.0) == 3.0:
             result["analysis_seconds"] = 600.0
+    # The old default also imposed a hidden ten-minute/depth limit. Use a
+    # true node-only search for that default; keep explicitly customized limits.
+    if (data.get("analysis_limit_version") != 2 and result["analysis_kind"] == "bounded"
+            and result["analysis_depth"] == 128 and result["analysis_seconds"] == 600
+            and result["analysis_nodes"]):
+        result["analysis_kind"] = "nodes"
+    if result["analysis_kind"] == "nodes" and not result["analysis_nodes"]:
+        result["analysis_kind"] = "infinite"
     # Earlier builds shipped the auto-evaluation menu with 10M (and a short
     # lived 20M default). Upgrade those defaults to the requested 200M once.
-    if data.get("auto_eval_limit_version", 0) < 2 and data.get("auto_eval_nodes") in (10_000_000, 20_000_000):
+    if data.get("auto_eval_limit_version") != 2 and data.get("auto_eval_nodes") in (10_000_000, 20_000_000):
         result["auto_eval_nodes"] = 200_000_000
     for key, limit in (
         ("engine_id", 128),
@@ -167,6 +175,6 @@ def normalize(data) -> dict:
     # Older Live/Bounded modes always searched one PV despite the stored spin value.
     if data.get("analysis_menu_version") != 1 and data.get("analysis_kind") in ("infinite", "bounded"):
         result["multipv"] = 1
-    result["analysis_limit_version"] = 1
+    result["analysis_limit_version"] = 2
     result["auto_eval_limit_version"] = 2
     return result

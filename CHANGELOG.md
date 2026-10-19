@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.7.33 — Recent-change review and regression fixes
+
+- Normal node presets now switch to a true node-only search. Unlimited really
+  runs until halted; custom time/depth limits remain available separately.
+- Saved MultiPV results from F12 and ordinary analysis appear when revisiting
+  positions, without starting a new search. Unknown positions clear stale scores.
+- Node-capped Stockfish searches may finish with a bound score. Auto-evaluation
+  and review retain the last exact completed score and its actual depth instead
+  of stalling; bound-only searches still pause for insufficient evidence.
+- F11 pause/resume is independent of general game pause state. F11/F12 ignore
+  held-key repeat, and self-play clears a previous targeted-move restriction.
+- Left-arrow rewinds now resume the main line, matching wheel navigation.
+- Graph zoom, panning, clicks and drawing use the same visible timeline. Future
+  samples no longer flatten the current range or attract invisible clicks.
+- Switching equal-length games resets the graph viewport. Corrupt preference
+  migration metadata recovers without raising an exception.
+- Windows artifact names follow the application version automatically. CI runs
+  the full suite once, then packaging and smoke checks without repeating it.
+
 ## 0.5.7.32 — Toggle auto-evaluation and self-play
 
 - F12 pauses and resumes an active auto-evaluation run, preserving its current

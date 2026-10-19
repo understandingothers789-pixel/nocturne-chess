@@ -47,6 +47,8 @@ def search(position, command, event):
             reply = next(iter(child.legal_moves), None)
             pv = move.uci() + (" " + reply.uci() if reply else "")
             score = "mate -3 upperbound" if mode == "bounds" else f"cp {35 - (rank - 1) * 20}"
+            if mode == "bound-at-limit" and depth == 4 and rank == 1:
+                score += " upperbound"
             if mode == "review-grades":
                 value = [-600, 100, 150, 0, 140, 120][position.ply() % 6] if "searchmoves" in tokens else 150
                 score = f"cp {value}"
@@ -54,7 +56,7 @@ def search(position, command, event):
                 f"info depth {depth} seldepth {depth + 3} time {depth * 5} nodes {depth * 100} nps 20000 score {score} wdl 400 500 100 multipv {rank} pv {pv}"
             )
         time.sleep(0.015)
-    if "infinite" in tokens:
+    if "infinite" in tokens or mode == "hold":
         event.wait(10)
     # Deliberately emit stale information after stop; transports must discard it.
     if event.is_set():

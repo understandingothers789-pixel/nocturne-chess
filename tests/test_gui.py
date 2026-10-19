@@ -107,6 +107,17 @@ class GuiTests(unittest.TestCase):
         window._navigate(6)
         self.assertEqual(window.game.sans[5], "a6")
 
+    def test_left_arrow_out_of_variation_resumes_mainline(self):
+        window = self.window
+        window.game = Game.from_pgn("1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 (3...Nf6) 4.Ba4 *")
+        branch = next(i for i, node in enumerate(window.game.nodes) if node.san == "Nf6")
+        window.game.select_node(branch)
+        window.analysis_mode = True
+        window._analysis_enabled = False
+        window.menu_actions["Backward"].trigger()
+        window.menu_actions["Forward"].trigger()
+        self.assertEqual(window.game.sans[5], "a6")
+
     def test_move_navigation_reanalysis_is_opt_in(self):
         window = self.window
         window.game = Game.from_pgn("1.e4 e5 2.Nf3 *")
@@ -471,7 +482,7 @@ class GuiTests(unittest.TestCase):
     def test_graph_guides_track_one_pawn_on_compressed_symmetric_scale(self):
         graph = self.window.graph
         samples = {0: 0, 1: 50, 2: 100, 3: 200, 4: 400, 5: 800, 6: -800}
-        graph.set_samples(samples, 2, 6)
+        graph.set_samples(samples, 6, 6)
         rect = graph._plot_rect()
         center = graph._point(0, 0).y()
         self.assertAlmostEqual(center, rect.center().y())
@@ -523,6 +534,61 @@ class GuiTests(unittest.TestCase):
         QTest.mouseDClick(graph, Qt.MouseButton.LeftButton, pos=graph.rect().center())
         self.assertEqual(graph.view_start, 0)
         self.assertIsNone(graph.view_end)
+
+    def test_graph_zoom_preserves_cursor_anchor_on_partial_game(self):
+        from nocturne.gui.widgets import EvaluationGraph
+        graph = EvaluationGraph()
+        self.addCleanup(graph.close)
+        graph.resize(650, 85)
+        graph.show()
+        self.app.processEvents()
+        graph.set_samples({0: 0, 2: 50, 10: 100, 100: 2000}, 10, 100)
+        anchor = graph._point(5, 0).toPoint()
+        self._wheel(graph, 120, point=anchor)
+        self.assertLess(graph.view_end - graph.view_start, 10)
+        self.assertAlmostEqual(graph._point(5, 0).x(), anchor.x(), delta=1)
+
+    def test_graph_ignores_future_samples_for_scale_and_clicks(self):
+        graph = self.window.graph
+        graph.resize(650, 85)
+        graph.set_samples({0: 0, 1: 100}, 2, 10)
+        extent = graph._extent
+        graph.set_samples({0: 0, 1: 100, 3: 2500}, 2, 10)
+        self.assertEqual(graph._extent, extent)
+        selected = []
+        graph.position_requested.disconnect()
+        graph.position_requested.connect(selected.append)
+        QTest.mouseClick(graph, Qt.MouseButton.LeftButton, pos=graph._plot_rect().topRight().toPoint())
+        self.assertEqual(selected, [1])
+
+    def test_graph_visibility_is_independent_and_persisted(self):
+        self.assertTrue(self.window.display_actions["show_eval_graph"].isChecked())
+        self.window.display_actions["show_eval_graph"].trigger()
+        self.assertTrue(self.window.graph.isHidden())
+        self.assertFalse(self.window.store.get("settings")["show_eval_graph"])
+        self.window.display_actions["show_eval_graph"].trigger()
+        self.assertFalse(self.window.graph.isHidden())
+
+    def test_graph_resets_zoom_for_same_length_different_game(self):
+        graph = self.window.graph
+        graph.set_samples({0: 0, 4: 100}, 4, 10, context="first")
+        graph.view_start, graph.view_end = 2, 6
+        graph.set_samples({0: 0, 4: -100}, 4, 10, context="second")
+        self.assertEqual(graph.view_start, 0)
+        self.assertIsNone(graph.view_end)
+
+    def test_unanalysed_navigation_clears_previous_evaluation_and_depth(self):
+        window = self.window
+        window.analysis_mode = True
+        window._analysis_enabled = False
+        window.game = Game.from_pgn("1.e4 e5 *")
+        window._navigate(0)
+        self._show_external_info({"depth": 30, "seldepth": 42, "score": 200, "nodes": 500,
+                                  "pv": ["e2e4"]}, {"turn": 1, "multipv": 1})
+        window._navigate(1)
+        self.assertEqual(window.eval_label.text(), "—")
+        self.assertNotIn("30", window.telemetry.text())
+        self.assertIsNone(window._last_info)
 
     def _header_document(self, rank):
         document = QTextDocument()
@@ -1660,7 +1726,11 @@ class GuiTests(unittest.TestCase):
             self.assertGreater(len(ticks), 3)
             self.assertEqual(self.window.game.board.key, self.window.game.board.compute_key())
             self.assertIs(self.window.board_view.board, self.window.game.board)
-            self.assertIsNotNone(self.window._last_info)
+            searched_node = self.window.game.nodes[self.window.game._line_nodes[1]]
+            self.assertEqual(searched_node.analysis["score_type"], "cp")
+            # The score belongs to the position before the engine's reply;
+            # do not leave it displayed as the new position's evaluation.
+            self.assertIsNone(self.window._last_info)
         finally:
             pulse.stop()
 
