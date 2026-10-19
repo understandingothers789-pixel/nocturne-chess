@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7.27 — Enforce compact MultiPV row limits
+
+Remove the persisted global “Expand all analysis lines” override, which could
+set all candidate rows to unlimited height and bypass MultiPV row limits. Up to
+four candidates now remain in three-row slots and five or more remain in
+two-row slots. Per-candidate arrows still expand one variation on demand.
+
 ## 0.5.7.26 — Evaluation-first telemetry and stable compact PV rows
 
 Show the current evaluation to the left of depth in the top engine telemetry,

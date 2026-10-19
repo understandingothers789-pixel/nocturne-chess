@@ -1,3 +1,13 @@
+# Windows 11 desktop builds · 0.5.7.27
+
+## Download Windows 0.5.7.27
+
+Build pending.
+
+The persisted global expand-all override is removed. Compact MultiPV rows now
+stay at three move rows for up to four candidates and two rows for five or more;
+per-candidate arrows still expand one selected variation.
+
 # Windows 11 desktop builds · 0.5.7.26
 
 ## Download Windows 0.5.7.26

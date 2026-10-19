@@ -31,7 +31,6 @@ class CandidatePanel(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
         self.layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
-        self.expanded = False
         self.multipv = 1
         self.default_pv_lines = self._lines_for_multipv(self.multipv)
         self.wheel_navigation = True
@@ -74,7 +73,7 @@ class CandidatePanel(QWidget):
         self.pinned.clear()
         self.slot_count = 0
         self.primary.setViewportMargins(0, 0, 0, 0)
-        self.primary.reserve_lines(0 if self.expanded else self.default_pv_lines)
+        self.primary.reserve_lines(self.default_pv_lines)
         self.primary.set_moves([])
         self._clearing = False
         self.changed.emit()
@@ -84,11 +83,6 @@ class CandidatePanel(QWidget):
         self.primary.wheel_navigation = self.wheel_navigation
         for _, _, moves in self.rows.values():
             moves.wheel_navigation = self.wheel_navigation
-
-    def set_expanded(self, expanded):
-        self.expanded = bool(expanded)
-        for rank in self.rows:
-            self._apply_expansion(rank)
 
     @staticmethod
     def _lines_for_multipv(count):
@@ -103,9 +97,9 @@ class CandidatePanel(QWidget):
         self.multipv = count
         self.default_pv_lines = lines
         if 1 not in self.expanded_ranks:
-            self.primary.reserve_lines(0 if self.expanded else lines)
+            self.primary.reserve_lines(lines)
         for rank, (_, _, moves) in self.rows.items():
-            expanded = self.expanded or rank in self.expanded_ranks
+            expanded = rank in self.expanded_ranks
             moves.reserve_lines(0 if expanded else lines)
             self._refresh_expander(rank)
         self.changed.emit()
@@ -136,7 +130,7 @@ class CandidatePanel(QWidget):
         moves = self.primary if rank == 1 else MoveText(
             auto_fit=True, reserved_lines=self.default_pv_lines
         )
-        moves.reserve_lines(0 if self.expanded or rank in self.expanded_ranks else self.default_pv_lines)
+        moves.reserve_lines(0 if rank in self.expanded_ranks else self.default_pv_lines)
         moves.wheel_navigation = self.wheel_navigation
         moves.candidate_rank = rank
         # Keep a narrow strip free at the end of the reserved rows for this
@@ -391,7 +385,7 @@ class CandidatePanel(QWidget):
         if rank not in self.rows:
             return
         moves = self.rows[rank][2]
-        expanded = self.expanded or rank in self.expanded_ranks
+        expanded = rank in self.expanded_ranks
         moves.reserve_lines(0 if expanded else self.default_pv_lines)
         button = self.expand_buttons.get(rank)
         if button:
@@ -401,7 +395,7 @@ class CandidatePanel(QWidget):
                 f"Collapse candidate {rank} principal variation" if rank in self.expanded_ranks
                 else f"Expand candidate {rank} full principal variation"
             )
-            button.setVisible(not self.expanded)
+            button.setVisible(True)
         self._refresh_expander(rank)
 
     def _refresh_expander(self, rank):
@@ -410,10 +404,10 @@ class CandidatePanel(QWidget):
             return
         moves = self.rows[rank][2]
         expanded = rank in self.expanded_ranks
-        button.setVisible(not self.expanded and (expanded or moves.wrapped_line_count() > self.default_pv_lines))
+        button.setVisible(expanded or moves.wrapped_line_count() > self.default_pv_lines)
 
     def toggle_expansion(self, rank):
-        if self.expanded or rank not in self.lines:
+        if rank not in self.lines:
             return
         if rank in self.expanded_ranks:
             self.expanded_ranks.remove(rank)
