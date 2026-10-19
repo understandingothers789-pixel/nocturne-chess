@@ -1,7 +1,21 @@
 # Windows 11 desktop builds · 0.5.7.22
 
-The 0.5.7.22 Windows build is being validated. The latest verified build is
-[0.5.7.21](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39165248055/artifacts/12150402048).
+## Download Windows 0.5.7.22
+
+[Download the Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39182767872/artifacts/12157436125).
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Feature commit `750d647d4e4d0c677927a7b64292dd4f67dced73` keeps the selected
+wheel-preview ply stable during updates to the same candidate root move and
+resets the preview when that rank gets a different root move. Windows run
+[39182767872](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39182767872)
+passed **187 tests (182 passed / 5 optional skips)** in 206.268 seconds, Ruff,
+PyInstaller and both packaged launch checks. The optional live database check
+completed; ChessDB returned 29 legal moves.
+
+Artifact **12157436125**, `Nocturne-0.5.7.22-Windows-x64-unsigned`,
+57,897,291 bytes, expires 2026-11-17. SHA-256:
+`6e74edc20d2fbaac06be9f6ae7c50ec82741ef29004214af0804934d02a44bf1`.
 
 ## Download Windows 0.5.7.21
 

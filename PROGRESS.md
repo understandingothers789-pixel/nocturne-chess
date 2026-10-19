@@ -2560,7 +2560,7 @@ The build is unsigned. The published two-row PV feature commit is
 `fbdccac4817f61fc1ba694c93d667d4cb08ab08d`; database-status follow-up is
 `d1c1b019ec931a0559a10b1e6016d6b246d146c7`.
 
-## 2026-10-19 — 0.5.7.22: keep MultiPV wheel previews steady
+## 2026-10-18 — 0.5.7.22: keep MultiPV wheel previews steady
 
 **Phase:** Preserve the selected ply and the displayed PV snapshot while
 scroll-browsing a candidate that retains the same root move. Queue newer engine
@@ -2574,7 +2574,11 @@ regression coverage checks the selected ply and board position through same-root
 updates, then verifies reset after the rank changes. Version and Windows artifact
 labels are 0.5.7.22.
 
-**Validation:** 187 tests passed overall (176 passed, 11 optional skips).
-Focused wheel-preview tests and Ruff passed. The 209-entry source archive
-passed ZIP integrity checks and contains no script launchers. Windows build
-and packaged smoke checks are pending.
+**Validation:** 187 tests passed overall locally (176 passed, 11 optional
+skips). Focused wheel-preview tests and Ruff passed. The 209-entry source
+archive passed ZIP integrity checks and contains no script launchers. Windows
+run 39182767872 passed **187 tests (182 passed / 5 optional skips)** in 206.268
+seconds; Ruff, PyInstaller, packaged launch checks and live database check
+passed. Artifact **12157436125** is 57,897,291 bytes, expires 2026-11-17, and
+has SHA-256 `6e74edc20d2fbaac06be9f6ae7c50ec82741ef29004214af0804934d02a44bf1`.
+The build is unsigned.

@@ -1,9 +1,11 @@
 # Active roadmap
 
-**Current: 0.5.7.22 in validation.** Scrolling through an engine candidate
+**Current: 0.5.7.22 delivered.** Scrolling through an engine candidate
 preserves the active ply and displayed PV while that same root move is updated.
 A changed root move resets the preview. Regression tests cover same-rank updates
-and candidate changes.
+and candidate changes. Windows tests, lint, PyInstaller, and packaged launch
+checks passed. See the current [Windows link in README](README.md) and the
+[build receipt](docs/BUILDING.md).
 
 **Previous: 0.5.7.21 delivered.** MultiPV rows reserve two move lines by
 default. Each row's arrow expands only that suggested line to its full current
