@@ -1,5 +1,24 @@
 # Windows 11 desktop builds
 
+## [0.5.7.45 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39324878577/artifacts/12222670020)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`3998832`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/3998832cd1ba5201af45a687ce1a894d8552a396)
+returns PGN imports to Engine analysis, hides Raw PGN by default, and explains
+Apply PGN and Load current in tooltips. Candidate markers have thicker rods,
+larger numbered endpoints, and yellow for moves at least 50 centipawns below
+the best reported score. Every endpoint is drawn above every rod.
+
+Windows run [39324878577](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39324878577)
+passed lint, the full test suite, Windows packaging and packaged smoke checks.
+The local focused settings and PGN checks passed in under one second; candidate
+rendering was also visually inspected.
+
+Artifact **12222670020**, `Nocturne-0.5.7.45-Windows-x64-unsigned`,
+57,998,464 bytes, expires 2026-11-18. GitHub artifact SHA-256:
+`9e74accff55482097679c9637f6a5725272e5d0b218f5c0eee1b00190b5c3d19`.
+
 ## [0.5.7.44 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39322605181/artifacts/12221171754)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
