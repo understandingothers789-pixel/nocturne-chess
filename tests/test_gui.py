@@ -123,6 +123,12 @@ class GuiTests(unittest.TestCase):
 
     def test_auto_evaluation_limit_is_separate_and_selectable_in_engine_menu(self):
         window = self.window
+        self.assertEqual(window.normal_limit_menu.title(), "Normal nodes per position · 1,000,000,000")
+        self.assertEqual(window.auto_eval_limit_menu.title(), "Auto-evaluation nodes per position · 200,000,000")
+        self.assertEqual(window.auto_play_limit_menu.title(), "Auto-play nodes per move · 10,000,000")
+        for menu in (window.normal_limit_menu, window.auto_eval_limit_menu, window.auto_play_limit_menu):
+            self.assertTrue({f"{n:,}" for n in range(100_000_000, 1_000_000_001, 100_000_000)} <=
+                            {action.text() for action in menu.actions()})
         window._set_auto_eval_limit(100_000_000)
         actions = window.auto_eval_limit_menu.actions()
         selected = next(action for action in actions if action.text() == "100,000,000")
@@ -482,6 +488,18 @@ class GuiTests(unittest.TestCase):
         graph.set_samples(samples | {7: 2000, 8: -2000}, 7, 8)
         self.assertGreater(graph._point(2, 100).y(), before)
         self.assertAlmostEqual(graph._point(2, 100).y() + graph._point(2, -100).y(), 2 * center)
+
+    def test_graph_reveals_history_through_cursor_and_follows_navigation(self):
+        graph = self.window.graph
+        graph.resize(650, 85)
+        samples = {0: 0, 2: 50, 10: 100}
+        graph.set_samples(samples, 2, 10)
+        rect = graph._plot_rect()
+        self.assertAlmostEqual(graph._point(2, 0).x(), rect.right())
+        early_position = graph._point(2, 0).x()
+        graph.set_samples(samples, 10, 10)
+        self.assertAlmostEqual(graph._point(10, 0).x(), rect.right())
+        self.assertLess(graph._point(2, 0).x(), early_position)
 
     def test_graph_mates_do_not_flatten_cp_and_zoom_clicks_keep_ply_mapping(self):
         graph = self.window.graph

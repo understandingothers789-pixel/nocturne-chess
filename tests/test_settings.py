@@ -8,6 +8,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(DEFAULTS["auto_eval_nodes"], 200_000_000)
         self.assertEqual(DEFAULTS["analysis_nodes"], 1_000_000_000)
         self.assertEqual(DEFAULTS["auto_play_nodes"], 10_000_000)
+        self.assertEqual(DEFAULTS["auto_eval_limit_version"], 2)
         self.assertEqual(DEFAULTS["analysis_kind"], "bounded")
         self.assertFalse(DEFAULTS["reanalyze_on_navigation"])
         settings = normalize({"auto_eval_nodes": 3_000_000_000, "reanalyze_on_navigation": True})
@@ -27,6 +28,14 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(old["analysis_kind"], "bounded")
         self.assertEqual(old["analysis_nodes"], 1_000_000_000)
         self.assertEqual(old["auto_eval_nodes"], 200_000_000)
+
+    def test_older_auto_evaluation_defaults_upgrade_to_200_million(self):
+        for nodes in (10_000_000, 20_000_000):
+            migrated = normalize({"auto_eval_nodes": nodes, "auto_eval_limit_version": 1})
+            self.assertEqual(migrated["auto_eval_nodes"], 200_000_000)
+            self.assertEqual(migrated["auto_eval_limit_version"], 2)
+        custom = normalize({"auto_eval_nodes": 75_000_000, "auto_eval_limit_version": 1})
+        self.assertEqual(custom["auto_eval_nodes"], 75_000_000)
 
     def test_nibbler_piece_default_upgrades_once_then_keeps_user_choice(self):
         self.assertEqual(normalize({})["piece_set"], "Nibbler")

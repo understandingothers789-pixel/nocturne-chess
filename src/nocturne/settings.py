@@ -29,6 +29,7 @@ DEFAULTS = {
     "wheel_analysis_moves": True,
     "animations": True,
     "overlays": True,
+    "show_eval_graph": True,
     "hash_mb": 32,
     "analysis_depth": 128,
     "analysis_seconds": 600.0,
@@ -52,7 +53,7 @@ DEFAULTS = {
     "analysis_nodes": 1_000_000_000,
     "analysis_limit_version": 1,
     "auto_eval_nodes": 200_000_000,
-    "auto_eval_limit_version": 1,
+    "auto_eval_limit_version": 2,
     "auto_play_nodes": 10_000_000,
     "reanalyze_on_navigation": False,
     "external_path": "",
@@ -107,6 +108,7 @@ def normalize(data) -> dict:
         "wheel_analysis_moves",
         "animations",
         "overlays",
+        "show_eval_graph",
         "takebacks",
         "smart_move",
         "branch_arrows",
@@ -149,7 +151,9 @@ def normalize(data) -> dict:
             result["analysis_depth"] = 128
         if data.get("analysis_seconds", 3.0) == 3.0:
             result["analysis_seconds"] = 600.0
-    if data.get("auto_eval_limit_version") != 1 and data.get("auto_eval_nodes", 10_000_000) == 10_000_000:
+    # Earlier builds shipped the auto-evaluation menu with 10M (and a short
+    # lived 20M default). Upgrade those defaults to the requested 200M once.
+    if data.get("auto_eval_limit_version", 0) < 2 and data.get("auto_eval_nodes") in (10_000_000, 20_000_000):
         result["auto_eval_nodes"] = 200_000_000
     for key, limit in (
         ("engine_id", 128),
@@ -164,5 +168,5 @@ def normalize(data) -> dict:
     if data.get("analysis_menu_version") != 1 and data.get("analysis_kind") in ("infinite", "bounded"):
         result["multipv"] = 1
     result["analysis_limit_version"] = 1
-    result["auto_eval_limit_version"] = 1
+    result["auto_eval_limit_version"] = 2
     return result

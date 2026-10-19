@@ -72,6 +72,16 @@ class EvaluationGraph(QWidget):
         if total != self.total:
             self.view_start = 0.0
             self.view_end = None
+        elif self.view_end is not None and cursor != self.cursor:
+            # Keep a manually zoomed range useful while the game cursor moves:
+            # follow the cursor at either edge without changing the zoom level.
+            span = max(2.0, self.view_end - self.view_start)
+            if cursor > self.view_end:
+                self.view_end = float(cursor)
+                self.view_start = max(0.0, self.view_end - span)
+            elif cursor < self.view_start:
+                self.view_start = float(cursor)
+                self.view_end = self.view_start + span
         self.cursor, self.total = cursor, total
         self.update()
 
@@ -85,7 +95,10 @@ class EvaluationGraph(QWidget):
         return QRectF(39, 12, max(1, self.width() - 47), max(1, self.height() - 24))
 
     def _point(self, ply, score):
-        end = self.total if self.view_end is None else self.view_end
+        # In the default view, reveal the graph only through the selected ply.
+        # This gives opening and middle-game positions a useful horizontal scale
+        # instead of reserving most of the width for moves the user has not reached.
+        end = max(self.cursor, 1) if self.view_end is None else self.view_end
         rect = self._plot_rect()
         # Mate sentinels sit at the edge; they never flatten normal cp samples.
         fraction = math.copysign(1.0, score) if abs(score) >= 29000 else self._compressed(score) / self._extent
@@ -109,7 +122,9 @@ class EvaluationGraph(QWidget):
             if abs(label_y + 8 - y) > 1:
                 p.setPen(QPen(QColor(colors["border"]), 1))
                 p.drawLine(QPointF(35, label_y + 8), QPointF(rect.left(), y))
-        p.setPen(QPen(QColor(colors["border"]), 1))
+        center_line = QColor(colors["border"])
+        center_line.setAlpha(95)
+        p.setPen(QPen(center_line, 1))
         p.drawLine(QPointF(rect.left(), rect.center().y()), QPointF(rect.right(), rect.center().y()))
         if not self.samples:
             p.setPen(QColor(colors["muted"]))
@@ -121,15 +136,33 @@ class EvaluationGraph(QWidget):
         path = QPainterPath()
         points = [(ply, self._point(ply, score)) for ply, score in sorted(self.samples.items())]
         path.moveTo(points[0][1])
-        for _, point in points[1:]:
-            path.lineTo(point)
+        for index in range(1, len(points)):
+            prior = points[index - 1][1]
+            current = points[index][1]
+            middle = (prior.x() + current.x()) / 2
+            path.cubicTo(QPointF(middle, prior.y()), QPointF(middle, current.y()), current)
         accent = QColor(colors["accent"])
-        p.setPen(QPen(accent, 2))
+        fill = QPainterPath(path)
+        fill.lineTo(points[-1][1].x(), rect.bottom())
+        fill.lineTo(points[0][1].x(), rect.bottom())
+        fill.closeSubpath()
+        accent_fill = QColor(accent)
+        accent_fill.setAlpha(22)
+        p.fillPath(fill, accent_fill)
+        p.setPen(QPen(accent, 1.8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         p.drawPath(path)
         p.setBrush(accent)
         p.setPen(Qt.PenStyle.NoPen)
         for ply, point in points:
-            p.drawEllipse(point, 4 if ply == self.cursor else 2.3, 4 if ply == self.cursor else 2.3)
+            if ply == self.cursor:
+                p.setBrush(QColor(colors["panel"]))
+                p.setPen(QPen(accent, 1.8))
+                p.drawEllipse(point, 3.4, 3.4)
+                p.setBrush(accent)
+                p.setPen(Qt.PenStyle.NoPen)
+            else:
+                p.setBrush(accent_fill)
+                p.drawEllipse(point, 1.8, 1.8)
         x = self._point(self.cursor, 0).x()
         p.setPen(QPen(QColor(colors["metric"]), 1, Qt.PenStyle.DotLine))
         p.drawLine(QPointF(x, rect.top()), QPointF(x, rect.bottom()))

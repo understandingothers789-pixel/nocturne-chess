@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.31 — Synced graph and separate engine limits
+
+- Evaluation graph follows the selected PGN position and grows its timeline as
+  the user navigates the game.
+- Engine menu exposes separate normal, auto-evaluation and self-play node caps.
+- Normal analysis defaults to 1 billion nodes; auto-evaluation to 200 million;
+  self-play to 10 million nodes per move.
+
 ## 0.5.7.30 — Recorded move destinations and full engine details
 
 Allow Smart Move destination clicks to play the game's recorded next move even

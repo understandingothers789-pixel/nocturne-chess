@@ -631,6 +631,7 @@ class MainWindow(QMainWindow):
             ("coordinates", "Coordinates"),
             ("show_clocks", "Clocks"),
             ("overlays", "Analysis overlays"),
+            ("show_eval_graph", "Evaluation graph"),
             ("animations", "Move animations"),
             ("light", "Light appearance"),
         ):
@@ -678,7 +679,9 @@ class MainWindow(QMainWindow):
         self.multipv_menu = engine.addMenu("MultiPV")
         self.profile_menu = engine.addMenu("Active engine")
         self.search_mode_menu = engine.addMenu("Analysis limits")
+        self.normal_limit_menu = engine.addMenu("Normal nodes per position")
         self.auto_eval_limit_menu = engine.addMenu("Auto-evaluation nodes per position")
+        self.auto_play_limit_menu = engine.addMenu("Auto-play nodes per move")
         self.resource_status_action = engine.addAction("")
         self.resource_status_action.setEnabled(False)
         engine.addSeparator()
@@ -1705,22 +1708,46 @@ class MainWindow(QMainWindow):
         self._schedule_engine()
 
     def _set_auto_eval_limit(self, nodes):
-        self.config["auto_eval_nodes"] = int(nodes)
+        self._set_node_limit("auto_eval_nodes", nodes)
+
+    def _set_node_limit(self, key, nodes):
+        self.config[key] = int(nodes)
+        if key == "auto_eval_nodes":
+            self.config["auto_eval_limit_version"] = 2
         self._save()
         self._refresh_engine_menus()
+        # Normal bounded analysis can adopt the new cap immediately. The two
+        # batch modes read their caps when the next run starts.
+        if key == "analysis_nodes" and self.analysis_mode and self._analysis_enabled and self.config.get("analysis_kind") == "bounded":
+            self._stop_engine()
+            self._schedule_engine()
 
-    def _custom_auto_eval_limit(self):
+    def _custom_node_limit(self, key, title, minimum=0):
+        if key == "auto_play_nodes":
+            minimum = 1
         nodes, accepted = QInputDialog.getInt(
-            self,
-            "Auto-evaluation node limit",
-            "Maximum nodes for each position (0 means unlimited):",
-            self.config.get("auto_eval_nodes", 10_000_000),
-            0,
-            2_000_000_000,
-            1_000_000,
+            self, title, "Maximum engine nodes per position (0 means unlimited):",
+            self.config.get(key, 0), minimum, 2_000_000_000, 1_000_000,
         )
         if accepted:
-            self._set_auto_eval_limit(nodes)
+            self._set_node_limit(key, nodes)
+
+    def _populate_node_limit_menu(self, menu, key, label, values, allow_unlimited=True):
+        current = self.config.get(key, 0)
+        current_label = "Unlimited" if current == 0 else f"{current:,}"
+        menu.setTitle(f"{label} · {current_label}")
+        if allow_unlimited:
+            action = menu.addAction("Unlimited · stop manually")
+            action.setCheckable(True)
+            action.setChecked(current == 0)
+            action.triggered.connect(lambda checked=False, k=key: self._set_node_limit(k, 0))
+        for nodes in values:
+            action = menu.addAction(f"{nodes:,}")
+            action.setCheckable(True)
+            action.setChecked(current == nodes)
+            action.triggered.connect(lambda checked=False, k=key, n=nodes: self._set_node_limit(k, n))
+        menu.addSeparator()
+        menu.addAction("Custom…", lambda checked=False, k=key, t=label: self._custom_node_limit(k, t))
 
     def _edit_analysis_limits(self):
         dialog = QDialog(self)
@@ -1766,26 +1793,20 @@ class MainWindow(QMainWindow):
             action.triggered.connect(lambda checked=False, m=mode: self._set_analysis_limit(m))
         self.search_mode_menu.addSeparator()
         self.search_mode_menu.addAction("Set limits…", self._edit_analysis_limits)
-        self.auto_eval_limit_menu.clear()
-        auto_eval_nodes = self.config.get("auto_eval_nodes", 200_000_000)
-        limit_label = "Unlimited" if auto_eval_nodes == 0 else f"{auto_eval_nodes:,}"
-        self.auto_eval_limit_menu.setTitle(f"Auto-evaluation nodes per position · {limit_label}")
-        for title, nodes in (
-            ("Unlimited · stop manually", 0),
-            *((f"{value:,}", value) for value in range(100_000_000, 1_000_000_001, 100_000_000)),
-            ("10,000,000", 10_000_000),
-            ("1,000,000", 1_000_000),
-            ("100,000", 100_000),
-            ("10,000", 10_000),
-        ):
-            action = self.auto_eval_limit_menu.addAction(title)
-            action.setCheckable(True)
-            action.setChecked(auto_eval_nodes == nodes)
-            action.triggered.connect(
-                lambda checked=False, value=nodes: self._set_auto_eval_limit(value)
-            )
-        self.auto_eval_limit_menu.addSeparator()
-        self.auto_eval_limit_menu.addAction("Custom…", self._custom_auto_eval_limit)
+        for menu in (self.normal_limit_menu, self.auto_eval_limit_menu, self.auto_play_limit_menu):
+            menu.clear()
+        standard_nodes = [*range(100_000_000, 1_000_000_001, 100_000_000),
+                          50_000_000, 10_000_000, 1_000_000, 100_000, 10_000]
+        self._populate_node_limit_menu(
+            self.normal_limit_menu, "analysis_nodes", "Normal nodes per position", standard_nodes
+        )
+        self._populate_node_limit_menu(
+            self.auto_eval_limit_menu, "auto_eval_nodes", "Auto-evaluation nodes per position", standard_nodes
+        )
+        self._populate_node_limit_menu(
+            self.auto_play_limit_menu, "auto_play_nodes", "Auto-play nodes per move",
+            [*standard_nodes, 1_000], allow_unlimited=False,
+        )
         self.multipv_menu.clear()
         profile = self._profile()
         option = profile.get("options", {}).get("MultiPV") if profile else None
@@ -1886,6 +1907,7 @@ class MainWindow(QMainWindow):
         self.telemetry.setStyleSheet(f"color: {palette(light)['metadata']};")
         self.telemetry.setTextFormat(Qt.TextFormat.RichText)
         self.graph.light = self.board_view.light = light
+        self.graph.setVisible(self.config.get("show_eval_graph", True))
         self.graph.update()
         self.eval_bar.setVisible(self.board_view.overlays)
         self._render_move_history()

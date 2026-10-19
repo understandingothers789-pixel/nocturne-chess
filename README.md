@@ -1,4 +1,4 @@
-# Nocturne Analysis · 0.5.7.30
+# Nocturne Analysis · 0.5.7.31
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
@@ -11,6 +11,11 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *This screenshot uses the protocol test simulator, not Stockfish or measured chess
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
+
+**0.5.7.31: a synced evaluation graph and separate engine node limits.** The
+graph timeline follows the selected PGN position. Engine now has distinct
+limits for normal analysis (1 billion nodes), auto-evaluation (200 million),
+and self-play (10 million per move).
 
 **[0.5.7.30](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39196589327/artifacts/12161284918): recorded move destinations and full engine details.** Smart Move
 can now play the game's recorded next move by destination, even when it is
