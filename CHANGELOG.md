@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.7.22 — Stable MultiPV wheel previews during engine updates
+
+Wheel-browsing a candidate now keeps its current move and displayed PV snapshot
+while Stockfish reports updates for that same root move. New continuations wait
+until the preview ends, so the selected ply does not jump back to the start. If
+the candidate's root move changes at its MultiPV rank, the preview resets and
+shows the new line.
+
 ## 0.5.7.21 — Two-row MultiPV with per-line expansion
 
 Candidate lines now reserve two move rows by default. A small arrow at the end

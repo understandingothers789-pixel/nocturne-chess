@@ -677,9 +677,11 @@ class GuiTests(unittest.TestCase):
         self._wheel(third.viewport(), -120)
         self.assertEqual(self.window.board_view.display_board.fen(), root.fen())
         self._show_external_info(base | {"multipv": 3, "pv": ["d2d4"]}, job)
-        self.assertEqual(panel.lines[3]["pv"][0], "b1c3")
+        self.assertEqual(panel.lines[3]["pv"][0], "d2d4")
+        self.assertIsNone(third.wheel_preview_ply)
+        self.assertIsNone(self.window.board_view.preview_board)
         self._wheel(third.viewport(), 120)
-        self.assertEqual(third._hovered, 1)
+        self.assertEqual(third._hovered, 0)
         self._wheel(third.viewport(), 120)
         self.assertEqual(self.window.board_view.display_board.fen(), fen)
         self.assertEqual(self.window.game.current_node, node)
@@ -693,6 +695,37 @@ class GuiTests(unittest.TestCase):
         self.assertIsNone(self.window.board_view.preview_board)
         panel.reserve_slots(4)
         self.assertFalse(panel.rows[4][2].wheel_navigation)
+
+    def test_wheel_preview_keeps_pv_snapshot_until_candidate_rank_changes(self):
+        base, job = self._three_pvs()
+        panel = self.window.candidates
+        view = panel.rows[3][2]
+        original_pv = ["b1c3", "b8c6", "g1f3", "g8f6", "f3g1", "f6g8",
+                       "c3b1", "c6b8", "b1c3", "b8c6", "g1f3", "g8f6"]
+        self._show_external_info(base | {"multipv": 3, "pv": original_pv}, job)
+        old_line = panel.lines[3].copy()
+        for _ in range(6):
+            self._wheel(view.viewport(), -120)
+        self.assertEqual(view.wheel_preview_ply, 6)
+        preview_fen = self.window.board_view.display_board.fen()
+
+        # Stockfish extends/revises the same candidate. Keep its displayed
+        # snapshot and wheel index stable until the user leaves the preview.
+        same_candidate = base | {"multipv": 3, "pv": original_pv[:6] + ["d2d3"]}
+        self._show_external_info(same_candidate, job)
+        self.assertEqual(panel.lines[3]["pv"], old_line["pv"])
+        self.assertEqual(panel.pending[3][0]["pv"][0], old_line["pv"][0])
+        self.assertEqual(view.wheel_preview_ply, 6)
+        self.assertEqual(view._hovered, 6)
+        self.assertEqual(self.window.board_view.display_board.fen(), preview_fen)
+
+        # A new root move means this MultiPV rank now represents another line.
+        self._show_external_info(base | {"multipv": 3, "pv": ["d2d4", "e5d4", "g1f3"]}, job)
+        self.assertEqual(panel.lines[3]["pv"][0], "d2d4")
+        self.assertIsNone(view.wheel_preview_ply)
+        self.assertIsNone(view._hovered)
+        self.assertIsNone(self.window.board_view.preview_board)
+        self.assertNotIn(3, panel.pending)
 
     def test_cursor_preview_keeps_main_board_and_snapshot_click_with_wheel(self):
         base, job = self._three_pvs()
@@ -716,7 +749,9 @@ class GuiTests(unittest.TestCase):
         expected.push(expected.parse_uci("g8f6"))
         self.assertEqual(popup.board.display_board.fen(), expected.fen())
         self.assertEqual(window.board_view.display_board.fen(), fen)
-        self._show_external_info(base | {"multipv": 3, "pv": ["d2d4"]}, job)
+        # A continuation update to the same candidate stays queued while the
+        # wheel preview is active, so clicks use the displayed PV snapshot.
+        self._show_external_info(base | {"multipv": 3, "pv": ["b1c3", "g8f6", "d2d4"]}, job)
         self.assertEqual(panel.lines[3]["pv"][0], "b1c3")
         cursor = third.document().find("Nc3")
         cursor.setPosition(cursor.selectionStart() + 1)

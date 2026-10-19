@@ -58,6 +58,7 @@ class CandidatePanel(QWidget):
         self.pending.clear()
         self.preview_end.emit()
         for rank, widgets in self.rows.items():
+            widgets[2].cancel_preview()
             if rank == 1:
                 self.primary.setParent(self)
             widgets[0].deleteLater()
@@ -222,10 +223,23 @@ class CandidatePanel(QWidget):
             return
         if type(rank) is not int or not 1 <= rank <= 32:
             return
+        previous = self.lines.get(rank)
+        moves = self.rows[rank][2] if rank in self.rows else None
+        if moves and moves.wheel_preview_ply is not None:
+            # Keep the displayed PV snapshot while the user scroll-browses a
+            # candidate. Later engine updates must not pull the preview back to
+            # ply one. A different root move means MultiPV rank order changed,
+            # so end the old preview and show the candidate now occupying rank.
+            old_root = previous.get("pv", [None])[0] if previous else None
+            new_root = info.get("pv", [None])[0]
+            if old_root == new_root:
+                self.pending[rank] = (info.copy(), turn, light, detailed)
+                return
+            self.pending.pop(rank, None)
+            moves.cancel_preview()
         if self.hovered == rank:
             self.pending[rank] = (info.copy(), turn, light, detailed)
             return
-        previous = self.lines.get(rank)
         if rank > self.slot_count:
             self.reserve_slots(rank)
         self.pending.pop(rank, None)

@@ -1,4 +1,7 @@
-# Windows 11 desktop builds · 0.5.7.21
+# Windows 11 desktop builds · 0.5.7.22
+
+The 0.5.7.22 Windows build is being validated. The latest verified build is
+[0.5.7.21](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39165248055/artifacts/12150402048).
 
 ## Download Windows 0.5.7.21
 
@@ -17,8 +20,6 @@ completed; ChessDB returned 29 legal moves.
 Artifact **12150402048**, `Nocturne-0.5.7.21-Windows-x64-unsigned`,
 57,894,483 bytes, expires 2026-11-17. SHA-256:
 `87f3dae9f32423bda6c92aeb89fd436e9f46c732316f272517c580c99ea79212`.
-
-# Download Windows 0.5.7.20
 
 # Download Windows 0.5.7.20
 

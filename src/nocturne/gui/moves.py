@@ -33,6 +33,7 @@ class MoveText(QTextBrowser):
         self._current = None
         self._light = False
         self._hovered = None
+        self.wheel_preview_ply = None
         self.candidate_rank = None
         self.candidate_turn = 1
         self._candidate_style = None
@@ -67,11 +68,13 @@ class MoveText(QTextBrowser):
 
     def leaveEvent(self, event):
         self._wheel_steps.reset()
+        self.wheel_preview_ply = None
         self._hovered = None
         self.preview_ended.emit()
         super().leaveEvent(event)
 
     def focusOutEvent(self, event):
+        self.wheel_preview_ply = None
         self._hovered = None
         self.preview_ended.emit()
         super().focusOutEvent(event)
@@ -142,6 +145,9 @@ class MoveText(QTextBrowser):
         self.pointer_moved.emit(event.globalPosition().toPoint())
         if self.candidate_rank is None:
             return super().mouseMoveEvent(event)
+        # A real pointer move starts following the hovered SAN again. Wheel
+        # browsing remains locked to its selected ply while the pointer rests.
+        self.wheel_preview_ply = None
         url = self._move_at(event.position().toPoint())
         self.viewport().setCursor(Qt.CursorShape.PointingHandCursor if not url.isEmpty()
                                   else Qt.CursorShape.ArrowCursor)
@@ -177,6 +183,7 @@ class MoveText(QTextBrowser):
         if not last:
             return
         ply = max(0, min(last, (self._hovered or 0) + steps))
+        self.wheel_preview_ply = ply
         self._highlight(QUrl(f"move:{ply}"))
         # Keep the previewed move visible even when the three-row slot scrolls.
         block = self.document().begin()
@@ -194,6 +201,7 @@ class MoveText(QTextBrowser):
             block = block.next()
 
     def cancel_preview(self):
+        self.wheel_preview_ply = None
         self._hovered = None
         self.preview_ended.emit()
 

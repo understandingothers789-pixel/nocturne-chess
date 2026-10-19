@@ -1,6 +1,11 @@
 # Active roadmap
 
-**Current: 0.5.7.21 in validation.** MultiPV rows reserve two move lines by
+**Current: 0.5.7.22 in validation.** Scrolling through an engine candidate
+preserves the active ply and displayed PV while that same root move is updated.
+A changed root move resets the preview. Regression tests cover same-rank updates
+and candidate changes.
+
+**Previous: 0.5.7.21 delivered.** MultiPV rows reserve two move lines by
 default. Each row's arrow expands only that suggested line to its full current
 engine PV; it collapses back independently. The developer option still expands
 all candidates.

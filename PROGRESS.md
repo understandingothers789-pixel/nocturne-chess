@@ -2559,3 +2559,22 @@ has SHA-256 `87f3dae9f32423bda6c92aeb89fd436e9f46c732316f272517c580c99ea79212`.
 The build is unsigned. The published two-row PV feature commit is
 `fbdccac4817f61fc1ba694c93d667d4cb08ab08d`; database-status follow-up is
 `d1c1b019ec931a0559a10b1e6016d6b246d146c7`.
+
+## 2026-10-19 — 0.5.7.22: keep MultiPV wheel previews steady
+
+**Phase:** Preserve the selected ply and the displayed PV snapshot while
+scroll-browsing a candidate that retains the same root move. Queue newer engine
+continuations until the preview ends. If a different root move occupies that
+candidate rank, end the old preview and display the new line.
+
+**Files changed:** `moves.py` records the wheel-selected ply until actual pointer
+movement or preview cancellation. `candidates.py` keeps same-root engine updates
+queued and resets the wheel preview when that rank's root move changes. GUI
+regression coverage checks the selected ply and board position through same-root
+updates, then verifies reset after the rank changes. Version and Windows artifact
+labels are 0.5.7.22.
+
+**Validation:** 187 tests passed overall (176 passed, 11 optional skips).
+Focused wheel-preview tests and Ruff passed. The 209-entry source archive
+passed ZIP integrity checks and contains no script launchers. Windows build
+and packaged smoke checks are pending.
