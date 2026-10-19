@@ -1,9 +1,11 @@
 # Active roadmap
 
-**Current: 0.5.7.23 in validation.** Candidate rows reserve three move lines
-when one to four MultiPV candidates are selected and two lines at five or more.
-Per-line expansion continues to show that candidate's full PV. Focused GUI
-tests and Ruff pass; Windows validation/build is pending.
+**Current: 0.5.7.23 delivered.** Candidate rows reserve three move lines when
+one to four MultiPV candidates are selected and two lines at five or more.
+Per-line expansion continues to show that candidate's full PV. Local: 188 tests
+passed with 11 optional/environment skips, Ruff passed. Windows: 188 tests
+passed with 5 optional skips, Ruff, PyInstaller, and packaged launch checks
+passed. Download and checksum are in the [build receipt](docs/BUILDING.md).
 
 **Previous: 0.5.7.22 delivered.** Scrolling through an engine candidate
 preserves the active ply and displayed PV while that same root move is updated.

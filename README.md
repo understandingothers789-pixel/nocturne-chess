@@ -14,7 +14,9 @@ are explicitly labelled fixtures, not live results.*
 
 **0.5.7.23: MultiPV-aware candidate rows.** One to four selected candidate
 lines reserve three move rows by default; five or more reserve two. The arrow
-at each row still expands only that candidate to its full engine line.
+at each row still expands only that candidate to its full engine line. The
+[Windows download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39184268239/artifacts/12157563087)
+is an unsigned ZIP; extract it and launch `Nocturne/Nocturne.exe`.
 
 **0.5.7.22: stable wheel previews.** Scrolling through a candidate keeps the
 selected ply and its current PV snapshot while the engine updates that same
@@ -67,7 +69,7 @@ The separate statistics switch provides an explicit offline opt-out.
 
 ## Windows: download and open
 
-The Windows 0.5.7.23 download will be linked here after its validation build completes.
+Windows 0.5.7.23 build receipt and checksum: [docs/BUILDING.md](docs/BUILDING.md).
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
 See the [build receipt](docs/BUILDING.md) and [development log](PROGRESS.md).
 

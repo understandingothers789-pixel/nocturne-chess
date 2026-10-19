@@ -1,9 +1,22 @@
 # Windows 11 desktop builds · 0.5.7.23
 
-## Windows 0.5.7.23 build pending
+## Download Windows 0.5.7.23
 
-The feature commit is being validated by the Windows workflow. Its artifact
-link and checksum will be recorded here when the build completes.
+[Download the Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39184268239/artifacts/12157563087).
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Feature commit `49662cc173a44db64841491c3ba5c854c4dedd0a` selects three compact
+move rows for one to four MultiPV candidates, and two rows for five or more.
+Each candidate's arrow still expands only that line to the complete engine PV.
+Windows run [39184268239](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39184268239)
+passed **188 tests (183 passed / 5 optional skips)** in 215.955 seconds, Ruff,
+PyInstaller and packaged launch checks. The optional API check confirmed
+ChessDB returned 29 legal moves; authenticated Lichess data requires a user
+access token.
+
+Artifact **12157563087**, `Nocturne-0.5.7.23-Windows-x64-unsigned`,
+57,897,215 bytes, expires 2026-11-18. SHA-256:
+`0dc3dc3b4bae7b402b8cae4d7c49a56f35b74bf1c36961e97f70541777804745`.
 
 # Windows 11 desktop builds · 0.5.7.22
 
