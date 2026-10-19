@@ -34,6 +34,7 @@ DEFAULTS = {
     "analysis_depth": 128,
     "analysis_seconds": 600.0,
     "review_seconds": 3.0,
+    "review_confirm": True,
     "details": False,
     "show_seldepth": False,
     "smart_move": True,
@@ -117,6 +118,7 @@ def normalize(data) -> dict:
         "explorer_enabled",
         "explorer_statistics",
         "reanalyze_on_navigation",
+        "review_confirm",
     ):
         if isinstance(data.get(key), bool):
             result[key] = data[key]

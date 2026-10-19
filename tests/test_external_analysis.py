@@ -582,7 +582,7 @@ class QtIntegration(unittest.TestCase):
             self.assertGreaterEqual(window.engine.generation, generation)
             self.assertEqual(len(window.game.nodes[0].analysis["multipv_lines"]), 3)
 
-    def test_auto_evaluation_uses_last_exact_iteration_when_node_cap_ends_with_bound(self):
+    def test_auto_evaluation_keeps_latest_bound_when_node_cap_interrupts_iteration(self):
         with self.workspace() as window:
             window.timer.stop()
             profile = self.profile()
@@ -594,9 +594,44 @@ class QtIntegration(unittest.TestCase):
             window._auto_evaluate_line()
             self.wait_until(lambda: window._review is None, 8)
             for node in window.game.nodes:
-                self.assertEqual(node.analysis["bound"], "exact")
-                self.assertEqual(node.analysis["depth"], 3)
+                self.assertEqual(node.analysis["bound"], "upperbound")
+                self.assertEqual(node.analysis["depth"], 4)
                 self.assertEqual(len(node.analysis["multipv_lines"]), 3)
+            self.assertNotIn("[%eval", window.game.pgn())
+
+    def test_auto_evaluation_keeps_individual_depths_in_partial_multipv_iteration(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            profile = self.profile()
+            profile["arguments"] = [SIMULATOR, "partial-pvs"]
+            profile["options"] = {"MultiPV": {"maximum": 8}}
+            window.profiles = [profile]
+            window.config.update(engine_id="simulator", multipv=5, auto_eval_nodes=400)
+            window.game = Game.from_pgn("1.e4 *")
+            window._auto_evaluate_line()
+            self.wait_until(lambda: window._review is None, 8)
+            for node in window.game.nodes:
+                self.assertEqual([info["depth"] for info in node.analysis["multipv_lines"]], [3, 3, 4, 4, 4])
+            restored = Game.from_dict(window.game.to_dict())
+            self.assertEqual(restored.nodes[0].analysis["multipv_lines"], window.game.nodes[0].analysis["multipv_lines"])
+
+    def test_deeper_confirmation_can_replace_an_initial_blunder_label(self):
+        from nocturne.review import rows
+
+        with self.workspace() as window:
+            window.timer.stop()
+            profile = self.profile()
+            profile["arguments"] = [SIMULATOR, "review-confirm"]
+            window.profiles = [profile]
+            window.config.update(engine_id="simulator", review_confirm=True)
+            window.game = Game.from_pgn("1.e3 *")
+            window._begin_review(0.05)
+            self.wait_until(lambda: window._review is None, 8)
+            record = rows(window.game)[0]["record"]
+            self.assertEqual(record["label"], "Excellent")
+            self.assertEqual(record["context"]["confirmation"]["initial_label"], "Blunder")
+            self.assertEqual(record["context"]["nodes"], 10_000_000)
+            self.assertIsNone(record["context"]["seconds"])
 
     def test_normal_node_menu_switches_from_continuous_and_unlimited_really_is_unlimited(self):
         with self.workspace() as window:
@@ -642,7 +677,7 @@ class QtIntegration(unittest.TestCase):
             self.assertEqual(window.game.nodes[0].analysis["timestamp"], timestamp)
             self.assertFalse(window.engine.busy)
 
-    def test_live_bound_finish_keeps_every_exact_candidate_in_saved_cache(self):
+    def test_live_bound_finish_keeps_latest_candidates_in_saved_cache(self):
         with self.workspace() as window:
             window.timer.stop()
             profile = self.profile()
@@ -656,7 +691,8 @@ class QtIntegration(unittest.TestCase):
             window._schedule_engine()
             self.wait_until(lambda: not window.engine.busy and len(window.candidates.lines) == 3)
             self.assertEqual(len(window.game.nodes[0].analysis["multipv_lines"]), 3)
-            self.assertEqual(window.game.nodes[0].analysis["depth"], 3)
+            self.assertEqual(window.game.nodes[0].analysis["depth"], 4)
+            self.assertEqual(window.game.nodes[0].analysis["bound"], "upperbound")
 
     def test_f11_and_f12_keys_toggle_without_moving_or_restarting_the_line(self):
         with self.workspace() as window:
@@ -766,6 +802,14 @@ class QtIntegration(unittest.TestCase):
             self.assertEqual(window.game.board.fen(), original)
             summary = summarize(rows(window.game))
             self.assertTrue(all(count == 1 for count in summary["counts"].values()))
+            for entry in rows(window.game):
+                evidence = entry["record"]["context"].get("confirmation")
+                if entry["record"]["label"] in ("Mistake", "Blunder"):
+                    self.assertEqual(evidence["nodes_per_search"], 10_000_000)
+                else:
+                    self.assertIsNone(evidence)
+            self.assertEqual(sum(command.startswith("> go nodes 10000000")
+                                 for command in window.engine.connection.log), 4)
             self.assertEqual(panel.scores[None][0].text(), f"{summary['accuracy']:.1f}%")
             self.assertEqual(panel.progress.value(), 6)
             panel.errors_only.setChecked(True)

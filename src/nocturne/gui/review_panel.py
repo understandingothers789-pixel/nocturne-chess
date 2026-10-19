@@ -178,13 +178,16 @@ class ReviewPanel(QWidget):
             self.detail.setPlainText("Select a reviewed move to see the engine evidence.")
             return
         best, played = record["best"], record["played"]
+        confirmation = record["context"].get("confirmation")
+        confirmed = (f"\nConfirmed with {confirmation['nodes_per_search']:,} nodes per search "
+                     f"(initial label: {confirmation['initial_label']})." if confirmation else "")
         cp = f" · {record['loss_cp'] / 100:.2f} pawns" if "loss_cp" in record else " · mate distances are not graded"
         self.detail.setPlainText(
             f"{entry['san']}: {record['label']} · {record['accuracy']:.1f}%\n"
             f"Best {record['best_san']} {score_label(best)} (depth {best.get('depth', '?')}); "
             f"played {score_label(played)} (depth {played.get('depth', '?')}). Scores favor the mover.\n"
             f"Outcome-proxy loss {record['loss_percent']:.2f} percentage points{cp}.\n"
-            f"Engine: {best.get('engine', record['context'].get('engine', 'UCI'))}")
+            f"Engine: {best.get('engine', record['context'].get('engine', 'UCI'))}{confirmed}")
 
     def _before(self):
         if self.game and self.game.current_node:

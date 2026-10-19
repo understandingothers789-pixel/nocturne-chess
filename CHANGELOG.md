@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.7.34 — Partial analysis, deeper review and position tools
+
+- F12 retains the latest result for every PV, including unfinished iterations
+  with different depths and bound scores. Each candidate keeps its own depth;
+  inequalities remain labelled, and bounds are not exported as exact PGN evals.
+  Stockfish's normal node overshoot is unchanged.
+- Game review confirms suspected Mistakes and Blunders before assigning a
+  final label. Both best and played moves are searched again using node-only
+  limits: at least 10 million nodes, or four times the first pass's larger
+  reported node count. Analysis → Confirm mistakes with deeper analysis toggles
+  this default-on feature. The review detail retains the original evidence and
+  shows the confirmation budget. F12's requested per-position budget is unchanged.
+- Tree → Bookmark this position… (Ctrl+B) saves a name and note in the game
+  library. Tree → Position bookmarks jumps to saved positions; Ctrl+B edits
+  or deletes the current bookmark. Bookmarks follow node renumbering when a
+  different variation is deleted. They are library data, separate from PGN comments.
+- Database → Find where this line leaves the database scans the selected PGN
+  line in order using the selected Masters/player filters and cached or live
+  counts. The Game Moves header links to the first zero-game position and shows
+  the preceding position's game count. Requests are paced and cancellable;
+  access, connection and rate-limit failures show incomplete coverage, never
+  a fabricated zero. ChessDB has no game counts and is excluded from this scan.
+
 ## 0.5.7.33 — Recent-change review and regression fixes
 
 - Normal node presets now switch to a true node-only search. Unlimited really

@@ -60,6 +60,7 @@ from .candidates import CandidatePanel
 from .review_panel import ReviewPanel
 from ..review import classify, chance
 from .explorer_panel import OpeningExplorer
+from .opening_coverage import OpeningCoverage
 from ..explorer import RATINGS, SPEEDS
 from .moves import MoveText
 from .hover_preview import HoverPreview
@@ -420,6 +421,8 @@ class MainWindow(QMainWindow):
         self.analysis_detail_splitter.addWidget(self.explorer)
         self.explorer.hide()
         self._explorer_active = False
+        self.opening_coverage = OpeningCoverage(self.data_directory / "opening-cache.sqlite3", self)
+        self.opening_coverage.changed.connect(self._update_opening_coverage)
         engine_page_layout.addWidget(self.analysis_detail_splitter, 1)
         self.graph = EvaluationGraph()
         self.graph.setMinimumHeight(60)
@@ -507,7 +510,11 @@ class MainWindow(QMainWindow):
         history_layout.setSpacing(2)
         history_tools = QHBoxLayout()
         history_tools.addWidget(label("GAME MOVES", "eyebrow"))
-        history_tools.addStretch()
+        self.opening_coverage_label = label("", "muted")
+        self.opening_coverage_label.setTextFormat(Qt.TextFormat.RichText)
+        self.opening_coverage_label.linkActivated.connect(lambda node: self._navigate_node(int(node)))
+        self.opening_coverage_label.setWordWrap(True)
+        history_tools.addWidget(self.opening_coverage_label, 1)
         for text, callback in (
             ("|‹", lambda: self._navigate(0)),
             ("‹", self._undo),
@@ -610,6 +617,9 @@ class MainWindow(QMainWindow):
         self.delete_line_action = add(tree, "Delete current line", self._delete_line, "Backspace")
         self.delete_line_action.setAutoRepeat(False)
         add(tree, "Edit comment / annotations…", self._edit_annotation, "Ctrl+M")
+        add(tree, "Bookmark this position…", self._edit_bookmark, "Ctrl+B")
+        self.bookmarks_menu = tree.addMenu("Position bookmarks")
+        self.bookmarks_menu.aboutToShow.connect(self._populate_bookmarks)
 
         analysis = self.menuBar().addMenu("&Analysis")
         add(analysis, "Game Review…", self._show_review)
@@ -619,6 +629,8 @@ class MainWindow(QMainWindow):
         add(analysis, "Analyze entire line…", self._analyze_game)
         add(analysis, "Pause / resume game analysis", self._pause_review)
         add(analysis, "Cancel game analysis", self._cancel_review)
+        self.confirm_review_action = add(analysis, "Confirm mistakes with deeper analysis", self._set_review_confirmation)
+        self.confirm_review_action.setCheckable(True)
         add(analysis, "Analyze all legal moves again", self._clear_focus)
         add(analysis, "Engine diagnostics…", self._diagnostics)
 
@@ -725,6 +737,8 @@ class MainWindow(QMainWindow):
             QUrl("https://lichess.org/account/oauth/token/create?description=Nocturne%20database%20explorer")))
         self.clear_lichess_token_action = add(database, "Clear session access token", self._clear_lichess_token)
         add(database, "Refresh database results", self.explorer.refresh)
+        self.opening_scan_action = add(database, "Find where this line leaves the database", self._scan_opening_coverage)
+        self.opening_cancel_action = add(database, "Cancel database coverage scan", lambda: self.opening_coverage.cancel(False))
         play = self.menuBar().addMenu("&Play")
         add(play, "New game…", self._new_game)
         add(play, "Pause / continue", self._pause, "Space")
@@ -837,6 +851,8 @@ class MainWindow(QMainWindow):
 
     def _clear_lichess_token(self):
         self.explorer.client.set_lichess_token("")
+        self.opening_coverage.cancel()
+        self.opening_coverage.client.set_lichess_token("")
         if self.explorer.query and self.explorer.query.source != "chessdb":
             self.explorer.client.cancel()
             self.explorer.status_label.setText("Session token cleared · cached results remain available")
@@ -876,6 +892,36 @@ class MainWindow(QMainWindow):
             self.analysis_detail_splitter.setSizes([500, 220])
         self._explorer_active = active
         self._sync_candidate_database()
+        self._update_opening_coverage()
+
+    def _scan_opening_coverage(self):
+        self.opening_coverage.start(
+            self.game, self.config.get("explorer_source", "masters"),
+            self.config.get("explorer_speed", "all"), self.config.get("explorer_rating", 0),
+            self.explorer.client._lichess_token,
+        )
+
+    def _update_opening_coverage(self):
+        if not hasattr(self, "opening_coverage_label"):
+            return
+        coverage = self.opening_coverage
+        signature = coverage.signature(self.game, self.config.get("explorer_source", "masters"),
+                                       self.config.get("explorer_speed", "all"), self.config.get("explorer_rating", 0))
+        if coverage.context is not None and coverage.context != signature:
+            coverage.cancel()
+        text = escape(coverage.message)
+        if coverage.departure is not None:
+            node_id = coverage.departure
+            node = self.game.nodes[node_id]
+            if node.parent is None:
+                title = "Starting position"
+            else:
+                before = self.game.position_at_node(node.parent)
+                title = f"{before.fullmove}{'.' if before.turn == 1 else '…'} {node.san}"
+            text = f'Database departure: <a href="{node_id}">{escape(title)}</a> · {text}'
+        self.opening_coverage_label.setText(text)
+        self.opening_scan_action.setEnabled(not coverage.running and self.config.get("explorer_source") != "chessdb")
+        self.opening_cancel_action.setEnabled(coverage.running)
 
     def _sync_candidate_database(self):
         explorer = self.explorer
@@ -1182,7 +1228,7 @@ class MainWindow(QMainWindow):
         self._insert_candidate(rank, 1)
 
     def _store_analysis(self, game, node_id, info, turn, context):
-        if not info or info.get("bound", "exact") != "exact":
+        if not info or "score" not in info:
             return
         value = info["score"] * turn
         node = game.nodes[node_id]
@@ -1196,13 +1242,69 @@ class MainWindow(QMainWindow):
             "profile": context.get("profile", ""),
             "options": dict(context.get("options", {})),
         }
-        lines = context.get("exact_lines") or context.get("lines")
+        lines = context.get("lines") or context.get("exact_lines")
         if lines:
             node.analysis["multipv_lines"] = [
                 dict(lines[rank]) for rank in sorted(lines)
             ]
         if node_id in game._line_nodes:
             game.evaluations[game._line_nodes.index(node_id)] = value
+
+    def _set_bookmark(self, name, note=""):
+        key = str(self.game.current_node)
+        records = self.game.metadata.setdefault("bookmarks", {})
+        if not isinstance(records, dict):
+            records = self.game.metadata["bookmarks"] = {}
+        if name.strip():
+            records[key] = {"name": name.strip()[:120], "note": note.strip()[:10000]}
+        else:
+            records.pop(key, None)
+        self._save()
+
+    def _populate_bookmarks(self):
+        self.bookmarks_menu.clear()
+        records = self.game.metadata.get("bookmarks", {})
+        records = records if isinstance(records, dict) else {}
+        for key, entry in records.items():
+            if not key.isdigit() or not 0 <= int(key) < len(self.game.nodes) or not isinstance(entry, dict):
+                continue
+            if not isinstance(entry.get("name"), str):
+                continue
+            node_id = int(key)
+            action = self.bookmarks_menu.addAction(entry["name"].replace("&", "&&"))
+            action.setToolTip(str(entry.get("note", "")))
+            action.triggered.connect(lambda checked=False, i=node_id: self._navigate_node(i))
+        if self.bookmarks_menu.isEmpty():
+            self.bookmarks_menu.addAction("No bookmarks yet · Ctrl+B to add").setEnabled(False)
+        self.bookmarks_menu.setToolTipsVisible(True)
+
+    def _edit_bookmark(self):
+        records = self.game.metadata.get("bookmarks", {})
+        saved = records.get(str(self.game.current_node), {}) if isinstance(records, dict) else {}
+        saved = saved if isinstance(saved, dict) else {}
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Position bookmark")
+        dialog.resize(440, 300)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel("Name"))
+        name = QLineEdit(str(saved.get("name", self.game.nodes[self.game.current_node].san or "Starting position")))
+        layout.addWidget(name)
+        layout.addWidget(QLabel("Notes"))
+        note = QPlainTextEdit(str(saved.get("note", "")))
+        layout.addWidget(note, 1)
+        controls = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        controls.accepted.connect(dialog.accept)
+        controls.rejected.connect(dialog.reject)
+        remove = controls.addButton("Delete bookmark", QDialogButtonBox.ButtonRole.DestructiveRole)
+        remove.setEnabled(bool(saved))
+        remove.clicked.connect(lambda: (name.clear(), dialog.accept()))
+        layout.addWidget(controls)
+        if dialog.exec():
+            self._set_bookmark(name.text(), note.toPlainText())
+
+    def _set_review_confirmation(self, enabled):
+        self.config["review_confirm"] = bool(enabled)
+        self._save()
 
     def _edit_annotation(self):
         dialog = QDialog(self)
@@ -1482,12 +1584,13 @@ class MainWindow(QMainWindow):
             self._cancel_review()
             return
         searchmoves = None
-        if state["stage"] == "played":
+        if state["stage"] in ("played", "confirm_played"):
             searchmoves = [self.game.nodes[state["line"][state["index"] + 1]].move.uci()]
+        confirming = state["stage"].startswith("confirm_")
         limits = SearchLimits(
             depth=state["depth"],
             seconds=state["seconds"],
-            nodes=state["nodes"],
+            nodes=state["confirmation_nodes"] if confirming else state["nodes"],
         )
         try:
             generation = self.engine.start(
@@ -1497,7 +1600,7 @@ class MainWindow(QMainWindow):
                 options=profile.get("values", {}),
                 multipv=state.get("multipv", 1),
                 infinite=state.get("kind") == "auto_eval" and state["nodes"] is None,
-                nodes_only=state.get("kind") == "auto_eval",
+                nodes_only=state.get("kind") == "auto_eval" or confirming,
                 kind="analysis",
                 searchmoves=searchmoves,
                 arguments=profile.get("arguments", []),
@@ -1546,12 +1649,16 @@ class MainWindow(QMainWindow):
             return True
         if kind != "result":
             return True
-        # A node cap can interrupt Stockfish in an aspiration search. Keep
-        # the last exact, completed score instead of pausing on its final bound.
+        # Saving analysis accepts partial iterations, including bound scores.
+        # Grading a move still needs exact evidence rather than an inequality.
         exact_lines = payload.get("exact_lines") or {}
-        info = exact_lines.get(1) or payload.get("info") or state["info"]
-        valid = chance(info) is not None and bool(info.get("pv"))
-        if valid and state["stage"] == "played":
+        auto_eval = state.get("kind") == "auto_eval"
+        info = ((payload.get("info") or state["info"]) if auto_eval else
+                (exact_lines.get(1) or payload.get("info") or state["info"]))
+        valid = bool(info and info.get("pv")) and (
+            info.get("score_type") in ("cp", "mate") if auto_eval else chance(info) is not None
+        )
+        if valid and state["stage"] in ("played", "confirm_played"):
             valid = info["pv"][0] == self.game.nodes[state["line"][state["index"] + 1]].move.uci()
         if not valid:
             state["paused"] = True
@@ -1565,7 +1672,7 @@ class MainWindow(QMainWindow):
         line = state["line"]
         node_id = line[index]
         if state.get("kind") == "auto_eval":
-            lines = exact_lines or payload.get("lines") or {1: info}
+            lines = payload.get("lines") or exact_lines or {1: info}
             self._store_analysis(self.game, node_id, info, state["turn"], state)
             self.game.nodes[node_id].analysis["multipv_lines"] = [
                 dict(lines[rank]) for rank in sorted(lines)
@@ -1576,21 +1683,25 @@ class MainWindow(QMainWindow):
             self._render_move_history()
             QTimer.singleShot(0, self._review_next)
             return True
-        if state["stage"] == "best":
+        if state["stage"] in ("best", "confirm_best"):
             self._store_analysis(self.game, node_id, info, state["turn"], state)
             state["best"] = info.copy()
             if index + 1 < len(line):
                 played = self.game.nodes[line[index + 1]].move.uci()
                 if info["pv"][0] != played:
-                    state["stage"] = "played"
+                    state["stage"] = "confirm_played" if state["stage"] == "confirm_best" else "played"
                     QTimer.singleShot(0, self._review_next)
                     self._save()
                     return True
-                self._classify_review(line[index + 1], info, info)
+                if self._classify_review(line[index + 1], info, info):
+                    return True
         else:
-            self._classify_review(line[index + 1], state["best"], info)
+            if self._classify_review(line[index + 1], state["best"], info):
+                return True
         state["index"] += 1
         state["stage"] = "best"
+        state.pop("confirmation_nodes", None)
+        state.pop("initial_review", None)
         self._update_graph()
         self._save()
         self._render_move_history()
@@ -1603,14 +1714,38 @@ class MainWindow(QMainWindow):
         state = self._review or {}
         record = classify(self.game.position_at_node(node.parent), node.move, best, played, {
             "profile": state.get("profile", ""), "options": state.get("options", {}),
-            "seconds": state.get("seconds"), "depth": state.get("depth"),
-            "nodes": state.get("nodes"),
+            "seconds": None if state.get("confirmation_nodes") else state.get("seconds"),
+            "depth": None if state.get("confirmation_nodes") else state.get("depth"),
+            "nodes": state.get("confirmation_nodes", state.get("nodes")),
             "engine": best.get("engine", "UCI"),
         })
         if record is None:
-            return
+            return False
+        if (record["label"] in ("Mistake", "Blunder")
+                and self.config.get("review_confirm", True)
+                and not state.get("stage", "best").startswith("confirm_")):
+            # Use actual work, since the first pass may have hit its time/depth
+            # limit long before its configured node ceiling.
+            state["confirmation_nodes"] = max(
+                10_000_000, 4 * max(best.get("nodes", 0), played.get("nodes", 0))
+            )
+            state["initial_review"] = record
+            state["stage"] = "confirm_best"
+            state["message"] = f"Confirming {node.san} · {state['confirmation_nodes']:,} nodes per search"
+            self.statusBar().showMessage(state["message"])
+            self._update_review_panel()
+            QTimer.singleShot(0, self._review_next)
+            return True
+        if state.get("initial_review"):
+            record["context"]["confirmation"] = {
+                "initial_label": state["initial_review"]["label"],
+                "initial_best": state["initial_review"]["best"],
+                "initial_played": state["initial_review"]["played"],
+                "nodes_per_search": state["confirmation_nodes"],
+            }
         self.game.metadata.setdefault("review", {})[str(node_id)] = record
         self.statusBar().showMessage(self.game.nodes[node_id].san + " · " + record["label"])
+        return False
 
     def _pause_review(self):
         if not self._review:
@@ -1983,6 +2118,7 @@ class MainWindow(QMainWindow):
         self.candidates.set_expanded(self.config.get("expand_pv", False))
         self.expand_pv_action.setChecked(self.config.get("expand_pv", False))
         self.cursor_preview_action.setChecked(self.config.get("cursor_preview", False))
+        self.confirm_review_action.setChecked(self.config.get("review_confirm", True))
 
     def _sync_workspace_layout(self):
         analysis = self.analysis_mode
@@ -3053,8 +3189,8 @@ class MainWindow(QMainWindow):
                 info, job["turn"], self._appearance_config().get("light", False), self.config.get("details", False)
             )
             if info.get("multipv", 1) != 1:
-                if store and 1 in job.get("exact_lines", {}):
-                    self._store_analysis(self.game, self.game.current_node, job["exact_lines"][1], job["turn"], job)
+                if store and 1 in job.get("lines", {}):
+                    self._store_analysis(self.game, self.game.current_node, job["lines"][1], job["turn"], job)
                 return
         self._last_info = info.copy()
         self._last_info_turn = job["turn"]
@@ -3138,6 +3274,7 @@ class MainWindow(QMainWindow):
         self.autosave_timer.stop()
         self.archive_timer.stop()
         self.explorer.close_client()
+        self.opening_coverage.close()
         self.engine.close()
         self.game.pause_clock()
         self._save()

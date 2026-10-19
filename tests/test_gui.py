@@ -73,6 +73,32 @@ class GuiTests(unittest.TestCase):
         )
         self.app.processEvents()
 
+    def test_named_bookmarks_persist_navigate_and_follow_variation_deletion(self):
+        window = self.window
+        window.game = Game.from_pgn("1.e4 (1.d4 d5) e5 *")
+        window.game.select_node(0)
+        window._set_bookmark("Start", "Compare the two pawn openings")
+        window.game.select_node(3)
+        target_fen = window.game.board.fen()
+        window._set_bookmark("Queen pawn", "Watch the central break")
+        restored = window.store.load(window.game.id)
+        self.assertEqual(restored.metadata["bookmarks"]["3"]["note"], "Watch the central break")
+        window.game = restored
+        window._populate_bookmarks()
+        window.bookmarks_menu.actions()[0].trigger()
+        self.assertEqual(window.game.current_node, 0)
+        window.bookmarks_menu.actions()[1].trigger()
+        self.assertEqual(window.game.board.fen(), target_fen)
+        # Removing another branch compacts node IDs, but retains the position.
+        e4 = next(i for i, node in enumerate(window.game.nodes) if node.san == "e4")
+        window.game.select_node(e4)
+        window.game.delete_current_line()
+        window._populate_bookmarks()
+        window.bookmarks_menu.actions()[1].trigger()
+        self.assertEqual(window.game.board.fen(), target_fen)
+        window._set_bookmark("")
+        self.assertEqual(len(window.game.metadata["bookmarks"]), 1)
+
     def test_analysis_alternative_preserves_original_and_hover_restores(self):
         window = self.window
         window.analysis_mode = True

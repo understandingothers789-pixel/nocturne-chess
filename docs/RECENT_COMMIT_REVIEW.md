@@ -76,14 +76,28 @@ tests separately cover deterministic stale output, bounds, rapid key toggles,
 and recovery. Live API checks validate transport availability, not historical
 database coverage for every position.
 
-## Five ideas — not implemented
+## Five ideas — implementation status after 0.5.7.34
 
-1. Save an overnight-analysis queue and its progress so F12 can resume after an
-   application restart, optionally skipping positions already analysed to budget.
-2. Compare two saved engine snapshots at different node budgets, showing which
-   candidate moves and evaluations changed.
-3. Add named position bookmarks with a short note and one-click navigation.
-4. Mark the point where a game leaves the opening database, with sample counts
-   so rare moves can be distinguished from moves with no recorded games.
-5. Offer a second, deeper review pass only for suspected mistakes and blunders,
-   making it easier to confirm classifications without rerunning the whole game.
+1. **Proposed, not implemented:** persist the F12 work queue across app restarts.
+   For example, close the app at move 18 of a 40-move game, then resume that job
+   next day without repeating completed positions. Skipping existing analysis
+   would check its engine, options and actual node budget; an unrelated or
+   shorter search would not silently count as completing the requested job.
+2. **Proposed, not implemented:** keep several snapshots of the same position,
+   rather than replacing its saved analysis. A 50-million-node snapshot could
+   show +0.20 and a 200-million-node snapshot +0.45 with a different best move;
+   switch between them or compare candidate moves, scores, depths and budgets.
+3. **Implemented:** named bookmarks and notes under Tree, including Ctrl+B and
+   one-click navigation from Position bookmarks. Saved in the game library.
+4. **Implemented:** an explicit, cancellable Database coverage scan. The Game
+   Moves header links to the first position returning zero games, with the
+   preceding sample count. Errors leave coverage incomplete; they are not zero.
+5. **Implemented:** default-on deeper confirmation for suspected mistakes and
+   blunders. Rechecks both searches at a higher node budget before grading and
+   retains the initial evidence alongside the confirmation. Toggle in Analysis.
+
+0.5.7.34 also changes the bound-score policy described in the historical review
+above: F12 and ordinary saved analysis now retain the newest partial iteration,
+including bounds, at each PV's own depth. Exact scores are still required for
+review grading; a previous exact iteration can supply that evidence. No shared
+minimum depth is imposed on MultiPV. Engine node overshoot remains unchanged.

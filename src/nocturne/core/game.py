@@ -227,10 +227,11 @@ class Game:
             node.parent = remap[node.parent] if node.parent is not None else None
             node.children = [remap[c] for c in node.children]
         self._line_nodes = [remap[i] for i in self._line_nodes]
-        review = self.metadata.get("review")
-        if isinstance(review, dict):
-            keys = {str(old): str(new) for old, new in remap.items()}
-            self.metadata["review"] = {keys[key]: value for key, value in review.items() if key in keys}
+        keys = {str(old): str(new) for old, new in remap.items()}
+        for field in ("review", "bookmarks"):
+            records = self.metadata.get(field)
+            if isinstance(records, dict):
+                self.metadata[field] = {keys[key]: value for key, value in records.items() if key in keys}
         if changes_mainline:
             self._main_result = "*"
         self.select_node(remap[target])

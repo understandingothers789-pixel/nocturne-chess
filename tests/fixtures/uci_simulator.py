@@ -42,6 +42,8 @@ def search(position, command, event):
         if event.is_set():
             break
         for rank, move in enumerate(moves[: int(options.get("MultiPV", 1))], 1):
+            if mode == "partial-pvs" and depth == 4 and rank <= 2:
+                continue
             child = position.copy()
             child.push(move)
             reply = next(iter(child.legal_moves), None)
@@ -49,8 +51,10 @@ def search(position, command, event):
             score = "mate -3 upperbound" if mode == "bounds" else f"cp {35 - (rank - 1) * 20}"
             if mode == "bound-at-limit" and depth == 4 and rank == 1:
                 score += " upperbound"
-            if mode == "review-grades":
+            if mode in ("review-grades", "review-confirm"):
                 value = [-600, 100, 150, 0, 140, 120][position.ply() % 6] if "searchmoves" in tokens else 150
+                if mode == "review-confirm" and "nodes" in tokens and tokens[tokens.index("nodes") + 1] == "10000000":
+                    value = 140 if "searchmoves" in tokens else 150
                 score = f"cp {value}"
             send(
                 f"info depth {depth} seldepth {depth + 3} time {depth * 5} nodes {depth * 100} nps 20000 score {score} wdl 400 500 100 multipv {rank} pv {pv}"
