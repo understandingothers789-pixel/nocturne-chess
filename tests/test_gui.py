@@ -1924,7 +1924,7 @@ class GuiTests(unittest.TestCase):
         def copy_line():
             menu = QApplication.activePopupWidget()
             if isinstance(menu, QMenu):
-                action = next(a for a in menu.actions() if a.text() == "Copy SAN")
+                action = next(a for a in menu.actions() if a.text() == "Copy SAN (this line)")
                 QTest.mouseClick(menu, Qt.MouseButton.LeftButton, pos=menu.actionGeometry(action).center())
 
         guard = QTimer(self.window)
