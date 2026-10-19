@@ -1,5 +1,22 @@
 # Windows 11 desktop builds
 
+## [0.5.7.44 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39322605181/artifacts/12221171754)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`acb508a`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/acb508a331c55d77b0bfb5b3c573964ce0cc310c)
+labels the Lichess Masters choice **Recommended**, adds low-contrast alternating
+row shades to application menus, and makes the game tabs draggable. Tab order is
+saved as a separate interface preference and does not change game or PGN data.
+
+Windows run [39322605181](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39322605181)
+passed lint, the full test suite, Windows packaging, packaged smoke checks and
+the database API check.
+
+Artifact **12221171754**, `Nocturne-0.5.7.44-Windows-x64-unsigned`,
+57,997,029 bytes, expires 2026-11-18. GitHub artifact SHA-256:
+`af304fab4f42367a109595956df2d1f86dfb6777cecbf7ebbbf512c602f11e41`.
+
 ## [0.5.7.43 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39317000462/artifacts/12217972617)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
