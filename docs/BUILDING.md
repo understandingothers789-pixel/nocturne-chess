@@ -1,4 +1,26 @@
-# Windows 11 desktop builds · 0.5.7.40
+# Windows 11 desktop builds
+
+## [0.5.7.42 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39312403418/artifacts/12216473704)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`c6c6a8f`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/c6c6a8f)
+includes the brighter book-departure tint and public ChessDB default from
+[`f79d8dd`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/f79d8dd).
+Masters, Lichess players and ChessDB preserve separate coverage results with the
+study. Gold move tooltips name every database sharing that departure. Player
+filters have separate cached results. ChessDB marks an explicit `unknown`
+position as missing cloud analysis; terminal positions, unscored moves and
+request failures do not create departure markers.
+
+Windows run [39312403418](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39312403418)
+passed validation, packaging and packaged application smoke checks. The smoke
+fixture uses cached ChessDB data to exercise the new default without a network
+dependency.
+
+Artifact **12216473704**, `Nocturne-0.5.7.42-Windows-x64-unsigned`,
+57,978,447 bytes, expires 2026-11-18. GitHub artifact SHA-256:
+`4103ed45fd6b5c7230be99aa6d857c4c57ada1622c43ecab17f73c5c459c0f5f`.
 
 ## [0.5.7.40 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39305070431/artifacts/12213946559)
 
@@ -18,8 +40,6 @@ Artifact **12213946559**, `Nocturne-0.5.7.40-Windows-x64-unsigned`,
 
 ## [0.5.7.39 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39301723082/artifacts/12212705129)
 
-## [0.5.7.39 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39301723082/artifacts/12212705129)
-
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
 
 Source commit [`71f2b83`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/71f2b83)
@@ -35,8 +55,6 @@ smoke checks and live database checks.
 Artifact **12212705129**, `Nocturne-0.5.7.39-Windows-x64-unsigned`,
 57,965,211 bytes, expires 2026-11-18. GitHub artifact SHA-256:
 `20654acddb54a4d06ab091f50d7e2203e31f3e467b0621703dbca09ef87b8295`.
-
-## [0.5.7.36 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39296780043/artifacts/12209442411)
 
 ## [0.5.7.36 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39296780043/artifacts/12209442411)
 
