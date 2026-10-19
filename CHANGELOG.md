@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7.32 — Toggle auto-evaluation and self-play
+
+- F12 pauses and resumes an active auto-evaluation run, preserving its current
+  position in the line.
+- F11 pauses and resumes self-play from its current position.
+- F11 and F12 are listed in the Engine menu beside the controls they operate.
+
 ## 0.5.7.31 — Synced graph and separate engine limits
 
 - Evaluation graph follows the selected PGN position and grows its timeline as

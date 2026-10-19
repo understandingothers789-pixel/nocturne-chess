@@ -615,8 +615,6 @@ class MainWindow(QMainWindow):
         analysis.addSeparator()
         add(analysis, "Go", self._start_analysis, "Ctrl+G")
         add(analysis, "Halt", self._halt_analysis, "Ctrl+H")
-        add(analysis, "Auto-evaluate entire line", self._auto_evaluate_line, "F12")
-        add(analysis, "Auto-play engines from this position", self._start_auto_play, "F11")
         add(analysis, "Analyze entire line…", self._analyze_game)
         add(analysis, "Pause / resume game analysis", self._pause_review)
         add(analysis, "Cancel game analysis", self._cancel_review)
@@ -684,6 +682,9 @@ class MainWindow(QMainWindow):
         self.auto_play_limit_menu = engine.addMenu("Auto-play nodes per move")
         self.resource_status_action = engine.addAction("")
         self.resource_status_action.setEnabled(False)
+        engine.addSeparator()
+        add(engine, "Auto-play engines from this position", self._start_auto_play, "F11")
+        add(engine, "Auto-evaluate entire line", self._auto_evaluate_line, "F12")
         engine.addSeparator()
         self.expand_pv_action = add(engine, "Expand all analysis lines", self._set_expand_pv)
         self.expand_pv_action.setCheckable(True)
@@ -1304,6 +1305,9 @@ class MainWindow(QMainWindow):
         self._save()
 
     def _auto_evaluate_line(self):
+        if self._review and self._review.get("kind") == "auto_eval":
+            self._pause_review()
+            return
         if not self._profile():
             self._manage_engines()
             return
@@ -1337,6 +1341,20 @@ class MainWindow(QMainWindow):
         self._review_next()
 
     def _start_auto_play(self):
+        if self._auto_play_active:
+            self.paused = not self.paused
+            if self.paused:
+                self.engine.stop()
+                self.quick_analysis_button.setText("Resume auto-play")
+                self.pause_button.setText("Continue")
+                self.statusBar().showMessage("Auto-play paused · press F11 to resume")
+            else:
+                self.quick_analysis_button.setText("Pause auto-play")
+                self.pause_button.setText("Pause")
+                self.statusBar().showMessage("Auto-play resumed")
+                self._schedule_engine()
+            self._save()
+            return
         if not self._profile():
             self._manage_engines()
             return
@@ -1351,7 +1369,7 @@ class MainWindow(QMainWindow):
         self.analysis_nav.setChecked(True)
         self.play_nav.setChecked(False)
         self._refresh()
-        self.quick_analysis_button.setText("Stop auto-play")
+        self.quick_analysis_button.setText("Pause auto-play")
         self._save()
         self._schedule_engine()
 
@@ -2700,7 +2718,7 @@ class MainWindow(QMainWindow):
 
     def _analyze(self):
         if self._auto_play_active:
-            self._halt_analysis()
+            self._start_auto_play()
             return
         if not self._profile():
             self._manage_engines()
@@ -2888,7 +2906,7 @@ class MainWindow(QMainWindow):
             "multipv": count,
         }
         self.engine_state.setText(self._active_engine_name() + " · connecting / analyzing")
-        self.quick_analysis_button.setText("Stop auto-play" if self._auto_play_active else "Stop" if kind == "analysis" else "Analyze")
+        self.quick_analysis_button.setText("Pause auto-play" if self._auto_play_active else "Stop" if kind == "analysis" else "Analyze")
         self.board_view.interactive = kind == "analysis"
 
     def _clear_analysis_output(self):
