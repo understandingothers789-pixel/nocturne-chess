@@ -1,9 +1,20 @@
 # Windows 11 desktop builds · 0.5.7.24
 
-## Windows 0.5.7.24 build pending
+## Download Windows 0.5.7.24
 
-The feature commit is being validated by the Windows workflow. Its artifact
-link and checksum will be added here when the build completes.
+[Download the Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39185429686/artifacts/12157744055).
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Feature commit `3464e0f73cf808ee626b8b01bdf6d2543eb81e01` keeps candidate wheel
+previews on their selected ply during pointer motion within the same move.
+Moving to a different move resumes hover preview. Windows run
+[39185429686](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39185429686)
+passed **189 tests (184 passed / 5 optional skips)** in 193.775 seconds, Ruff,
+PyInstaller and packaged launch checks.
+
+Artifact **12157744055**, `Nocturne-0.5.7.24-Windows-x64-unsigned`,
+57,898,467 bytes, expires 2026-11-18. SHA-256:
+`e8fcf3f0e591e4cc8f8d0cfddc6788ab2dd99d0ec9b48f98a310107e6b35dd77`.
 
 # Windows 11 desktop builds · 0.5.7.23
 

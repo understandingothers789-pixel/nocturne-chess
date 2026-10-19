@@ -1,9 +1,11 @@
 # Active roadmap
 
-**Current: 0.5.7.24 in validation.** Candidate wheel browsing now ignores tiny
-mouse movement that stays over the same move; pointer movement to another move
-still resumes hover previews. A GUI regression covers both cases; focused
-validation is underway.
+**Current: 0.5.7.24 delivered.** Candidate wheel browsing ignores tiny mouse
+movement that stays over the same move; pointer movement to another move still
+resumes hover previews. Local: 189 tests passed with 11 environment/optional
+skips; Ruff passed. Windows: 189 tests passed with 5 optional skips, Ruff,
+PyInstaller, and packaged launch checks passed. See the
+[build receipt](docs/BUILDING.md) for the download and checksum.
 
 **Previous: 0.5.7.23 delivered.** Candidate rows reserve three move lines when
 one to four MultiPV candidates are selected and two lines at five or more.

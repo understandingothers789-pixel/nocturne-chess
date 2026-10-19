@@ -14,13 +14,13 @@ are explicitly labelled fixtures, not live results.*
 
 **0.5.7.24: steady wheel previews.** Scrolling through a candidate stays on
 the selected ply while the pointer moves within the same move. Moving to a
-different move switches back to hover preview.
+different move switches back to hover preview. Download the unsigned
+[Windows build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39185429686/artifacts/12157744055)
+and launch `Nocturne/Nocturne.exe` after extracting the ZIP.
 
 **0.5.7.23: MultiPV-aware candidate rows.** One to four selected candidate
 lines reserve three move rows by default; five or more reserve two. The arrow
-at each row still expands only that candidate to its full engine line. The
-0.5.7.24 Windows build is being validated; the previous build is available in
-the [build receipt](docs/BUILDING.md).
+at each row still expands only that candidate to its full engine line.
 
 **0.5.7.22: stable wheel previews.** Scrolling through a candidate keeps the
 selected ply and its current PV snapshot while the engine updates that same
