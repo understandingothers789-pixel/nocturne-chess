@@ -121,8 +121,8 @@ class MoveText(QTextBrowser):
             style = (f'color: {colors["selected_text"]}; background-color: {colors["selection"]};'
                      if index == current else f"color: {move_color};")
             if index == book_departure:
-                tint = "#85601f" if light else "#d5ae69"
-                style += f"color: {tint}; font-weight: bold; text-decoration: underline;"
+                tint = "#75858b" if light else "#a8b4b2"
+                style += f"color: {tint};"
             # Keep SAN slots identical across candidates and updates. Nonbreaking
             # padding belongs to the anchor, so the whole slot is interactive.
             label = ("\u00a0" + text + "\u00a0" * max(1, 8 - len(text))

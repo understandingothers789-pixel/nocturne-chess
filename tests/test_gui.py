@@ -90,7 +90,7 @@ class GuiTests(unittest.TestCase):
         for _ in range(5):
             self.app.processEvents()
         self.assertEqual(window.analysis_history._book_departure, window.game.current_node)
-        self.assertIn("#d5ae69", window.analysis_history.toHtml())
+        self.assertIn("#a8b4b2", window.analysis_history.toHtml())
         self.assertIn("previous position: 23 games", window.opening_coverage_label.text())
         context = window.opening_coverage.context
         window.game.select_node(1)
@@ -100,7 +100,7 @@ class GuiTests(unittest.TestCase):
         window.explorer.client.set_lichess_token("")
         window._sync_explorer()
         self.assertIsNone(window.analysis_history._book_departure)
-        self.assertNotIn("#d5ae69", window.analysis_history.toHtml())
+        self.assertNotIn("#a8b4b2", window.analysis_history.toHtml())
 
     def test_named_bookmarks_persist_navigate_and_follow_variation_deletion(self):
         window = self.window

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.7.38 — A quieter out-of-book marker
+
+- The first out-of-book move remains tinted in Game Moves, with no underline or
+  bolding. Its slate-blue gray color better matches the rest of the interface.
+
 ## 0.5.7.37 — Keep candidate database details beside the score
 
 - Candidate evaluation, depth, W/D/L, API win, frequency and database source
