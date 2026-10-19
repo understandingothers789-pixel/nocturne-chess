@@ -76,17 +76,21 @@ tests separately cover deterministic stale output, bounds, rapid key toggles,
 and recovery. Live API checks validate transport availability, not historical
 database coverage for every position.
 
-## Five ideas — implementation status after 0.5.7.34
+## Five ideas — implementation status after 0.5.7.35
 
-1. **Proposed, not implemented:** persist the F12 work queue across app restarts.
-   For example, close the app at move 18 of a 40-move game, then resume that job
-   next day without repeating completed positions. Skipping existing analysis
-   would check its engine, options and actual node budget; an unrelated or
-   shorter search would not silently count as completing the requested job.
-2. **Proposed, not implemented:** keep several snapshots of the same position,
-   rather than replacing its saved analysis. A 50-million-node snapshot could
-   show +0.20 and a 200-million-node snapshot +0.45 with a different best move;
-   switch between them or compare candidate moves, scores, depths and budgets.
+1. **Implemented:** F12's frozen line, unfinished position, engine profile/options
+   and node budget persist across app restarts. Reopening restores analysis
+   paused. Press F12 to continue at the unfinished position; completed positions
+   in that job are kept. The unfinished position restarts its engine search at
+   the original budget. This does not infer completion from unrelated old searches.
+2. **Implemented, disabled by default:** Dev → Save analysis snapshots at node
+   milestones captures 1M, 2M, 5M, 10M, 20M, 50M, 100M, 200M, 500M, 1B, 2B,
+   5B, 10B, etc. Dev → Compare saved analysis snapshots… compares two checkpoints
+   for the same PGN position side by side. SQLite records preserve actual reported
+   nodes, per-PV depth/bounds, engine/options and time. Targets use the first
+   report reaching them; they do not claim the engine reported an exact target.
+   Records survive close/reopen and capture being disabled. Fresh Analyze clears
+   the current position's history; a new F12 job clears its chosen line.
 3. **Implemented:** named bookmarks and notes under Tree, including Ctrl+B and
    one-click navigation from Position bookmarks. Saved in the game library.
 4. **Implemented:** an explicit, cancellable Database coverage scan. The Game

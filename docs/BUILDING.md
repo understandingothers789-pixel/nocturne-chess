@@ -1,3 +1,39 @@
+# Windows 11 desktop builds · 0.5.7.35
+
+## [0.5.7.35 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39211281773/artifacts/12168345473)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`0c2c481`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/0c2c481e80c9525af9c6ec01b9e45e225708f09e)
+adds paused analysis restoration, durable F12 progress, optional 1/2/5 node
+checkpoints and a side-by-side comparison window. Snapshot capture is off by
+default in **Dev → Save analysis snapshots at node milestones**; view them using
+**Dev → Compare saved analysis snapshots…**. Checkpoints live in the local SQLite
+library, separately from the game payload. Their keys include the PGN and full
+move history, so variation renumbering and unrelated positions do not mix records.
+See the [changelog](../CHANGELOG.md) for retention and resume behavior.
+
+Windows run [39211281773](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39211281773)
+passed Ruff, **229 tests (224 passed / 5 optional skips)** in 234.436 seconds,
+PyInstaller packaging, packaged GUI/UCI smoke checks and the live Masters,
+Lichess players and ChessDB API checks. CI ran the full suite once; packaging
+did not repeat it. The optional skips are deep perft (2) and unavailable real
+Syzygy fixtures (3).
+
+Five focused local tests cover immutable scoped snapshots, 1/2/5 milestones
+through 50 billion nodes, comparison controls, closed/reopened analysis staying
+paused, fresh Analyze clearing only the current position, and F12 resuming its
+unfinished position without rewriting completed positions. Three existing
+engine/cache/toggle regressions also passed. A separate real Stockfish 19 check
+captured all five PVs at the 1M, 2M and 5M targets, actually reported at
+1,053,646, 2,803,866 and 5,000,559 nodes. The comparison showed each PV's actual
+depth and bounds; the results restored paused after reopening. This check did
+not bundle Stockfish with the app or claim exact node counts at each target.
+
+Artifact **12168345473**, `Nocturne-0.5.7.35-Windows-x64-unsigned`,
+57,961,836 bytes, expires 2026-11-18. GitHub artifact SHA-256:
+`b02984bb408732326d45b734e1feeca61d5e9ac1ebbd470becc5a233b166a7f9`.
+
 # Windows 11 desktop builds · 0.5.7.34
 
 ## [0.5.7.34 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39209125609/artifacts/12166893141)

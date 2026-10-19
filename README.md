@@ -12,6 +12,16 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
+**[0.5.7.35](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39211281773/artifacts/12168345473): durable analysis and optional snapshots.** Reopening restores saved
+analysis paused. Interrupted F12 jobs resume at the unfinished position without
+repeating completed positions. **Dev → Save analysis snapshots at node milestones**
+is off by default; enable it for 1M, 2M, 5M, 10M, 20M, 50M, 100M, 200M, 500M,
+1B, 2B, 5B, 10B and onward. **Dev → Compare saved analysis snapshots…** compares
+two checkpoints side by side. Snapshots survive reopening and disabling capture;
+a fresh Analyze clears the current position's history. Windows passed 229 tests
+(5 optional skips), packaging, smoke and live database checks. Extract the unsigned
+ZIP and open `Nocturne/Nocturne.exe`. See the [build receipt](docs/BUILDING.md).
+
 **[0.5.7.34](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39209125609/artifacts/12166893141): partial PVs, deeper review and position tools.** F12 keeps mixed-depth
 and bound results at each candidate's actual depth. Suspected mistakes and
 blunders get a deeper confirmation search; toggle this in **Analysis**.
