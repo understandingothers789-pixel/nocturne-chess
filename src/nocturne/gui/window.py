@@ -2733,6 +2733,21 @@ class MainWindow(QMainWindow):
     def _position_identity(self):
         return self.game.id, self.game.cursor, self.game.board.key, self.game.current_node
 
+    def _active_engine_name(self):
+        """Prefer the complete name advertised by this profile's UCI engine."""
+        profile = self._profile()
+        if profile and getattr(self, "engine", None):
+            connection = self.engine.connection
+            try:
+                same_engine = bool(connection.path) and Path(connection.path).resolve() == Path(profile["path"]).resolve()
+            except (OSError, KeyError, TypeError):
+                same_engine = False
+            if same_engine and connection.name:
+                return connection.name
+        if profile:
+            return profile.get("name") or Path(profile["path"]).stem
+        return "UCI engine"
+
     def _stop_engine(self):
         self._auto_play_active = False
         if self._review and not self._review.get("paused") and self._job is None:
@@ -2839,7 +2854,7 @@ class MainWindow(QMainWindow):
             "options": dict(profile.get("values", {})),
             "multipv": count,
         }
-        self.engine_state.setText(profile.get("name", "UCI engine") + " · connecting / analyzing")
+        self.engine_state.setText(self._active_engine_name() + " · connecting / analyzing")
         self.quick_analysis_button.setText("Stop auto-play" if self._auto_play_active else "Stop" if kind == "analysis" else "Analyze")
         self.board_view.interactive = kind == "analysis"
 
@@ -2894,7 +2909,7 @@ class MainWindow(QMainWindow):
             return
         self._job = None
         self.quick_analysis_button.setText("Analyze")
-        self.engine_state.setText(self.engine.connection.name + " · search complete")
+        self.engine_state.setText(self._active_engine_name() + " · search complete")
         self.statusBar().showMessage("Search complete · evaluation from White’s perspective")
         if info:
             self._store_analysis(self.game, self.game.current_node, info, job["turn"], job)

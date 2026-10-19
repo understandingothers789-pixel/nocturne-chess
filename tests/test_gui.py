@@ -129,6 +129,13 @@ class GuiTests(unittest.TestCase):
         self.assertTrue({f"{n:,}" for n in range(100_000_000, 1_000_000_001, 100_000_000)} <= values)
         self.assertEqual(window.menu_actions["Auto-play engines from this position"].shortcut().toString(), "F11")
 
+    def test_engine_status_uses_full_uci_name_instead_of_profile_short_label(self):
+        profile = self.window._profile()
+        profile["name"] = "SF 19"
+        self.window.engine.connection.path = profile["path"]
+        self.window.engine.connection.name = "Stockfish dev-20261013-5c4cef0b"
+        self.assertEqual(self.window._active_engine_name(), "Stockfish dev-20261013-5c4cef0b")
+
     def test_backspace_deletes_current_branch_selects_sibling_and_saves(self):
         self._analysis_game("1.e4 e5 (1...Nf6 2.d4) 2.Nf3 (2.Bc4) *")
         window = self.window
