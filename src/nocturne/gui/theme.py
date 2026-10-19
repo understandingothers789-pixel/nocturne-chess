@@ -41,6 +41,11 @@ def stylesheet(light: bool = False) -> str:
     return f"""
     QWidget {{ background: transparent; color: {text}; font-family: 'Segoe UI', 'Inter', sans-serif; font-size: 13px; }}
     QMainWindow, QDialog {{ background: {bg}; }}
+    QDockWidget {{ font-size: 12px; }}
+    QDockWidget::title {{ background: {raised}; color: {muted}; padding: 5px 9px;
+        border-bottom: 1px solid {border}; text-align: left; }}
+    QMainWindow#dockSurface::separator {{ background: {bg}; width: 7px; height: 7px; }}
+    QMainWindow#dockSurface::separator:hover {{ background: {scroll}; }}
     QFrame#panel, QFrame#playerCard {{ background: {panel}; border: 1px solid {border}; border-radius: 14px; }}
     QFrame#clockStrip {{ background: {panel}; border: 1px solid {border}; border-radius: 8px; }}
     QFrame#sidebar {{ background: {panel}; border-right: 1px solid {border}; }}

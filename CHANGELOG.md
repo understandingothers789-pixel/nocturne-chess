@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.7.43 — Arrange the workspace by dragging panels
+
+- Display → Arrange panels unlocks native drag-and-drop docking for the board,
+  analysis/PGN tools, game moves, database explorer and evaluation graph. Panels
+  can sit beside or above one another, share tabs, or detach into resizable
+  windows. Dividers resize docked panels; floating window edges and corners
+  resize them in both directions. The board keeps its square proportions.
+- Done locks the arrangement. Panel positions, sizes, floating windows and tab
+  groups are saved on this device and restored locked when Nocturne reopens.
+  Detached panels are moved back on-screen if a monitor is no longer available.
+- Reset layout restores the classic view without changing the game or analysis.
+  The existing Classic Nibbler and Analysis on the left presets remain available.
+  The normal layout is unchanged until Arrange panels is used.
+
 ## 0.5.7.42 — Separate database departure markers
 
 - Masters, Lichess players and ChessDB keep separate cached coverage results.

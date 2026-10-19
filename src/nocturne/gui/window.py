@@ -6,7 +6,7 @@ from html import escape
 from pathlib import Path
 import random
 
-from PySide6.QtCore import QEvent, QStandardPaths, Qt, QTimer, QUrl
+from PySide6.QtCore import QByteArray, QEvent, QStandardPaths, Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -69,6 +69,7 @@ from ..explorer import RATINGS, SPEEDS
 from .moves import MoveText
 from .hover_preview import HoverPreview, MiniBoard
 from .wheel import WheelSteps
+from .workspace import DockWorkspace
 from .theme import ASSETS, palette, stylesheet
 from .widgets import EvaluationBar, EvaluationGraph
 
@@ -178,6 +179,7 @@ class MainWindow(QMainWindow):
         self._last_info_turn = 1
         self._history_signature = None
         self._analysis_layout_active = None
+        self._dock_workspace = None
         self._pv_root = None
         self._pv_moves = []
         self._pv_identity = None
@@ -207,6 +209,7 @@ class MainWindow(QMainWindow):
         self.archive_timer.setInterval(40)
         self.archive_timer.timeout.connect(self._archive_previous_pgn)
         self._start_pgn_archive_migration()
+        self._restore_workspace_layout()
         if self._storage_message:
             QTimer.singleShot(0, lambda: self._error("Library unavailable", self._storage_message))
         QTimer.singleShot(100, self._schedule_engine)
@@ -384,6 +387,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(moves_page, "Moves")
         engine_page = QWidget()
         engine_page_layout = QVBoxLayout(engine_page)
+        self.engine_page_layout = engine_page_layout
         engine_page_layout.setContentsMargins(0, 0, 0, 0)
         engine_page_layout.setSpacing(4)
         self.engine_state = label("Select your UCI engine", "subtitle", True)
@@ -661,8 +665,13 @@ class MainWindow(QMainWindow):
             action.setCheckable(True)
             self.display_actions[key] = action
         add(display, "Board appearance…", self._settings)
+        display.addSeparator()
+        self.arrange_panels_action = add(display, "Arrange panels", self._arrange_panels)
+        self.arrange_panels_action.setCheckable(True)
+        add(display, "Reset layout", self._reset_workspace_layout)
         add(display, "Classic Nibbler layout", lambda: self._set_layout("classic"))
         add(display, "Analysis on the left", lambda: self._set_layout("analysis-left"))
+        display.addSeparator()
         add(display, "Save board image…", self._save_board_image)
         add(display, "Command palette…", self._command_palette, "Ctrl+K")
         add(display, "Keyboard shortcuts…", self._shortcut_editor)
@@ -893,8 +902,9 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "explorer") or self._closing:
             return
         enabled = bool(self.config.get("explorer_enabled"))
-        active = enabled and self.analysis_mode and self.tabs.currentIndex() == 1
-        lookup = bool(self.config.get("explorer_statistics")) and self.analysis_mode and self.tabs.currentIndex() == 1
+        engine_visible = self._dock_workspace is not None or self.tabs.currentIndex() == 1
+        active = enabled and self.analysis_mode and engine_visible
+        lookup = bool(self.config.get("explorer_statistics")) and self.analysis_mode and engine_visible
         if hasattr(self, "explorer_actions"):
             self.clear_lichess_token_action.setEnabled(self.explorer.client.has_lichess_token)
             self.explorer_enabled_action.setChecked(enabled)
@@ -910,9 +920,10 @@ class MainWindow(QMainWindow):
                                    self.config.get("explorer_source", "masters"),
                                    self.config.get("explorer_speed", "all"),
                                    self.config.get("explorer_rating", 0))
-        if active and not self._explorer_active:
+        if active and not self._explorer_active and self._dock_workspace is None:
             self.analysis_detail_splitter.setSizes([500, 220])
         self._explorer_active = active
+        self._sync_docked_visibility()
         self._sync_candidate_database()
         self._update_opening_coverage()
 
@@ -1196,8 +1207,88 @@ class MainWindow(QMainWindow):
         dialog.exec()
 
     def _set_layout(self, value):
-        self.config["layout"] = value
+        self._reset_workspace_layout(preset=value)
+
+    def _arrange_panels(self, checked=True):
+        if self._dock_workspace is None and checked:
+            self._activate_docked_workspace()
+        if self._dock_workspace is not None:
+            self._dock_workspace.set_editable(checked)
+        self.arrange_panels_action.setChecked(checked)
+        self._save()
+
+    def _activate_docked_workspace(self):
+        self._clear_move_preview()
+        self.workspace_splitter.hide()
+        self.graph.setMaximumHeight(16777215)
+        self.panel.setMaximumWidth(16777215)
+        workspace = DockWorkspace({
+            "board": ("Board", self.arena),
+            "analysis": ("Analysis / PGN", self.panel),
+            "moves": ("Game moves", self.analysis_moves_panel),
+            "database": ("Database explorer", self.explorer),
+            "graph": ("Evaluation graph", self.graph),
+        }, self, analysis_left=self.config.get("layout") == "analysis-left")
+        self._dock_workspace = workspace
+        workspace.finished.connect(lambda: self._arrange_panels(False))
+        workspace.reset_requested.connect(self._reset_workspace_layout)
+        workspace.panel_closed.connect(self._docked_panel_closed)
+        self.content_layout.addWidget(workspace, 1)
+        workspace.show()
+        self._analysis_layout_active = None
         self._sync_workspace_layout()
+        self._sync_explorer()
+
+    def _docked_panel_closed(self, name):
+        if self._closing:
+            return
+        if name == "database":
+            self._set_explorer_option("explorer_enabled", False)
+        elif name == "graph":
+            self._set_display("show_eval_graph", False)
+
+    def _sync_docked_visibility(self):
+        if self._dock_workspace is not None:
+            self._dock_workspace.set_panel_visible("moves", self.analysis_mode)
+            self._dock_workspace.set_panel_visible("database", self._explorer_active)
+            self._dock_workspace.set_panel_visible("graph", self.config.get("show_eval_graph", True))
+
+    def _restore_workspace_layout(self):
+        state = self.store.get("workspace_layout") if self.store else None
+        if not isinstance(state, dict) or state.get("version") != 1:
+            return
+        self._activate_docked_workspace()
+        if not self._dock_workspace.restore(state):
+            self._reset_workspace_layout()
+            return
+        geometry = state.get("window_geometry")
+        if isinstance(geometry, str) and len(geometry) <= 65536:
+            self.restoreGeometry(QByteArray.fromBase64(geometry.encode("ascii", errors="ignore")))
+        self._dock_workspace.keep_floating_panels_on_screen()
+        self._dock_workspace.set_editable(False)
+        self._sync_docked_visibility()
+
+    def _reset_workspace_layout(self, checked=False, *, preset="classic"):
+        self.config["layout"] = preset
+        workspace, self._dock_workspace = self._dock_workspace, None
+        if workspace is not None:
+            workspace.release(self)
+            self.content_layout.removeWidget(workspace)
+            self.main_splitter.insertWidget(0, self.arena)
+            self.main_splitter.insertWidget(1, self.panel)
+            self.workspace_splitter.addWidget(self.analysis_moves_panel)
+            self.analysis_detail_splitter.addWidget(self.explorer)
+            self.engine_page_layout.addWidget(self.graph)
+            self.graph.setMaximumHeight(85)
+            self.arena.show()
+            self.panel.show()
+            self.graph.setVisible(self.config.get("show_eval_graph", True))
+            workspace.deleteLater()
+        self.arrange_panels_action.setChecked(False)
+        self.workspace_splitter.show()
+        self._analysis_layout_active = None
+        self._sync_workspace_layout()
+        self._sync_explorer()
         self._save()
 
     def _preview_candidate(self, rank, ply):
@@ -2200,6 +2291,7 @@ class MainWindow(QMainWindow):
         self.telemetry.setTextFormat(Qt.TextFormat.RichText)
         self.graph.light = self.board_view.light = light
         self.graph.setVisible(self.config.get("show_eval_graph", True))
+        self._sync_docked_visibility()
         self.graph.update()
         self.eval_bar.setVisible(self.board_view.overlays)
         self._render_move_history()
@@ -2243,7 +2335,7 @@ class MainWindow(QMainWindow):
 
     def _sync_workspace_layout(self):
         analysis = self.analysis_mode
-        signature = (analysis, self.config.get("layout", "classic"))
+        signature = (analysis, self.config.get("layout", "classic"), self._dock_workspace is not None)
         if self._analysis_layout_active == signature:
             return
         self._analysis_layout_active = signature
@@ -2273,7 +2365,12 @@ class MainWindow(QMainWindow):
         self.panel_body.layout().setSpacing(2 if analysis else 10)
         self.panel.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff if analysis else Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self._analysis_tab_changed()
-        self.panel.setMaximumWidth(16777215 if analysis else 420)
+        self.panel.setMaximumWidth(16777215 if analysis or self._dock_workspace is not None else 420)
+        if self._dock_workspace is not None:
+            if analysis:
+                self.tabs.setCurrentIndex(1)
+            self._sync_docked_visibility()
+            return
         left = analysis and self.config.get("layout", "classic") == "analysis-left"
         self.main_splitter.insertWidget(0 if left else 1, self.panel)
         self.main_splitter.setStretchFactor(0, 1)
@@ -2910,6 +3007,11 @@ class MainWindow(QMainWindow):
         else:
             self.game.metadata.pop("auto_eval_job", None)
         try:
+            workspace = self._dock_workspace
+            state = workspace.state() if workspace is not None else None
+            if state is not None:
+                state["window_geometry"] = bytes(self.saveGeometry().toBase64()).decode("ascii")
+            self.store.set("workspace_layout", state)
             self.store.set("settings", self.config)
             self.store.set("engine_profiles", self.profiles)
             self.store.set("open_studies", list(self._study_games)[-20:])
@@ -3484,6 +3586,8 @@ class MainWindow(QMainWindow):
         self.engine.close()
         self.game.pause_clock()
         self._save()
+        if self._dock_workspace is not None:
+            self._dock_workspace.hide_floating_panels()
         if self.store:
             self.store.close()
         event.accept()

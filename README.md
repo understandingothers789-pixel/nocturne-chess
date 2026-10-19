@@ -3,6 +3,16 @@
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
 
+**Display → Arrange panels** unlocks a customizable workspace. Drag the Board,
+Analysis / PGN, Game moves, Database explorer or Evaluation graph header to move
+it, dock it beside another panel, stack panels as tabs, or detach it into a
+separate window. Drag dividers to resize docked panels; use a detached window's
+edges or corners to resize horizontally, vertically or diagonally. The board
+stays square. **Done** locks your arrangement; it is saved locally and restored
+locked after reopening. **Display → Reset layout** restores the classic view.
+The **Classic Nibbler layout** and **Analysis on the left** presets also remain
+available. Database and graph visibility still follow their existing settings.
+
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
