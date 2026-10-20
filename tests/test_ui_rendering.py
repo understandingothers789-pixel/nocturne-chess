@@ -112,7 +112,8 @@ class RenderingTests(unittest.TestCase):
         self.addCleanup(area.close)
         area.setWidgetResizable(True)
         area.setWidget(panel)
-        area.resize(480, 300)
+        available = self.app.primaryScreen().availableGeometry()
+        area.resize(min(480, available.width() - 20), min(300, available.height() - 20))
         panel.set_multipv(2)
         info = dict(depth=18, seldepth=25, score_type="cp", score_value=22, score=22,
                     nodes=1000, pv=["g1f3", "g8f6", "f3g1", "f6g8"] * 12,
