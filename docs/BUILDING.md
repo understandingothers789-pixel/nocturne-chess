@@ -1,5 +1,27 @@
 # Windows 11 desktop builds
 
+## [0.5.7.57 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39391107959/artifacts/12250550708)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`a7ec11e`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/a7ec11ea43672c6dc122d3d2905c12178d15ce9d)
+adds the official Maia-3 79M checkpoint and a separate local CPU inference worker.
+Probabilities join Stockfish rows by legal UCI move; the optional complete policy
+stays inside analysis. Rating presets run from 400 to 3000 with equal-rated
+opponents. History-aware policies are cached across sessions.
+
+Windows run [39391107959](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39391107959)
+passed lint, 260 tests (5 environment-dependent skips), real White/Black and
+promotion inference, rating conditioning, legal-policy normalization, packaging,
+and the packaged neural worker and GUI smoke checks. Official checkpoint:
+315,651,851 bytes, SHA-256
+`3fc6181d5db789b45a15305732148757ae74efa3e0028e81ba335b462dac45c2`.
+
+Artifact **12250550708**, `Nocturne-0.5.7.57-Windows-x64-unsigned`,
+492,323,882 bytes, expires November 19, 2026 (America/Chicago).
+GitHub artifact SHA-256:
+`1b8b4bd80719561f3aef7b59fdce2bdbe41108eebcbb31e10945fa552fb67691`.
+
 ## [0.5.7.56 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39386270667/artifacts/12247358413)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
