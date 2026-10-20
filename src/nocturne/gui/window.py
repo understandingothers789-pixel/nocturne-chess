@@ -1053,6 +1053,9 @@ class MainWindow(QMainWindow):
         titles = {Qt.Key.Key_F11: "Auto-play engines from this position",
                   Qt.Key.Key_F12: "Auto-evaluate entire line",
                   Qt.Key.Key_Backspace: "Delete current line"}
+        if event.key() == Qt.Key.Key_Backspace and isinstance(QApplication.focusWidget(), (QPlainTextEdit, QLineEdit)):
+            super().keyPressEvent(event)
+            return
         title = titles.get(event.key())
         action = self.menu_actions.get(title) if title and hasattr(self, "menu_actions") else None
         if (action is not None and action.isEnabled() and not event.isAutoRepeat()

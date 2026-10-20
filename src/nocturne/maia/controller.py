@@ -98,9 +98,14 @@ class MaiaController(QObject):
                 self._ready = True
                 self._dispatch()
             elif message.get("error"):
-                self.status.emit(message["error"])
+                if message.get("id") is None or message.get("id") == self._serial:
+                    self.status.emit(message["error"])
                 if message.get("id") is None:
                     self._failed = True
+                else:
+                    self._busy = False
+                    if self._queued:
+                        self._dispatch()
             elif self._active and message.get("id") == self._serial == self._active[1]["id"]:
                 self.policies.update(message.get("policies", {}))
                 self.cache[self._active[0][0]] = self.policies.copy()
