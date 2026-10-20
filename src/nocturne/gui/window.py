@@ -919,7 +919,7 @@ class MainWindow(QMainWindow):
         self.config[key] = value
         self._apply_settings()
         if key == "show_maia_insights":
-            self._maia_changed(self.maia.policies)
+            self._request_maia()
         self._save()
 
     def _choose_explorer(self, source):
@@ -1490,12 +1490,13 @@ class MainWindow(QMainWindow):
             return
         if enabled and self.analysis_mode:
             path = self.game.node_path(self.game.current_node)[1:]
-            self.maia.request(self.game.initial_fen, [self.game.nodes[n].move.uci() for n in path], rating, sweep=True)
+            self.maia.request(self.game.initial_fen, [self.game.nodes[n].move.uci() for n in path], rating, sweep=self.config.get("show_maia_insights", True))
         self._maia_changed(self.maia.policies if enabled else {})
 
     def _maia_changed(self, policies):
         rating = self.config.get("maia_rating", 1800)
-        policy = policies.get(str(rating), {})
+        policy = (policies.get(str(rating), {}) if self.analysis_mode and self.config.get("maia_enabled", True)
+                  else {})
         self.candidates.set_maia(policy, rating, self.config.get("maia_enabled", True) and self.analysis_mode)
         self.maia_controls.set_policy(policy, self.game.board)
         self.maia_insights.set_data(policies, self.game.board, rating, self._appearance_config())

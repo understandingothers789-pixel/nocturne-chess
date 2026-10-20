@@ -31,7 +31,10 @@ locally and can be reused after reopening. History is part of the cache key.
 ## Insights / Maia Tools
 
 The right column has exactly three primary sections. **Display → Show Maia
-insights** hides it while keeping the integrated probabilities available. Use
+insights** hides it while keeping the integrated probabilities available. Hidden
+insights do not request new full rating sweeps; reopening them requests any
+missing ratings for the current position. Maia overlays stay inside analysis
+mode and cannot leak a previous position’s predictions into ordinary play. Use
 **Display → Arrange panels** to resize, dock or detach it alongside existing
 panels. Reset layout returns to the standard arrangement. The main board remains
 square, with coordinates inside its edges and its evaluation bar on the right.

@@ -132,3 +132,29 @@ class MaiaTests(unittest.TestCase):
             window.close()
             window.deleteLater()
             self.app.processEvents()
+
+    def test_leaving_analysis_clears_maia_overlays_and_hidden_tools_skip_sweeps(self):
+        from nocturne.gui.window import MainWindow
+        with tempfile.TemporaryDirectory() as directory:
+            window = MainWindow(Path(directory))
+            window.timer.stop()
+            window.autosave_timer.stop()
+            window._analysis_enabled = False
+            window.analysis_mode = True
+            window.maia.policies = {"1800": {"e2e4": 1}}
+            window._maia_changed(window.maia.policies)
+            self.assertTrue(window.board_view.maia_recommendations)
+            window.analysis_mode = False
+            window._maia_changed(window.maia.policies)
+            self.assertEqual(window.board_view.maia_recommendations, [])
+            window.analysis_mode = True
+            window.config["show_maia_insights"] = False
+            with patch.object(window.maia, "request") as request:
+                window._request_maia()
+                self.assertFalse(request.call_args.kwargs["sweep"])
+                window.config["show_maia_insights"] = True
+                window._request_maia()
+                self.assertTrue(request.call_args.kwargs["sweep"])
+            window.close()
+            window.deleteLater()
+            self.app.processEvents()
