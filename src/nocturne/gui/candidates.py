@@ -237,6 +237,8 @@ class CandidatePanel(QWidget):
         if self._clearing or self.hovered != rank:
             return
         self.hovered = None
+        if rank in self.rows:
+            self.rows[rank][2].cancel_preview()
         self.preview_end.emit()
         if rank in self.pending:
             revision = self._revision

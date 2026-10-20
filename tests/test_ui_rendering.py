@@ -6,8 +6,8 @@ import tempfile
 import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from PySide6.QtCore import QEvent, QPoint, QPointF, Qt
-from PySide6.QtGui import QMouseEvent
+from PySide6.QtCore import QEvent, QPoint, QPointF, Qt, QUrl
+from PySide6.QtGui import QMouseEvent, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QScrollArea
 
@@ -163,3 +163,32 @@ class RenderingTests(unittest.TestCase):
                 reopened.close()
                 reopened.deleteLater()
                 self.app.processEvents()
+
+    def test_wheel_keeps_score_visible_and_switching_candidates_resets_progress(self):
+        panel = CandidatePanel(MoveText(auto_fit=True))
+        self.addCleanup(panel.close)
+        panel.resize(320, 200)
+        panel.set_multipv(2)
+        info = dict(depth=18, seldepth=25, score_type="cp", score_value=22, score=22,
+                    nodes=1000, pv=["g1f3", "g8f6", "f3g1", "f6g8"] * 12,
+                    san=["Nf3", "Nf6", "Ng1", "Ng8"] * 12)
+        for rank in (1, 2):
+            panel.update_line(info | {"multipv": rank}, 1)
+        panel.show()
+        self.app.processEvents()
+        moves = panel.rows[1][2]
+        for _ in range(10):
+            event = QWheelEvent(QPointF(8, 8), QPointF(8, 8), QPoint(), QPoint(0, -120),
+                                Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier,
+                                Qt.ScrollPhase.NoScrollPhase, False)
+            QApplication.sendEvent(moves.viewport(), event)
+        self.assertEqual(moves.wheel_preview_ply, 10)
+        self.assertEqual(moves.verticalScrollBar().value(), 0)
+        self.assertGreaterEqual(moves.cursorRect(moves.document().find("+0.22")).top(), 0)
+        # Exercise a candidate change even if a platform misses viewport Leave.
+        panel.rows[2][2]._highlight(QUrl("move:1"))
+        self.assertIsNone(moves.wheel_preview_ply)
+        self.assertIsNone(moves._hovered)
+        moves._highlight(QUrl("move:1"))
+        self.assertEqual(moves._hovered, 1)
+        self.assertIsNone(moves.wheel_preview_ply)

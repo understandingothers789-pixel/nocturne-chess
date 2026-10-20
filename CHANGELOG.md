@@ -2,6 +2,9 @@
 
 ## 0.5.7.54 — Clickable expansion arrows and compact move spacing
 
+- Wheel browsing now advances only the preview board, keeping the evaluation
+  and opening moves visible. Switching candidates resets the old candidate's
+  wheel position; engine updates within the same candidate still preserve it.
 - Give each candidate arrow its own narrow layout column, preventing the
   browser viewport from covering its click area. Expanding/collapsing affects
   only that candidate; the arrow stays at the top of the variation.

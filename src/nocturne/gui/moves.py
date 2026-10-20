@@ -214,25 +214,19 @@ class MoveText(QTextBrowser):
         ply = max(0, min(last, (self._hovered or 0) + steps))
         self.wheel_preview_ply = ply
         self._highlight(QUrl(f"move:{ply}"))
-        # Keep the previewed move visible even when the three-row slot scrolls.
-        block = self.document().begin()
-        while block.isValid():
-            iterator = block.begin()
-            while not iterator.atEnd():
-                fragment = iterator.fragment()
-                if fragment.isValid() and fragment.charFormat().anchorHref() == f"move:{ply}":
-                    cursor = QTextCursor(self.document())
-                    cursor.setPosition(fragment.position())
-                    self.setTextCursor(cursor)
-                    self.ensureCursorVisible()
-                    return
-                iterator += 1
-            block = block.next()
+        # Wheel browsing advances the board preview, not the notation viewport.
+        # Keep the evaluation and opening moves at the front of the row.
+        self.verticalScrollBar().setValue(0)
+        self.horizontalScrollBar().setValue(0)
 
     def cancel_preview(self):
+        self._wheel_steps.reset()
         self.wheel_preview_ply = None
         self._hovered = None
         self._last_pointer_hovered = None
+        if self.candidate_rank is not None:
+            self.verticalScrollBar().setValue(0)
+            self.horizontalScrollBar().setValue(0)
         self.preview_ended.emit()
 
     def _fit_height(self, *_):
