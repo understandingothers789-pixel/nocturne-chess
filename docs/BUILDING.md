@@ -1,5 +1,25 @@
 # Windows 11 desktop builds
 
+## [0.5.7.51 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39356660135/artifacts/12235643106)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`65d0a90`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/65d0a90c06d10af5de934ce805e25e3cab722088)
+replaces the moving tab's cached bitmap painting with live native tab rendering,
+moves rank labels to the right edge and places the evaluation immediately before
+the first move in each variation. Existing tab reordering and PV browsing remain.
+
+Focused offscreen checks passed at 100%, 125% and 200% scaling, including holding,
+dragging, releasing and reordering tabs. Physical Windows ClearType appearance
+still needs confirmation on the user's display. Windows run
+[39356660135](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39356660135)
+passed lint, the full test suite, packaging and packaged smoke checks.
+
+Artifact **12235643106**, `Nocturne-0.5.7.51-Windows-x64-unsigned`,
+58,016,058 bytes, expires November 18, 2026 at 8:07 p.m. America/Chicago.
+GitHub artifact SHA-256:
+`aad4d3606092589b79d169135acfec3df5938f989659699b9ef54ea744dee288`.
+
 ## [0.5.7.50 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39355217766/artifacts/12234927567)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned;
