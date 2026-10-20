@@ -80,6 +80,8 @@ class DockWorkspace(QWidget):
         self.surface.addDockWidget(left, engine if analysis_left else board)
         self.surface.splitDockWidget(engine if analysis_left else board,
                                      board if analysis_left else engine, Qt.Orientation.Horizontal)
+        if "insights" in self.docks:
+            self.surface.splitDockWidget(board if analysis_left else engine, self.docks["insights"], Qt.Orientation.Horizontal)
         self.surface.splitDockWidget(engine, self.docks["database"], Qt.Orientation.Vertical)
         self.surface.splitDockWidget(self.docks["database"], self.docks["graph"], Qt.Orientation.Vertical)
         self.surface.setCorner(Qt.Corner.BottomLeftCorner, bottom)
@@ -115,7 +117,16 @@ class DockWorkspace(QWidget):
             dock = self.docks[name]
             if not dock.isFloating():
                 dock.setMaximumWidth(560)
-        self.surface.resizeDocks([board], [target], Qt.Orientation.Horizontal)
+        key = (self.width(), self.height(), target)
+        if getattr(self, "_fit_key", None) != key:
+            self._fit_key = key
+            columns, widths = [board], [target]
+            for name, width in (("analysis", 560), ("insights", 340)):
+                dock = self.docks.get(name)
+                if dock is not None and not dock.isFloating() and not dock.isHidden():
+                    columns.append(dock)
+                    widths.append(width)
+            self.surface.resizeDocks(columns, widths, Qt.Orientation.Horizontal)
 
     def set_editable(self, editable):
         self.toolbar.setVisible(editable)
@@ -137,7 +148,7 @@ class DockWorkspace(QWidget):
             dock.setVisible(visible)
 
     def state(self):
-        return {"version": 1, "docks": bytes(self.surface.saveState(1).toBase64()).decode("ascii")}
+        return {"version": 1, "maia_tools": 1, "docks": bytes(self.surface.saveState(1).toBase64()).decode("ascii")}
 
     def restore(self, state):
         if not isinstance(state, dict) or state.get("version") != 1:
@@ -150,6 +161,7 @@ class DockWorkspace(QWidget):
         except (ValueError, UnicodeError):
             return False
         if restored:
+            self._fit_key = None
             # Migrate the old two-sided default dock arrangement. Keep custom
             # floating/tabbed layouts intact, including their saved positions.
             board, engine = self.docks["board"], self.docks["analysis"]
@@ -165,6 +177,8 @@ class DockWorkspace(QWidget):
                 self.surface.splitDockWidget(first, second, Qt.Orientation.Horizontal)
                 self.surface.splitDockWidget(engine, self.docks["database"], Qt.Orientation.Vertical)
                 self.surface.splitDockWidget(self.docks["database"], self.docks["graph"], Qt.Orientation.Vertical)
+            if "insights" in self.docks and not state.get("maia_tools"):
+                self.surface.splitDockWidget(self.docks["analysis"], self.docks["insights"], Qt.Orientation.Horizontal)
             self.keep_floating_panels_on_screen()
             QTimer.singleShot(0, self.fit_columns)
         return restored

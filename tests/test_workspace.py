@@ -42,7 +42,7 @@ class WorkspaceTests(unittest.TestCase):
         window = self.window
         board, candidates, fen = window.board_view, window.candidates, window.game.board.fen()
         host = self.arrange()
-        self.assertEqual(set(host.docks), {"board", "analysis", "moves", "database", "graph"})
+        self.assertEqual(set(host.docks), {"board", "analysis", "moves", "database", "graph", "insights"})
         self.assertEqual(host.docks["board"].widget(), window.arena)
         self.assertEqual(host.docks["analysis"].widget(), window.panel)
         self.assertTrue(host.docks["board"].features() & QDockWidget.DockWidgetFeature.DockWidgetMovable)

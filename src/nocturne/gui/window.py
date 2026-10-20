@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
 from .. import __version__
 from ..maia.controller import MaiaController
 from .maia import MaiaControls
+from .maia_insights import MaiaInsights
 from ..core.board import Move, SQUARES
 from ..core.rules import Board
 from ..core.game import Game, TimeControl
@@ -437,6 +438,17 @@ class MainWindow(QMainWindow):
         self.candidates.action.connect(self._candidate_action)
         self.candidates.changed.connect(self._sync_candidate_markers)
         self.engine_layout.addWidget(self.candidates)
+        self.inline_history = MoveText()
+        self.inline_history.setMinimumHeight(75)
+        self.inline_history.setMaximumHeight(135)
+        self.inline_history.setAccessibleName("Move tree below engine analysis")
+        self.inline_history.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.inline_history.customContextMenuRequested.connect(self._inline_history_menu)
+        self.inline_history.move_clicked.connect(self._navigate_node)
+        self.inline_history.move_hovered.connect(self._preview_history)
+        self.inline_history.preview_ended.connect(lambda: self._end_preview("history"))
+        self.inline_history.wheel_navigated.connect(self._wheel_game)
+        self.engine_layout.addWidget(self.inline_history)
         self.engine_layout.addStretch()
         self.engine_scroll.setWidget(engine_detail)
         self.analysis_detail_splitter = QSplitter(Qt.Orientation.Vertical)
@@ -539,6 +551,8 @@ class MainWindow(QMainWindow):
         self.save_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         side.addWidget(self.save_label)
         splitter.addWidget(self.panel)
+        self.maia_insights = MaiaInsights()
+        splitter.addWidget(self.maia_insights)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 0)
         splitter.setSizes([720, 350])
@@ -1325,6 +1339,7 @@ class MainWindow(QMainWindow):
             "moves": ("Game moves", self.analysis_moves_panel),
             "database": ("Database explorer", self.explorer),
             "graph": ("Evaluation graph", self.graph),
+            "insights": ("Insights / Maia Tools", self.maia_insights),
         }, self, analysis_left=self.config.get("layout") == "analysis-left")
         self._dock_workspace = workspace
         workspace.finished.connect(lambda: self._arrange_panels(False))
@@ -1346,6 +1361,7 @@ class MainWindow(QMainWindow):
 
     def _sync_docked_visibility(self):
         if self._dock_workspace is not None:
+            self._dock_workspace.set_panel_visible("insights", self.analysis_mode and self.config.get("maia_enabled", True))
             self._dock_workspace.set_panel_visible("moves", self.analysis_mode)
             self._dock_workspace.set_panel_visible("database", self._explorer_active)
             self._dock_workspace.set_panel_visible("graph", self.config.get("show_eval_graph", True))
@@ -1373,6 +1389,7 @@ class MainWindow(QMainWindow):
             self.content_layout.removeWidget(workspace)
             self.main_splitter.insertWidget(0, self.arena)
             self.main_splitter.insertWidget(1, self.panel)
+            self.main_splitter.addWidget(self.maia_insights)
             self.workspace_splitter.addWidget(self.analysis_moves_panel)
             self.analysis_detail_splitter.addWidget(self.explorer)
             self.engine_page_layout.addWidget(self.graph)
@@ -1429,7 +1446,7 @@ class MainWindow(QMainWindow):
         self.maia_controls.setVisible(self.analysis_mode)
         if enabled and self.analysis_mode:
             path = self.game.node_path(self.game.current_node)[1:]
-            self.maia.request(self.game.initial_fen, [self.game.nodes[n].move.uci() for n in path], rating)
+            self.maia.request(self.game.initial_fen, [self.game.nodes[n].move.uci() for n in path], rating, sweep=True)
         self._maia_changed(self.maia.policies if enabled else {})
 
     def _maia_changed(self, policies):
@@ -1437,6 +1454,12 @@ class MainWindow(QMainWindow):
         policy = policies.get(str(rating), {})
         self.candidates.set_maia(policy, rating, self.config.get("maia_enabled", True) and self.analysis_mode)
         self.maia_controls.set_policy(policy, self.game.board)
+        self.maia_insights.set_data(policies, self.game.board, rating, self._appearance_config())
+        self.maia_insights.map.flipped = self.board_view.flipped
+        if self._dock_workspace is not None:
+            self._sync_docked_visibility()
+        else:
+            self.maia_insights.setVisible(self.analysis_mode and self.config.get("maia_enabled", True))
 
     def _maia_move(self, uci):
         try:
@@ -2538,6 +2561,7 @@ class MainWindow(QMainWindow):
         ):
             widget.setVisible(not analysis)
         self.analysis_moves_panel.setVisible(analysis)
+        self.maia_insights.setVisible(analysis and self.config.get("maia_enabled", True))
         self.tabs.setTabVisible(0, not analysis)
         self.panel_caption.setText("ENGINE ANALYSIS" if analysis else "THE GAME")
         self.panel_caption.setVisible(not analysis)
@@ -2566,7 +2590,7 @@ class MainWindow(QMainWindow):
             self.tabs.setCurrentIndex(1)
             # Compact analysis/database column: roughly twelve SAN moves on
             # one line at the default window size. The divider stays movable.
-            self.main_splitter.setSizes([560, 1240] if left else [1240, 560])
+            self.main_splitter.setSizes([560, 900, 340] if left else [900, 560, 340])
             self.workspace_splitter.setSizes([800, 90])
         else:
             self.main_splitter.setSizes([720, 350])
@@ -2605,6 +2629,8 @@ class MainWindow(QMainWindow):
             if self.config.get("explorer_statistics") else {})
         self.analysis_history.set_moves(tokens, self.game.current_node, self._appearance_config().get("light", False),
                                         book_departure=departure if departure else None, book_departures=markers)
+        self.inline_history.set_moves(tokens, self.game.current_node, self._appearance_config().get("light", False),
+                                      book_departure=departure if departure else None, book_departures=markers)
         self._refresh_raw_pgn()
 
     def _end_preview(self, source):
@@ -3043,6 +3069,11 @@ class MainWindow(QMainWindow):
         if cursor := getattr(self, "_history_cells", {}).get((row, column)):
             self._navigate(cursor)
 
+    def _inline_history_menu(self, position):
+        menu = QMenu(self.inline_history)
+        menu.addAction("Copy PGN", self._copy_pgn)
+        menu.exec(self.inline_history.mapToGlobal(position))
+
     def _history_context_menu(self, position):
         menu = QMenu(self.analysis_history)
         menu.addAction("Copy PGN", self._copy_pgn)
@@ -3052,6 +3083,8 @@ class MainWindow(QMainWindow):
         self.board_view.flip()
         self.eval_bar.flipped = self.board_view.flipped
         self.eval_bar.update()
+        self.maia_insights.map.flipped = self.board_view.flipped
+        self.maia_insights.map.update()
         self._update_players()
 
     def _pause(self):

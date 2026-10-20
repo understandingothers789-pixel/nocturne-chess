@@ -65,3 +65,33 @@ class MaiaTests(unittest.TestCase):
         self.assertEqual(percentage(None), "—")
         self.assertEqual(percentage(0), "0%")
         self.assertEqual(percentage(0.000001), "0.0001%")
+
+    def test_rating_chart_uses_exact_points_and_legend_toggle(self):
+        from nocturne.core.rules import Board
+        from nocturne.gui.maia_insights import MaiaInsights
+        tools = MaiaInsights()
+        tools.resize(340, 700)
+        data = {"400": {"e2e4": 0.3, "d2d4": 0.7}, "1800": {"e2e4": 0.6, "d2d4": 0.4}}
+        tools.set_data(data, Board(), 1800)
+        tools.show()
+        self.app.processEvents()
+        tools.grab()
+        points = [(move, rating, probability) for _, move, rating, probability in tools.chart.points]
+        self.assertIn(("e2e4", 400, 0.3), points)
+        self.assertIn(("e2e4", 1800, 0.6), points)
+        self.assertNotIn(600, [rating for _, rating, _ in points])
+        tools.legend_buttons["e2e4"].click()
+        self.assertIn("e2e4", tools.chart.hidden_moves)
+        tools.close()
+        tools.deleteLater()
+
+    def test_move_map_aggregates_promotions_on_the_same_destination(self):
+        from nocturne.core.rules import Board
+        from nocturne.core.board import parse_square
+        from nocturne.gui.maia_insights import MoveMap
+        view = MoveMap()
+        view.set_policy(Board("7k/P7/8/8/8/8/8/7K w - - 0 1"), {"a7a8q": 0.6, "a7a8n": 0.4})
+        self.assertEqual(view.destinations[parse_square("a8")], 1)
+        self.assertFalse(view.interactive)
+        self.assertFalse(view.wheel_navigation)
+        view.deleteLater()
