@@ -1,5 +1,25 @@
 # Windows 11 desktop builds
 
+## [0.5.7.54 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39382171876/artifacts/12245757095)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`5e366a4`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/5e366a42815c48825944c0f738e699080b0f8848)
+places candidate expansion arrows in a dedicated column, removes fixed-width
+SAN padding and tightens anchor hitboxes. Wheel browsing now changes only the
+board preview, keeping evaluations and opening moves visible. Leaving a
+candidate resets its wheel position; updates within the same candidate keep it.
+
+Focused pointer, spacing and preview checks passed. Native pointer routing to
+the expansion arrow was checked at 100%, 125% and 200% scaling. Windows run
+[39382171876](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39382171876)
+passed lint, the full test suite, packaging and packaged smoke checks.
+
+Artifact **12245757095**, `Nocturne-0.5.7.54-Windows-x64-unsigned`,
+58,019,100 bytes, expires November 19, 2026 (America/Chicago).
+GitHub artifact SHA-256:
+`9cb44fe9bca268062c4fb3e5f984c730e1da4e4ce90c3fecce00d9cd239497a4`.
+
 ## [0.5.7.53 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39379180697/artifacts/12245120746)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
