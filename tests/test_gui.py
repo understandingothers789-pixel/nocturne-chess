@@ -860,6 +860,7 @@ class GuiTests(unittest.TestCase):
     def test_metadata_headers_fit_at_narrow_and_wide_widths_without_pv_height_changes(self):
         self._three_pvs()
         panel = self.window.candidates
+        panel.set_detailed(True)
         for width in (1000, 1600):
             self.window.resize(width, 1000)
             self.app.processEvents()

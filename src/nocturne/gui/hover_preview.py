@@ -31,13 +31,13 @@ class HoverPreview(QFrame):
         layout.addWidget(self.caption)
         self.board = MiniBoard(self)
         self.board.setMinimumSize(0, 0)
-        self.board.setFixedSize(256, 256)
+        self.board.setFixedSize(384, 384)
         self.board.coordinates = False
         self.board.interactive = self.board.animations = self.board.overlays = False
         self.board.wheel_navigation = False
         self.board.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         layout.addWidget(self.board)
-        self.setFixedSize(268, 288)
+        self.setFixedSize(396, 416)
         self.hide()
 
     def show_position(self, position, last_move, reference, caption):
@@ -59,6 +59,10 @@ class HoverPreview(QFrame):
         bounds = QRect(parent.mapToGlobal(QPoint()), parent.size())
         screen = QGuiApplication.screenAt(cursor) or parent.screen()
         bounds = bounds.intersected(screen.availableGeometry()).adjusted(4, 4, -4, -4)
+        edge = max(32, min(384, bounds.width() - 12, bounds.height() - 32))
+        if self.board.width() != edge:
+            self.board.setFixedSize(edge, edge)
+            self.setFixedSize(edge + 12, edge + 32)
         # Place to the right/below first, then flip at the visible edges. The
         # cursor stays outside the board, so text hover/clicks keep reaching it.
         x, y = cursor.x() + 24, cursor.y() + 24

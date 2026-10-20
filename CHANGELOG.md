@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.7.53 — Larger previews and cleaner candidate rows
+
+- Increase the hover board from 256 to 384 logical pixels per side, shrinking
+  only when needed to stay inside the visible window and screen.
+- Hide repeated candidate depth/WDL/API/database detail rows by default and
+  tighten row margins. Display → Detailed analysis statistics restores them.
+  Evaluations and moves remain visible; analysis data is retained.
+- Database win/draw/loss bars remain available below the variations when
+  Database → Show database explorer is enabled. Engine WDL and database game
+  outcomes remain distinct rather than substituting one for the other.
+
 ## 0.5.7.52 — Single-line variations and cursor-board previews by default
 
 - Reserve one visible move row per candidate for every MultiPV count. Each

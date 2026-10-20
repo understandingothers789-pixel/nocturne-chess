@@ -98,7 +98,12 @@ class RenderingTests(unittest.TestCase):
         layout = move.block().layout()
         self.assertEqual(layout.lineForTextPosition(score.selectionStart()).y(),
                          layout.lineForTextPosition(move.selectionStart()).y())
+        self.assertTrue(header.isHidden())
+        panel.set_detailed(True)
+        self.app.processEvents()
         self.assertGreater(header.mapTo(panel, QPoint()).y(), moves.mapTo(panel, QPoint()).y())
+        panel.set_detailed(False)
+        self.assertTrue(header.isHidden())
 
     def test_fresh_profile_previews_on_cursor_board_and_keeps_opt_out(self):
         from nocturne.gui.window import MainWindow
@@ -115,6 +120,7 @@ class RenderingTests(unittest.TestCase):
                 position.push(move)
                 window._show_move_preview("candidate", position, move, "Candidate preview")
                 self.assertTrue(window.hover_preview.isVisible())
+                self.assertGreaterEqual(window.hover_preview.board.width(), 320)
                 self.assertEqual(window.board_view.display_board.fen(), before)
                 self.assertEqual(window.hover_preview.board.display_board.fen(), position.fen())
                 window._set_cursor_preview(False)

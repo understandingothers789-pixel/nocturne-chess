@@ -2400,6 +2400,7 @@ class MainWindow(QMainWindow):
     def _apply_settings(self):
         self._apply_appearance(self._appearance_config())
         self.candidates.set_show_seldepth(self.config.get("show_seldepth", False))
+        self.candidates.set_detailed(self.config.get("details", False))
         if self._last_info:
             self._render_telemetry(self._last_info, self._last_info_turn)
         self.tablebase_label.setVisible(bool(self.config.get("syzygy_path")))

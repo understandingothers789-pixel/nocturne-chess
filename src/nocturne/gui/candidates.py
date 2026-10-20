@@ -44,6 +44,7 @@ class CandidatePanel(QWidget):
         self.expanded_ranks = set()
         self.light = False
         self.show_seldepth = False
+        self.show_details = False
         self.database = None
         self.details = {}
         self.lines = {}
@@ -123,7 +124,7 @@ class CandidatePanel(QWidget):
     def _make_row(self, rank):
         frame = QWidget()
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(0, 5, 0, 8)
+        layout.setContentsMargins(0, 1, 0, 1)
         layout.setSpacing(2)
         header = QLabel("Waiting for engine")
         header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
@@ -136,6 +137,7 @@ class CandidatePanel(QWidget):
         if self._header_row_height is None:
             self._header_row_height = self._header_height(header)
         header.setFixedHeight(self._header_row_height)
+        header.setVisible(self.show_details)
         moves = self.primary if rank == 1 else MoveText(
             auto_fit=True, reserved_lines=self.default_pv_lines
         )
@@ -300,6 +302,13 @@ class CandidatePanel(QWidget):
     def set_show_seldepth(self, enabled):
         self.show_seldepth = bool(enabled)
         for rank in self.rows:
+            self._render_header(rank)
+
+    def set_detailed(self, enabled):
+        self.show_details = bool(enabled)
+        for rank, (_, header, _) in self.rows.items():
+            header.setVisible(self.show_details)
+            self.details[rank] = self.show_details
             self._render_header(rank)
 
     def _render_header(self, rank):
