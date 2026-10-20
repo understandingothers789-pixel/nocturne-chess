@@ -111,3 +111,24 @@ class MaiaTests(unittest.TestCase):
         self.assertEqual(move_quality(lines, "d2d4"), (None, None))
         lines[1] = {"pv": ["e2e4"], "score_type": "mate", "score_value": 3}
         self.assertEqual(move_quality(lines, "d2d4"), (None, None))
+
+    def test_chess960_retains_stockfish_without_unsupported_maia_predictions(self):
+        import chess
+        from nocturne.core.game import Game
+        from nocturne.gui.window import MainWindow
+        with tempfile.TemporaryDirectory() as directory:
+            window = MainWindow(Path(directory))
+            window.timer.stop()
+            window.autosave_timer.stop()
+            window._analysis_enabled = False
+            window.maia.policies = {"1800": {"e2e4": 1}}
+            window.game = Game(chess.Board.from_chess960_pos(0).shredder_fen())
+            window.analysis_mode = True
+            generation = window.engine.generation
+            window._request_maia()
+            self.assertEqual(window.maia.policies, {})
+            self.assertIn("standard chess only", window.maia_controls.status.text())
+            self.assertEqual(window.engine.generation, generation)
+            window.close()
+            window.deleteLater()
+            self.app.processEvents()

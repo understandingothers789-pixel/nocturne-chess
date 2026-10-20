@@ -1483,6 +1483,11 @@ class MainWindow(QMainWindow):
         for elo, action in self.maia_rating_actions.items():
             action.setChecked(elo == rating)
         self.maia_controls.setVisible(self.analysis_mode)
+        if enabled and self.analysis_mode and getattr(self.game.board, "chess960", False):
+            self.maia.stop()
+            self.maia_controls.status.setText("Maia predicts standard chess only; Stockfish remains available for Chess960.")
+            self._maia_changed({})
+            return
         if enabled and self.analysis_mode:
             path = self.game.node_path(self.game.current_node)[1:]
             self.maia.request(self.game.initial_fen, [self.game.nodes[n].move.uci() for n in path], rating, sweep=True)
