@@ -62,9 +62,12 @@ class EngineController(QObject):
         searchmoves=None,
         arguments=None,
         nodes_only=False,
+        limit_kind=None,
     ):
         if not external:
             raise ValueError("Select your Stockfish or another UCI executable first")
+        multipv = max(1, min(5, int(multipv)))
+        self.requested_multipv = multipv
         self.stop()
         self.board = game.board.copy()
         self.lines = {}
@@ -88,9 +91,13 @@ class EngineController(QObject):
             go = "go infinite"
         elif nodes_only and limits.nodes:
             go = f"go nodes {limits.nodes}"
+        elif limit_kind == "time":
+            go = f"go movetime {max(1, int(limits.seconds * 1000))}"
+        elif limit_kind == "depth":
+            go = f"go depth {limits.depth}"
         else:
             go = f"go depth {limits.depth} movetime {max(1, int(limits.seconds * 1000))}"
-        if limits.nodes and not nodes_only and not infinite:
+        if limits.nodes and not nodes_only and not infinite and limit_kind not in ("time", "depth"):
             go += " nodes " + str(limits.nodes)
         if searchmoves:
             valid = [self.board.parse_uci(m).uci() for m in searchmoves]
@@ -100,9 +107,11 @@ class EngineController(QObject):
         return self.generation
 
     def _validated_info(self, info):
+        if not 1 <= info.get("multipv", 1) <= self.requested_multipv:
+            return None
         position = self.board.copy()
         pv, texts = [], []
-        for text in info["pv"][:128]:
+        for text in info["pv"]:
             try:
                 move = position.parse_uci(text)
                 texts.append(san(position, move))

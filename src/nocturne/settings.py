@@ -53,6 +53,12 @@ DEFAULTS = {
     "explorer_source": "chessdb",
     "explorer_speed": "all",
     "explorer_rating": 0,
+    "explorer_speeds": [],
+    "explorer_ratings": [],
+    "explorer_since": "",
+    "explorer_until": "",
+    "explorer_player": "",
+    "explorer_color": "white",
     "engine_id": "",
     "analysis_nodes": 1_000_000_000,
     "analysis_limit_version": 2,
@@ -74,9 +80,10 @@ def normalize(data) -> dict:
         "human_color": (-1, 0, 1),
         "difficulty": ("Beginner", "Casual", "Intermediate", "Advanced", "Expert", "Maximum"),
         "layout": ("classic", "analysis-left"),
-        "analysis_kind": ("infinite", "explore", "bounded", "nodes"),
+        "analysis_kind": ("infinite", "explore", "bounded", "nodes", "time", "depth"),
         "candidate_style": ("arrows", "lines"),
-        "explorer_source": ("masters", "lichess", "chessdb"),
+        "explorer_source": ("masters", "lichess", "player", "chessdb"),
+        "explorer_color": ("white", "black"),
         "explorer_speed": ("all", "ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence"),
         "explorer_rating": (0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500),
         "theme": ("Classic", "Grey", "Walnut", "Slate", "Forest", "Midnight"),
@@ -89,6 +96,22 @@ def normalize(data) -> dict:
             continue
         if data.get(key) in options:
             result[key] = data[key]
+    from .explorer import RATINGS, SPEEDS
+    import re
+    for key, allowed in (("explorer_speeds", SPEEDS), ("explorer_ratings", RATINGS)):
+        value = data.get(key)
+        if isinstance(value, list):
+            typed = [item for item in value if type(item) is (str if key == "explorer_speeds" else int)]
+            result[key] = [item for item in allowed if item in typed]
+    for key in ("explorer_since", "explorer_until"):
+        value = data.get(key)
+        if isinstance(value, str) and re.fullmatch(r"\d{4}(?:-(?:0[1-9]|1[0-2]))?", value):
+            result[key] = value
+    if result["explorer_since"] and result["explorer_until"] and result["explorer_since"] > result["explorer_until"]:
+        result["explorer_since"] = result["explorer_until"] = ""
+    value = data.get("explorer_player")
+    if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,30}", value):
+        result["explorer_player"] = value
     # Upgrade the old default once; later explicit palette choices are retained.
     if data.get("appearance_version") != 1 and data.get("theme", "Forest") == "Forest":
         result["theme"] = "Classic"
@@ -139,7 +162,7 @@ def normalize(data) -> dict:
     for key, minimum, maximum in (
         ("hash_mb", 1, 65536),
         ("analysis_depth", 1, 128),
-        ("multipv", 1, 32),
+        ("multipv", 1, 5),
         ("analysis_nodes", 0, 2_000_000_000),
         ("auto_eval_nodes", 0, 2_000_000_000),
         ("auto_play_nodes", 1, 2_000_000_000),

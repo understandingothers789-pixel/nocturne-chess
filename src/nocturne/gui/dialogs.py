@@ -6,14 +6,11 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QDoubleSpinBox,
-    QFileDialog,
     QFormLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QPlainTextEdit,
-    QPushButton,
     QSpinBox,
     QScrollArea,
     QVBoxLayout,
@@ -190,46 +187,6 @@ class SettingsDialog(QDialog):
             check.setChecked(config.get(key, default))
             self.checks[key] = check
             form.addRow("", check)
-        self.hash = QSpinBox()
-        self.hash.setRange(1, 65536)
-        self.hash.setValue(config.get("hash_mb", 32))
-        self.hash.setSuffix(" MB · budget")
-        self.depth = QSpinBox()
-        self.depth.setRange(1, 128)
-        self.depth.setValue(config.get("analysis_depth", 8))
-        form.addRow("Analysis depth limit", self.depth)
-        self.seconds = QDoubleSpinBox()
-        self.seconds.setRange(0.05, 600)
-        self.seconds.setSingleStep(0.5)
-        self.seconds.setValue(config.get("analysis_seconds", 3.0))
-        self.seconds.setSuffix(" sec")
-        form.addRow("Bounded analysis time", self.seconds)
-        self.nodes = QSpinBox()
-        self.nodes.setRange(0, 2_000_000_000)
-        self.nodes.setSpecialValueText("No node cap")
-        self.nodes.setValue(config.get("analysis_nodes", 0))
-        form.addRow("Analysis nodes", self.nodes)
-        self.delay = QSpinBox()
-        self.delay.setRange(0, 3000)
-        self.delay.setSingleStep(100)
-        self.delay.setValue(config.get("watch_delay_ms", 500))
-        self.delay.setSuffix(" ms")
-        form.addRow("Watch-mode move delay", self.delay)
-        engine_row = QHBoxLayout()
-        self.external = QLineEdit(config.get("external_path", ""))
-        self.external.setPlaceholderText("Optional installed UCI executable")
-        browse = QPushButton("Browse…")
-        browse.clicked.connect(self._browse)
-        engine_row.addWidget(self.external)
-        engine_row.addWidget(browse)
-        tb_row = QHBoxLayout()
-        self.syzygy = QLineEdit(config.get("syzygy_path", ""))
-        self.syzygy.setPlaceholderText("Folder with .rtbw and .rtbz files")
-        tb_browse = QPushButton("Browse…")
-        tb_browse.clicked.connect(self._browse_syzygy)
-        tb_row.addWidget(self.syzygy)
-        tb_row.addWidget(tb_browse)
-        form.addRow("Syzygy tablebases", tb_row)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
@@ -238,7 +195,7 @@ class SettingsDialog(QDialog):
         content.addWidget(scroll, 1)
         layout.addLayout(content, 1)
         note = QLabel(
-            "Threads, Hash and other engine options are in Engine profiles.\nTime/depth/node limits apply to bounded analysis and game review."
+            "Engine selection, resources and search limits are in the engine header gear\n(Engine → Engine settings…)."
         )
         note.setObjectName("muted")
         layout.addWidget(note)
@@ -268,30 +225,8 @@ class SettingsDialog(QDialog):
         self.preview.update()
         self.appearance_changed.emit(appearance)
 
-    def _browse(self):
-        file, _ = QFileDialog.getOpenFileName(
-            self, "Select a trusted UCI engine executable", "", "Executables (*.exe);;All files (*)"
-        )
-        if file:
-            self.external.setText(file)
-
-    def _browse_syzygy(self):
-        directory = QFileDialog.getExistingDirectory(
-            self, "Choose Syzygy tablebase folder", self.syzygy.text()
-        )
-        if directory:
-            self.syzygy.setText(directory)
-
     def config(self):
-        return {
-            **self.appearance(),
-            "analysis_nodes": self.nodes.value(),
-            "analysis_depth": self.depth.value(),
-            "analysis_seconds": self.seconds.value(),
-            "external_path": self.external.text().strip(),
-            "watch_delay_ms": self.delay.value(),
-            "syzygy_path": self.syzygy.text().strip(),
-        }
+        return self.appearance()
 
 
 class TextDialog(QDialog):

@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.5.7.48 — Live automation and a compact analysis workspace
+
+- F12 now streams actual engine output while evaluating the selected position
+  and its continuation. Each position saves all available PVs with their own
+  reported depths, including partial iterations. F11 and F12 remain pause/resume
+  toggles. Deliberate board, history or PV navigation, including wheel input and
+  Escape, cancels automation and invalidates pending engine results.
+- Fixed engine option discovery interrupting self-play when MultiPV exceeded one.
+- Candidates now occupy exactly one compact row each, with evaluation followed
+  by numbered moves. MultiPV is limited to 1–5. The ellipsis opens a complete
+  variation inspector; hover, wheel exploration, insertion, pinning and copying
+  remain available. WDL/API/frequency metadata lives in the header's details
+  area and score tooltips instead of each move row.
+- Added a synchronized side move tree with paired mainline moves, nested
+  collapsible variations, evaluations, comments and annotations. The bottom PGN
+  remains. Moves, Openings and Game info share the same compact analysis area;
+  docking and layout reset preserve these widgets.
+- The right-side evaluation bar animates smoothly, handles mate endpoints and
+  flipped boards, and follows the animation preference.
+- The engine header gear consolidates engine selection, independent node caps,
+  search modes, MultiPV, advertised Threads/Hash, reset defaults and access to
+  further supported UCI options. Explicit time/depth modes send only their
+  selected UCI limit. Defaults remain 1B / 200M / 10M nodes.
+- Database settings add multiple speed/rating groups, supported date filters,
+  and a Player source with username/color. Player NDJSON indexing is handled
+  asynchronously; provisional results never become zero-game departure marks.
+  Filters also separate cached statistics and database departure scans.
+- Includes 0.5.7.47's inside-board coordinates, larger board, right-side bar and
+  database explorer opt-in default. Maia remains a future roadmap item.
+
 ## 0.5.7.47 — Lichess-style board framing
 
 - Board coordinates now sit inside the edge squares, leaving room for a larger

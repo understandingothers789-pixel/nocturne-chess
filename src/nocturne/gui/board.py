@@ -18,6 +18,7 @@ from .theme import BOARD_THEMES, CANDIDATE_MARKERS, palette
 class BoardWidget(QWidget):
     move_requested = Signal(object)
     wheel_navigated = Signal(int)
+    manual_input = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -480,6 +481,8 @@ class BoardWidget(QWidget):
         return True
 
     def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.manual_input.emit()
         if self.preview_board is not None:
             return
         square = self.square_at(event.position())

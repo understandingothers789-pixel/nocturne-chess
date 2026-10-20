@@ -16,6 +16,7 @@ class MoveText(QTextBrowser):
     move_clicked = Signal(int)
     preview_ended = Signal()
     pointer_moved = Signal(QPoint)
+    manual_navigation = Signal()
 
     def __init__(self, parent=None, *, auto_fit=False, reserved_lines=0):
         super().__init__(parent)
@@ -37,6 +38,8 @@ class MoveText(QTextBrowser):
         self.wheel_preview_ply = None
         self.candidate_rank = None
         self.candidate_turn = 1
+        self.candidate_fullmove = 1
+        self.compact = False
         self._candidate_style = None
         self._book_departure = None
         self._book_departures = {}
@@ -95,7 +98,7 @@ class MoveText(QTextBrowser):
 
     def set_moves(self, items, current=None, light=False, *, book_departure=None, book_departures=None):
         signature = (list(items), current, light)
-        candidate_style = (self.candidate_rank, self.candidate_turn)
+        candidate_style = (self.candidate_rank, self.candidate_turn, self.candidate_fullmove, self.compact)
         departures = dict(book_departures or {})
         if book_departure is not None and book_departure not in departures:
             departures[book_departure] = "Lichess Masters: first position with no games found"
@@ -112,7 +115,7 @@ class MoveText(QTextBrowser):
         self._book_departures = departures
         self.viewport().setToolTip("")
         if self.candidate_rank is not None:
-            self.setWordWrapMode(QTextOption.WrapMode.WordWrap)
+            self.setWordWrapMode(QTextOption.WrapMode.NoWrap if self.compact else QTextOption.WrapMode.WordWrap)
         colors = palette(light)
         color = colors["history"]
         tokens = []
@@ -131,12 +134,16 @@ class MoveText(QTextBrowser):
                 style += f"color: {tint};"
             # Keep SAN slots identical across candidates and updates. Nonbreaking
             # padding belongs to the anchor, so the whole slot is interactive.
-            label = ("\u00a0" + text + "\u00a0" * max(1, 8 - len(text))
-                     if self.candidate_rank is not None else text)
+            label = text
+            if self.candidate_rank is not None:
+                offset = index - 1 + (self.candidate_turn < 0)
+                if offset % 2 == 0 or index == 1:
+                    number = self.candidate_fullmove + offset // 2
+                    label = f"{number}{'...' if offset % 2 else '.'}{text}"
             decoration = "text-decoration:none;"
             tooltip = f' title="{escape(departures[index], quote=True)}"' if index in departures else ""
             tokens.append(f'<a href="move:{index}" style="{style} {decoration}"{tooltip}>{escape(label)}</a>')
-        size, spacing = (16, 155) if self._auto_fit else (14, 140)
+        size, spacing = (14, 110) if self.compact else (16, 130) if self._auto_fit else (14, 140)
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'
                      + " ".join(tokens) + "</div>")
 
@@ -151,9 +158,9 @@ class MoveText(QTextBrowser):
                     cursor = QTextCursor(self.document())
                     cursor.setPosition(fragment.position())
                     start = self.cursorRect(cursor)
-                    cursor.setPosition(fragment.position() + fragment.length() - 1)
+                    cursor.setPosition(fragment.position() + fragment.length())
                     end = self.cursorRect(cursor)
-                    rect = start.united(end).adjusted(0, -3, 9, 3)
+                    rect = start.united(end).adjusted(0, -2, 1, 2)
                     if rect.contains(point):
                         return QUrl(fragment.charFormat().anchorHref())
                 iterator += 1
@@ -198,6 +205,7 @@ class MoveText(QTextBrowser):
         steps = self._wheel_steps.consume(event) if self.wheel_navigation else None
         if steps is None:
             return super().wheelEvent(event)
+        self.manual_navigation.emit()
         event.accept()
         if not steps:
             return
@@ -234,6 +242,10 @@ class MoveText(QTextBrowser):
 
     def _fit_height(self, *_):
         if self._auto_fit:
+            if self.compact:
+                self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+                self.setFixedHeight(24)
+                return
             if self._reserved_lines:
                 key = (self.font().key(), self.logicalDpiY(), self._reserved_lines)
                 if not self._reserved_measurement or self._reserved_measurement[0] != key:

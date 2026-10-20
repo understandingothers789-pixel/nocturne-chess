@@ -209,7 +209,7 @@ class QtIntegration(unittest.TestCase):
             window._select_profile("second")
             record = window.game.nodes[window.game.current_node].analysis
             self.assertEqual(record["profile"], "simulator")
-            self.assertEqual(record["options"], {"Threads": 6, "Hash": 768})
+            self.assertEqual(record["options"], {"Threads": 6, "Hash": 768, "UCI_ShowWDL": True})
             self.assertEqual(record["applied_options"]["Threads"], "6")
             self.assertEqual(record["applied_options"]["Hash"], "768")
             self.wait_until(lambda: window.engine.connection.confirmed.get("Hash") == "16")
@@ -319,7 +319,7 @@ class QtIntegration(unittest.TestCase):
             from unittest.mock import patch
             with patch("PySide6.QtWidgets.QInputDialog.getInt", return_value=(5, True)) as chooser:
                 next(a for a in window.multipv_menu.actions() if a.text() == "Custom…").trigger()
-                self.assertEqual(chooser.call_args.args[-1], 8)
+                self.assertEqual(chooser.call_args.args[-1], 5)
             self.wait_until(lambda: not window.engine.busy and len(window.candidates.lines) == 5)
             self.assertEqual(len(window.board_view.recommendations), 5)
             window._halt_analysis()
@@ -339,9 +339,9 @@ class QtIntegration(unittest.TestCase):
             window.config.update(engine_id="simulator", multipv=32)
             window._apply_settings()
             window._schedule_engine()
-            self.wait_until(lambda: len(window.candidates.lines) == 8)
-            self.assertEqual(window.config["multipv"], 8)
-            self.assertEqual(window.engine.connection.confirmed["MultiPV"], "8")
+            self.wait_until(lambda: len(window.candidates.lines) == 5)
+            self.assertEqual(window.config["multipv"], 5)
+            self.assertEqual(window.engine.connection.confirmed["MultiPV"], "5")
             window._halt_analysis()
             window.engine.close()
             window._profile()["arguments"] = [SIMULATOR, "single-pv"]
@@ -563,6 +563,7 @@ class QtIntegration(unittest.TestCase):
             window._apply_settings()
             window.game = Game.from_pgn("1.e3 e5 *")
             window._refresh()
+            window.game.navigate(0)
             window._auto_evaluate_line()
             self.wait_until(lambda: window._review is None, 8)
             self.assertIn("> go nodes 100", window.engine.connection.log)
@@ -591,6 +592,7 @@ class QtIntegration(unittest.TestCase):
             window.profiles = [profile]
             window.config.update(engine_id="simulator", multipv=3, auto_eval_nodes=400)
             window.game = Game.from_pgn("1.e4 e5 *")
+            window.game.navigate(0)
             window._auto_evaluate_line()
             self.wait_until(lambda: window._review is None, 8)
             for node in window.game.nodes:
@@ -608,6 +610,7 @@ class QtIntegration(unittest.TestCase):
             window.profiles = [profile]
             window.config.update(engine_id="simulator", multipv=5, auto_eval_nodes=400)
             window.game = Game.from_pgn("1.e4 *")
+            window.game.navigate(0)
             window._auto_evaluate_line()
             self.wait_until(lambda: window._review is None, 8)
             for node in window.game.nodes:
@@ -966,9 +969,9 @@ class QtIntegration(unittest.TestCase):
             with patch("PySide6.QtWidgets.QInputDialog.getDouble", return_value=(0.1, True)):
                 window._analyze_game()
             self.wait_until(lambda: window._review and window._review["index"] >= 1)
+            window._pause_review()
             window._navigate(0)
             self.assertIsNotNone(window._review)
-            window._pause_review()
             self.assertTrue(window._review["paused"])
             self.assertFalse(window.engine.busy)
             self.assertEqual(window.review_panel.pause.text(), "Resume")

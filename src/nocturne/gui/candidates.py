@@ -1,19 +1,18 @@
 """Interactive engine candidate rows. Only actual, legally validated PV data is shown."""
 
 from html import escape
-import math
 
-from PySide6.QtCore import QPoint, Signal, Qt, QTimer
+from PySide6.QtCore import QEvent, QPoint, Signal, Qt, QTimer
 from PySide6.QtGui import QTextDocument
 from PySide6.QtWidgets import (
-    QLabel, QMenu, QVBoxLayout, QWidget, QLayout, QSizePolicy, QGridLayout, QToolButton,
+    QLabel, QMenu, QVBoxLayout, QWidget, QLayout, QHBoxLayout, QToolButton, QFrame,
 )
 from ..engine.uci_types import score_label
 from ..explorer import chessdb_score
 from .moves import MoveText
 from .theme import palette
 
-DEFAULT_PV_LINES = 3
+DEFAULT_PV_LINES = 1
 EXPANDER_WIDTH = 26
 
 
@@ -24,6 +23,8 @@ class CandidatePanel(QWidget):
     navigate = Signal(int, int)
     action = Signal(int, str)
     changed = Signal()
+    manual_navigation = Signal()
+    statistics_changed = Signal(str)
 
     def __init__(self, primary, parent=None):
         super().__init__(parent)
@@ -33,9 +34,13 @@ class CandidatePanel(QWidget):
         self.layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         self.expanded = False
         self.multipv = 1
+        self.fullmove = 1
+        self._popup = None
+        self._popup_rank = None
         self.default_pv_lines = self._lines_for_multipv(self.multipv)
         self.wheel_navigation = True
         self.primary = primary
+        self.primary.compact = True
         self.primary.reserve_lines(0 if self.expanded else self.default_pv_lines)
         self.rows = {}
         self.footers = {}
@@ -57,6 +62,8 @@ class CandidatePanel(QWidget):
 
     def clear(self):
         self._clearing = True
+        if self._popup:
+            self._popup.close()
         self._revision += 1
         self.hovered = None
         self.pending.clear()
@@ -87,17 +94,17 @@ class CandidatePanel(QWidget):
             moves.wheel_navigation = self.wheel_navigation
 
     def set_expanded(self, expanded):
-        self.expanded = bool(expanded)
+        self.expanded = False  # Saved expand-all no longer changes single-row height.
         for rank in self.rows:
             self._apply_expansion(rank)
 
     @staticmethod
     def _lines_for_multipv(count):
-        return DEFAULT_PV_LINES if count <= 4 else 2
+        return 1
 
     def set_multipv(self, count):
         """Keep compact candidate rows sized for the selected MultiPV count."""
-        count = max(1, min(32, int(count)))
+        count = max(1, min(5, int(count)))
         lines = self._lines_for_multipv(count)
         if count == self.multipv and lines == self.default_pv_lines:
             return
@@ -112,7 +119,7 @@ class CandidatePanel(QWidget):
         self.changed.emit()
 
     def reserve_slots(self, count):
-        count = max(1, min(32, count))
+        count = max(1, min(5, count))
         if count < self.slot_count:
             self.clear()
         for rank in range(self.slot_count + 1, count + 1):
@@ -121,80 +128,58 @@ class CandidatePanel(QWidget):
 
     def _make_row(self, rank):
         frame = QWidget()
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(0, 5, 0, 8)
-        layout.setSpacing(2)
-        header = QLabel("Waiting for engine")
-        header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        frame.setFixedHeight(28)
+        layout = QHBoxLayout(frame)
+        layout.setContentsMargins(1, 1, 1, 1)
+        layout.setSpacing(4)
+        number = QLabel(str(rank))
+        number.setFixedWidth(12)
+        number.setStyleSheet("font-size:11px;color:#888888;")
+        header = QLabel("—")
         header.setTextFormat(Qt.TextFormat.RichText)
-        header.setWordWrap(True)
-        header.setStyleSheet(
-            f"color: {palette(self.light)['metadata']};"
-            "font-family: Consolas, monospace; font-size: 16px;"
-        )
-        if self._header_row_height is None:
-            self._header_row_height = self._header_height(header)
-        header.setFixedHeight(self._header_row_height)
-        layout.addWidget(header)
-        moves = self.primary if rank == 1 else MoveText(
-            auto_fit=True, reserved_lines=self.default_pv_lines
-        )
-        moves.reserve_lines(0 if self.expanded or rank in self.expanded_ranks else self.default_pv_lines)
-        moves.wheel_navigation = self.wheel_navigation
+        header.setFixedWidth(76)
+        header.setFixedHeight(24)
+        header.setStyleSheet("font-family:Consolas,monospace;font-size:15px;font-weight:600;")
+        moves = self.primary if rank == 1 else MoveText(auto_fit=True, reserved_lines=1)
+        moves.compact = True
+        moves.reserve_lines(1)
         moves.candidate_rank = rank
-        # Keep a narrow strip free at the end of the reserved rows for this
-        # candidate's own expand/collapse arrow.
-        moves.setViewportMargins(0, 0, EXPANDER_WIDTH, 0)
-        pv_area = QWidget()
-        pv_layout = QGridLayout(pv_area)
-        pv_layout.setContentsMargins(0, 0, 0, 0)
-        pv_layout.setSpacing(0)
-        expand_button = QToolButton(pv_area)
-        expand_button.setAutoRaise(True)
-        expand_button.setFixedSize(EXPANDER_WIDTH, 22)
-        expand_button.setArrowType(Qt.ArrowType.UpArrow if rank in self.expanded_ranks
-                                   else Qt.ArrowType.DownArrow)
-        expand_button.setAccessibleName(f"Expand candidate {rank} full principal variation")
-        self._style_expander(expand_button)
-        expand_button.clicked.connect(lambda checked=False, r=rank: self.toggle_expansion(r))
-        pv_layout.addWidget(moves, 0, 0)
-        pv_layout.addWidget(expand_button, 0, 0, Qt.AlignmentFlag.AlignRight |
-                            Qt.AlignmentFlag.AlignBottom)
-        layout.addWidget(pv_area)
-        footer = QLabel()
-        footer.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
-        footer.setTextFormat(Qt.TextFormat.RichText)
-        footer.setWordWrap(True)
-        footer.setStyleSheet(
-            f"color: {palette(self.light)['metadata']}; font-size: 13px;"
-        )
-        footer.setFixedHeight(self._footer_height(footer))
-        layout.addWidget(footer)
+        moves.wheel_navigation = self.wheel_navigation
+        button = QToolButton()
+        button.setText("…")
+        button.setAutoRaise(True)
+        button.setFixedSize(22, 24)
+        button.setStyleSheet("padding:0;border:none;background:transparent;color:#a3b6c5;font-size:18px;")
+        button.setAccessibleName(f"Inspect candidate {rank} full principal variation")
+        button.setToolTip("Inspect the complete variation; hover or scroll to explore its moves")
+        button.clicked.connect(lambda checked=False, r=rank: self.toggle_expansion(r))
+        for widget in (number, header, moves, button):
+            layout.addWidget(widget, 1 if widget is moves else 0)
+        footer = QLabel(frame)
         footer.hide()
-        moves.show()
-        # The primary widget survives clear/reuse, so wire it exactly once.
         if rank != 1 or not getattr(self, "_primary_connected", False):
-            moves.move_hovered.connect(lambda ply, r=rank: self._hover(r, ply))
-            moves.preview_ended.connect(lambda r=rank: self._end_hover(r))
-            moves.move_clicked.connect(lambda ply, r=rank: self.navigate.emit(r, ply))
-            moves.pointer_moved.connect(self.pointer_moved)
+            self._wire_moves(moves, rank)
             if rank == 1:
                 self._primary_connected = True
-        for widget in (frame, header, moves, footer, expand_button):
+        for widget in (frame, header, moves):
             widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
             if widget is self.primary and getattr(self, "_primary_menu_connected", False):
                 continue
             widget.customContextMenuRequested.connect(
-                lambda point, r=rank, w=widget: self._menu(r, w.mapToGlobal(point))
-            )
+                lambda point, r=rank, w=widget: self._menu(r, w.mapToGlobal(point)))
             if widget is self.primary:
                 self._primary_menu_connected = True
         self.rows[rank] = (frame, header, moves)
         self.footers[rank] = footer
-        self.expand_buttons[rank] = expand_button
-        self._refresh_expander(rank)
-        QTimer.singleShot(0, lambda r=rank: self._refresh_expander(r))
+        self.expand_buttons[rank] = button
         self.layout.addWidget(frame)
+
+    def _wire_moves(self, moves, rank):
+        moves.move_hovered.connect(lambda ply, r=rank: self._hover(r, ply))
+        moves.preview_ended.connect(lambda r=rank: self._end_hover(r))
+        moves.move_clicked.connect(lambda ply, r=rank: self.navigate.emit(r, ply))
+        moves.pointer_moved.connect(self.pointer_moved)
+        moves.manual_navigation.connect(self.manual_navigation)
 
     def recolor(self, light):
         if self.light == light:
@@ -203,7 +188,7 @@ class CandidatePanel(QWidget):
         for rank, (_, header, _) in self.rows.items():
             header.setStyleSheet(
                 f"color: {palette(light)['metadata']};"
-                "font-family: Consolas, monospace; font-size: 16px;"
+                "font-family: Consolas, monospace; font-size: 15px;"
             )
             self.footers[rank].setStyleSheet(
                 f"color: {palette(light)['metadata']}; font-size: 13px;"
@@ -226,19 +211,23 @@ class CandidatePanel(QWidget):
         if self.hovered is not None and self.hovered != rank:
             self._end_hover(self.hovered)
         self.hovered = rank
+        self.rows[rank][0].setStyleSheet(f"background:{palette(self.light)['hover']};")
+        self._render_header(rank)
         self.preview.emit(rank, ply)
 
     def _end_hover(self, rank):
         if self._clearing or self.hovered != rank:
             return
         self.hovered = None
+        if rank in self.rows:
+            self.rows[rank][0].setStyleSheet("")
         self.preview_end.emit()
         if rank in self.pending:
             revision = self._revision
             QTimer.singleShot(0, lambda: self._flush(rank, revision))
 
     def _flush(self, rank, revision):
-        if revision != self._revision or self.hovered == rank or rank not in self.rows:
+        if revision != self._revision or self.hovered == rank or rank not in self.rows or self._popup_rank == rank:
             return
         pending = self.pending.pop(rank, None)
         if pending:
@@ -248,7 +237,7 @@ class CandidatePanel(QWidget):
         rank = info.get("multipv", 1)
         if rank in self.pinned:
             return
-        if type(rank) is not int or not 1 <= rank <= 32:
+        if type(rank) is not int or not 1 <= rank <= 5:
             return
         previous = self.lines.get(rank)
         moves = self.rows[rank][2] if rank in self.rows else None
@@ -264,7 +253,7 @@ class CandidatePanel(QWidget):
                 return
             self.pending.pop(rank, None)
             moves.cancel_preview()
-        if self.hovered == rank:
+        if self.hovered == rank or self._popup_rank == rank:
             self.pending[rank] = (info.copy(), turn, light, detailed)
             return
         if rank > self.slot_count:
@@ -277,6 +266,7 @@ class CandidatePanel(QWidget):
         self._render_header(rank)
         frame, header, moves = self.rows[rank]
         moves.candidate_turn = turn
+        moves.candidate_fullmove = self.fullmove
         moves.set_moves([(text, i + 1) for i, text in enumerate(info["san"])], light=light)
         if (previous and previous.get("pv")
                 and (not info.get("pv") or previous["pv"][0] != info["pv"][0])):
@@ -315,7 +305,7 @@ class CandidatePanel(QWidget):
         # Keep the first two things a player wants to scan close together:
         # evaluation, then depth. Avoid the old oversized gap before depth.
         depth = f"{info['depth']}/{info['seldepth']}" if self.show_seldepth else str(info["depth"])
-        first += f"&nbsp;<span style=\"color:{colors['metadata']};\">Depth {depth}</span>"
+
         header = self.rows[rank][1]
         if wdl:
             metadata = f"W/D/L {wdl[0] / 10:.1f}/{wdl[1] / 10:.1f}/{wdl[2] / 10:.1f}% White"
@@ -343,7 +333,9 @@ class CandidatePanel(QWidget):
                     source += " · Loading"
             else:
                 row = next((row for row in data["moves"] if info.get("pv") and row["uci"] == info["pv"][0]), None)
-                if query.source == "chessdb":
+                if data.get("indexing"):
+                    source += " · Indexing player games; statistics are provisional"
+                elif query.source == "chessdb":
                     cloud_score = " · DB White " + blue(chessdb_score(row["score"], query.fen) if row else "—")
                 elif row and 0 < row["total"] <= data["total"]:
                     win = f'{100 * row["white" if self.turn > 0 else "black"] / row["total"]:.1f}%'
@@ -357,85 +349,69 @@ class CandidatePanel(QWidget):
                     source += " · " + ("No scored move" if query.source == "chessdb" else "No games found")
         metadata += (f" &nbsp; API win ({side}) {blue(win)} &nbsp; Freq {blue(frequency)}"
                      f"{sample} &nbsp; {escape(source)}{cloud_score}")
-        header.setText(
-            f'<div>{first} &nbsp; <span style="color:{colors["metadata"]}; font-size:13px;">'
-            f'{metadata}</span></div>'
-        )
-        header.setAccessibleName(f"Candidate {rank} evaluation, depth and database metrics")
-        footer = self.footers[rank]
-        footer.setText("")
-        footer.setAccessibleName(f"Candidate {rank} WDL and database metrics")
+        header.setText(first)
+        header.setAccessibleName(f"Candidate {rank} evaluation")
+        probe = QTextDocument()
+        probe.setHtml(f"Depth {depth} · {metadata}")
+        detail = f"Candidate {rank} · " + probe.toPlainText()
+        header.setToolTip(detail)
+        self.rows[rank][0].setToolTip(detail)
+        if rank == (self.hovered or 1):
+            self.statistics_changed.emit(detail)
 
     def _header_height(self, header):
-        # Measure the combined evaluation, depth and metadata row at a fixed
-        # worst-case width so rows stay aligned as PVs and database data update.
-        probe = QTextDocument()
-        probe.setDefaultFont(header.font())
-        probe.setDocumentMargin(0)
-        probe.setHtml(
-            '<div>+123.45 ★ &nbsp; Depth 128/256 &nbsp; '
-            '<span style="font-size:13px;">W/D/L 100.0/100.0/100.0% White &nbsp; '
-            '9,999,999,999 nodes &nbsp; API win (Black) 100.0% &nbsp; Freq 100.0% '
-            '[999,999,999 / 999,999,999 games] &nbsp; Lichess players · Cached · '
-            'No games found</span></div>'
-        )
-        probe.setTextWidth(max(160, self.width()))
-        return math.ceil(probe.size().height()) + 6
-
-    def _footer_height(self, footer):
-        probe = QTextDocument()
-        probe.setDefaultFont(footer.font())
-        probe.setDocumentMargin(0)
-        probe.setHtml("<div>W/D/L 100.0/100.0/100.0% White &nbsp; 9,999,999,999 nodes"
-                      " &nbsp; API win (White) 100.0% &nbsp; Freq 100.0%"
-                      " [999,999,999 / 999,999,999 games]"
-                      " &nbsp; Lichess players · Cached · no move sample</div>")
-        probe.setTextWidth(max(160, self.width()))
-        return math.ceil(probe.size().height()) + 4
+        return 24
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._header_row_height = self._header_height(next(iter(self.rows.values()))[1]) if self.rows else None
-        for rank, (_, header, _) in self.rows.items():
-            header.setFixedHeight(self._header_row_height)
-            self.footers[rank].setFixedHeight(self._footer_height(self.footers[rank]))
-            QTimer.singleShot(0, lambda r=rank: self._refresh_expander(r))
 
     def _apply_expansion(self, rank):
-        if rank not in self.rows:
-            return
-        moves = self.rows[rank][2]
-        expanded = self.expanded or rank in self.expanded_ranks
-        moves.reserve_lines(0 if expanded else self.default_pv_lines)
-        button = self.expand_buttons.get(rank)
-        if button:
-            button.setArrowType(Qt.ArrowType.UpArrow if rank in self.expanded_ranks
-                                else Qt.ArrowType.DownArrow)
-            button.setAccessibleName(
-                f"Collapse candidate {rank} principal variation" if rank in self.expanded_ranks
-                else f"Expand candidate {rank} full principal variation"
-            )
-            button.setVisible(not self.expanded)
-        self._refresh_expander(rank)
+        if rank in self.rows:
+            self.rows[rank][2].reserve_lines(1)
 
     def _refresh_expander(self, rank):
-        button = self.expand_buttons.get(rank)
-        if button is None or rank not in self.lines:
-            return
-        moves = self.rows[rank][2]
-        expanded = rank in self.expanded_ranks
-        button.setVisible(not self.expanded and
-                          (expanded or moves.wrapped_line_count() > self.default_pv_lines))
+        if rank in self.expand_buttons:
+            self.expand_buttons[rank].setVisible(rank in self.lines)
 
     def toggle_expansion(self, rank):
-        if self.expanded or rank not in self.lines:
+        if rank not in self.lines:
             return
-        if rank in self.expanded_ranks:
-            self.expanded_ranks.remove(rank)
-        else:
-            self.expanded_ranks.add(rank)
-        self._apply_expansion(rank)
-        self.changed.emit()
+        if self._popup:
+            self._popup.close()
+        popup = QFrame(self, Qt.WindowType.Popup)
+        popup.setObjectName("panel")
+        popup.installEventFilter(self)
+        layout = QVBoxLayout(popup)
+        layout.addWidget(QLabel(f"Candidate {rank} · {score_label(self.lines[rank], self.turn)} · full variation"))
+        moves = MoveText()
+        moves.candidate_rank = rank
+        moves.candidate_turn = self.turn
+        moves.candidate_fullmove = self.fullmove
+        moves.wheel_navigation = self.wheel_navigation
+        moves.set_moves([(text, i+1) for i, text in enumerate(self.lines[rank]["san"])], light=self.light)
+        self._wire_moves(moves, rank)
+        layout.addWidget(moves, 1)
+        self._popup, self._popup_rank = popup, rank
+        available = self.screen().availableGeometry()
+        popup.resize(min(720, available.width()-24), min(280, available.height()-24))
+        point = self.rows[rank][0].mapToGlobal(QPoint(0, 28))
+        point.setX(max(available.left(), min(point.x(), available.right()-popup.width())))
+        point.setY(max(available.top(), min(point.y(), available.bottom()-popup.height())))
+        popup.move(point)
+        popup.show()
+
+    def eventFilter(self, watched, event):
+        if watched is self._popup and event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Escape:
+            self.manual_navigation.emit()
+        if watched is self._popup and event.type() == QEvent.Type.Hide:
+            rank, self._popup_rank = self._popup_rank, None
+            self._popup = None
+            if rank is not None:
+                self._end_hover(rank)
+                revision = self._revision
+                QTimer.singleShot(0, lambda: self._flush(rank, revision))
+            watched.deleteLater()
+        return super().eventFilter(watched, event)
 
     def _action(self, rank, action):
         if action == "pin":

@@ -96,6 +96,27 @@ class HttpFixture(QTcpServer):
 
 
 class DataTests(unittest.TestCase):
+    def test_multi_select_dates_and_player_are_validated_and_separate_cache_keys(self):
+        fen = Game().board.fen()
+        query = ExplorerQuery(fen, "lichess", speeds=("rapid", "blitz"), ratings=(1800, 2200),
+                              since="2020-04", until="2024-12")
+        params = parse_qs(urlsplit(query.url()).query)
+        self.assertEqual(params["speeds"], ["blitz,rapid"])
+        self.assertEqual(params["ratings"], ["1800,2200"])
+        self.assertEqual(params["since"], ["2020-04"])
+        self.assertNotEqual(query.key, ExplorerQuery(fen, "lichess").key)
+        masters = ExplorerQuery(fen, "masters", since="2000-04", until="2024-12")
+        self.assertEqual(parse_qs(urlsplit(masters.url()).query)["since"], ["2000"])
+        player = ExplorerQuery(fen, "player", player="Test_User", color="black", speeds=("blitz",))
+        params = parse_qs(urlsplit(player.url()).query)
+        self.assertEqual(params["player"], ["Test_User"])
+        self.assertEqual(params["color"], ["black"])
+        self.assertNotIn("ratings", params)
+        for kwargs in ({"source": "player"}, {"source": "player", "player": "bad\nname"},
+                       {"since": "2024-13"}, {"since": "2025", "until": "2024"},
+                       {"ratings": (True,)}, {"speeds": ("invalid",)}):
+            with self.assertRaises(ValueError):
+                ExplorerQuery(fen, **kwargs)
     def test_early_timer_rearms_before_network_dispatch(self):
         app = QApplication.instance() or QApplication([])
         with tempfile.TemporaryDirectory() as directory:
@@ -246,6 +267,25 @@ class NetworkTests(unittest.TestCase):
         self.assertTrue(self.results[-1][2].startswith("Cached"))
         QTest.qWait(30)
         self.assertEqual(len(self.server.requests), 1)
+
+    def test_player_ndjson_final_result_replaces_partial_without_caching_indexing(self):
+        query = ExplorerQuery(self.query.fen, "player", player="example", color="white")
+        partial = {"white": 0, "draws": 0, "black": 0, "moves": [], "queuePosition": 1}
+        final = statistics(query.fen)
+        self.server.body = (json.dumps(partial) + "\n\n" + json.dumps(final) + "\n").encode()
+        self.client.load(query)
+        self.wait_for(lambda: any(origin.startswith("Live") for _, _, origin in self.results))
+        self.assertEqual(self.results[-1][1]["total"], 100)
+        self.assertNotIn("indexing", self.results[-1][1])
+        self.assertNotIn("indexing", self.cache.get(query.key)[1])
+        self.assertTrue(any("Indexing" in s for s in self.status))
+
+    def test_player_queue_ending_early_is_not_cached_as_zero_games(self):
+        query = ExplorerQuery(self.query.fen, "player", player="example")
+        self.server.body = json.dumps({"white": 0, "draws": 0, "black": 0, "moves": [], "queuePosition": 4}).encode()
+        self.client.load(query)
+        self.wait_for(lambda: any("indexing is incomplete" in s for s in self.status))
+        self.assertIsNone(self.cache.get(query.key))
 
     def test_chessdb_json_adapter_and_semantic_rate_limit(self):
         query = ExplorerQuery(self.query.fen, "chessdb")
@@ -415,8 +455,8 @@ class CachedGuiTests(unittest.TestCase):
         window.explorer_actions[("explorer_rating", 1800)].trigger()
         self.app.processEvents()
         self.assertTrue(window.explorer.rows)
-        self.assertIn("rapid", window.explorer.title.text())
-        self.assertIn("1800+", window.explorer.title.text())
+        self.assertIn("rapid", window.explorer.filter_label.text())
+        self.assertIn("1800+", window.explorer.filter_label.text())
         self.assertIsNone(window.explorer.client.reply)
         self.assertFalse(window.explorer.client.timer.isActive())
         window.tabs.setCurrentIndex(2)

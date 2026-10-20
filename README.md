@@ -1,6 +1,6 @@
 # Nocturne Analysis
 
-A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
+A native, offline Windows chess analysis GUI inspired by Lichess and Nibbler. You supply
 Stockfish or another UCI executable. **The desktop app has no built-in engine.**
 
 **Display → Arrange panels** unlocks a customizable workspace. Drag the Board,
@@ -16,11 +16,14 @@ available. Database and graph visibility still follow their existing settings.
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
-![Real Qt application with vector pieces and hidden explorer; labelled fixture data](docs/vector-studio-dark.png)
+![Nocturne's compact analysis rows and synchronized side move tree with Stockfish 19](docs/compact-analysis.png)
 
-*This screenshot uses the protocol test simulator, not Stockfish or measured chess
-analysis. The simulator is not bundled in the application. Database counts in this capture
-are explicitly labelled fixtures, not live results.*
+*This capture shows real Stockfish 19 output in the Qt application. The engine was
+supplied separately and is not bundled. Evaluations shown are a live search snapshot.*
+
+The [compact workspace guide](docs/LICHESS_ANALYSIS.md) covers the engine gear,
+single-line candidate inspectors, synchronized side/bottom PGN views, automation
+interruption, and database filters. Maia and the other insights remain future work.
 
 **[0.5.7.46](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39328994908/artifacts/12223857949): Copy PGN and clearer candidate copy actions.** Right-click the bottom Game Moves area to copy the current PGN. Candidate menus say **Copy SAN (this line)** and **Copy UCI (this line)**, and can copy the selected candidate as PGN. Extract the ZIP and open `Nocturne/Nocturne.exe`. See the [build receipt](docs/BUILDING.md).
 

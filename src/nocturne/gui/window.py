@@ -33,11 +33,13 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSpinBox,
+    QStackedWidget,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QTabBar,
     QTabWidget,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -58,6 +60,8 @@ from .board import BoardWidget
 from .dialogs import NewGameDialog, SettingsDialog, TextDialog
 from .engine import EngineController
 from .engine_manager import EngineManager
+from .analysis_settings import EngineSettings
+from .database_settings import DatabaseSettings
 from .engine_resources import EngineResources, validate_resource
 from .candidates import CandidatePanel
 from .review_panel import ReviewPanel
@@ -65,8 +69,9 @@ from ..review import classify, chance
 from .explorer_panel import OpeningExplorer
 from .opening_coverage import OpeningCoverage
 from .snapshot_dialog import SnapshotDialog
-from ..explorer import RATINGS, SPEEDS
+from ..explorer import RATINGS, SPEEDS, query_filters
 from .moves import MoveText
+from .move_tree import MoveTree
 from .hover_preview import HoverPreview, MiniBoard
 from .wheel import WheelSteps
 from .workspace import DockWorkspace
@@ -199,6 +204,7 @@ class MainWindow(QMainWindow):
         self.engine.status.connect(self.engine_state.setText)
         self.engine.connection.configured.connect(self.resource_controls.refresh)
         self._shortcuts()
+        QApplication.instance().installEventFilter(self)
         self._apply_settings()
         self.pause_button.setText("Continue" if self.paused else "Pause")
         self._refresh()
@@ -322,6 +328,7 @@ class MainWindow(QMainWindow):
         self.board_view = BoardWidget()
         self.board_view.move_requested.connect(self._human_move)
         self.board_view.wheel_navigated.connect(self._wheel_game)
+        self.board_view.manual_input.connect(self._interrupt_automation)
         board_row = QHBoxLayout()
         board_row.setContentsMargins(0, 0, 0, 0)
         board_row.setSpacing(0)
@@ -401,12 +408,29 @@ class MainWindow(QMainWindow):
         self.eval_label = label("—")
         self.eval_label.setStyleSheet("font-size: 20px; font-weight: 600;")
         headline = QHBoxLayout()
+        headline.addWidget(self.eval_label)
         headline.addWidget(self.engine_state, 1)
         headline.addWidget(button("Game Review", self._show_review, "quiet"))
-        headline.addWidget(self.eval_label)
+        self.details_toggle = QToolButton()
+        self.details_toggle.setText("ⓘ")
+        self.details_toggle.setCheckable(True)
+        self.details_toggle.setAccessibleName("Show engine and candidate details")
+        self.details_toggle.setToolTip("Show depth, WDL, API win rate, frequency and database source for the hovered candidate")
+        self.details_toggle.toggled.connect(lambda enabled: self._set_display("details", enabled))
+        headline.addWidget(self.details_toggle)
+        self.engine_gear = QToolButton()
+        self.engine_gear.setText("⚙")
+        self.engine_gear.setAccessibleName("Engine settings")
+        self.engine_gear.setToolTip("Engine settings: limits, MultiPV, threads and memory")
+        self.engine_gear.clicked.connect(self._engine_settings)
+        headline.addWidget(self.engine_gear)
         engine_page_layout.addLayout(headline)
         self.telemetry = label("Offline analysis · engine supplied by you", "muted", True)
         engine_page_layout.addWidget(self.telemetry)
+        self.candidate_metadata = label("", "muted", True)
+        self.candidate_metadata.setTextFormat(Qt.TextFormat.PlainText)
+        self.candidate_metadata.setAccessibleName("Selected candidate WDL and database details")
+        engine_page_layout.addWidget(self.candidate_metadata)
         self.tablebase_label = label("Syzygy: not configured", "muted", True)
         engine_page_layout.addWidget(self.tablebase_label)
         self.analysis_scope = ""
@@ -424,13 +448,16 @@ class MainWindow(QMainWindow):
         self.pv_label.preview_ended.connect(lambda: self._end_preview("pv"))
         self.candidates = CandidatePanel(self.pv_label)
         self.candidates.preview.connect(self._preview_candidate)
+        self.candidates.manual_navigation.connect(self._interrupt_automation)
         self.candidates.preview_end.connect(lambda: self._end_preview("candidate"))
         self.candidates.navigate.connect(self._insert_candidate)
         self.candidates.action.connect(self._candidate_action)
-        self.candidates.changed.connect(self._sync_candidate_markers)
+        self.candidates.changed.connect(self._candidate_rows_changed)
+        self.candidates.statistics_changed.connect(self.candidate_metadata.setText)
         self.engine_layout.addWidget(self.candidates)
         self.engine_layout.addStretch()
         self.engine_scroll.setWidget(engine_detail)
+        self.engine_scroll.setMaximumHeight(150)
         self.analysis_detail_splitter = QSplitter(Qt.Orientation.Vertical)
         self.analysis_detail_splitter.setChildrenCollapsible(False)
         self.analysis_detail_splitter.addWidget(self.engine_scroll)
@@ -440,7 +467,32 @@ class MainWindow(QMainWindow):
         self.explorer.move_hovered.connect(self._preview_explorer)
         self.explorer.preview_ended.connect(lambda: self._end_preview("explorer"))
         self.explorer.close_requested.connect(lambda: self._set_explorer_option("explorer_enabled", False))
-        self.analysis_detail_splitter.addWidget(self.explorer)
+        self.explorer.configure_requested.connect(self._database_settings)
+        self.side_section = QWidget()
+        section_layout = QVBoxLayout(self.side_section)
+        section_layout.setContentsMargins(0, 0, 0, 0)
+        section_layout.setSpacing(2)
+        self.section_tabs = QTabBar()
+        for title in ("Moves", "Openings", "Game info"):
+            self.section_tabs.addTab(title)
+        self.section_tabs.setExpanding(False)
+        section_layout.addWidget(self.section_tabs)
+        self.side_stack = QStackedWidget()
+        self.move_tree = MoveTree()
+        self.move_tree.move_clicked.connect(self._navigate_node)
+        self.move_tree.move_hovered.connect(self._preview_history)
+        self.move_tree.preview_ended.connect(lambda: self._end_preview("history"))
+        self.move_tree.wheel_navigated.connect(self._wheel_game)
+        self.game_info = label("", "muted", True)
+        self.game_info.setTextFormat(Qt.TextFormat.PlainText)
+        self.game_info.setAlignment(Qt.AlignmentFlag.AlignTop)
+        for widget in (self.move_tree, self.explorer, self.game_info):
+            self.side_stack.addWidget(widget)
+        section_layout.addWidget(self.side_stack, 1)
+        self.section_tabs.currentChanged.connect(self._analysis_section_changed)
+        self.analysis_detail_splitter.addWidget(self.side_section)
+        self.analysis_detail_splitter.setStretchFactor(0, 0)
+        self.analysis_detail_splitter.setStretchFactor(1, 1)
         self.explorer.hide()
         self._explorer_active = False
         self.opening_coverage = OpeningCoverage(self.data_directory / "opening-cache.sqlite3", self)
@@ -667,7 +719,8 @@ class MainWindow(QMainWindow):
 
         display = self.menuBar().addMenu("&Display")
         add(display, "Flip board", self._flip, "F")
-        add(display, "Clear arrows and marks", self.board_view.clear_annotations, "Escape")
+        add(display, "Clear arrows and marks", self._escape, "Escape").setToolTip(
+            "Clear board annotations and stop active automation")
         display.addSeparator()
         for key, text in (
             ("coordinates", "Coordinates"),
@@ -735,8 +788,9 @@ class MainWindow(QMainWindow):
         add(engine, "Auto-play engines from this position", self._start_auto_play, "F11").setAutoRepeat(False)
         add(engine, "Auto-evaluate entire line", self._auto_evaluate_line, "F12").setAutoRepeat(False)
         engine.addSeparator()
-        self.expand_pv_action = add(engine, "Expand all analysis lines", self._set_expand_pv)
-        self.expand_pv_action.setCheckable(True)
+        add(engine, "Engine settings…", self._engine_settings)
+        self.expand_pv_action = add(engine, "Inspect full principal variation…",
+                                    lambda: self.candidates.toggle_expansion(self.candidates.hovered or 1))
         self.cursor_preview_action = add(
             engine, "Preview moves on a small board near cursor", self._set_cursor_preview
         )
@@ -752,10 +806,11 @@ class MainWindow(QMainWindow):
         self.explorer_statistics_action.setCheckable(True)
         self.explorer_actions = {}
         for source, title in (("masters", "Lichess Masters database (Recommended)"), ("lichess", "Lichess players (Amateurs)"),
-                              ("chessdb", "ChessDB · cloud analysis")):
+                              ("player", "Lichess player database…"), ("chessdb", "ChessDB · cloud analysis")):
             action = add(database, title, lambda checked=False, s=source: self._choose_explorer(s))
             action.setCheckable(True)
             self.explorer_actions[("explorer_source", source)] = action
+        add(database, "Database settings and filters…", self._database_settings)
         speeds = database.addMenu("Lichess game speed")
         ratings = database.addMenu("Lichess rating groups")
         for value in ("all", *SPEEDS):
@@ -866,12 +921,28 @@ class MainWindow(QMainWindow):
         self._save()
 
     def _choose_explorer(self, source):
+        if source == "player":
+            self._database_settings(source="player")
+            return
         self.config["explorer_source"] = source
         self.config["explorer_statistics"] = True
         self._workspace(True)
         self.tabs.setCurrentIndex(1)
         self._sync_explorer()
         self._save()
+
+    def _database_settings(self, checked=False, *, source=None):
+        dialog = DatabaseSettings(self.config, self, source=source)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.opening_coverage.cancel()
+            self.config.update(dialog.values())
+            self.config.update(explorer_enabled=True, explorer_statistics=True)
+            self._workspace(True)
+            self.tabs.setCurrentIndex(1)
+            self.section_tabs.setCurrentIndex(1)
+            self._sync_explorer()
+            self._save()
+        dialog.deleteLater()
 
     def _lichess_token_dialog(self):
         token, accepted = QInputDialog.getText(
@@ -907,10 +978,17 @@ class MainWindow(QMainWindow):
 
     def _set_explorer_option(self, key, value):
         self.config[key] = value
+        if key == "explorer_speed":
+            self.config["explorer_speeds"] = []
+        elif key == "explorer_rating":
+            self.config["explorer_ratings"] = []
         if key == "explorer_enabled" and value:
             self.config["explorer_statistics"] = True
             self._workspace(True)
             self.tabs.setCurrentIndex(1)
+            self.section_tabs.setCurrentIndex(1)
+        elif key == "explorer_enabled" and not value and self.section_tabs.currentIndex() == 1:
+            self.section_tabs.setCurrentIndex(0)
         self._sync_explorer()
         self._save()
 
@@ -931,13 +1009,14 @@ class MainWindow(QMainWindow):
                 menu.setEnabled(self.config.get("explorer_source") == "lichess")
         if self._explorer_active and not active:
             self.explorer._end_preview()
-        self.explorer.setVisible(active)
+        self.explorer.setVisible(active and (self._dock_workspace is not None
+                                            or self.side_stack.currentWidget() is self.explorer))
         self.explorer.set_position(self.game.board, self._position_identity(), lookup,
                                    self.config.get("explorer_source", "masters"),
                                    self.config.get("explorer_speed", "all"),
-                                   self.config.get("explorer_rating", 0))
+                                   self.config.get("explorer_rating", 0), **query_filters(self.config))
         if active and not self._explorer_active and self._dock_workspace is None:
-            self.analysis_detail_splitter.setSizes([500, 220])
+            self.analysis_detail_splitter.setSizes([150, 500])
         self._explorer_active = active
         self._sync_docked_visibility()
         self._sync_candidate_database()
@@ -949,7 +1028,7 @@ class MainWindow(QMainWindow):
         if self._book_highlight_enabled():
             signature = coverage.signature(self.game, self.config.get("explorer_source", "chessdb"),
                                            self.config.get("explorer_speed", "all"),
-                                           self.config.get("explorer_rating", 0))
+                                           self.config.get("explorer_rating", 0), **query_filters(self.config))
             if coverage.context != signature:
                 self._scan_opening_coverage(force=False)
         elif coverage.running:
@@ -966,6 +1045,7 @@ class MainWindow(QMainWindow):
             self.config.get("explorer_speed", "all"), self.config.get("explorer_rating", 0),
             self.explorer.client._lichess_token,
             force=force,
+            **query_filters(self.config),
         )
 
     def _update_opening_coverage(self):
@@ -973,7 +1053,8 @@ class MainWindow(QMainWindow):
             return
         coverage = self.opening_coverage
         signature = coverage.signature(self.game, self.config.get("explorer_source", "masters"),
-                                       self.config.get("explorer_speed", "all"), self.config.get("explorer_rating", 0))
+                                       self.config.get("explorer_speed", "all"), self.config.get("explorer_rating", 0),
+                                       **query_filters(self.config))
         if coverage.context is not None and coverage.context != signature:
             coverage.cancel()
         text = escape(coverage.message)
@@ -1022,6 +1103,17 @@ class MainWindow(QMainWindow):
         self._show_move_preview("explorer", position, move, "Opening database preview")
 
     def eventFilter(self, watched, event):
+        if self._closing:
+            return super().eventFilter(watched, event)
+        if (isinstance(watched, QWidget) and event.type() in (QEvent.Type.KeyPress, QEvent.Type.ShortcutOverride)
+                and event.key() == Qt.Key.Key_Escape):
+            # Modal settings and popups consume Escape themselves. Stop the
+            # job too, then let the focused control close normally.
+            owner = watched
+            while owner is not None and owner is not self:
+                owner = owner.parent()
+            if owner is self:
+                self._interrupt_automation()
         if hasattr(self, "history") and watched is self.history.viewport():
             if event.type() == QEvent.Type.Leave:
                 self._history_wheel.reset()
@@ -1037,6 +1129,7 @@ class MainWindow(QMainWindow):
             watched in (getattr(self, "pgn_editor", None), getattr(self, "raw_pgn_text", None))
             and event.type() == QEvent.Type.ShortcutOverride
             and event.modifiers() in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.ShiftModifier)
+            and event.key() not in (Qt.Key.Key_F11, Qt.Key.Key_F12, Qt.Key.Key_Escape)
         ):
             event.accept()
             return True
@@ -1268,6 +1361,8 @@ class MainWindow(QMainWindow):
             "graph": ("Evaluation graph", self.graph),
         }, self, analysis_left=self.config.get("layout") == "analysis-left")
         self._dock_workspace = workspace
+        self.section_tabs.setTabVisible(1, False)
+        self.section_tabs.setCurrentIndex(0)
         workspace.finished.connect(lambda: self._arrange_panels(False))
         workspace.reset_requested.connect(self._reset_workspace_layout)
         workspace.panel_closed.connect(self._docked_panel_closed)
@@ -1315,7 +1410,8 @@ class MainWindow(QMainWindow):
             self.main_splitter.insertWidget(0, self.arena)
             self.main_splitter.insertWidget(1, self.panel)
             self.workspace_splitter.addWidget(self.analysis_moves_panel)
-            self.analysis_detail_splitter.addWidget(self.explorer)
+            self.side_stack.insertWidget(1, self.explorer)
+            self.section_tabs.setTabVisible(1, True)
             self.engine_page_layout.addWidget(self.graph)
             self.graph.setMaximumHeight(85)
             self.arena.show()
@@ -1333,12 +1429,19 @@ class MainWindow(QMainWindow):
         if self._candidate_identity != self._position_identity() or rank not in self.candidates.lines:
             return
         board = self.game.board.copy()
+        last_move = None
         try:
             for text in self.candidates.lines[rank]["pv"][:ply]:
-                board.push(board.parse_uci(text))
+                last_move = board.parse_uci(text)
+                board.push(last_move)
         except ValueError:
             return
-        self._show_move_preview("candidate", board, caption=f"Candidate preview · ply {ply}")
+        self._show_move_preview("candidate", board, last_move, caption=f"Candidate {rank} · ply {ply}")
+
+    def _candidate_rows_changed(self):
+        if hasattr(self, "engine_scroll"):
+            self.engine_scroll.setFixedHeight(max(32, 29 * self.candidates.slot_count + 6))
+        self._sync_candidate_markers()
 
     def _sync_candidate_markers(self):
         if self._candidate_identity != self._position_identity():
@@ -1434,6 +1537,8 @@ class MainWindow(QMainWindow):
             ]
         if node_id in game._line_nodes:
             game.evaluations[game._line_nodes.index(node_id)] = value
+        if hasattr(self, "move_tree") and game.id == self.game.id:
+            self.move_tree.queue_game(game, self._appearance_config().get("light", False))
 
     def _set_bookmark(self, name, note=""):
         key = str(self.game.current_node)
@@ -1664,6 +1769,7 @@ class MainWindow(QMainWindow):
 
     def _auto_evaluate_line(self):
         if self._review and self._review.get("kind") == "auto_eval":
+            self.tabs.setCurrentIndex(1)
             self._pause_review()
             return
         if not self._profile():
@@ -1676,12 +1782,13 @@ class MainWindow(QMainWindow):
         self.paused = False
         self._analysis_enabled = False
         self.game.pause_clock()
-        self._clear_saved_analysis(self.game._line_nodes)
+        start_index = self.game.cursor
+        self._clear_saved_analysis(self.game._line_nodes[start_index:])
         self._review = {
             "kind": "auto_eval",
             "game_id": self.game.id,
             "line": self.game._line_nodes.copy(),
-            "index": 0,
+            "index": start_index,
             "stage": "best",
             "seconds": 600,
             "paused": False,
@@ -1695,6 +1802,7 @@ class MainWindow(QMainWindow):
         }
         self.analysis_nav.setChecked(True)
         self.play_nav.setChecked(False)
+        self.tabs.setCurrentIndex(1)
         self._refresh()
         self.quick_analysis_button.setText("Stop auto-evaluation")
         self._render_move_history()
@@ -1729,6 +1837,7 @@ class MainWindow(QMainWindow):
         self.game.pause_clock()
         self.analysis_nav.setChecked(True)
         self.play_nav.setChecked(False)
+        self.tabs.setCurrentIndex(1)
         self._refresh()
         self.quick_analysis_button.setText("Pause auto-play")
         self._save()
@@ -1822,6 +1931,14 @@ class MainWindow(QMainWindow):
             state["stage"] = "best"
             QTimer.singleShot(0, self._review_next)
             return
+        if state.get("kind") == "auto_eval":
+            self.game.select_node(node_id)
+            self._refresh()
+            self.analysis_scope = f"{state['multipv']} PV · auto-evaluation {state['index'] + 1}/{len(state['line'])}"
+            self.candidates.set_multipv(state["multipv"])
+            self.candidates.reserve_slots(min(state["multipv"], sum(1 for _ in position.legal_moves())))
+            self.engine_state.setText(self._active_engine_name() + " · auto-evaluating")
+            state["identity"] = self._position_identity()
         from types import SimpleNamespace
 
         path = self.game.node_path(node_id)
@@ -1849,12 +1966,14 @@ class MainWindow(QMainWindow):
             seconds=state["seconds"],
             nodes=state["confirmation_nodes"] if confirming else state["nodes"],
         )
+        options = dict(state.get("job_options", profile.get("values", {})))
+        options.setdefault("UCI_ShowWDL", True)
         try:
             generation = self.engine.start(
                 temporary,
                 limits,
                 profile["path"],
-                options=state.get("job_options", profile.get("values", {})),
+                options=options,
                 multipv=state.get("multipv", 1),
                 infinite=state.get("kind") == "auto_eval" and state["nodes"] is None,
                 nodes_only=state.get("kind") == "auto_eval" or confirming,
@@ -1873,7 +1992,7 @@ class MainWindow(QMainWindow):
         state.pop("message", None)
         state["turn"] = position.turn
         state["profile"] = profile["id"]
-        state["options"] = dict(state.get("job_options", profile.get("values", {})))
+        state["options"] = dict(options)
         self.quick_analysis_button.setText(
             "Pause auto-evaluation" if state.get("kind") == "auto_eval" else "Pause review"
         )
@@ -1902,12 +2021,18 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(payload["message"])
             self._update_review_panel()
             return True
+        if kind == "tablebase":
+            if state.get("kind") == "auto_eval":
+                self.tablebase_label.setText(payload["message"])
+            return True
         if kind == "info":
             state["info"] = payload.copy()
             if state.get("kind") == "auto_eval":
+                if state.get("identity") != self._position_identity():
+                    self._cancel_review()
+                    return True
                 state.setdefault("lines", {})[payload["multipv"]] = payload.copy()
-                if 1 in state["lines"]:
-                    self._store_analysis(self.game, state["line"][state["index"]], state["lines"][1], state["turn"], state)
+                self._show_info(payload, state)
             return True
         if kind != "result":
             return True
@@ -1940,6 +2065,7 @@ class MainWindow(QMainWindow):
                 dict(lines[rank]) for rank in sorted(lines)
             ]
             state["index"] += 1
+            self.engine_state.setText(self._active_engine_name() + " · position saved")
             self._update_graph()
             self._save()
             self._render_move_history()
@@ -2037,6 +2163,42 @@ class MainWindow(QMainWindow):
     def _choose_engine(self):
         self._manage_engines()
 
+    def _engine_settings(self):
+        dialog = EngineSettings(self.config, self.profiles, self,
+                                allocated_hash=self.resource_controls.allocated_hash())
+        dialog.manage_requested.connect(lambda: QTimer.singleShot(0, self._manage_engines))
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            values = dialog.values()
+            profile = next((p for p in self.profiles if p["id"] == values["engine_id"]), None)
+            resources = dialog.resource_values()
+            try:
+                for name, value in resources.items():
+                    validate_resource(profile, name, value, self.resource_controls.allocated_hash())
+            except ValueError as exc:
+                self._error("Engine settings", str(exc))
+            else:
+                was_running = self._analysis_enabled and not self.paused
+                self._stop_engine()
+                self.config.update(values)
+                if profile:
+                    profile["values"].update(resources)
+                self._analysis_context = None
+                self._clear_analysis_output()
+                self._apply_settings()
+                self._save()
+                if was_running:
+                    self._schedule_engine()
+        dialog.deleteLater()
+
+    def _analysis_section_changed(self, index):
+        widget = (self.move_tree, self.explorer, self.game_info)[index]
+        if index == 1:
+            self.config.update(explorer_enabled=True, explorer_statistics=True)
+        if self.side_stack.indexOf(widget) >= 0:
+            self.side_stack.setCurrentWidget(widget)
+        self._sync_explorer()
+        self._save()
+
     def _profile(self):
         return next((p for p in self.profiles if p["id"] == self.config.get("engine_id", "")), None)
 
@@ -2091,13 +2253,13 @@ class MainWindow(QMainWindow):
     def _effective_multipv(self):
         profile = self._profile()
         option = profile.get("options", {}).get("MultiPV") if profile else None
-        maximum = min(32, int(option["maximum"])) if option else (1 if profile and profile.get("options_detected") else 32)
+        maximum = min(5, int(option["maximum"])) if option else (1 if profile and profile.get("options_detected") else 5)
         return max(1, min(maximum, self.config.get("multipv", 1)))
 
     def _set_multipv(self, count):
         profile = self._profile()
         option = profile.get("options", {}).get("MultiPV") if profile else None
-        maximum = min(32, int(option["maximum"])) if option else 1
+        maximum = min(5, int(option["maximum"])) if option else 1
         if not 1 <= count <= maximum:
             self._error("MultiPV unavailable", f"Choose 1–{maximum} lines for this engine")
             return
@@ -2116,7 +2278,7 @@ class MainWindow(QMainWindow):
         option = profile.get("options", {}).get("MultiPV") if profile else None
         if not option:
             return
-        maximum = min(32, int(option["maximum"]))
+        maximum = min(5, int(option["maximum"]))
         count, accepted = QInputDialog.getInt(self, "MultiPV", "Number of analysis lines:", self._effective_multipv(), 1, maximum)
         if accepted and self._profile() is profile:
             self._set_multipv(count)
@@ -2220,6 +2382,7 @@ class MainWindow(QMainWindow):
             self.profile_menu.addAction("Choose an engine first").setEnabled(False)
         self.search_mode_menu.clear()
         for title, mode in (("Continuous", "infinite"), ("Node limit", "nodes"),
+                            ("Time limit", "time"), ("Depth limit", "depth"),
                             ("Time / depth limits", "bounded")):
             action = self.search_mode_menu.addAction(title)
             action.setCheckable(True)
@@ -2250,8 +2413,8 @@ class MainWindow(QMainWindow):
         if not option:
             self.multipv_menu.addAction("Not advertised by this engine" if profile and profile.get("options_detected") else "Choose / detect an engine first").setEnabled(False)
             return
-        maximum = min(32, int(option["maximum"]))
-        for count in sorted({n for n in (1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 24, 32, current) if n <= maximum}):
+        maximum = min(5, int(option["maximum"]))
+        for count in sorted({n for n in (1, 2, 3, 4, 5, current) if n <= maximum}):
             action = self.multipv_menu.addAction(str(count))
             action.setData(count)
             action.setCheckable(True)
@@ -2272,7 +2435,8 @@ class MainWindow(QMainWindow):
             profile["options"] = {n: asdict(o) for n, o in data["options"].items()}
             profile["options_detected"] = True
             count = self._effective_multipv()
-            restart = self._job and self._job.get("multipv", 1) != count and not self.config.get("searchmoves")
+            restart = (self._job and self._job["kind"] == "analysis"
+                       and self._job.get("multipv", 1) != count and not self.config.get("searchmoves"))
             self.config["multipv"] = count
             if restart:
                 self._stop_engine()
@@ -2333,14 +2497,16 @@ class MainWindow(QMainWindow):
         light = appearance.get("light", False)
         app = QApplication.instance()
         app.setProperty("nocturneLightAppearance", bool(light))
-        app.setStyleSheet(stylesheet(light))
+        style = stylesheet(light)
+        if app.styleSheet() != style:
+            app.setStyleSheet(style)
         self.board_view.theme = appearance.get("theme", "Classic")
         self.board_view.set_piece_set(appearance.get("piece_set", "Nibbler"))
         self.board_view.coordinates = appearance.get("coordinates", True)
         self.board_view.animations = appearance.get("animations", True)
         self.board_view.overlays = appearance.get("overlays", True)
         self.history.setStyleSheet(f"QTableWidget {{ color: {palette(light)['history']}; }}")
-        self.eval_label.setStyleSheet(f"color: {palette(light)['metric']};")
+        self.eval_label.setStyleSheet(f"color: {palette(light)['metric']};font-size:20px;font-weight:600;")
         self.telemetry.setStyleSheet(f"color: {palette(light)['metadata']};")
         self.telemetry.setTextFormat(Qt.TextFormat.RichText)
         self.graph.light = self.board_view.light = light
@@ -2348,6 +2514,7 @@ class MainWindow(QMainWindow):
         self._sync_docked_visibility()
         self.graph.update()
         self.eval_bar.setVisible(self.board_view.overlays)
+        self.eval_bar.animations = appearance.get("animations", True)
         self._render_move_history()
         self.candidates.recolor(light)
         for view in {self.pv_label, *(widgets[2] for widgets in self.candidates.rows.values())}:
@@ -2357,6 +2524,10 @@ class MainWindow(QMainWindow):
     def _apply_settings(self):
         self._apply_appearance(self._appearance_config())
         self.candidates.set_show_seldepth(self.config.get("show_seldepth", False))
+        self.candidate_metadata.setVisible(bool(self.config.get("details")))
+        self.details_toggle.blockSignals(True)
+        self.details_toggle.setChecked(bool(self.config.get("details")))
+        self.details_toggle.blockSignals(False)
         if self._last_info:
             self._render_telemetry(self._last_info, self._last_info_turn)
         self.tablebase_label.setVisible(bool(self.config.get("syzygy_path")))
@@ -2377,6 +2548,7 @@ class MainWindow(QMainWindow):
 
         self.board_view.wheel_navigation = self.config.get("wheel_game_moves", True)
         self.analysis_history.wheel_navigation = self.config.get("wheel_game_moves", True)
+        self.move_tree.wheel_navigation = self.config.get("wheel_game_moves", True)
         self.candidates.set_wheel_navigation(self.config.get("wheel_analysis_moves", True))
         self._sync_explorer()
         self._sync_raw_pgn()
@@ -2431,7 +2603,7 @@ class MainWindow(QMainWindow):
         self.main_splitter.setStretchFactor(1, 1 if analysis else 0)
         if analysis:
             self.tabs.setCurrentIndex(1)
-            self.main_splitter.setSizes([1020, 780] if left else [780, 1020])
+            self.main_splitter.setSizes([840, 960] if left else [960, 840])
             self.workspace_splitter.setSizes([800, 90])
         else:
             self.main_splitter.setSizes([720, 350])
@@ -2453,10 +2625,14 @@ class MainWindow(QMainWindow):
         departure = self.opening_coverage.departure if self._book_highlight_enabled() else None
         markers = (self.opening_coverage.markers(
             self.game, allow_lichess=self.explorer.client.has_lichess_token,
-            speed=self.config.get("explorer_speed", "all"), rating=self.config.get("explorer_rating", 0))
+            speed=self.config.get("explorer_speed", "all"), rating=self.config.get("explorer_rating", 0),
+            **query_filters(self.config))
             if self.config.get("explorer_statistics") else {})
         self.analysis_history.set_moves(tokens, self.game.current_node, self._appearance_config().get("light", False),
                                         book_departure=departure if departure else None, book_departures=markers)
+        self.move_tree.set_game(self.game, self._appearance_config().get("light", False))
+        self.game_info.setText("\n".join(f"{key}: {value}" for key, value in self.game.headers.items())
+                               + f"\n\n{len(self.game.nodes)-1} moves including variations")
         self._refresh_raw_pgn()
 
     def _end_preview(self, source):
@@ -2805,6 +2981,7 @@ class MainWindow(QMainWindow):
             self._schedule_engine()
 
     def _redo(self):
+        self._interrupt_automation()
         if self.game.cursor >= len(self.game.moves):
             return
         analyze = self._navigation_should_analyze()
@@ -2821,6 +2998,7 @@ class MainWindow(QMainWindow):
             self._schedule_engine()
 
     def _wheel_game(self, steps):
+        self._interrupt_automation()
         cursor = max(0, min(len(self.game.moves), self.game.cursor + steps))
         if cursor != self.game.cursor:
             self._navigate(cursor)
@@ -3342,9 +3520,8 @@ class MainWindow(QMainWindow):
     def _stop_engine(self):
         self._auto_play_active = False
         self._auto_play_paused = False
-        if self._review and not self._review.get("paused") and self._job is None:
-            self.board_view.set_recommendations([])
-            return
+        if self._review and not self._review.get("paused"):
+            self._cancel_review()
         old_job = self._job
         if hasattr(self, "engine"):
             self.engine.stop()
@@ -3357,6 +3534,20 @@ class MainWindow(QMainWindow):
         if old_job and old_job["kind"] != "benchmark":
             self.engine_state.setText("Search canceled")
             self.statusBar().showMessage("Search canceled", 3000)
+
+    def _interrupt_automation(self):
+        """Only deliberate board/history/PV input calls this, never menu scrolling."""
+        if not self._auto_play_active and not self._review:
+            return
+        self._analysis_enabled = False
+        self._stop_engine()
+        self.board_view.interactive = bool(self.analysis_mode and not self.game.outcome)
+        self.statusBar().showMessage("Automation stopped · manual control")
+
+    def _escape(self):
+        self._interrupt_automation()
+        self._clear_move_preview()
+        self.board_view.clear_annotations()
 
     def _schedule_engine(self):
         if (
@@ -3419,7 +3610,8 @@ class MainWindow(QMainWindow):
             self._clear_analysis_output()
             self._analysis_context = context
         self.candidates.set_multipv(count)
-        self.candidates.reserve_slots(count)
+        self.candidates.reserve_slots(min(count, sum(1 for _ in self.game.board.legal_moves())))
+        self.engine_scroll.setMaximumHeight(29 * self.candidates.slot_count + 4)
         try:
             generation = self.engine.start(
                 self.game,
@@ -3433,6 +3625,7 @@ class MainWindow(QMainWindow):
                 searchmoves=self.config.get("searchmoves", []),
                 tablebase_path=self.config.get("syzygy_path", ""),
                 nodes_only=self._auto_play_active or (kind == "analysis" and self.config.get("analysis_kind") == "nodes"),
+                limit_kind=self.config.get("analysis_kind") if kind == "analysis" else None,
             )
         except (OSError, RuntimeError, ValueError) as exc:
             self._error("Cannot start engine", str(exc))
@@ -3444,7 +3637,7 @@ class MainWindow(QMainWindow):
             "turn": self.game.board.turn,
             "external": True,
             "profile": profile["id"],
-            "options": dict(profile.get("values", {})),
+            "options": dict(options),
             "multipv": count,
         }
         self.engine_state.setText(self._active_engine_name() + " · connecting / analyzing")
@@ -3540,8 +3733,7 @@ class MainWindow(QMainWindow):
         if "score_type" in info and info.get("multipv", 1) > job.get("multipv", self._effective_multipv()):
             return
         self.candidates.set_multipv(job.get("multipv", self._effective_multipv()))
-        if info.get("multipv", 1) in self.candidates.pinned:
-            return
+        self.candidates.fullmove = self.game.board.fullmove
         if "score_type" in info:
             if store:
                 rank = info.get("multipv", 1)
@@ -3610,6 +3802,7 @@ class MainWindow(QMainWindow):
             metric("Depth", depth),
             metric("Nodes", f"{info['nodes']:,}"),
             metric("Nodes/second", f"{info.get('nps', 0):,}"),
+            metric("Time", f"{info.get('seconds', 0):.1f}s"),
         ]
         if not self.config.get("details", False):
             values.append(

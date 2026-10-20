@@ -26,7 +26,7 @@ def restore(game):
         return None
     return {
         "kind": "auto_eval", "game_id": game.id, "line": line.copy(), "index": index,
-        "seconds": 600, "depth": 128, "nodes": saved["nodes"], "multipv": saved["multipv"],
+        "seconds": 600, "depth": 128, "nodes": saved["nodes"], "multipv": min(5, saved["multipv"]),
         "job_profile": saved["job_profile"], "job_options": dict(saved["job_options"]),
         "paused": True, "stage": "best", "generation": None, "info": None,
         "message": "Saved auto-evaluation · press F12 to resume at the unfinished position",

@@ -30,7 +30,7 @@ def main():
     parser.add_argument("--cursor-preview", action="store_true")
     parser.add_argument("--hide-explorer", action="store_true")
     parser.add_argument("--lines", action="store_true")
-    parser.add_argument("--multipv", type=int, choices=range(1, 33), default=6)
+    parser.add_argument("--multipv", type=int, choices=range(1, 6), default=5)
     parser.add_argument("--review", action="store_true", help="Game Review with explicitly labelled test scores")
     parser.add_argument("--explorer-fixture", action="store_true", help="Clearly labelled cached test statistics; no network")
     parser.add_argument("--chessdb-fixture", action="store_true", help="Clearly labelled cached ChessDB test scores; no network")
@@ -116,7 +116,8 @@ def main():
         deadline = time.monotonic() + 12
 
         def capture():
-            pending = window._review is not None if args.review else not window.candidates.lines
+            required = min(args.multipv, sum(1 for _ in window.game.board.legal_moves()))
+            pending = window._review is not None if args.review else len(window.candidates.lines) < required
             if window.profiles and pending and time.monotonic() < deadline:
                 QTimer.singleShot(100, capture)
                 return

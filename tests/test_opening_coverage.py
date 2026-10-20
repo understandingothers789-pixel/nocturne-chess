@@ -52,6 +52,23 @@ class CoverageTests(unittest.TestCase):
         self.assertIsNone(self.coverage.context)
         self.assertEqual(self.coverage.message, "")
 
+    def test_date_filtered_departures_are_separate_and_partial_player_counts_are_not_zero(self):
+        for node, count in zip(self.game._line_nodes, [100, 0, 0]):
+            query = ExplorerQuery(self.game.position_at_node(node).fen(), "masters", since="2000", until="2020")
+            self.coverage.client.cache.put(query.key, {"white": count, "draws": 0, "black": 0, "moves": []})
+        self.coverage.start(self.game, since="2000", until="2020")
+        for _ in range(5):
+            self.app.processEvents()
+        marker = self.game._line_nodes[1]
+        self.assertEqual(self.coverage.departure, marker)
+        self.assertIn(marker, self.coverage.markers(self.game, since="2000", until="2020"))
+        self.assertNotIn(marker, self.coverage.markers(self.game, since="2021"))
+        self.coverage.start(self.game, "player", player="example")
+        self.coverage._result(self.coverage.items[0][1].key,
+                              {"total": 0, "moves": [], "indexing": True}, "Indexing")
+        self.assertIsNone(self.coverage.departure)
+        self.assertTrue(self.coverage.running)
+
     def test_all_positive_and_starting_zero_are_distinct(self):
         self.cache([100, 20, 3])
         self.coverage.start(self.game)

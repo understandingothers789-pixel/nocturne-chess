@@ -2,22 +2,49 @@
 
 import math
 
-from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QEasingCurve, QPointF, QRectF, Qt, Signal, QVariantAnimation
 from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QWidget
 from .theme import palette
+from ..engine.uci_types import plot_score_label
 
 
 class EvaluationBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedWidth(23)
+        self.setFixedWidth(20)
         self.score: int | None = None
         self.flipped = False
         self.board_view = None
+        self.animations = True
+        self._fraction = 0.5
+        self._target = 0.5
+        self._animation = QVariantAnimation(self)
+        self._animation.setDuration(180)
+        self._animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._animation.valueChanged.connect(self._animate)
+        self.setAccessibleName("Evaluation bar · White's advantage")
 
     def set_score(self, score: int | None):
         self.score = score
+        target = (0.5 if score is None else 1.0 if score >= 29000 else 0.0 if score <= -29000 else
+                  1 / (1 + math.exp(-max(-2000, min(2000, score)) / 250)))
+        text = "No evaluation" if score is None else "White evaluation " + plot_score_label(score)
+        self.setToolTip(text)
+        self.setAccessibleDescription(text)
+        if target != self._target:
+            self._animation.stop()
+            self._target = target
+            if self.animations and score is not None:
+                self._animation.setStartValue(self._fraction)
+                self._animation.setEndValue(target)
+                self._animation.start()
+            else:
+                self._fraction = target
+        self.update()
+
+    def _animate(self, value):
+        self._fraction = float(value)
         self.update()
 
     def paintEvent(self, event):
@@ -25,14 +52,14 @@ class EvaluationBar(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         if self.board_view is not None:
             board_rect, _ = self.board_view._geometry()
-            rect = QRectF(5, board_rect.y(), 12, board_rect.height())
+            rect = QRectF(3, board_rect.y(), 12, board_rect.height())
         else:
             rect = QRectF(5, 24, 12, self.height() - 48)
         path = QPainterPath()
-        path.addRoundedRect(rect, 5, 5)
+        path.addRoundedRect(rect, 4, 4)
         p.setClipPath(path)
-        p.fillRect(rect, QColor("#282828"))
-        fraction = 0.5 if self.score is None else 1 / (1 + math.exp(-max(-2000, min(2000, self.score)) / 250))
+        p.fillRect(rect, QColor("#343330"))
+        fraction = self._fraction
         if self.flipped:
             white = QRectF(rect.x(), rect.y(), rect.width(), rect.height() * fraction)
         else:
@@ -42,7 +69,7 @@ class EvaluationBar(QWidget):
         p.fillRect(white, QColor("#f2f2f0") if self.score is not None else QColor("#898989"))
         p.setClipping(False)
         p.setPen(QPen(QColor("#999999"), 1))
-        p.drawLine(QPointF(2, rect.center().y()), QPointF(20, rect.center().y()))
+        p.drawLine(QPointF(rect.left(), rect.center().y()), QPointF(rect.right(), rect.center().y()))
 
 
 class EvaluationGraph(QWidget):

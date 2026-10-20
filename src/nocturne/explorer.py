@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import hashlib
 import json
+import re
 from pathlib import Path
 import sqlite3
 import time
@@ -24,12 +25,42 @@ class ExplorerQuery:
     source: str = "masters"
     speed: str = "all"
     rating: int = 0
+    speeds: tuple = ()
+    ratings: tuple = ()
+    since: str = ""
+    until: str = ""
+    player: str = ""
+    color: str = "white"
 
     def __post_init__(self):
-        if self.source not in ("masters", "lichess", "chessdb") or self.speed not in ("all", *SPEEDS):
+        if self.source not in ("masters", "lichess", "player", "chessdb") or self.speed not in ("all", *SPEEDS):
             raise ValueError("Unsupported explorer source or speed")
         if type(self.rating) is not int or self.rating not in RATINGS:
             raise ValueError("Unsupported rating group")
+        if not isinstance(self.speeds, (tuple, list)) or any(s not in SPEEDS for s in self.speeds):
+            raise ValueError("Unsupported speed selection")
+        if not isinstance(self.ratings, (tuple, list)) or any(type(r) is not int or r not in RATINGS for r in self.ratings):
+            raise ValueError("Unsupported rating selection")
+        object.__setattr__(self, "speeds", tuple(s for s in SPEEDS if s in self.speeds))
+        object.__setattr__(self, "ratings", tuple(r for r in RATINGS if r in self.ratings))
+        if self.source not in ("lichess", "player"):
+            object.__setattr__(self, "speeds", ())
+        if self.source != "lichess":
+            object.__setattr__(self, "ratings", ())
+        for key in ("since", "until"):
+            value = getattr(self, key)
+            if not isinstance(value, str) or value and not re.fullmatch(r"\d{4}(?:-(?:0[1-9]|1[0-2]))?", value):
+                raise ValueError("Choose a valid year or year-month")
+            if value:
+                value = value[:4] if self.source == "masters" else value if len(value) == 7 else value + ("-01" if key == "since" else "-12")
+                object.__setattr__(self, key, value)
+        if self.since and self.until and self.since > self.until:
+            raise ValueError("Since must not be after Until")
+        if self.source == "player":
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,30}", self.player):
+                raise ValueError("Enter a Lichess username to use the Player database")
+            if self.color not in ("white", "black"):
+                raise ValueError("Choose White or Black for the player's games")
         board = chess.Board(self.fen)
         if not board.is_valid() or any(c not in "KQkq-" for c in self.fen.split()[2]):
             raise ValueError("Opening explorer supports standard chess positions")
@@ -40,7 +71,8 @@ class ExplorerQuery:
 
     @property
     def label(self):
-        return {"masters": "Lichess Masters", "lichess": "Lichess players", "chessdb": "ChessDB"}[self.source]
+        return (f"Lichess player {self.player} ({self.color})" if self.source == "player" else
+                {"masters": "Lichess Masters", "lichess": "Lichess players", "chessdb": "ChessDB"}[self.source])
 
     def url(self, base=None):
         base = base or (CHESSDB_URL if self.source == "chessdb" else EXPLORER_URL)
@@ -51,13 +83,51 @@ class ExplorerQuery:
         params = {"fen": self.fen, "moves": 12, "topGames": 0}
         if self.source == "lichess":
             params.update(variant="standard", recentGames=0,
-                          speeds=",".join(SPEEDS if self.speed == "all" else (self.speed,)),
-                          ratings=",".join(str(r) for r in RATINGS if r >= self.rating))
+                          speeds=",".join(self.speeds or (SPEEDS if self.speed == "all" else (self.speed,))),
+                          ratings=",".join(str(r) for r in (self.ratings or tuple(r for r in RATINGS if r >= self.rating))))
+        elif self.source == "player":
+            params = dict(fen=self.fen, player=self.player, color=self.color,
+                          speeds=",".join(self.speeds or (SPEEDS if self.speed == "all" else (self.speed,))))
+        for key in ("since", "until"):
+            if getattr(self, key):
+                params[key] = getattr(self, key)
         return base.rstrip("/") + "/" + self.source + "?" + urlencode(params)
 
     @property
     def key(self):
         return hashlib.sha256(self.url().encode()).hexdigest()
+
+    @property
+    def filters(self):
+        """Canonical request options used to separate cached departure scans."""
+        if self.source == "chessdb":
+            return {}
+        result = {key: list(value) if isinstance(value, tuple) else value for key in
+                  ("speeds", "ratings", "since", "until") if (value := getattr(self, key))}
+        if self.source == "player":
+            result.update(player=self.player, color=self.color)
+        return result
+
+    @property
+    def filter_summary(self):
+        if self.source == "chessdb":
+            return "Cloud scores · game-count filters are unavailable"
+        parts = []
+        if self.source in ("lichess", "player"):
+            speeds = self.speeds or (SPEEDS if self.speed == "all" else (self.speed,))
+            parts.append("All speeds" if tuple(speeds) == SPEEDS else ", ".join(speeds))
+        if self.source == "lichess":
+            ratings = self.ratings or tuple(r for r in RATINGS if r >= self.rating)
+            parts.append("All ratings" if tuple(ratings) == RATINGS else
+                         f"{self.rating}+ rating" if not self.ratings else
+                         "Rating groups " + ", ".join(map(str, ratings)))
+        parts.append((self.since or "Any date") + " – " + (self.until or "present"))
+        return " · ".join(parts)
+
+
+def query_filters(config):
+    return {key: config.get("explorer_" + key, default) for key, default in
+            (("speeds", ()), ("ratings", ()), ("since", ""), ("until", ""), ("player", ""), ("color", "white"))}
 
 
 def parse_statistics(payload, query):
