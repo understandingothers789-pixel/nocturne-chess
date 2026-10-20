@@ -95,3 +95,19 @@ class MaiaTests(unittest.TestCase):
         self.assertFalse(view.interactive)
         self.assertFalse(view.wheel_navigation)
         view.deleteLater()
+
+    def test_blend_reports_unknown_for_unsearched_bound_and_mate_scores(self):
+        from nocturne.maia.blend import move_quality, blend_score
+        lines = {1: {"pv": ["e2e4"], "score_type": "cp", "score_value": 50},
+                 2: {"pv": ["d2d4"], "score_type": "cp", "score_value": -50}}
+        quality, loss = move_quality(lines, "d2d4")
+        self.assertEqual(loss, 100)
+        self.assertAlmostEqual(quality, 0.367879441)
+        self.assertEqual(blend_score(0.2, quality, 0), 0.2)
+        self.assertEqual(blend_score(0.2, quality, 1), quality)
+        self.assertIsNone(blend_score(0.2, None, 0.5))
+        self.assertEqual(move_quality(lines, "c2c4"), (None, None))
+        lines[1]["bound"] = "lowerbound"
+        self.assertEqual(move_quality(lines, "d2d4"), (None, None))
+        lines[1] = {"pv": ["e2e4"], "score_type": "mate", "score_value": 3}
+        self.assertEqual(move_quality(lines, "d2d4"), (None, None))

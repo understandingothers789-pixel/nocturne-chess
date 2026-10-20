@@ -427,6 +427,11 @@ class MainWindow(QMainWindow):
         self.engine_layout = QVBoxLayout(engine_detail)
         self.engine_layout.setContentsMargins(0, 0, 0, 0)
         self.engine_layout.setSpacing(0)
+        column_titles = QHBoxLayout()
+        column_titles.addWidget(label("Stockfish · evaluation / principal variation", "muted"), 1)
+        self.maia_column_title = label("Maia 1800", "muted")
+        column_titles.addWidget(self.maia_column_title)
+        self.engine_layout.addLayout(column_titles)
         self.pv_label = MoveText(auto_fit=True)
         self.pv_label.setAccessibleName("Principal variation moves")
         self.pv_label.preview_ended.connect(lambda: self._end_preview("pv"))
@@ -552,6 +557,8 @@ class MainWindow(QMainWindow):
         side.addWidget(self.save_label)
         splitter.addWidget(self.panel)
         self.maia_insights = MaiaInsights()
+        self.maia_insights.blender.weight.setValue(self.config.get("maia_blend_weight", 50))
+        self.maia_insights.blender.weight.valueChanged.connect(self._set_blend_weight)
         splitter.addWidget(self.maia_insights)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 0)
@@ -723,6 +730,7 @@ class MainWindow(QMainWindow):
         for key, text in [
             ("smart_move", "Smart Move · click recommended destinations"),
             ("branch_arrows", "Show saved continuation arrows"),
+            ("show_maia_insights", "Show Maia insights"),
             ("details", "Detailed analysis statistics"),
             ("show_seldepth", "Show selective depth (seldepth)"),
             ("wheel_game_moves", "Wheel navigates game moves"),
@@ -777,6 +785,14 @@ class MainWindow(QMainWindow):
         maia_menu = engine.addMenu("Maia-3 79M")
         self.maia_enabled_action = add(maia_menu, "Enable local Maia predictions", self._set_maia_enabled)
         self.maia_enabled_action.setCheckable(True)
+        self.maia_arrows_action = add(maia_menu, "Show translucent Maia arrows", self._set_maia_arrows)
+        self.maia_arrows_action.setCheckable(True)
+        count_menu = maia_menu.addMenu("Maia arrows on board")
+        self.maia_arrow_actions = {}
+        for count in (1, 3, 5):
+            action = add(count_menu, f"Top {count}", lambda checked=False, c=count: self._set_maia_arrow_count(c))
+            action.setCheckable(True)
+            self.maia_arrow_actions[count] = action
         rating_menu = maia_menu.addMenu("Lichess blitz rating (equal-rated opponent)")
         self.maia_rating_actions = {}
         for elo in range(400, 3001, 200):
@@ -902,6 +918,8 @@ class MainWindow(QMainWindow):
     def _set_display(self, key, value):
         self.config[key] = value
         self._apply_settings()
+        if key == "show_maia_insights":
+            self._maia_changed(self.maia.policies)
         self._save()
 
     def _choose_explorer(self, source):
@@ -1361,7 +1379,7 @@ class MainWindow(QMainWindow):
 
     def _sync_docked_visibility(self):
         if self._dock_workspace is not None:
-            self._dock_workspace.set_panel_visible("insights", self.analysis_mode and self.config.get("maia_enabled", True))
+            self._dock_workspace.set_panel_visible("insights", self.analysis_mode and self.config.get("maia_enabled", True) and self.config.get("show_maia_insights", True))
             self._dock_workspace.set_panel_visible("moves", self.analysis_mode)
             self._dock_workspace.set_panel_visible("database", self._explorer_active)
             self._dock_workspace.set_panel_visible("graph", self.config.get("show_eval_graph", True))
@@ -1416,6 +1434,22 @@ class MainWindow(QMainWindow):
             return
         self._show_move_preview("candidate", board, caption=f"Candidate preview · ply {ply}")
 
+    def _set_blend_weight(self, weight):
+        self.config["maia_blend_weight"] = weight
+        self._save()
+
+    def _set_maia_arrows(self, enabled):
+        self.config["maia_arrows"] = bool(enabled)
+        self._maia_changed(self.maia.policies)
+        self._save()
+
+    def _set_maia_arrow_count(self, count):
+        self.config["maia_arrow_count"] = count
+        for number, action in self.maia_arrow_actions.items():
+            action.setChecked(number == count)
+        self._maia_changed(self.maia.policies)
+        self._save()
+
     def _set_maia_enabled(self, enabled):
         self.config["maia_enabled"] = bool(enabled)
         if not enabled:
@@ -1440,7 +1474,12 @@ class MainWindow(QMainWindow):
         self.maia_controls.rating.blockSignals(True)
         self.maia_controls.rating.setCurrentIndex(self.maia_controls.rating.findData(rating))
         self.maia_controls.rating.blockSignals(False)
+        self.maia_column_title.setText(f"Maia {rating}")
+        self.maia_column_title.setVisible(enabled)
         self.maia_enabled_action.setChecked(enabled)
+        self.maia_arrows_action.setChecked(self.config.get("maia_arrows", True))
+        for count, action in self.maia_arrow_actions.items():
+            action.setChecked(count == self.config.get("maia_arrow_count", 3))
         for elo, action in self.maia_rating_actions.items():
             action.setChecked(elo == rating)
         self.maia_controls.setVisible(self.analysis_mode)
@@ -1456,10 +1495,27 @@ class MainWindow(QMainWindow):
         self.maia_controls.set_policy(policy, self.game.board)
         self.maia_insights.set_data(policies, self.game.board, rating, self._appearance_config())
         self.maia_insights.map.flipped = self.board_view.flipped
+        self.board_view.maia_recommendations = []
+        count = self.config.get("maia_arrow_count", 3)
+        for uci, probability in sorted(policy.items(), key=lambda item: -item[1])[:count]:
+            try:
+                self.board_view.maia_recommendations.append((self.game.board.parse_uci(uci), probability))
+            except ValueError:
+                pass
+        self.board_view.maia_arrows_enabled = self.config.get("maia_arrows", True)
+        self.board_view.update()
+        self._sync_blender()
         if self._dock_workspace is not None:
             self._sync_docked_visibility()
         else:
-            self.maia_insights.setVisible(self.analysis_mode and self.config.get("maia_enabled", True))
+            self.maia_insights.setVisible(self.analysis_mode and self.config.get("maia_enabled", True) and self.config.get("show_maia_insights", True))
+
+    def _sync_blender(self):
+        if not hasattr(self, "maia"):
+            return
+        policy = self.maia.policies.get(str(self.config.get("maia_rating", 1800)), {})
+        lines = self.candidates.lines if self._candidate_identity == self._position_identity() else {}
+        self.maia_insights.blender.set_data(policy, self.game.board, lines)
 
     def _maia_move(self, uci):
         try:
@@ -1469,6 +1525,7 @@ class MainWindow(QMainWindow):
         self._human_move(move)
 
     def _sync_candidate_markers(self):
+        self._sync_blender()
         if self._candidate_identity != self._position_identity():
             return
         entries = []
@@ -2561,7 +2618,7 @@ class MainWindow(QMainWindow):
         ):
             widget.setVisible(not analysis)
         self.analysis_moves_panel.setVisible(analysis)
-        self.maia_insights.setVisible(analysis and self.config.get("maia_enabled", True))
+        self.maia_insights.setVisible(analysis and self.config.get("maia_enabled", True) and self.config.get("show_maia_insights", True))
         self.tabs.setTabVisible(0, not analysis)
         self.panel_caption.setText("ENGINE ANALYSIS" if analysis else "THE GAME")
         self.panel_caption.setVisible(not analysis)

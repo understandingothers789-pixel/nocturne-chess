@@ -45,6 +45,8 @@ class BoardWidget(QWidget):
         self.inferior_ranks = set()
         self.recommendation_fen = None
         self.smart_move = False
+        self.maia_recommendations = []
+        self.maia_arrows_enabled = True
         self.candidate_style = "arrows"
         self.branch_moves = []
         self.selected: int | None = None
@@ -326,6 +328,13 @@ class BoardWidget(QWidget):
                     painter.setPen(Qt.PenStyle.NoPen)
                     painter.setBrush(QColor(30, 30, 30, 95))
                     painter.drawEllipse(target.center(), unit * 0.135, unit * 0.135)
+        # Maia's broad translucent arrows sit beneath the pieces. Existing
+        # Stockfish rods and numbered endpoints remain on their own layer.
+        if not preview and self.overlays and self.maia_arrows_enabled:
+            for move, probability in reversed(self.maia_recommendations):
+                color = QColor("#9b7dc4")
+                color.setAlpha(round(55 + 80 * math.sqrt(probability)))
+                self._arrow(painter, move.from_sq, self._destination(move), color, unit)
         for square in SQUARES:
             piece = board.cells[square]
             if not piece or (not preview and self._drag_pos is not None and square == self._pressed):

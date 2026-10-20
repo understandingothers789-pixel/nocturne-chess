@@ -23,6 +23,10 @@ DEFAULTS = {
     "show_clocks": True,
     "maia_enabled": True,
     "maia_rating": 1800,
+    "show_maia_insights": True,
+    "maia_arrows": True,
+    "maia_arrow_count": 3,
+    "maia_blend_weight": 50,
     "show_raw_pgn": False,
     "raw_pgn_version": 1,
     "expand_pv": False,
@@ -76,6 +80,7 @@ def normalize(data) -> dict:
         "mode": ("human_ai", "human", "ai_ai", "analysis"),
         "human_color": (-1, 0, 1),
         "maia_rating": tuple(range(400, 3001, 200)),
+        "maia_arrow_count": (1, 3, 5),
         "difficulty": ("Beginner", "Casual", "Intermediate", "Advanced", "Expert", "Maximum"),
         "layout": ("classic", "analysis-left"),
         "analysis_kind": ("infinite", "explore", "bounded", "nodes"),
@@ -111,6 +116,8 @@ def normalize(data) -> dict:
         "show_clocks",
         "show_raw_pgn",
         "maia_enabled",
+        "maia_arrows",
+        "show_maia_insights",
         "expand_pv",
         "cursor_preview",
         "wheel_game_moves",
@@ -145,6 +152,7 @@ def normalize(data) -> dict:
     if data.get("cursor_preview_version") != 1:
         result["cursor_preview"] = True
     for key, minimum, maximum in (
+        ("maia_blend_weight", 0, 100),
         ("hash_mb", 1, 65536),
         ("analysis_depth", 1, 128),
         ("multipv", 1, 32),

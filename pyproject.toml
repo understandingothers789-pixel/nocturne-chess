@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nocturne-chess"
-version = "0.5.7.58"
-description = "A native offline Stockfish and UCI chess analysis studio"
+version = "0.5.7.59"
+description = "A native offline Stockfish and Maia chess analysis studio"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "GPL-3.0-or-later"

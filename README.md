@@ -1,7 +1,8 @@
 # Nocturne Analysis
 
 A native, offline Windows chess analysis GUI inspired by Nibbler. You supply
-Stockfish or another UCI executable. **The desktop app has no built-in engine.**
+Stockfish or another UCI executable. **Maia-3 79M is bundled for local human-move predictions.**
+See [Maia controls, insights and reproducibility](docs/MAIA.md).
 
 **Display → Arrange panels** unlocks a customizable workspace. Drag the Board,
 Analysis / PGN, Game moves, Database explorer or Evaluation graph header to move

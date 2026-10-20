@@ -5,10 +5,12 @@ from PySide6.QtCore import QPointF, QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QFrame, QGridLayout, QLabel, QScrollArea, QToolButton, QVBoxLayout, QWidget, QToolTip,
+    QComboBox, QSlider, QHBoxLayout, QProgressBar, QApplication,
 )
 from ..core.board import parse_square
 from ..core.notation import san
 from ..maia import RATINGS, percentage
+from ..maia.blend import move_quality, blend_score
 from .board import BoardWidget
 from .theme import palette
 
@@ -38,7 +40,7 @@ class RatingChart(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        colors = palette(bool(self.window().property("nocturneLightAppearance")))
+        colors = palette(bool(QApplication.instance().property("nocturneLightAppearance")))
         plot = self.plot_rect()
         maximum = max((p.get(move, 0) for p in self.policies.values() for move in self.moves
                        if move not in self.hidden_moves), default=0)
@@ -160,6 +162,83 @@ class MoveMap(BoardWidget):
         event.accept()
 
 
+class BlenderMeter(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 6, 0, 0)
+        layout.setSpacing(5)
+        title = QLabel("Blender Meter")
+        title.setStyleSheet("font-size: 15px; font-weight: 600;")
+        layout.addWidget(title)
+        self.move = QComboBox()
+        self.move.setToolTip("Compare a move without changing the board. Unsearched moves retain unknown Stockfish quality.")
+        layout.addWidget(self.move)
+        self.human = QProgressBar()
+        self.quality = QProgressBar()
+        for bar in (self.human, self.quality):
+            bar.setRange(0, 1000)
+            bar.setFixedHeight(21)
+            layout.addWidget(bar)
+        self.human.setToolTip("Maia's predicted human move likelihood at the selected rating.")
+        self.quality.setToolTip("Nocturne relative Stockfish quality: exp(−centipawn loss / 100).\nOnly searched moves with exact centipawn scores can be compared.")
+        endpoints = QHBoxLayout()
+        endpoints.addWidget(QLabel("Human"))
+        self.weight = QSlider(Qt.Orientation.Horizontal)
+        self.weight.setRange(0, 100)
+        self.weight.setValue(50)
+        self.weight.setToolTip("Blend weight: 0 = Maia likelihood, 100 = relative Stockfish quality.")
+        endpoints.addWidget(self.weight, 1)
+        endpoints.addWidget(QLabel("Engine"))
+        layout.addLayout(endpoints)
+        self.result = QLabel("Blend —")
+        self.result.setStyleSheet("font-size: 17px; font-weight: 600; color: #b9b4df;")
+        layout.addWidget(self.result)
+        self.caption = QLabel("Nocturne blend = (1 − weight) × Maia probability + weight × SF quality.")
+        self.caption.setObjectName("muted")
+        self.caption.setWordWrap(True)
+        layout.addWidget(self.caption)
+        self.policy = {}
+        self.lines = {}
+        self.move.currentIndexChanged.connect(self.refresh)
+        self.weight.valueChanged.connect(self.refresh)
+
+    def set_data(self, policy, board, lines):
+        self.policy, self.lines = policy, lines
+        selected = self.move.currentData()
+        choices = list(dict.fromkeys([line["pv"][0] for line in lines.values() if line.get("pv")]
+                       + [uci for uci, _ in sorted(policy.items(), key=lambda item: -item[1])[:5]]))
+        key = (board.fen(), tuple(choices))
+        if getattr(self, "_choice_key", None) == key:
+            self.refresh()
+            return
+        self._choice_key = key
+        self.move.blockSignals(True)
+        self.move.clear()
+        for uci in choices:
+            try:
+                self.move.addItem(san(board, board.parse_uci(uci)), uci)
+            except ValueError:
+                pass
+        index = self.move.findData(selected)
+        self.move.setCurrentIndex(index if index >= 0 else 0)
+        self.move.blockSignals(False)
+        self.refresh()
+
+    def refresh(self):
+        uci = self.move.currentData()
+        probability = self.policy.get(uci)
+        quality, loss = move_quality(self.lines, uci)
+        self.human.setValue(round((probability or 0)*1000))
+        self.human.setFormat("Human likelihood · " + percentage(probability))
+        self.quality.setValue(round((quality or 0)*1000))
+        self.quality.setFormat(f"SF quality · {quality*100:.1f}% · {loss} cp loss" if quality is not None
+                               else "SF quality · not established")
+        weight = self.weight.value()/100
+        value = blend_score(probability, quality, weight)
+        self.result.setText(f"Blend {value*100:.1f}/100 · engine weight {weight:.0%}" if value is not None else "Blend —")
+
+
 class MaiaInsights(QScrollArea):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -194,6 +273,8 @@ class MaiaInsights(QScrollArea):
         caption.setWordWrap(True)
         caption.setObjectName("muted")
         self.body_layout.addWidget(caption)
+        self.blender = BlenderMeter()
+        self.body_layout.addWidget(self.blender)
         self.body_layout.addStretch()
         self.setWidget(body)
 
