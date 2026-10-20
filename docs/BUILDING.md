@@ -1,5 +1,28 @@
 # Windows 11 desktop builds
 
+## [0.5.7.59 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39392361779/artifacts/12249874525)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`ac3f390`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/ac3f3907e0bbb9a3c7810ff09b68e4bc9f5b287c)
+completes the three requested insights with the Blender Meter, translucent Maia
+board arrows, a shared Stockfish/Maia column heading and display controls.
+The meter exposes both inputs and defines its Nocturne composite mathematically;
+bound, mate and unsearched evaluations retain unknown relative quality.
+Stockfish rods/circles, the right evaluation bar, internal coordinates, full PVs
+and both notation areas remain available. Standard-chess-only Maia predictions
+do not alter existing Chess960 Stockfish support.
+
+Windows run [39392361779](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39392361779)
+passed lint, the full suite, real official-79M policy checks, packaging, and
+packaged worker/GUI smoke checks. Focused probability, chart, move-map and blend
+checks also passed locally at normal and 150% scaling. See [Maia details](MAIA.md).
+
+Artifact **12249874525**, `Nocturne-0.5.7.59-Windows-x64-unsigned`,
+492,346,708 bytes, expires November 19, 2026 (America/Chicago).
+GitHub artifact SHA-256:
+`bb9580f06bb1aaf54b4c20fcb4ee61b3478f764b7ad01d555c561eaa59b5f0e9`.
+
 ## [0.5.7.58 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39391637062/artifacts/12249389717)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
