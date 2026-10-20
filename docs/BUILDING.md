@@ -1,5 +1,24 @@
 # Windows 11 desktop builds
 
+## [0.5.7.53 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39379180697/artifacts/12245120746)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`0650503`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/0650503d99ed45d0a765dd7d1d4bebad9ca63614)
+enlarges the hover board from 256 to 384 logical pixels per side, adapting to
+visible window/screen bounds. Repeated candidate details are hidden by default;
+Display → Detailed analysis statistics restores them. Database outcome bars
+remain in the existing explorer; engine WDL and database outcomes stay distinct.
+
+Six focused rendering, bounds and metadata-toggle checks passed locally.
+Windows run [39379180697](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39379180697)
+passed lint, the full test suite, packaging and packaged smoke checks.
+
+Artifact **12245120746**, `Nocturne-0.5.7.53-Windows-x64-unsigned`,
+58,018,502 bytes, expires November 19, 2026 (America/Chicago).
+GitHub artifact SHA-256:
+`dcc3c9a8c7e74a2fba74d14a5be44a1592e7e499a673db1be94fc84646620da8`.
+
 ## [0.5.7.52 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39376976412/artifacts/12243549117)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
