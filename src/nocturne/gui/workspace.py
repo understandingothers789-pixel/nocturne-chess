@@ -2,7 +2,7 @@
 
 import base64
 
-from PySide6.QtCore import QByteArray, QPoint, Qt, Signal
+from PySide6.QtCore import QByteArray, QPoint, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication, QDockWidget, QHBoxLayout, QLabel, QMainWindow, QPushButton,
     QTabWidget, QVBoxLayout, QWidget,
@@ -63,17 +63,23 @@ class DockWorkspace(QWidget):
                                     | QMainWindow.DockOption.AllowTabbedDocks)
         self.surface.setTabPosition(Qt.DockWidgetArea.AllDockWidgetAreas, QTabWidget.TabPosition.North)
         self.surface.setDocumentMode(True)
+        # Surplus desktop width belongs beyond the working columns, rather
+        # than becoming margins on either side of the square chessboard.
+        self.surface.setCentralWidget(QWidget())
         layout.addWidget(self.surface, 1)
         self.docks = {}
         for name, (title, widget) in panels.items():
             dock = PanelDock(name, title, widget, self.surface)
             dock.closed.connect(self.panel_closed)
+            dock.topLevelChanged.connect(
+                lambda floating, panel=dock: panel.setMaximumWidth(16777215) if floating
+                else QTimer.singleShot(0, self.fit_columns))
             self.docks[name] = dock
-        left, right, bottom = (Qt.DockWidgetArea.LeftDockWidgetArea,
-                               Qt.DockWidgetArea.RightDockWidgetArea, Qt.DockWidgetArea.BottomDockWidgetArea)
+        left, bottom = Qt.DockWidgetArea.LeftDockWidgetArea, Qt.DockWidgetArea.BottomDockWidgetArea
         board, engine = self.docks["board"], self.docks["analysis"]
-        self.surface.addDockWidget(right if analysis_left else left, board)
-        self.surface.addDockWidget(left if analysis_left else right, engine)
+        self.surface.addDockWidget(left, engine if analysis_left else board)
+        self.surface.splitDockWidget(engine if analysis_left else board,
+                                     board if analysis_left else engine, Qt.Orientation.Horizontal)
         self.surface.splitDockWidget(engine, self.docks["database"], Qt.Orientation.Vertical)
         self.surface.splitDockWidget(self.docks["database"], self.docks["graph"], Qt.Orientation.Vertical)
         self.surface.setCorner(Qt.Corner.BottomLeftCorner, bottom)
@@ -84,6 +90,32 @@ class DockWorkspace(QWidget):
                                  [550, 180, 85], Qt.Orientation.Vertical)
         self.surface.resizeDocks([self.docks["moves"]], [100], Qt.Orientation.Vertical)
         self.set_editable(True)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        QTimer.singleShot(0, self.fit_columns)
+
+    def fit_columns(self):
+        board = self.docks["board"]
+        if not getattr(self.window(), "analysis_mode", False):
+            for dock in self.docks.values():
+                dock.setMaximumWidth(16777215)
+            return
+        # Respect detached, tabbed and freely rearranged board panels.
+        if board.isFloating() or self.surface.tabifiedDockWidgets(board):
+            return
+        arena = board.widget()
+        view = getattr(self.window(), "board_view", None)
+        if view is None or not view.isVisible():
+            return
+        target = max(350, view.height() + arena.width() - view.width())
+        if board.maximumWidth() != target:
+            board.setMaximumWidth(target)
+        for name in ("analysis", "database", "graph"):
+            dock = self.docks[name]
+            if not dock.isFloating():
+                dock.setMaximumWidth(560)
+        self.surface.resizeDocks([board], [target], Qt.Orientation.Horizontal)
 
     def set_editable(self, editable):
         self.toolbar.setVisible(editable)
@@ -118,7 +150,23 @@ class DockWorkspace(QWidget):
         except (ValueError, UnicodeError):
             return False
         if restored:
+            # Migrate the old two-sided default dock arrangement. Keep custom
+            # floating/tabbed layouts intact, including their saved positions.
+            board, engine = self.docks["board"], self.docks["analysis"]
+            if (not board.isFloating() and not engine.isFloating()
+                    and not self.surface.tabifiedDockWidgets(board)
+                    and all(not self.docks[name].isFloating()
+                            and not self.surface.tabifiedDockWidgets(self.docks[name])
+                            for name in ("analysis", "database", "graph"))
+                    and self.surface.dockWidgetArea(board) != self.surface.dockWidgetArea(engine)):
+                analysis_left = self.surface.dockWidgetArea(board) == Qt.DockWidgetArea.RightDockWidgetArea
+                first, second = (engine, board) if analysis_left else (board, engine)
+                self.surface.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, first)
+                self.surface.splitDockWidget(first, second, Qt.Orientation.Horizontal)
+                self.surface.splitDockWidget(engine, self.docks["database"], Qt.Orientation.Vertical)
+                self.surface.splitDockWidget(self.docks["database"], self.docks["graph"], Qt.Orientation.Vertical)
             self.keep_floating_panels_on_screen()
+            QTimer.singleShot(0, self.fit_columns)
         return restored
 
     def keep_floating_panels_on_screen(self):

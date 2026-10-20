@@ -1029,6 +1029,8 @@ class MainWindow(QMainWindow):
     def eventFilter(self, watched, event):
         if self._closing:
             return super().eventFilter(watched, event)
+        if watched is getattr(self, "board_view", None) and event.type() == QEvent.Type.Resize:
+            QTimer.singleShot(0, self._fit_analysis_columns)
         if (isinstance(watched, QWidget) and event.type() in (QEvent.Type.KeyPress, QEvent.Type.ShortcutOverride)
                 and event.key() == Qt.Key.Key_Escape):
             # Modal settings and popups consume Escape themselves. Stop the
@@ -2463,7 +2465,8 @@ class MainWindow(QMainWindow):
         self.panel_body.layout().setSpacing(2 if analysis else 10)
         self.panel.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff if analysis else Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self._analysis_tab_changed()
-        self.panel.setMaximumWidth(16777215 if analysis or self._dock_workspace is not None else 420)
+        self.arena.setMaximumWidth(16777215)
+        self.panel.setMaximumWidth(560 if analysis else 420)
         if self._dock_workspace is not None:
             if analysis:
                 self.tabs.setCurrentIndex(1)
@@ -2481,6 +2484,19 @@ class MainWindow(QMainWindow):
             self.workspace_splitter.setSizes([800, 90])
         else:
             self.main_splitter.setSizes([720, 350])
+        QTimer.singleShot(0, self._fit_analysis_columns)
+
+    def _fit_analysis_columns(self):
+        if self._closing or not self.analysis_mode:
+            return
+        if self._dock_workspace is not None:
+            self._dock_workspace.fit_columns()
+            return
+        # The square is height-limited. Extra desktop width must not inflate
+        # its parent, otherwise the board acquires large black side margins.
+        target = max(350, self.board_view.height() + self.arena.width() - self.board_view.width())
+        if self.arena.maximumWidth() != target:
+            self.arena.setMaximumWidth(target)
 
     def _analysis_tab_changed(self, index=None):
         if hasattr(self, "tabs"):

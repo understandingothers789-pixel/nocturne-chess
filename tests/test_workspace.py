@@ -57,6 +57,25 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIs(window.candidates, candidates)
         self.assertEqual(window.game.board.fen(), fen)
 
+    def test_old_wide_dock_layout_fits_board_and_keeps_columns_adjacent(self):
+        window = self.window
+        window.analysis_mode = True
+        window._refresh()
+        window.resize(1908, 900)
+        host = self.arrange()
+        # Reproduce the pre-.56 layout saved with opposite dock areas.
+        host.surface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, host.docks["analysis"])
+        host.surface.splitDockWidget(host.docks["analysis"], host.docks["database"], Qt.Orientation.Vertical)
+        host.surface.splitDockWidget(host.docks["database"], host.docks["graph"], Qt.Orientation.Vertical)
+        self.assertTrue(host.restore(host.state()))
+        for _ in range(5):
+            self.app.processEvents()
+        board, analysis = host.docks["board"], host.docks["analysis"]
+        self.assertLessEqual(window.board_view.width(), window.board_view.height() + 2)
+        self.assertLessEqual(analysis.width(), 560)
+        self.assertLess(abs(analysis.x() - board.geometry().right()), 12)
+        self.assertGreater(host.docks["moves"].width(), board.width() + analysis.width())
+
     def test_detached_and_rearranged_panels_restore_locked_after_reopening(self):
         window = self.window
         host = self.arrange()
