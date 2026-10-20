@@ -136,7 +136,6 @@ class CandidatePanel(QWidget):
         if self._header_row_height is None:
             self._header_row_height = self._header_height(header)
         header.setFixedHeight(self._header_row_height)
-        layout.addWidget(header)
         moves = self.primary if rank == 1 else MoveText(
             auto_fit=True, reserved_lines=self.default_pv_lines
         )
@@ -162,6 +161,7 @@ class CandidatePanel(QWidget):
         pv_layout.addWidget(expand_button, 0, 0, Qt.AlignmentFlag.AlignRight |
                             Qt.AlignmentFlag.AlignBottom)
         layout.addWidget(pv_area)
+        layout.addWidget(header)
         footer = QLabel()
         footer.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         footer.setTextFormat(Qt.TextFormat.RichText)
@@ -279,6 +279,7 @@ class CandidatePanel(QWidget):
         self._render_header(rank)
         frame, header, moves = self.rows[rank]
         moves.candidate_turn = turn
+        moves.candidate_evaluation = score_label(info, turn)
         moves.set_moves([(text, i + 1) for i, text in enumerate(info["san"])], light=light)
         if (previous and previous.get("pv")
                 and (not info.get("pv") or previous["pv"][0] != info["pv"][0])):
@@ -311,13 +312,10 @@ class CandidatePanel(QWidget):
         wdl = info.get("wdl")
         if wdl and self.turn < 0:
             wdl = wdl[::-1]
-        first = blue(score_label(info, self.turn))
+        depth = f"{info['depth']}/{info['seldepth']}" if self.show_seldepth else str(info["depth"])
+        first = f"<span style=\"color:{colors['metadata']};\">Depth {depth}</span>"
         if rank in self.pinned:
             first += " ★"
-        # Keep the first two things a player wants to scan close together:
-        # evaluation, then depth. Avoid the old oversized gap before depth.
-        depth = f"{info['depth']}/{info['seldepth']}" if self.show_seldepth else str(info["depth"])
-        first += f"&nbsp;<span style=\"color:{colors['metadata']};\">Depth {depth}</span>"
         header = self.rows[rank][1]
         if wdl:
             metadata = f"W/D/L {wdl[0] / 10:.1f}/{wdl[1] / 10:.1f}/{wdl[2] / 10:.1f}% White"

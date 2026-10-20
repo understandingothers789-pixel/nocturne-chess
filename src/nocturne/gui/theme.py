@@ -108,6 +108,7 @@ def stylesheet(light: bool = False) -> str:
     QTextBrowser {{ background: transparent; border: none; }}
     QTabBar::tab {{ background: transparent; color: {muted}; padding: 11px 17px; border-bottom: 2px solid transparent; }}
     QTabBar::tab:selected {{ color: {accent}; border-bottom: 2px solid {accent}; }}
+    QTabBar#studyTabs::tab {{ background: {bg}; }}
     QTableWidget, QListWidget {{ background: transparent; border: none; gridline-color: {border}; outline: none; }}
     QTableWidget::item, QListWidget::item {{ padding: 8px; border-radius: 5px; }}
     QTableWidget::item:selected, QListWidget::item:selected {{ background: {selection}; color: {selected_text}; }}

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.7.51 — Crisp game tabs and evaluation-first move rows
+
+- Paint moving game tabs directly with Qt's existing tab style instead of its
+  cached transparent drag pixmap. Tab backgrounds match the window so holding,
+  dragging and releasing retain consistent text rendering. Native tab ordering,
+  close buttons, styling and drag behavior remain in place.
+- Place rank numbers on the right edge in either board orientation.
+- Put each candidate's evaluation immediately before its first move, on the
+  same line. Keep depth and database metrics together below the variation.
+  Existing row limits, expansion arrows, hover and wheel behavior remain.
+- Focused offscreen rendering checks cover 100%, 125% and 200% scaling. Physical
+  Windows ClearType appearance still needs user confirmation on that display.
+
 ## 0.5.7.50 — Basic engine fixes; redesign deferred
 
 - Restore the interface preceding 0.5.7.48. Defer the single-row candidate

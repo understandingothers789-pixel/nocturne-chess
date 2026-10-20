@@ -38,6 +38,7 @@ class MoveText(QTextBrowser):
         self.wheel_preview_ply = None
         self.candidate_rank = None
         self.candidate_turn = 1
+        self.candidate_evaluation = ""
         self._candidate_style = None
         self._book_departure = None
         self._book_departures = {}
@@ -96,7 +97,7 @@ class MoveText(QTextBrowser):
 
     def set_moves(self, items, current=None, light=False, *, book_departure=None, book_departures=None):
         signature = (list(items), current, light)
-        candidate_style = (self.candidate_rank, self.candidate_turn)
+        candidate_style = (self.candidate_rank, self.candidate_turn, self.candidate_evaluation)
         departures = dict(book_departures or {})
         if book_departure is not None and book_departure not in departures:
             departures[book_departure] = "Lichess Masters: first position with no games found"
@@ -117,6 +118,9 @@ class MoveText(QTextBrowser):
         colors = palette(light)
         color = colors["history"]
         tokens = []
+        if self.candidate_rank is not None and self.candidate_evaluation:
+            tokens.append(f'<span style="color:{colors["metric"]};">'
+                          f'{escape(self.candidate_evaluation)}</span>')
         for text, index in self._items:
             if index is None:
                 tokens.append(escape(text))

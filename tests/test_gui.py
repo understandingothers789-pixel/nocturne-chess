@@ -720,7 +720,8 @@ class GuiTests(unittest.TestCase):
             text = document.toPlainText().replace("\u00a0", " ")
             headline = self._candidate_header_text(3).replace("\u00a0", " ")
             footer = self._candidate_footer_text(3).replace("\u00a0", " ")
-            self.assertIn("+0.22 Depth 31", headline)
+            self.assertIn("Depth 31", headline)
+            self.assertTrue(self.window.candidates.rows[3][2].toPlainText().startswith("+0.22"))
             self.assertNotIn("31/46", headline)
             self.assertIn("W/D/L 10.0/20.0/70.0% White", headline)
             self.assertIn("API win (White) 25.0%", headline)
@@ -735,7 +736,7 @@ class GuiTests(unittest.TestCase):
             self.assertIn("Freq 40.0%", text)  # Uses all 1,000 games, not just returned moves.
             self.assertIn("400 / 1,000 games", text)
             self.assertIn("Lichess Masters · Cached", text)
-            for blue_text in ("+0.22", "25.0%", "40.0%"):
+            for blue_text in ("25.0%", "40.0%"):
                 color = document.find(blue_text).charFormat().foreground().color()
                 self.assertEqual(color, QColor(palette(light)["metric"]))
             self.assertNotEqual(document.find("Depth").charFormat().foreground().color(),

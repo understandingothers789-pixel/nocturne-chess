@@ -36,7 +36,6 @@ from PySide6.QtWidgets import (
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
-    QTabBar,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -67,6 +66,7 @@ from .opening_coverage import OpeningCoverage
 from .snapshot_dialog import SnapshotDialog
 from ..explorer import RATINGS, SPEEDS
 from .moves import MoveText
+from .study_tabs import StudyTabBar
 from .hover_preview import HoverPreview, MiniBoard
 from .wheel import WheelSteps
 from .workspace import DockWorkspace
@@ -276,7 +276,7 @@ class MainWindow(QMainWindow):
         self.workspace_header.setLayout(top)
         content.addWidget(self.workspace_header)
         study_row = QHBoxLayout()
-        self.study_tabs = QTabBar()
+        self.study_tabs = StudyTabBar()
         self.study_tabs.setTabsClosable(True)
         self.study_tabs.setExpanding(False)
         self.study_tabs.setMovable(True)

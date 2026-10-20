@@ -409,7 +409,7 @@ class BoardWidget(QWidget):
             painter.setFont(font)
             for index in range(8):
                 # Put file labels in the bottom row and rank labels on the
-                # outside edge (right when flipped), like Lichess.
+                # right edge, regardless of orientation, like Lichess.
                 x = rect.x() + (index + 0.5) * unit
                 bottom_y = rect.bottom() - unit / 2
                 bottom_square = self.square_at(QPointF(x, bottom_y))
@@ -426,7 +426,7 @@ class BoardWidget(QWidget):
                     )
 
                 y = rect.y() + (index + 0.5) * unit
-                edge_x = rect.right() - unit / 2 if self.flipped else rect.x() + unit / 2
+                edge_x = rect.right() - unit / 2
                 rank_square = self.square_at(QPointF(edge_x, y))
                 if rank_square is not None:
                     tile = BOARD_THEMES.get(self.theme, BOARD_THEMES["Classic"])
@@ -434,13 +434,10 @@ class BoardWidget(QWidget):
                     color = QColor(tile[1] if is_light else tile[0])
                     color.setAlpha(175)
                     painter.setPen(color)
-                    align = Qt.AlignmentFlag.AlignRight if self.flipped else Qt.AlignmentFlag.AlignLeft
                     inset = 3
-                    if self.flipped:
-                        label_rect = QRectF(rect.right() - unit * 0.24, y - unit / 2 + inset, unit * 0.2, unit * 0.2)
-                    else:
-                        label_rect = QRectF(rect.x() + inset, y - unit / 2 + inset, unit * 0.2, unit * 0.2)
-                    painter.drawText(label_rect, align | Qt.AlignmentFlag.AlignTop, str((rank_square >> 4) + 1))
+                    label_rect = QRectF(rect.right() - unit * 0.24, y - unit / 2 + inset, unit * 0.2, unit * 0.2)
+                    painter.drawText(label_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop,
+                                     str((rank_square >> 4) + 1))
 
     def _request(self, src: int, dst: int, global_pos) -> bool:
         root_fen = self.board.fen()
