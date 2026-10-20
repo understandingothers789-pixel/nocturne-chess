@@ -1,5 +1,25 @@
 # Windows 11 desktop builds
 
+## [0.5.7.52 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39376976412/artifacts/12243549117)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`5798ecc`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/5798ecca44451ec206f20f3b6b1a8237b7746259)
+defaults every MultiPV candidate to one visible move row and makes the existing
+small cursor-board preview the default. The main board stays on the current
+game position. Per-candidate expansion, wheel browsing and opt-out persistence
+remain. Old profiles adopt the defaults once; the larger redesign is deferred.
+
+Focused migration, expansion and preview checks passed, including offscreen
+rendering at 125% and 200% scaling. Windows run
+[39376976412](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39376976412),
+attempt 2, passed lint, the full test suite, packaging and packaged smoke checks.
+
+Artifact **12243549117**, `Nocturne-0.5.7.52-Windows-x64-unsigned`,
+58,016,363 bytes, expires November 19, 2026 (America/Chicago).
+GitHub artifact SHA-256:
+`be9f45c896665c875e7d0a15b4b5db3e4b0b9813990e3fcf66a50d02af9f2696`.
+
 ## [0.5.7.51 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39356660135/artifacts/12235643106)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
