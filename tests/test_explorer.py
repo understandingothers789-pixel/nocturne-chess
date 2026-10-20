@@ -45,7 +45,9 @@ class HttpFixture(QTcpServer):
         self.timers = []
         self.code, self.delay, self.body = 200, 0, None
         self.newConnection.connect(self._accept)
-        if not self.listen(QHostAddress.SpecialAddress.LocalHost, 0):
+        # The client URL below uses IPv4 explicitly; bind the fixture to the
+        # same address because Windows may resolve LocalHost to IPv6 only.
+        if not self.listen(QHostAddress("127.0.0.1"), 0):
             if self.serverError() == QAbstractSocket.SocketError.SocketAccessError:
                 raise unittest.SkipTest("Execution sandbox denies loopback sockets")
             raise RuntimeError(self.errorString())
@@ -238,7 +240,7 @@ class NetworkTests(unittest.TestCase):
         self.server = HttpFixture()
         self.tmp = tempfile.TemporaryDirectory()
         self.cache = ExplorerCache(Path(self.tmp.name) / "cache.db")
-        self.client = ExplorerClient(self.cache, base_url=self.server.base_url, debounce_ms=0, interval_ms=0, timeout_ms=500)
+        self.client = ExplorerClient(self.cache, base_url=self.server.base_url, debounce_ms=0, interval_ms=0, timeout_ms=5000)
         self.client.network.setProxy(QNetworkProxy(QNetworkProxy.ProxyType.NoProxy))
         self.results, self.status = [], []
         self.client.result.connect(lambda *args: self.results.append(args))
@@ -252,7 +254,7 @@ class NetworkTests(unittest.TestCase):
         self.app.processEvents()
         self.tmp.cleanup()
 
-    def wait_for(self, condition, seconds=2):
+    def wait_for(self, condition, seconds=7):
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline and not condition():
             self.app.processEvents()

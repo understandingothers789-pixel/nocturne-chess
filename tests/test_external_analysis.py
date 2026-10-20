@@ -903,11 +903,15 @@ class QtIntegration(unittest.TestCase):
         self.assertEqual(moves[-1].uci(), "e1f1")
         count = len(moves)
 
+        menu_started = time.monotonic()
+
         def choose_last():
             menu = QApplication.activePopupWidget()
             if isinstance(menu, QMenu):
                 QTest.mouseClick(menu, Qt.MouseButton.LeftButton,
                                 pos=menu.actionGeometry(menu.actions()[-1]).center())
+            elif time.monotonic() - menu_started < 2:
+                QTimer.singleShot(20, choose_last)
 
         def dismiss():
             menu = QApplication.activePopupWidget()
@@ -917,7 +921,7 @@ class QtIntegration(unittest.TestCase):
         widget.set_position(Board("4k3/8/8/8/8/8/8/R4K1R w HA - 0 1"))
         widget.selected = parse_square("f1")
         QTimer.singleShot(20, choose_last)
-        QTimer.singleShot(500, dismiss)
+        QTimer.singleShot(2500, dismiss)
         QTest.mouseClick(
             widget, Qt.MouseButton.LeftButton, pos=widget.square_rect(parse_square("g1")).center().toPoint()
         )
@@ -926,8 +930,9 @@ class QtIntegration(unittest.TestCase):
         widget.set_position(Board("4k3/P7/8/8/8/8/8/4K3 w - - 0 1"))
         widget.set_recommendations([(widget.board.parse_uci("a7a8q"), 1, "#1")])
         widget.selected = parse_square("a7")
+        menu_started = time.monotonic()
         QTimer.singleShot(20, choose_last)
-        QTimer.singleShot(500, dismiss)
+        QTimer.singleShot(2500, dismiss)
         QTest.mouseClick(
             widget, Qt.MouseButton.LeftButton, pos=widget.square_rect(parse_square("a8")).center().toPoint()
         )

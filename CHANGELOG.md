@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.7.49 — Reliable Windows validation
+
+- Keep the 0.5.7.48 compact analysis workspace, shared move tree, live F12
+  review, independent engine limits and filtered opening database controls.
+- Stabilize Windows loopback and popup interaction checks so the Windows
+  package can finish validation reliably.
+
 ## 0.5.7.48 — Live automation and a compact analysis workspace
 
 - F12 now streams actual engine output while evaluating the selected position
