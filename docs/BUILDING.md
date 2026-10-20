@@ -1,5 +1,25 @@
 # Windows 11 desktop builds
 
+## [0.5.7.55 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39384231432/artifacts/12246168456)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`62b4caf`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/62b4cafe40d8a37691b391c9cdda95d55213afd6)
+narrows the default analysis/database panel to approximately 31% of the workspace.
+The entire panel is narrower, not just its move text. At an 1800-pixel window,
+the measured panel width was 553 pixels and a sample row displayed eleven SAN
+moves. Full PVs, expansion arrows, wheel previews and manual divider resizing
+remain available.
+
+Focused resizing and orientation checks passed. Windows run
+[39384231432](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39384231432)
+passed lint, the full test suite, packaging and packaged smoke checks.
+
+Artifact **12246168456**, `Nocturne-0.5.7.55-Windows-x64-unsigned`,
+58,019,379 bytes, expires November 19, 2026 (America/Chicago).
+GitHub artifact SHA-256:
+`5269188a6a71317e58520fa600b47f94920aec6c9ff9bea2ab1a47a1ec721e40`.
+
 ## [0.5.7.54 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39382171876/artifacts/12245757095)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
