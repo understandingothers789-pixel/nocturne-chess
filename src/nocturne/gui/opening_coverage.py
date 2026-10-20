@@ -6,7 +6,6 @@ from PySide6.QtCore import QObject, QTimer, Signal
 
 from ..explorer import CACHE_AGE, RATINGS, SPEEDS, ExplorerCache, ExplorerQuery
 from .explorer_client import ExplorerClient
-from ..core.board import START_FEN
 
 
 class OpeningCoverage(QObject):
@@ -24,12 +23,11 @@ class OpeningCoverage(QObject):
         self._generation = 0
 
     @staticmethod
-    def signature(game, source, speed, rating, **filters):
+    def signature(game, source, speed, rating):
         speed, rating = (speed, rating) if source == "lichess" else ("all", 0)
         path = tuple((node, game.nodes[node].move.uci() if game.nodes[node].move else "")
                      for node in game._line_nodes)
-        query = ExplorerQuery(START_FEN, source, speed, rating, **filters)
-        return game.id, game.initial_fen, path, source, speed, rating, query.key
+        return game.id, game.initial_fen, path, source, speed, rating
 
     @staticmethod
     def _records(game):
@@ -38,7 +36,7 @@ class OpeningCoverage(QObject):
             return []
         now = time.time()
         return [r for r in records[-64:] if isinstance(r, dict)
-                and r.get("source") in ("masters", "lichess", "player", "chessdb")
+                and r.get("source") in ("masters", "lichess", "chessdb")
                 and r.get("initial_fen") == game.initial_fen
                 and r.get("speed") in ("all", *SPEEDS)
                 and type(r.get("rating")) is int and r["rating"] in RATINGS
@@ -50,7 +48,7 @@ class OpeningCoverage(QObject):
                 and type(r.get("stamp")) in (int, float) and 0 <= now - r["stamp"] < CACHE_AGE]
 
     @classmethod
-    def markers(cls, game, *, allow_lichess=True, speed="all", rating=0, **filters):
+    def markers(cls, game, *, allow_lichess=True, speed="all", rating=0):
         """Resolve saved UCI paths anew, so editing/reindexing cannot move a marker."""
         markers = {}
         for record in cls._records(game):
@@ -67,14 +65,7 @@ class OpeningCoverage(QObject):
                     break
             if node is None:
                 continue
-            try:
-                query = ExplorerQuery(game.initial_fen, source, record["speed"], record["rating"], **filters)
-                recorded = ExplorerQuery(game.initial_fen, source, record["speed"], record["rating"],
-                                         **record.get("filters", {}))
-            except (ValueError, TypeError):
-                continue
-            if query.filters != recorded.filters:
-                continue
+            query = ExplorerQuery(game.initial_fen, source, record["speed"], record["rating"])
             label = cls._label(query)
             text = (f"{label}: first position with no stored cloud analysis (unknown)"
                     if source == "chessdb" else f"{label}: first position with no games found")
@@ -85,11 +76,15 @@ class OpeningCoverage(QObject):
     def _label(query):
         if query.source == "chessdb":
             return "ChessDB Cloud Analysis"
-        return query.label + (" (" + query.filter_summary + ")" if query.filters or query.source == "lichess" else "")
+        if query.source == "lichess":
+            filters = (query.speed if query.speed != "all" else "all speeds",
+                       f"{query.rating}+ rating" if query.rating else "all ratings")
+            return "Lichess players (" + ", ".join(filters) + ")"
+        return query.label
 
-    def start(self, game, source="masters", speed="all", rating=0, token="", *, force=False, **filters):
+    def start(self, game, source="masters", speed="all", rating=0, token="", *, force=False):
         self.cancel()
-        self.context = self.signature(game, source, speed, rating, **filters)
+        self.context = self.signature(game, source, speed, rating)
         self.game = game
         self.items = []
         for node_id in game._line_nodes:
@@ -98,12 +93,11 @@ class OpeningCoverage(QObject):
                 self.message = "Opening coverage is available for standard chess."
                 self.changed.emit()
                 return
-            self.items.append((node_id, ExplorerQuery(board.fen(), source, speed, rating, **filters)))
+            self.items.append((node_id, ExplorerQuery(board.fen(), source, speed, rating)))
         query = self.items[0][1]
         self.source_label = self._label(query)
         self.record_key = dict(source=source, speed=speed if source == "lichess" else "all",
                                rating=rating if source == "lichess" else 0, initial_fen=game.initial_fen,
-                               filters=query.filters,
                                line=[game.nodes[node].move.uci() for node in game._line_nodes[1:]])
         self.client.set_lichess_token(token)
         self.index = 0
@@ -111,7 +105,7 @@ class OpeningCoverage(QObject):
         self.departure = None
         if not force:
             for record in reversed(self._records(game)):
-                if all(record.get(k, {} if k == "filters" else None) == value for k, value in self.record_key.items()):
+                if all(record[k] == value for k, value in self.record_key.items()):
                     self.departure = (self.items[record["departure"]][0]
                                       if record["departure"] is not None else None)
                     self.message = record["message"]
@@ -122,7 +116,7 @@ class OpeningCoverage(QObject):
 
     def _remember(self):
         records = [record for record in self._records(self.game)
-                   if any(record.get(k, {} if k == "filters" else None) != value for k, value in self.record_key.items())]
+                   if any(record[k] != value for k, value in self.record_key.items())]
         ply = next((i for i, (node, _) in enumerate(self.items) if node == self.departure), None)
         records.append(dict(self.record_key, departure=ply, message=self.message, stamp=time.time()))
         self.game.metadata["database_coverage"] = records[-64:]
@@ -157,8 +151,6 @@ class OpeningCoverage(QObject):
     def _result(self, key, data, origin):
         if not self.running or key != self.items[self.index][1].key:
             return
-        if data.get("indexing"):
-            return
         cloud = self.record_key["source"] == "chessdb"
         count = data.get("total")
         if (cloud and data.get("status") == "unknown") or (not cloud and count == 0):
@@ -179,7 +171,7 @@ class OpeningCoverage(QObject):
     def _status(self, key, message):
         if not self.running or self.index >= len(self.items) or key != self.items[self.index][1].key:
             return
-        if message.startswith(("Loading ", "Cached ·", "Live ·", "Indexing ")):
+        if message.startswith(("Loading ", "Cached ·", "Live ·")):
             return
         self.running = False
         self.message = message + " · coverage incomplete"

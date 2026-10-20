@@ -319,7 +319,7 @@ class QtIntegration(unittest.TestCase):
             from unittest.mock import patch
             with patch("PySide6.QtWidgets.QInputDialog.getInt", return_value=(5, True)) as chooser:
                 next(a for a in window.multipv_menu.actions() if a.text() == "Custom…").trigger()
-                self.assertEqual(chooser.call_args.args[-1], 5)
+                self.assertEqual(chooser.call_args.args[-1], 8)
             self.wait_until(lambda: not window.engine.busy and len(window.candidates.lines) == 5)
             self.assertEqual(len(window.board_view.recommendations), 5)
             window._halt_analysis()
@@ -339,9 +339,9 @@ class QtIntegration(unittest.TestCase):
             window.config.update(engine_id="simulator", multipv=32)
             window._apply_settings()
             window._schedule_engine()
-            self.wait_until(lambda: len(window.candidates.lines) == 5)
-            self.assertEqual(window.config["multipv"], 5)
-            self.assertEqual(window.engine.connection.confirmed["MultiPV"], "5")
+            self.wait_until(lambda: len(window.candidates.lines) == 8)
+            self.assertEqual(window.config["multipv"], 8)
+            self.assertEqual(window.engine.connection.confirmed["MultiPV"], "8")
             window._halt_analysis()
             window.engine.close()
             window._profile()["arguments"] = [SIMULATOR, "single-pv"]

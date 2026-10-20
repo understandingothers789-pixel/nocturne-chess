@@ -37,7 +37,6 @@ class OpeningExplorer(QWidget):
     move_hovered = Signal(object, str)
     preview_ended = Signal()
     close_requested = Signal()
-    configure_requested = Signal()
 
     def __init__(self, cache_path, parent=None):
         super().__init__(parent)
@@ -59,11 +58,6 @@ class OpeningExplorer(QWidget):
         self.title = QLabel("Database explorer")
         self.title.setTextFormat(Qt.TextFormat.PlainText)
         header.addWidget(self.title, 1)
-        configure = QPushButton("⚙")
-        configure.setFixedWidth(36)
-        configure.setAccessibleName("Database settings and filters")
-        configure.clicked.connect(self.configure_requested)
-        header.addWidget(configure)
         refresh = QPushButton("↻")
         refresh.setAccessibleName("Refresh database explorer")
         refresh.setFixedWidth(36)
@@ -75,10 +69,6 @@ class OpeningExplorer(QWidget):
         header.addWidget(refresh)
         header.addWidget(close)
         layout.addLayout(header)
-        self.filter_label = QLabel()
-        self.filter_label.setWordWrap(True)
-        self.filter_label.setObjectName("muted")
-        layout.addWidget(self.filter_label)
         self.summary = QLabel("Database → Masters or Lichess players")
         self.summary.setTextFormat(Qt.TextFormat.PlainText)
         self.summary.setWordWrap(True)
@@ -113,7 +103,7 @@ class OpeningExplorer(QWidget):
         self.statistics_status = ""
         self.statistics_changed.emit()
 
-    def set_position(self, board, identity, enabled, source="masters", speed="all", rating=0, **filters):
+    def set_position(self, board, identity, enabled, source="masters", speed="all", rating=0):
         if not enabled:
             self.client.cancel()
             self.query = None
@@ -127,7 +117,7 @@ class OpeningExplorer(QWidget):
         try:
             if board.chess960:
                 raise ValueError("Opening explorer supports standard chess; Chess960 is unavailable")
-            query = ExplorerQuery(board.fen(), source, speed, rating, **filters)
+            query = ExplorerQuery(board.fen(), source, speed, rating)
         except ValueError as exc:
             self.client.cancel()
             self.query = None
@@ -145,9 +135,8 @@ class OpeningExplorer(QWidget):
         self._clear_statistics()
         self.rows = []
         self.table.setRowCount(0)
-        self.title.setText("ChessDB · cloud analysis" if source == "chessdb" else query.label)
-        self.title.setToolTip(query.label + " · " + query.filter_summary)
-        self.filter_label.setText(query.filter_summary)
+        self.title.setText("ChessDB · cloud analysis" if source == "chessdb" else "Masters" if source == "masters" else
+                           f"Lichess players · {speed} · " + (f"{rating}+" if rating else "all ratings"))
         self.table.setHorizontalHeaderLabels(["Move", "Score · White", "Database note"] if source == "chessdb" else
                                             ["Move", "Games", "White / Draw / Black"])
         self.summary.setText("Cloud analysis · White's perspective" if source == "chessdb" else "Opening statistics · " + (
@@ -187,9 +176,7 @@ class OpeningExplorer(QWidget):
             self.table.setItem(i, 2, item)
         opening = data.get("opening")
         name = (opening["eco"] + " · " + opening["name"] + " · ") if opening else ""
-        self.summary.setText("Indexing player games · statistics are provisional" if data.get("indexing") else
-                             name + f"{data['total']:,} games · most played first" if data["total"] else
-                             "No games found for this position and filters")
+        self.summary.setText(name + f"{data['total']:,} games · most played first" if data["total"] else "No games found for this position and filters")
         self.status_label.setText(origin)
 
     def _status(self, key, message):

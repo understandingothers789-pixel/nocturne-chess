@@ -51,16 +51,16 @@ class ExplorerClient(QObject):
 
     def request_for(self, query):
         request = QNetworkRequest(QUrl(query.url(self.base_url)))
-        request.setRawHeader(b"Accept", b"application/x-ndjson" if query.source == "player" else b"application/json")
+        request.setRawHeader(b"Accept", b"application/json")
         request.setRawHeader(b"User-Agent", f"NocturneChess/{__version__} (database explorer)".encode())
-        official_lichess = (query.source in ("masters", "lichess", "player") and request.url().scheme() == "https"
+        official_lichess = (query.source in ("masters", "lichess") and request.url().scheme() == "https"
                             and request.url().host() == "explorer.lichess.org" and request.url().port(443) == 443)
         if official_lichess and self._lichess_token:
             request.setRawHeader(b"Authorization", b"Bearer " + self._lichess_token.encode())
         request.setAttribute(QNetworkRequest.Attribute.RedirectPolicyAttribute,
                              QNetworkRequest.RedirectPolicy.SameOriginRedirectPolicy if official_lichess else
                              QNetworkRequest.RedirectPolicy.NoLessSafeRedirectPolicy)
-        request.setTransferTimeout(max(self.timeout_ms, 60000) if query.source == "player" else self.timeout_ms)
+        request.setTransferTimeout(self.timeout_ms)
         return request
 
     def cancel(self):
@@ -112,42 +112,16 @@ class ExplorerClient(QObject):
         reply = self.network.get(request)
         self.reply = reply
         reply._body = bytearray()
-        reply._stream = bytearray()
-        reply._stream_bytes = 0
-        reply._stream_payload = None
         reply._failure = ""
         reply.readyRead.connect(lambda: self._read(reply))
         reply.finished.connect(lambda: self._finished(reply, query, generation))
-        self.deadline.start(max(self.timeout_ms, 120000) if query.source == "player" else self.timeout_ms)
+        self.deadline.start(self.timeout_ms)
 
     def _read(self, reply):
-        chunk = bytes(reply.readAll())
-        reply._body.extend(chunk)
+        reply._body.extend(bytes(reply.readAll()))
         if len(reply._body) > MAX_RESPONSE:
             reply._failure = f"{self.query.label} response exceeds the size limit"
             reply.abort()
-            return
-        if self.query and self.query.source == "player" and reply is self.reply:
-            reply._stream.extend(chunk)
-            latest = None
-            while b"\n" in reply._stream:
-                line, _, remaining = reply._stream.partition(b"\n")
-                reply._stream = bytearray(remaining)
-                if not line.strip():
-                    continue
-                try:
-                    payload = json.loads(line)
-                    latest = parse_statistics(payload, self.query)
-                    reply._stream_payload = payload
-                except (ValueError, TypeError, UnicodeError):
-                    reply._failure = "Player database returned invalid streamed data"
-                    reply.abort()
-                    return
-            if latest is not None:
-                latest["indexing"] = True
-                query = self.query
-                self.result.emit(query.key, latest, f"Indexing · {query.label}")
-                self.status.emit(query.key, f"Indexing {query.label} · provisional statistics")
 
     def _timeout(self):
         if self.reply:
@@ -159,6 +133,7 @@ class ExplorerClient(QObject):
             reply.deleteLater()
             return
         self.deadline.stop()
+        self.reply = None
         code = reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute)
         if code == 429:
             try:
@@ -168,7 +143,7 @@ class ExplorerClient(QObject):
             seconds = max(60, min(3600, seconds))
             self.blocked_until = time.monotonic() + seconds
             self._failed(f"{query.label} rate limit · retry in {seconds} s")
-        elif code in (401, 403) and query.source in ("masters", "lichess", "player"):
+        elif code in (401, 403) and query.source in ("masters", "lichess"):
             self._failed(f"{query.label} access token required · Database → Lichess access token…")
         elif reply._failure:
             self._failed(reply._failure)
@@ -179,20 +154,10 @@ class ExplorerClient(QObject):
             try:
                 if reply._failure:
                     raise ValueError(reply._failure)
-                if query.source == "player":
-                    nonempty = [line for line in reply._body.splitlines() if line.strip()]
-                    payload = json.loads(nonempty[-1]) if nonempty else None
-                    if isinstance(payload, dict) and payload.get("queuePosition") is not None:
-                        self._failed("Player indexing is incomplete · try again after the queue clears")
-                        self.reply = None
-                        reply.deleteLater()
-                        return
-                else:
-                    payload = json.loads(reply._body)
+                payload = json.loads(reply._body)
                 if query.source == "chessdb" and isinstance(payload, dict) and payload.get("status") == "rate limit exceeded":
                     self.blocked_until = time.monotonic() + 60
                     self._failed("ChessDB rate limit · retry in 60 s")
-                    self.reply = None
                     reply.deleteLater()
                     return
                 data = parse_statistics(payload, query)
@@ -201,7 +166,6 @@ class ExplorerClient(QObject):
                 self.status.emit(query.key, f"Live · {query.label}")
             except (ValueError, TypeError, UnicodeError):
                 self._failed(f"{query.label} returned invalid data")
-        self.reply = None
         reply.deleteLater()
 
     def _failed(self, message):

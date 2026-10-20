@@ -684,7 +684,7 @@ class GuiTests(unittest.TestCase):
 
     def _header_document(self, rank):
         document = QTextDocument()
-        header = self.window.candidates.rows[rank][1].text() + "<p>" + self.window.candidates.rows[rank][1].toolTip() + "</p>"
+        header = self.window.candidates.rows[rank][1].text()
         document.setHtml(header)
         return document
 
@@ -696,42 +696,69 @@ class GuiTests(unittest.TestCase):
     def _candidate_footer_text(self, rank):
         # Kept as a helper for status assertions; candidate telemetry now shares
         # the evaluation/depth row so the database sample stays associated.
-        return self.window.candidates.rows[rank][1].toolTip()
+        return self._candidate_header_text(rank)
 
-    def test_candidate_scores_stay_compact_with_real_api_metrics_in_details(self):
+    def test_candidate_headers_color_real_api_metrics_and_keep_depth_neutral(self):
         from nocturne.explorer import parse_statistics
+        from nocturne.gui.theme import palette
         self._three_pvs()
-        self._show_external_info({"depth":31,"seldepth":46,"score":22,"nodes":10000,
-                                  "multipv":3,"wdl":(100,200,700),"pv":["b1c3","g8f6"]},
-                                 {"turn":1,"multipv":3})
+        self._show_external_info({"depth": 31, "seldepth": 46, "score": 22, "nodes": 10000,
+                                  "multipv": 3, "wdl": (100, 200, 700), "pv": ["b1c3", "g8f6"]},
+                                 {"turn": 1, "multipv": 3})
         self.window.config.update(explorer_enabled=True, explorer_statistics=True, explorer_source="masters")
         with patch.object(self.window.explorer.client, "load"):
             self.window._sync_explorer()
         explorer = self.window.explorer
         query = explorer.query
-        data = parse_statistics({"white":500,"draws":200,"black":300,
-                                 "moves":[{"uci":"b1c3","white":100,"draws":100,"black":200}]}, query)
+        data = parse_statistics({"white": 500, "draws": 200, "black": 300,
+                                 "moves": [{"uci": "b1c3", "white": 100, "draws": 100, "black": 200}]}, query)
         explorer._result(query.key, data, "Cached · test data")
         for light in (False, True):
             self.window.config["light"] = light
             self.window._apply_settings()
-            self.assertEqual(self._candidate_header_text(3), "+0.22")
-            detail = self.window.candidates.rows[3][1].toolTip()
-            for text in ("Depth 31", "W/D/L 10.0/20.0/70.0% White", "API win (White) 25.0%",
-                         "Freq 40.0%", "400 / 1,000 games", "Lichess Masters · Cached"):
-                self.assertIn(text, detail)
-            self.assertNotIn("31/46", detail)
-            self.assertEqual(self.window.candidates.rows[3][2].height(), 24)
+            document = self._header_document(3)
+            text = document.toPlainText().replace("\u00a0", " ")
+            headline = self._candidate_header_text(3).replace("\u00a0", " ")
+            footer = self._candidate_footer_text(3).replace("\u00a0", " ")
+            self.assertIn("+0.22 Depth 31", headline)
+            self.assertNotIn("31/46", headline)
+            self.assertIn("W/D/L 10.0/20.0/70.0% White", headline)
+            self.assertIn("API win (White) 25.0%", headline)
+            self.assertIn("Freq 40.0%", headline)
+            self.assertIn("W/D/L 10.0/20.0/70.0% White", footer)
+            self.assertIn("API win (White) 25.0%", footer)
+            self.assertIn("Freq 40.0%", footer)
+            self.assertIn("Depth 31", text)
+            self.assertNotIn("31/46", text)
+            self.assertIn("W/D/L 10.0/20.0/70.0% White", text)
+            self.assertIn("API win (White) 25.0%", text)
+            self.assertIn("Freq 40.0%", text)  # Uses all 1,000 games, not just returned moves.
+            self.assertIn("400 / 1,000 games", text)
+            self.assertIn("Lichess Masters · Cached", text)
+            for blue_text in ("+0.22", "25.0%", "40.0%"):
+                color = document.find(blue_text).charFormat().foreground().color()
+                self.assertEqual(color, QColor(palette(light)["metric"]))
+            self.assertNotEqual(document.find("Depth").charFormat().foreground().color(),
+                                QColor(palette(light)["metric"]))
+            header = self.window.candidates.rows[3][1]
+            pv = self.window.candidates.rows[3][2]
+            self.assertEqual(header.font().pixelSize(), 16)
+            self.assertIn("font-size:16px", pv.toHtml().replace(" ", ""))
+            self.assertIn("No games found", self._header_document(1).toPlainText())
         self.window._set_explorer_option("explorer_enabled", False)
         self.assertFalse(explorer.isVisible())
+        self.assertIs(explorer.query, query)
         self.assertIs(explorer.statistics, data)
-        self.assertIn("25.0%", self.window.candidates.rows[3][1].toolTip())
+        self.assertIn("25.0%", self._header_document(3).toPlainText())
+        self.assertTrue(self.window.explorer_statistics_action.isChecked())
+        # API updates still reach headers while the explorer panel is hidden.
+        # API updates change metadata without shifting a hovered lower slot.
         third = self.window.candidates.rows[3][2]
         self._hover_word(third, "Nc3")
         before = third.mapToGlobal(third.rect().topLeft())
         data["moves"][0].update(white=200, black=100)
         explorer._result(query.key, data, "Live · Lichess Masters")
-        self.assertIn("50.0%", self.window.candidates.rows[3][1].toolTip())
+        self.assertIn("50.0%", self._header_document(3).toPlainText())
         self.assertEqual(third.mapToGlobal(third.rect().topLeft()), before)
         self.assertEqual(self.window.candidates.hovered, 3)
 
@@ -757,8 +784,8 @@ class GuiTests(unittest.TestCase):
         self.assertNotIn("18/38", telemetry)
         self.assertIn("Nodes 2,345,678", telemetry)
         self.assertIn("Nodes/second 12,345", telemetry)
-        self.assertIn("Depth 18", self.window.candidates.rows[1][1].toolTip())
-        self.assertNotIn("18/38", self.window.candidates.rows[1][1].toolTip())
+        self.assertIn("Depth 18", self._candidate_header_text(1))
+        self.assertNotIn("18/38", self._candidate_header_text(1))
         self.assertIn("font-size:15px", self.window.telemetry.text())
         self.assertIn(palette(False)["metric"], self.window.telemetry.text())
 
@@ -766,7 +793,7 @@ class GuiTests(unittest.TestCase):
         document.setHtml(self.window.telemetry.text())
         self.assertTrue(self.window.store.get("settings")["show_seldepth"])
         self.assertIn("Depth 18/38", document.toPlainText())
-        self.assertIn("Depth 18/38", self.window.candidates.rows[1][1].toolTip())
+        self.assertIn("Depth 18/38", self._candidate_header_text(1))
 
     def test_candidate_database_status_distinguishes_loading_errors_and_empty_samples(self):
         from nocturne.explorer import parse_statistics
@@ -1145,83 +1172,167 @@ class GuiTests(unittest.TestCase):
                 view.close()
                 view.deleteLater()
 
-    def test_compact_candidate_hit_targets_follow_each_notation_without_wide_padding(self):
+    def test_candidate_slots_have_equal_width_and_padded_hit_targets(self):
         self._three_pvs()
         view = self.window.candidates.rows[1][2]
-        view.set_moves([("e4",1),("Qxe4",2),("O-O-O+",3)])
+        view.set_moves([("e4", 1), ("Qxe4", 2), ("O-O-O+", 3)])
         self.app.processEvents()
-        for index, word in enumerate(("e4","Qxe4","O-O-O+"),1):
+        starts = []
+        for word in ("e4", "Qxe4", "O-O-O+"):
             cursor = view.document().find(word)
-            point = view.cursorRect(cursor).center()
-            self.assertEqual(view._move_at(point).toString(), f"move:{index}")
-        cursor = view.document().find("Qxe4")
+            cursor.setPosition(cursor.selectionStart())
+            starts.append(view.cursorRect(cursor).x())
+        self.assertAlmostEqual(starts[1] - starts[0], starts[2] - starts[1], delta=1)
+        cursor = view.document().find("e4")
+        cursor.setPosition(cursor.selectionEnd() + 3)
         point = view.cursorRect(cursor).center()
-        clicked = []
+        hovered, clicked = [], []
+        view.move_hovered.connect(hovered.append)
         view.move_clicked.connect(clicked.append)
+        QTest.mouseMove(view.viewport(), view.viewport().rect().bottomRight())
+        QTest.qWait(20)
+        QTest.mouseMove(view.viewport(), point)
+        QTest.qWait(20)
         QTest.mouseClick(view.viewport(), Qt.MouseButton.LeftButton, pos=point)
-        self.assertEqual(clicked, [2])
+        self.assertEqual(hovered, [1])
+        self.assertEqual(clicked, [1])
 
-    def test_engine_inspector_preserves_single_line_rows(self):
+    def test_engine_expand_controls_default_off_and_expand_full_lines(self):
         base, job = self._three_pvs()
-        actions = {a.text() for a in self.window.menus["Engine"].actions()}
-        self.assertIn("Inspect full principal variation…", actions)
-        self.assertIn("Preview moves on a small board near cursor", actions)
-        self.assertNotIn("Expand all analysis lines", actions)
         panel = self.window.candidates
+        from nocturne.settings import normalize
+
+        self.assertFalse(self.window.config["expand_pv"])
+        self.assertFalse(normalize({"expand_pv": True})["expand_pv"])
+        engine_actions = {action.text(): action for action in self.window.menus["Engine"].actions()}
+        dev_actions = {action.text() for action in self.window.menus["Dev"].actions()}
+        self.assertIn("Expand all analysis lines", engine_actions)
+        self.assertIn("Preview moves on a small board near cursor", engine_actions)
+        self.assertNotIn("Expand all analysis lines", dev_actions)
+        self.assertNotIn("Preview moves on a small board near cursor", dev_actions)
+        self.assertFalse(self.window.expand_pv_action.isChecked())
+
         long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
-        self._show_external_info(base | {"multipv":1, "pv":long_pv}, job)
-        height = panel.rows[1][0].height()
+        self._show_external_info(base | {"multipv": 1, "pv": long_pv}, job)
+        self.app.processEvents()
+        moves = panel.rows[1][2]
+        height_at_three_rows = moves.height()
+        self.assertEqual(moves._reserved_lines, 3)
+        self.assertEqual(moves.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.assertGreater(moves.wrapped_line_count(), 3)
+
         self.window.expand_pv_action.trigger()
         self.app.processEvents()
-        self.assertTrue(panel._popup.isVisible())
-        self.assertEqual(panel.rows[1][0].height(), height)
-        self.assertEqual(panel.rows[1][2]._reserved_lines, 1)
-        panel._popup.close()
+        self.assertTrue(self.window.config["expand_pv"])
+        self.assertTrue(self.window.store.get("settings", {})["expand_pv"])
+        self.assertGreater(moves.height(), height_at_three_rows)
 
-    def test_full_variation_inspector_freezes_its_snapshot_until_closed(self):
-        base, job = self._three_pvs()
-        panel = self.window.candidates
-        long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
-        self._show_external_info(base | {"multipv":1, "pv":long_pv}, job)
+        self.window.expand_pv_action.trigger()
         self.app.processEvents()
-        height = panel.rows[1][0].height()
-        panel.expand_buttons[1].click()
-        self.app.processEvents()
-        popup = panel._popup
-        self.assertTrue(popup.isVisible())
-        self._show_external_info(base | {"multipv":1, "pv":["d2d4", "e5d4"]}, job)
-        self.assertEqual(panel.lines[1]["pv"][0], "g1f3")
-        self.assertEqual(panel.rows[1][0].height(), height)
-        self.assertEqual(panel.rows[2][2]._reserved_lines, 1)
-        popup.close()
-        self.app.processEvents()
-        self.assertEqual(panel.lines[1]["pv"][0], "d2d4")
-        self.assertEqual(panel.rows[1][0].height(), height)
+        self.assertFalse(self.window.config["expand_pv"])
+        self.assertEqual(moves.height(), height_at_three_rows)
 
-    def test_all_supported_multipv_counts_keep_one_row_per_candidate(self):
-        self._three_pvs()
-        panel = self.window.candidates
-        for count in (3,4,5):
-            panel.set_multipv(count)
-            self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {1})
-
-    def test_single_line_candidate_height_stays_stable_during_long_updates(self):
-        base, job = self._three_pvs()
-        panel = self.window.candidates
-        self.app.processEvents()
-        heights = {rank: row[0].height() for rank,row in panel.rows.items()}
-        next_y = panel.rows[2][0].mapToGlobal(QPoint(0,0)).y()
-        long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
-        for pv in (long_pv, long_pv[:8]):
-            self._show_external_info(base | {"multipv":1,"pv":pv}, job)
-            self.app.processEvents()
-            self.assertEqual(panel.rows[1][0].height(), heights[1])
-            self.assertEqual(panel.rows[1][2]._reserved_lines, 1)
-            self.assertTrue(panel.expand_buttons[1].isVisible())
-            self.assertEqual(panel.rows[2][0].mapToGlobal(QPoint(0,0)).y(), next_y)
         panel.set_multipv(5)
+        panel.reserve_slots(4)
+        self.app.processEvents()
+        height_at_two_rows = moves.height()
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {2})
+        self.assertNotEqual(height_at_two_rows, height_at_three_rows)
+
+        panel.set_multipv(4)
+        self.app.processEvents()
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
+        self.assertEqual(moves.height(), height_at_three_rows)
+
+    def test_candidate_arrow_expands_only_its_pv_and_collapses_to_three_rows(self):
+        base, job = self._three_pvs()
+        panel = self.window.candidates
+        self.assertEqual({panel.rows[rank][2]._reserved_lines for rank in (1, 2, 3)}, {3})
+        moves = panel.rows[1][2]
+        long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
+        self._show_external_info(base | {"multipv": 1, "pv": long_pv}, job)
+        self.app.processEvents()
+        fixed_height = moves.height()
+        self.assertEqual([panel.rows[rank][2]._reserved_lines for rank in (1, 2, 3)],
+                         [3, 3, 3])
+        button = panel.expand_buttons[1]
+        self.assertTrue(button.isVisible())
+        self.assertEqual(button.toolTip(), "")
+        self.assertEqual(button.arrowType(), Qt.ArrowType.DownArrow)
+        fen, node = self.window.game.board.fen(), self.window.game.current_node
+
+        QTest.mouseClick(button, Qt.MouseButton.LeftButton)
+        self.app.processEvents()
+        self.assertEqual(panel.expanded_ranks, {1})
+        self.assertEqual(moves._reserved_lines, 0)
+        self.assertGreater(moves.height(), fixed_height)
+        self.assertEqual(moves.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.assertEqual(panel.rows[2][2]._reserved_lines, 3)
+        self.assertEqual(panel.rows[3][2]._reserved_lines, 3)
+        self.assertEqual(button.arrowType(), Qt.ArrowType.UpArrow)
+        last = moves.document().find("Ng8", moves.document().characterCount() - 1,
+                                    QTextDocument.FindFlag.FindBackward)
+        self.assertFalse(last.isNull())
+        self.assertLess(moves.cursorRect(last).bottom(), moves.viewport().height())
+        self.assertEqual(self.window.game.board.fen(), fen)
+        self.assertEqual(self.window.game.current_node, node)
+
+        QTest.mouseClick(button, Qt.MouseButton.LeftButton)
+        self.app.processEvents()
+        self.assertFalse(panel.expanded_ranks)
+        self.assertEqual(moves._reserved_lines, 3)
+        self.assertEqual(moves.height(), fixed_height)
+
+        # A changed suggested first move is a different candidate variation;
+        # its row returns to the compact state rather than inheriting expansion.
+        self._show_external_info(base | {"multipv": 1, "pv": ["d2d4", "e5d4"]}, job)
+        self.app.processEvents()
+        self.assertNotIn(1, panel.expanded_ranks)
+        self.assertEqual(moves._reserved_lines, 3)
+        self.assertFalse(button.isVisible())
+
+    def test_candidate_default_rows_follow_selected_multipv_count(self):
+        base, _ = self._three_pvs()
+        panel = self.window.candidates
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
+        panel.set_multipv(4)
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
+
+    def test_compact_candidate_rows_stay_three_lines_during_long_pv_updates(self):
+        base, job = self._three_pvs()
+        panel = self.window.candidates
+        panel.set_multipv(4)
+        self.app.processEvents()
+        fixed_heights = {rank: panel.rows[rank][2].height() for rank in panel.rows}
+        next_row_y = panel.rows[2][0].mapToGlobal(panel.rows[2][0].rect().topLeft()).y()
+        long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
+
+        # A changing, much longer engine line must scroll inside its reserved
+        # three-row slot and leave every other candidate in the same place.
+        self._show_external_info(base | {"multipv": 1, "pv": long_pv}, job)
+        self.app.processEvents()
+        moves = panel.rows[1][2]
+        self.assertEqual(moves._reserved_lines, 3)
+        self.assertEqual(moves.height(), fixed_heights[1])
+        self.assertGreater(moves.wrapped_line_count(), 3)
+        self.assertTrue(panel.expand_buttons[1].isVisible())
+        self.assertEqual(
+            panel.rows[2][0].mapToGlobal(panel.rows[2][0].rect().topLeft()).y(), next_row_y
+        )
+
+        shorter_pv = long_pv[:8]
+        self._show_external_info(base | {"multipv": 1, "pv": shorter_pv}, job)
+        self.app.processEvents()
+        self.assertEqual(moves.height(), fixed_heights[1])
+        self.assertEqual(
+            panel.rows[2][0].mapToGlobal(panel.rows[2][0].rect().topLeft()).y(), next_row_y
+        )
+        panel.set_multipv(5)
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {2})
         panel.reserve_slots(5)
-        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {1})
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {2})
+        panel.set_multipv(4)
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
 
     def test_five_colored_candidates_keep_slots_and_destination_execution(self):
         self._analysis_game("1.e4 e5 *")
@@ -1233,8 +1344,8 @@ class GuiTests(unittest.TestCase):
         self.app.processEvents()
         panel = self.window.candidates
         self.assertEqual(len(panel.rows), 5)
-        self.assertEqual(sorted(label.text() for label in panel.findChildren(type(panel.rows[1][1]))
-                                if label.text() in {"1", "2", "3", "4", "5"}), ["1","2","3","4","5"])
+        self.assertFalse(any(label.text() in {"1", "2", "3", "4", "5"}
+                             for label in panel.findChildren(type(panel.rows[1][1]))))
         self.assertEqual(len({panel.rows[r][2].height() for r in range(1, 6)}), 1)
         self.assertEqual(panel.rows[1][1].styleSheet(), panel.rows[2][1].styleSheet())
         self.assertEqual(self.window.board_view.candidate_style, "lines")
@@ -1793,7 +1904,7 @@ class GuiTests(unittest.TestCase):
         self.window.pv_label.move_clicked.emit(1)
         self.assertEqual(clicks, [(1, 1)])
 
-    def test_long_pvs_stay_single_line_scroll_and_copy_from_context_menu(self):
+    def test_long_pvs_have_three_reserved_lines_scroll_and_copy_from_context_menu(self):
         from PySide6.QtGui import QTextDocument
         self._analysis_game("1.e4 e5 *")
         info = {"depth": 6, "seldepth": 10, "score": 15, "nodes": 500,
@@ -1803,7 +1914,7 @@ class GuiTests(unittest.TestCase):
         view = self.window.pv_label
         self.assertEqual(len(view._items), 40)
         last = view.document().find("Ng8", view.document().characterCount() - 1, QTextDocument.FindFlag.FindBackward)
-        self.assertGreater(view.horizontalScrollBar().maximum(), 0)
+        self.assertGreater(view.verticalScrollBar().maximum(), 0)
         view.setTextCursor(last)
         view.ensureCursorVisible()
         self.assertLessEqual(view.cursorRect(last).bottom(), view.viewport().height())
@@ -1833,13 +1944,11 @@ class GuiTests(unittest.TestCase):
         self.app.processEvents()
         self.assertFalse(self.window.tabs.tabBar().isVisible())
         self.assertIs(self.window.main_splitter.widget(1), self.window.panel)
-        self.assertGreater(self.window.arena.width(), self.window.panel.width(), self._split_diagnostics())
+        self.assertGreater(self.window.panel.width(), self.window.arena.width(), self._split_diagnostics())
         self.assertTrue(self.window.quick_analysis_button.isVisible())
-        self.assertLess(self.window.engine_scroll.height(), 180)
-        self.assertTrue(self.window.move_tree.isVisible())
-        self.assertTrue(self.window.engine_gear.isVisible())
-        from PySide6.QtWidgets import QComboBox, QSpinBox
-        for kind in (QComboBox, QSpinBox):
+        self.assertGreater(self.window.engine_scroll.height(), 250)
+        from PySide6.QtWidgets import QComboBox, QSpinBox, QToolButton
+        for kind in (QComboBox, QSpinBox, QToolButton):
             self.assertFalse(self.window.tabs.widget(1).findChildren(kind))
         self.assertIn(self.window.resource_controls.menus["Threads"].menuAction(), self.window.menus["Engine"].actions())
         self.assertIn(self.window.multipv_menu.menuAction(), self.window.menus["Engine"].actions())
@@ -1863,7 +1972,7 @@ class GuiTests(unittest.TestCase):
                 self.app.processEvents()
                 QTest.qWait(10)
                 self.assertFalse(self.window.board_hint.isVisible())
-                self.assertGreater(self.window.arena.width(), self.window.panel.width(), self._split_diagnostics())
+                self.assertGreater(self.window.panel.width(), self.window.arena.width(), self._split_diagnostics())
                 self.window.main_splitter.setSizes([500, 500])
                 self.app.processEvents()
                 chosen = self.window.main_splitter.sizes()

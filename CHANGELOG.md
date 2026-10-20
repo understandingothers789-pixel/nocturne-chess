@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.7.50 — Basic engine fixes; redesign deferred
+
+- Restore the interface preceding 0.5.7.48. Defer the single-row candidate
+  redesign, side move tree, new engine gear, evaluation-bar animation and
+  expanded database/player filter interface to a later release.
+- Keep independent defaults: normal analysis 1 billion nodes, F12
+  auto-evaluation 200 million per position and F11 self-play 10 million per
+  move. Each Engine limit menu has its own Reset to default action.
+- Keep F12's live PV/evaluation/depth/node updates, starting from the selected
+  position and saving each available candidate at its reported depth.
+- Keep F11/F12 pause/resume, manual navigation/Escape cancellation, stale
+  result guards and the self-play engine-discovery fix. Pinning one candidate
+  no longer freezes global engine telemetry.
+- Preserve the full redesign at `deferred/lichess-redesign-0.5.7.49` and commit
+  `39a0fa2`. Existing game data and saved analysis remain compatible.
+
 ## 0.5.7.49 — Reliable Windows validation
 
 - Keep the 0.5.7.48 compact analysis workspace, shared move tree, live F12
