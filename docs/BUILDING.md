@@ -1,5 +1,26 @@
 # Windows 11 desktop builds
 
+## [0.5.7.56 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39386270667/artifacts/12247358413)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`fea9b70`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/fea9b70a1c631c98422fa9513a01cde9779576e5)
+fits the board container to the height-limited square and caps the adjacent
+analysis/database/graph column at 560 logical pixels. Extra desktop width stays
+to the right of the working columns. The bottom PGN remains full width.
+Previously saved two-sided dock layouts migrate; floating and tabbed custom
+arrangements are preserved. Maia integration remains deferred.
+
+Focused default-layout resizing, manual-divider preservation and seven docking
+checks passed. Rendered layouts were inspected at 1908×900 and 1215×949.
+Windows run [39386270667](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39386270667)
+passed lint, the full test suite, packaging and packaged smoke checks.
+
+Artifact **12247358413**, `Nocturne-0.5.7.56-Windows-x64-unsigned`,
+58,023,673 bytes, expires November 19, 2026 (America/Chicago).
+GitHub artifact SHA-256:
+`eb8f42da6c322f62cccb25e77cb7bb036b42cf3eb92970fc071fd76cd9a2d8e5`.
+
 ## [0.5.7.55 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39384231432/artifacts/12246168456)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
