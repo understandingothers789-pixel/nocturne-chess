@@ -22,8 +22,7 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 analysis. The simulator is not bundled in the application. Database counts in this capture
 are explicitly labelled fixtures, not live results.*
 
-The next basic release retains engine-limit and automation fixes while the
-larger interface redesign is saved for later. See the [release split](docs/RELEASE_SPLIT.md).
+**[0.5.7.50](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39355217766/artifacts/12234927567): basic engine fixes, with the redesign deferred.** The earlier interface is restored. Engine defaults remain normal **1 billion**, F12 **200 million** per position and F11 **10 million** per move, with independent reset actions. F12 shows live analysis; deliberate navigation or Escape stops automation. The larger Lichess-style redesign is saved separately. Extract the unsigned Windows ZIP and open `Nocturne/Nocturne.exe`. Windows tests, packaging and smoke checks passed. See the [release split](docs/RELEASE_SPLIT.md) and [build receipt](docs/BUILDING.md).
 
 **[0.5.7.46](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39328994908/artifacts/12223857949): Copy PGN and clearer candidate copy actions.** Right-click the bottom Game Moves area to copy the current PGN. Candidate menus say **Copy SAN (this line)** and **Copy UCI (this line)**, and can copy the selected candidate as PGN. Extract the ZIP and open `Nocturne/Nocturne.exe`. See the [build receipt](docs/BUILDING.md).
 

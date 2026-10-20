@@ -13,7 +13,7 @@ The original layout, candidate expansion controls and existing database
 integration remain. The compact single-row candidates, side move tree, new
 settings gear, animated evaluation bar and expanded player/database filters
 are deferred. Their complete implementation is preserved on
-`deferred/lichess-redesign-0.5.7.49`, based on
+[`deferred/lichess-redesign-0.5.7.49`](https://github.com/understandingothers789-pixel/nocturne-chess/tree/deferred/lichess-redesign-0.5.7.49), based on
 [`39a0fa2`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/39a0fa2).
 Published history is retained; no force push is needed to revisit that work.
 

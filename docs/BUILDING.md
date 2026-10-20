@@ -1,5 +1,25 @@
 # Windows 11 desktop builds
 
+## [0.5.7.50 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39355217766/artifacts/12234927567)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned;
+Windows SmartScreen can still show “unknown publisher.” Splitting features
+does not add a trusted signing certificate.
+
+Source commit [`eccb866`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/eccb8665a729ab95487f961789fad1b9b3b40721)
+restores the earlier interface and retains the basic node-limit, live F12,
+pause/resume and manual-interruption fixes. The complete redesign is preserved
+separately; see the [release split](RELEASE_SPLIT.md).
+
+The focused local checks passed 26 tests in 9.6 seconds. Windows run
+[39355217766](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39355217766)
+passed lint, the full 249-test suite (5 optional skips), Windows packaging and
+packaged smoke checks.
+
+Artifact **12234927567**, `Nocturne-0.5.7.50-Windows-x64-unsigned`,
+58,007,842 bytes, expires 2026-11-19. GitHub artifact SHA-256:
+`00d0ea03fe666f431328808afceed18e0530664352140a04e45d0f32e0a80065`.
+
 ## [0.5.7.49 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39353057239/artifacts/12234101285)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
