@@ -1947,7 +1947,7 @@ class GuiTests(unittest.TestCase):
         self.app.processEvents()
         self.assertFalse(self.window.tabs.tabBar().isVisible())
         self.assertIs(self.window.main_splitter.widget(1), self.window.panel)
-        self.assertGreater(self.window.panel.width(), self.window.arena.width(), self._split_diagnostics())
+        self.assertLess(self.window.panel.width(), self.window.arena.width(), self._split_diagnostics())
         self.assertTrue(self.window.quick_analysis_button.isVisible())
         self.assertGreater(self.window.engine_scroll.height(), 250)
         from PySide6.QtWidgets import QComboBox, QSpinBox, QToolButton
@@ -1975,7 +1975,7 @@ class GuiTests(unittest.TestCase):
                 self.app.processEvents()
                 QTest.qWait(10)
                 self.assertFalse(self.window.board_hint.isVisible())
-                self.assertGreater(self.window.panel.width(), self.window.arena.width(), self._split_diagnostics())
+                self.assertLess(self.window.panel.width(), self.window.arena.width(), self._split_diagnostics())
                 self.window.main_splitter.setSizes([500, 500])
                 self.app.processEvents()
                 chosen = self.window.main_splitter.sizes()

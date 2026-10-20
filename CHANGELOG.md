@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.7.55 — Narrower analysis and database panel
+
+- Reduce the default width of the entire analysis/database panel from roughly
+  57% to 31% of the workspace, giving the board the remaining width. At a
+  typical 1800-pixel window, the panel is approximately 550 pixels wide and a
+  compact variation shows around twelve SAN moves.
+- Keep the divider adjustable and preserve manual sizing through engine
+  updates. Both classic and analysis-on-left layouts remain responsive.
+- Full engine lines, expansion arrows and wheel previews remain available;
+  no Maia UI or additional placeholder panel is introduced.
+
 ## 0.5.7.54 — Clickable expansion arrows and compact move spacing
 
 - Wheel browsing now advances only the preview board, keeping the evaluation

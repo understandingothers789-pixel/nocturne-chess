@@ -2475,7 +2475,9 @@ class MainWindow(QMainWindow):
         self.main_splitter.setStretchFactor(1, 1 if analysis else 0)
         if analysis:
             self.tabs.setCurrentIndex(1)
-            self.main_splitter.setSizes([1020, 780] if left else [780, 1020])
+            # Compact analysis/database column: roughly twelve SAN moves on
+            # one line at the default window size. The divider stays movable.
+            self.main_splitter.setSizes([560, 1240] if left else [1240, 560])
             self.workspace_splitter.setSizes([800, 90])
         else:
             self.main_splitter.setSizes([720, 350])
