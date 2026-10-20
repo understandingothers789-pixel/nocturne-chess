@@ -123,6 +123,8 @@ class AutomationTests(unittest.TestCase):
 
     def test_pv_wheel_stops_self_play_before_previewing(self):
         window = self.window
+        window.show()
+        self.app.processEvents()
         window._start_auto_play()
         self.wait(lambda: bool(window.candidates.lines))
         moves = window.candidates.rows[1][2]
@@ -134,7 +136,8 @@ class AutomationTests(unittest.TestCase):
         self.assertFalse(window._auto_play_active)
         self.assertFalse(window.engine.busy)
         self.assertEqual(window.game.board.fen(), before)
-        self.assertIsNotNone(window.board_view.preview_board)
+        self.assertIsNone(window.board_view.preview_board)
+        self.assertTrue(window.hover_preview.isVisible())
 
 
     def test_escape_cancels_automation_and_rejects_queued_results(self):

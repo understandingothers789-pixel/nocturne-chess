@@ -13,7 +13,7 @@ from ..explorer import chessdb_score
 from .moves import MoveText
 from .theme import palette
 
-DEFAULT_PV_LINES = 3
+DEFAULT_PV_LINES = 1
 EXPANDER_WIDTH = 26
 
 
@@ -94,7 +94,7 @@ class CandidatePanel(QWidget):
 
     @staticmethod
     def _lines_for_multipv(count):
-        return DEFAULT_PV_LINES if count <= 4 else 2
+        return DEFAULT_PV_LINES
 
     def set_multipv(self, count):
         """Keep compact candidate rows sized for the selected MultiPV count."""

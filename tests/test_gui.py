@@ -36,7 +36,8 @@ class GuiTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.window = MainWindow(Path(self.tmp.name))
-        self.window.config.update({"mode": "human", "animations": False})
+        # Existing main-board-preview checks cover the optional legacy mode.
+        self.window.config.update({"mode": "human", "animations": False, "cursor_preview": False})
         self.window.game.metadata["mode"] = "human"
         self.window.analysis_mode = False
         self.window._analysis_enabled = False
@@ -1217,45 +1218,45 @@ class GuiTests(unittest.TestCase):
         self._show_external_info(base | {"multipv": 1, "pv": long_pv}, job)
         self.app.processEvents()
         moves = panel.rows[1][2]
-        height_at_three_rows = moves.height()
-        self.assertEqual(moves._reserved_lines, 3)
+        height_at_one_row = moves.height()
+        self.assertEqual(moves._reserved_lines, 1)
         self.assertEqual(moves.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.assertGreater(moves.wrapped_line_count(), 3)
+        self.assertGreater(moves.wrapped_line_count(), 1)
 
         self.window.expand_pv_action.trigger()
         self.app.processEvents()
         self.assertTrue(self.window.config["expand_pv"])
         self.assertTrue(self.window.store.get("settings", {})["expand_pv"])
-        self.assertGreater(moves.height(), height_at_three_rows)
+        self.assertGreater(moves.height(), height_at_one_row)
 
         self.window.expand_pv_action.trigger()
         self.app.processEvents()
         self.assertFalse(self.window.config["expand_pv"])
-        self.assertEqual(moves.height(), height_at_three_rows)
+        self.assertEqual(moves.height(), height_at_one_row)
 
         panel.set_multipv(5)
         panel.reserve_slots(4)
         self.app.processEvents()
-        height_at_two_rows = moves.height()
-        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {2})
-        self.assertNotEqual(height_at_two_rows, height_at_three_rows)
+        height_at_five_pvs = moves.height()
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {1})
+        self.assertEqual(height_at_five_pvs, height_at_one_row)
 
         panel.set_multipv(4)
         self.app.processEvents()
-        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
-        self.assertEqual(moves.height(), height_at_three_rows)
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {1})
+        self.assertEqual(moves.height(), height_at_one_row)
 
-    def test_candidate_arrow_expands_only_its_pv_and_collapses_to_three_rows(self):
+    def test_candidate_arrow_expands_only_its_pv_and_collapses_to_one_row(self):
         base, job = self._three_pvs()
         panel = self.window.candidates
-        self.assertEqual({panel.rows[rank][2]._reserved_lines for rank in (1, 2, 3)}, {3})
+        self.assertEqual({panel.rows[rank][2]._reserved_lines for rank in (1, 2, 3)}, {1})
         moves = panel.rows[1][2]
         long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
         self._show_external_info(base | {"multipv": 1, "pv": long_pv}, job)
         self.app.processEvents()
         fixed_height = moves.height()
         self.assertEqual([panel.rows[rank][2]._reserved_lines for rank in (1, 2, 3)],
-                         [3, 3, 3])
+                         [1, 1, 1])
         button = panel.expand_buttons[1]
         self.assertTrue(button.isVisible())
         self.assertEqual(button.toolTip(), "")
@@ -1268,8 +1269,8 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(moves._reserved_lines, 0)
         self.assertGreater(moves.height(), fixed_height)
         self.assertEqual(moves.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.assertEqual(panel.rows[2][2]._reserved_lines, 3)
-        self.assertEqual(panel.rows[3][2]._reserved_lines, 3)
+        self.assertEqual(panel.rows[2][2]._reserved_lines, 1)
+        self.assertEqual(panel.rows[3][2]._reserved_lines, 1)
         self.assertEqual(button.arrowType(), Qt.ArrowType.UpArrow)
         last = moves.document().find("Ng8", moves.document().characterCount() - 1,
                                     QTextDocument.FindFlag.FindBackward)
@@ -1281,7 +1282,7 @@ class GuiTests(unittest.TestCase):
         QTest.mouseClick(button, Qt.MouseButton.LeftButton)
         self.app.processEvents()
         self.assertFalse(panel.expanded_ranks)
-        self.assertEqual(moves._reserved_lines, 3)
+        self.assertEqual(moves._reserved_lines, 1)
         self.assertEqual(moves.height(), fixed_height)
 
         # A changed suggested first move is a different candidate variation;
@@ -1289,17 +1290,17 @@ class GuiTests(unittest.TestCase):
         self._show_external_info(base | {"multipv": 1, "pv": ["d2d4", "e5d4"]}, job)
         self.app.processEvents()
         self.assertNotIn(1, panel.expanded_ranks)
-        self.assertEqual(moves._reserved_lines, 3)
+        self.assertEqual(moves._reserved_lines, 1)
         self.assertFalse(button.isVisible())
 
     def test_candidate_default_rows_follow_selected_multipv_count(self):
         base, _ = self._three_pvs()
         panel = self.window.candidates
-        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {1})
         panel.set_multipv(4)
-        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {1})
 
-    def test_compact_candidate_rows_stay_three_lines_during_long_pv_updates(self):
+    def test_compact_candidate_rows_stay_one_line_during_long_pv_updates(self):
         base, job = self._three_pvs()
         panel = self.window.candidates
         panel.set_multipv(4)
@@ -1309,13 +1310,13 @@ class GuiTests(unittest.TestCase):
         long_pv = ["g1f3", "g8f6", "f3g1", "f6g8"] * 12
 
         # A changing, much longer engine line must scroll inside its reserved
-        # three-row slot and leave every other candidate in the same place.
+        # single-row slot and leave every other candidate in the same place.
         self._show_external_info(base | {"multipv": 1, "pv": long_pv}, job)
         self.app.processEvents()
         moves = panel.rows[1][2]
-        self.assertEqual(moves._reserved_lines, 3)
+        self.assertEqual(moves._reserved_lines, 1)
         self.assertEqual(moves.height(), fixed_heights[1])
-        self.assertGreater(moves.wrapped_line_count(), 3)
+        self.assertGreater(moves.wrapped_line_count(), 1)
         self.assertTrue(panel.expand_buttons[1].isVisible())
         self.assertEqual(
             panel.rows[2][0].mapToGlobal(panel.rows[2][0].rect().topLeft()).y(), next_row_y
@@ -1329,11 +1330,11 @@ class GuiTests(unittest.TestCase):
             panel.rows[2][0].mapToGlobal(panel.rows[2][0].rect().topLeft()).y(), next_row_y
         )
         panel.set_multipv(5)
-        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {2})
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {1})
         panel.reserve_slots(5)
-        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {2})
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {1})
         panel.set_multipv(4)
-        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {3})
+        self.assertEqual({row[2]._reserved_lines for row in panel.rows.values()}, {1})
 
     def test_five_colored_candidates_keep_slots_and_destination_execution(self):
         self._analysis_game("1.e4 e5 *")

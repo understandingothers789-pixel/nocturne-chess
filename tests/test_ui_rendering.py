@@ -1,6 +1,8 @@
 """Small rendering checks, also runnable with QT_SCALE_FACTOR=1.25 or 2."""
 
 import os
+from pathlib import Path
+import tempfile
 import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -97,3 +99,33 @@ class RenderingTests(unittest.TestCase):
         self.assertEqual(layout.lineForTextPosition(score.selectionStart()).y(),
                          layout.lineForTextPosition(move.selectionStart()).y())
         self.assertGreater(header.mapTo(panel, QPoint()).y(), moves.mapTo(panel, QPoint()).y())
+
+    def test_fresh_profile_previews_on_cursor_board_and_keeps_opt_out(self):
+        from nocturne.gui.window import MainWindow
+
+        with tempfile.TemporaryDirectory() as directory:
+            window = MainWindow(Path(directory))
+            try:
+                window.show()
+                self.app.processEvents()
+                self.assertTrue(window.cursor_preview_action.isChecked())
+                before = window.game.board.fen()
+                position = window.game.board.copy()
+                move = position.parse_uci("e2e4")
+                position.push(move)
+                window._show_move_preview("candidate", position, move, "Candidate preview")
+                self.assertTrue(window.hover_preview.isVisible())
+                self.assertEqual(window.board_view.display_board.fen(), before)
+                self.assertEqual(window.hover_preview.board.display_board.fen(), position.fen())
+                window._set_cursor_preview(False)
+            finally:
+                window.close()
+                window.deleteLater()
+                self.app.processEvents()
+            reopened = MainWindow(Path(directory))
+            try:
+                self.assertFalse(reopened.cursor_preview_action.isChecked())
+            finally:
+                reopened.close()
+                reopened.deleteLater()
+                self.app.processEvents()

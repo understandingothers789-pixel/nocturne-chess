@@ -819,12 +819,13 @@ class MainWindow(QMainWindow):
         self.explorer._end_preview()
         self._clear_move_preview()
         self.config["cursor_preview"] = bool(enabled)
+        self.config["cursor_preview_version"] = 1
         self.cursor_preview_action.setChecked(bool(enabled))
         self._save()
 
     def _set_expand_pv(self, enabled):
         self.config["expand_pv"] = bool(enabled)
-        self.config["expand_pv_version"] = 1
+        self.config["expand_pv_version"] = 2
         self.candidates.set_expanded(enabled)
         self.expand_pv_action.setChecked(bool(enabled))
         self._save()
@@ -2424,7 +2425,7 @@ class MainWindow(QMainWindow):
         self._sync_raw_pgn()
         self.candidates.set_expanded(self.config.get("expand_pv", False))
         self.expand_pv_action.setChecked(self.config.get("expand_pv", False))
-        self.cursor_preview_action.setChecked(self.config.get("cursor_preview", False))
+        self.cursor_preview_action.setChecked(self.config.get("cursor_preview", True))
         self.snapshot_capture_action.setChecked(self.config.get("analysis_snapshots", False))
         self.engine.set_snapshot_capture(self.config.get("analysis_snapshots", False))
         self.confirm_review_action.setChecked(self.config.get("review_confirm", True))
@@ -2512,7 +2513,7 @@ class MainWindow(QMainWindow):
 
     def _show_move_preview(self, source, position, last_move=None, caption="Move preview"):
         self._preview_source = source
-        if self.config.get("cursor_preview", False):
+        if self.config.get("cursor_preview", True):
             self.board_view.clear_preview()
             self.hover_preview.show_position(position, last_move, self.board_view, caption)
         else:

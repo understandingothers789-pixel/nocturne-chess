@@ -24,8 +24,9 @@ DEFAULTS = {
     "show_raw_pgn": False,
     "raw_pgn_version": 1,
     "expand_pv": False,
-    "expand_pv_version": 1,
-    "cursor_preview": False,
+    "expand_pv_version": 2,
+    "cursor_preview": True,
+    "cursor_preview_version": 1,
     "wheel_game_moves": True,
     "wheel_analysis_moves": True,
     "animations": True,
@@ -134,8 +135,11 @@ def normalize(data) -> dict:
         result["show_raw_pgn"] = False
     # Older builds could preserve the global expand-all setting. Reset it once
     # to the compact default, then respect later explicit user choices.
-    if data.get("expand_pv_version") != 1:
+    if data.get("expand_pv_version") != 2:
         result["expand_pv"] = False
+    # Adopt the cursor board once for older profiles, then preserve opt-outs.
+    if data.get("cursor_preview_version") != 1:
+        result["cursor_preview"] = True
     for key, minimum, maximum in (
         ("hash_mb", 1, 65536),
         ("analysis_depth", 1, 128),

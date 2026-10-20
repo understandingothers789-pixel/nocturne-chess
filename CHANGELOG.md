@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.7.52 — Single-line variations and cursor-board previews by default
+
+- Reserve one visible move row per candidate for every MultiPV count. Each
+  candidate's existing arrow still expands only that full variation.
+- Enable the small cursor-board preview by default, including one-time adoption
+  for older profiles, so hovering leaves the main board unchanged. The Engine
+  menu toggle still allows opting out, and that choice survives reopening.
+- Reset older expand-all preferences once to the single-line default. Later
+  explicit expansion choices are preserved. Existing wheel/snapshot stability,
+  evaluation-first moves, right-edge coordinates and crisp tabs remain.
+- The larger Lichess layout, Maia integration and new arrow work remain deferred.
+
 ## 0.5.7.51 — Crisp game tabs and evaluation-first move rows
 
 - Paint moving game tabs directly with Qt's existing tab style instead of its

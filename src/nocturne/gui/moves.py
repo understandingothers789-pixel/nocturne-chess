@@ -247,7 +247,7 @@ class MoveText(QTextBrowser):
                     probe.setDocumentMargin(self.document().documentMargin())
                     probe.setHtml('<div style="font-family:Consolas,monospace; font-size:16px; line-height:155%;">'
                                   + '<br/>'.join(['Hg'] * self._reserved_lines) + '</div>')
-                    probe.size()  # Force Qt to lay out the three sample lines.
+                    probe.size()  # Force Qt to lay out the reserved sample lines.
                     layout = probe.begin().layout()
                     last = layout.lineAt(layout.lineCount() - 1)
                     height = math.ceil(last.y() + last.height() + 2 * probe.documentMargin()) + 4
@@ -269,7 +269,7 @@ class MoveText(QTextBrowser):
         if not self._auto_fit:
             return 0
         # Force the rich text document to lay out against the visible width;
-        # the candidate expander is shown only when the two fixed rows clip it.
+        # the candidate expander is shown when the reserved row clips it.
         document = self.document()
         document.setTextWidth(max(1, self.viewport().width()))
         document.documentLayout().documentSize()
