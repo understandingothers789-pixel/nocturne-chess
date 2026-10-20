@@ -1953,7 +1953,8 @@ class GuiTests(unittest.TestCase):
         self.assertGreater(self.window.engine_scroll.height(), 250)
         from PySide6.QtWidgets import QComboBox, QSpinBox, QToolButton
         for kind in (QComboBox, QSpinBox, QToolButton):
-            self.assertFalse(self.window.tabs.widget(1).findChildren(kind))
+            controls = self.window.tabs.widget(1).findChildren(kind)
+            self.assertEqual(controls, [self.window.maia_controls.rating] if kind is QComboBox else [])
         self.assertIn(self.window.resource_controls.menus["Threads"].menuAction(), self.window.menus["Engine"].actions())
         self.assertIn(self.window.multipv_menu.menuAction(), self.window.menus["Engine"].actions())
 

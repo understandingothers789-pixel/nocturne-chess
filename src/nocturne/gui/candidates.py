@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 from ..engine.uci_types import score_label
 from ..explorer import chessdb_score
+from ..maia import percentage
 from .moves import MoveText
 from .theme import palette
 
@@ -39,9 +40,13 @@ class CandidatePanel(QWidget):
         self.primary = primary
         self.primary.reserve_lines(0 if self.expanded else self.default_pv_lines)
         self.rows = {}
+        self.maia_labels = {}
         self.footers = {}
         self.expand_buttons = {}
         self.expanded_ranks = set()
+        self.maia_policy = {}
+        self.maia_enabled = False
+        self.maia_rating = 1800
         self.light = False
         self.show_seldepth = False
         self.show_details = False
@@ -69,6 +74,7 @@ class CandidatePanel(QWidget):
                 self.primary.setParent(self)
             widgets[0].deleteLater()
         self.rows = {}
+        self.maia_labels = {}
         self.footers = {}
         self.expand_buttons = {}
         self.expanded_ranks.clear()
@@ -163,6 +169,13 @@ class CandidatePanel(QWidget):
         # A separate column keeps the browser viewport from covering the
         # button or intercepting its mouse events. It also stays put on expand.
         pv_layout.addWidget(expand_button, 0, 1, Qt.AlignmentFlag.AlignTop)
+        probability = QLabel("—")
+        probability.setFixedWidth(66)
+        probability.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        probability.setStyleSheet("color: #b9b4df; font-family: Consolas; padding-right: 3px;")
+        probability.setVisible(self.maia_enabled)
+        pv_layout.addWidget(probability, 0, 2, Qt.AlignmentFlag.AlignTop)
+        self.maia_labels[rank] = probability
         layout.addWidget(pv_area)
         layout.addWidget(header)
         footer = QLabel()
@@ -282,6 +295,7 @@ class CandidatePanel(QWidget):
         self.recolor(light)
         self.details[rank] = detailed
         self._render_header(rank)
+        self._render_maia(rank)
         frame, header, moves = self.rows[rank]
         moves.candidate_turn = turn
         moves.candidate_evaluation = score_label(info, turn)
@@ -293,6 +307,25 @@ class CandidatePanel(QWidget):
         self._refresh_expander(rank)
         QTimer.singleShot(0, lambda r=rank: self._refresh_expander(r))
         self.changed.emit()
+
+    def set_maia(self, policy=None, rating=1800, enabled=True):
+        self.maia_policy = policy or {}
+        self.maia_rating = rating
+        self.maia_enabled = enabled
+        for rank in self.maia_labels:
+            self._render_maia(rank)
+
+    def _render_maia(self, rank):
+        label = self.maia_labels.get(rank)
+        if label is None:
+            return
+        pv = self.lines.get(rank, {}).get("pv", [])
+        probability = self.maia_policy.get(pv[0]) if pv else None
+        label.setVisible(self.maia_enabled)
+        label.setText(percentage(probability))
+        label.setToolTip(f"Maia-3 79M · {self.maia_rating} vs {self.maia_rating} Lichess blitz\n"
+                         + (f"{pv[0]}: {probability * 100:.8g}% predicted likelihood" if probability is not None
+                            else "Waiting for this position’s policy; no probability has been substituted."))
 
     def set_database(self, query=None, data=None, origin="", status=""):
         value = (query, data, origin, status) if query else None

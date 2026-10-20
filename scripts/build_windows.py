@@ -56,6 +56,16 @@ def build_only(skip_tests=False):
         run([python, "-m", "unittest", "discover", "-s", "tests", "-v"])
     run([python, "scripts/make_icon.py"])
     run([python, "-m", "PyInstaller", "--noconfirm", "--clean", "Nocturne.spec"])
+    # Keep the large neural runtime out of the GUI executable and off its thread.
+    run([python, "-m", "pip", "install", "torch==2.7.1", "--index-url", "https://download.pytorch.org/whl/cpu"])
+    run([python, "-m", "pip", "install", "numpy==2.2.6"])
+    run([python, "scripts/prepare_maia.py"])
+    run([python, "scripts/check_maia_model.py", ROOT / "models/maia3-79m.pt"])
+    run([python, "-m", "PyInstaller", "--noconfirm", "--clean", "Maia.spec"])
+    shutil.move(str(ROOT / "dist/Maia"), str(ROOT / "dist/Nocturne/Maia"))
+    shutil.copy2(ROOT / "models/maia3-79m.pt", ROOT / "dist/Nocturne/Maia/maia3-79m.pt")
+    run([python, "scripts/check_maia_model.py", ROOT / "dist/Nocturne/Maia/maia3-79m.pt",
+         ROOT / "dist/Nocturne/Maia/NocturneMaia.exe"])
     smoke_test(ROOT / "dist")
     run([python, "scripts/package_source.py"])
     print("Local validation build completed. A signed release archive requires --package-signed.")

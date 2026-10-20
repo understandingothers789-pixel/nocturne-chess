@@ -20,6 +20,7 @@ def main():
         "setup.py",
         "MANIFEST.in",
         "Nocturne.spec",
+        "Maia.spec",
         "README.md",
         "LICENSE",
         "THIRD_PARTY_NOTICES.md",

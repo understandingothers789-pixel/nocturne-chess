@@ -17,3 +17,6 @@ dist/
 .tb-test-fixtures/
 *.so
 *.pyd
+
+# Downloaded official Maia checkpoint; included in Windows artifacts, never Git.
+/models/

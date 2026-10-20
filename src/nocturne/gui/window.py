@@ -42,6 +42,8 @@ from PySide6.QtWidgets import (
 )
 
 from .. import __version__
+from ..maia.controller import MaiaController
+from .maia import MaiaControls
 from ..core.board import Move, SQUARES
 from ..core.rules import Board
 from ..core.game import Game, TimeControl
@@ -198,6 +200,9 @@ class MainWindow(QMainWindow):
         self.engine.discovered.connect(self._engine_discovered)
         self.engine.status.connect(self.engine_state.setText)
         self.engine.connection.configured.connect(self.resource_controls.refresh)
+        self.maia = MaiaController(self.data_directory, self)
+        self.maia.changed.connect(self._maia_changed)
+        self.maia.status.connect(self.maia_controls.status.setText)
         self._shortcuts()
         QApplication.instance().installEventFilter(self)
         self._apply_settings()
@@ -448,6 +453,12 @@ class MainWindow(QMainWindow):
         self._explorer_active = False
         self.opening_coverage = OpeningCoverage(self.data_directory / "opening-cache.sqlite3", self)
         self.opening_coverage.changed.connect(self._update_opening_coverage)
+        self.maia_controls = MaiaControls()
+        self.maia_controls.rating_changed.connect(self._set_maia_rating)
+        self.maia_controls.enabled_changed.connect(self._set_maia_enabled)
+        self.maia_controls.settings_requested.connect(self._manage_engines)
+        self.maia_controls.move_selected.connect(self._maia_move)
+        engine_page_layout.insertWidget(0, self.maia_controls)
         engine_page_layout.addWidget(self.analysis_detail_splitter, 1)
         self.graph = EvaluationGraph()
         self.graph.setMinimumHeight(60)
@@ -749,6 +760,15 @@ class MainWindow(QMainWindow):
         engine.addSeparator()
         add(engine, "Restart selected engine", self._restart_engine)
         add(engine, "Engine diagnostics…", self._diagnostics)
+        maia_menu = engine.addMenu("Maia-3 79M")
+        self.maia_enabled_action = add(maia_menu, "Enable local Maia predictions", self._set_maia_enabled)
+        self.maia_enabled_action.setCheckable(True)
+        rating_menu = maia_menu.addMenu("Lichess blitz rating (equal-rated opponent)")
+        self.maia_rating_actions = {}
+        for elo in range(400, 3001, 200):
+            action = add(rating_menu, str(elo), lambda checked=False, r=elo: self._set_maia_rating(r))
+            action.setCheckable(True)
+            self.maia_rating_actions[elo] = action
         database = self.menuBar().addMenu("&Database")
         self.explorer_enabled_action = add(database, "Show database explorer", lambda checked: self._set_explorer_option("explorer_enabled", checked))
         self.explorer_enabled_action.setCheckable(True)
@@ -1358,6 +1378,52 @@ class MainWindow(QMainWindow):
         except ValueError:
             return
         self._show_move_preview("candidate", board, caption=f"Candidate preview · ply {ply}")
+
+    def _set_maia_enabled(self, enabled):
+        self.config["maia_enabled"] = bool(enabled)
+        if not enabled:
+            self.maia.stop()
+            self.maia_controls.status.setText("Maia disabled")
+        self._request_maia()
+        self._save()
+
+    def _set_maia_rating(self, rating):
+        self.config["maia_rating"] = rating
+        self._request_maia()
+        self._save()
+
+    def _request_maia(self):
+        if not hasattr(self, "maia"):
+            return
+        enabled = self.config.get("maia_enabled", True)
+        rating = self.config.get("maia_rating", 1800)
+        self.maia_controls.enabled.blockSignals(True)
+        self.maia_controls.enabled.setChecked(enabled)
+        self.maia_controls.enabled.blockSignals(False)
+        self.maia_controls.rating.blockSignals(True)
+        self.maia_controls.rating.setCurrentIndex(self.maia_controls.rating.findData(rating))
+        self.maia_controls.rating.blockSignals(False)
+        self.maia_enabled_action.setChecked(enabled)
+        for elo, action in self.maia_rating_actions.items():
+            action.setChecked(elo == rating)
+        self.maia_controls.setVisible(self.analysis_mode)
+        if enabled and self.analysis_mode:
+            path = self.game.node_path(self.game.current_node)[1:]
+            self.maia.request(self.game.initial_fen, [self.game.nodes[n].move.uci() for n in path], rating)
+        self._maia_changed(self.maia.policies if enabled else {})
+
+    def _maia_changed(self, policies):
+        rating = self.config.get("maia_rating", 1800)
+        policy = policies.get(str(rating), {})
+        self.candidates.set_maia(policy, rating, self.config.get("maia_enabled", True) and self.analysis_mode)
+        self.maia_controls.set_policy(policy, self.game.board)
+
+    def _maia_move(self, uci):
+        try:
+            move = self.game.board.parse_uci(uci)
+        except ValueError:
+            return
+        self._human_move(move)
 
     def _sync_candidate_markers(self):
         if self._candidate_identity != self._position_identity():
@@ -2609,6 +2675,7 @@ class MainWindow(QMainWindow):
         )
         self.board_view.set_game_move(next_game_move)
         self._render_move_history()
+        self._request_maia()
         if self._pv_identity != self._position_identity():
             self._clear_analysis_output()
             self.analysis_scope = ""
@@ -3718,6 +3785,7 @@ class MainWindow(QMainWindow):
         self.explorer.close_client()
         self.opening_coverage.close()
         self.engine.close()
+        self.maia.stop()
         self.game.pause_clock()
         self._save()
         if self._dock_workspace is not None:

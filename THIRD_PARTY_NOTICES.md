@@ -101,3 +101,16 @@ and `licenses/GPL-3.0.txt`. The PNGs and upstream editable Merida SVGs are inclu
 in `assets/pieces/nibbler/` and the accompanying source archive. Since 0.5.7.18,
 the matching SVGs in `source/` provide runtime rendering at native display
 resolution; original 240×240 PNGs remain archival references. No endorsement.
+
+## Maia-3 79M (optional local prediction worker)
+
+Maia-3 architecture/tokenization components in `src/nocturne/maia/vendor/`
+are unmodified from [CSSLab/maia3](https://github.com/CSSLab/maia3), revision
+`1e13597c42d4858b7cfd7cfdae01e297263364b2`, by the University of Toronto CSSLab.
+They and the [official Maia3-79M checkpoint](https://huggingface.co/UofTCSSLab/Maia3-79M)
+are licensed under AGPL-3.0; see `licenses/Maia3-AGPL-3.0.txt`.
+The checkpoint is pinned to revision `a107d6ceb7b298cb04ae1da4edffe2939858b894`.
+The corresponding worker source and upstream components accompany each Windows
+build in its source ZIP. The local worker uses PyTorch (BSD-style license) and
+NumPy (BSD-3-Clause); their license texts accompany the worker distribution.
+Maia predicts human move likelihood. Its probabilities are not Stockfish evaluations.
