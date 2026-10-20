@@ -1046,6 +1046,23 @@ class MainWindow(QMainWindow):
             return
         self._show_move_preview("explorer", position, move, "Opening database preview")
 
+    def keyPressEvent(self, event):
+        # Qt can deliver keys before Windows has activated a newly shown
+        # native window. Use the same actions as a fallback when its shortcut
+        # map did not consume these global analysis/navigation keys.
+        titles = {Qt.Key.Key_F11: "Auto-play engines from this position",
+                  Qt.Key.Key_F12: "Auto-evaluate entire line",
+                  Qt.Key.Key_Backspace: "Delete current line"}
+        title = titles.get(event.key())
+        action = self.menu_actions.get(title) if title and hasattr(self, "menu_actions") else None
+        if (action is not None and action.isEnabled() and not event.isAutoRepeat()
+                and action.shortcut().matches(QKeySequence(event.keyCombination()))
+                == QKeySequence.SequenceMatch.ExactMatch):
+            action.trigger()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
     def eventFilter(self, watched, event):
         if self._closing:
             return super().eventFilter(watched, event)
