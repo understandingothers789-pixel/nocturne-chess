@@ -1,5 +1,27 @@
 # Windows 11 desktop builds
 
+## [0.5.7.60 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39393552253/artifacts/12250662522)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`b6385f3`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/b6385f37c83337470d670154194dd9b1efaeb686)
+includes the complete .59 Maia workspace and two final safeguards. Maia results
+cannot leak into ordinary play after leaving analysis mode. Hidden insights
+request only the selected rating; reopening the column requests any missing
+rating samples for the current position. The nine focused Maia integration
+checks passed locally, including stale-result rejection, move identity,
+promotion aggregation, blend semantics, Chess960 and mode isolation.
+
+Windows run [39393552253](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39393552253)
+passed lint, the full suite, real official-79M policy checks, packaging, and
+packaged worker/GUI smoke checks. The bundled CPU worker uses the same verified
+315,651,851-byte official checkpoint recorded for .57. See [Maia details](MAIA.md).
+
+Artifact **12250662522**, `Nocturne-0.5.7.60-Windows-x64-unsigned`,
+492,352,864 bytes, expires November 19, 2026 (America/Chicago).
+GitHub artifact SHA-256:
+`1c0379a19e2d74032f9c5a2983008ea9ff65564a7a35548c0e7203ee0de1f427`.
+
 ## [0.5.7.59 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39392361779/artifacts/12249874525)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
