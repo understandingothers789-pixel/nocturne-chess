@@ -1,5 +1,25 @@
 # Windows 11 desktop builds
 
+## [0.5.7.58 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39391637062/artifacts/12249389717)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`d0c8f82`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/d0c8f823c894c2a4bb30347c1d250032dd5c4c60)
+adds the rating graph, clickable curve legends, exact sampled probabilities,
+and synchronized miniature move map. Existing PGN interactions are reused in
+an inline tree beneath the integrated analysis, and the full-width bottom PGN
+is retained. Insights remain a compact, adjustable dock beside analysis.
+
+Windows run [39391637062](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39391637062)
+passed lint, the full suite, real official-79M policy checks, packaging, and
+packaged worker/GUI smoke checks. The same pinned CPU model and runtime as .57
+are included; no token or separate model download is required.
+
+Artifact **12249389717**, `Nocturne-0.5.7.58-Windows-x64-unsigned`,
+492,337,907 bytes, expires November 19, 2026 (America/Chicago).
+GitHub artifact SHA-256:
+`abcaf0fbd21887a58575d87e85883b0ce00578ec2acbcd1ebcc700263a66330a`.
+
 ## [0.5.7.57 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39391107959/artifacts/12250550708)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
