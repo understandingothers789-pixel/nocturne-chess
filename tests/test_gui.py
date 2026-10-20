@@ -1175,7 +1175,7 @@ class GuiTests(unittest.TestCase):
                 view.close()
                 view.deleteLater()
 
-    def test_candidate_slots_have_equal_width_and_padded_hit_targets(self):
+    def test_candidate_moves_have_natural_spacing_and_precise_hit_targets(self):
         self._three_pvs()
         view = self.window.candidates.rows[1][2]
         view.set_moves([("e4", 1), ("Qxe4", 2), ("O-O-O+", 3)])
@@ -1185,9 +1185,9 @@ class GuiTests(unittest.TestCase):
             cursor = view.document().find(word)
             cursor.setPosition(cursor.selectionStart())
             starts.append(view.cursorRect(cursor).x())
-        self.assertAlmostEqual(starts[1] - starts[0], starts[2] - starts[1], delta=1)
+        self.assertLess(starts[1] - starts[0], starts[2] - starts[1])
         cursor = view.document().find("e4")
-        cursor.setPosition(cursor.selectionEnd() + 3)
+        cursor.setPosition(cursor.selectionEnd() - 1)
         point = view.cursorRect(cursor).center()
         hovered, clicked = [], []
         view.move_hovered.connect(hovered.append)

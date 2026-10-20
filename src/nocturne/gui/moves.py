@@ -134,10 +134,7 @@ class MoveText(QTextBrowser):
             if index in departures:
                 tint = "#87713f" if light else "#c3b07c"
                 style += f"color: {tint};"
-            # Keep SAN slots identical across candidates and updates. Nonbreaking
-            # padding belongs to the anchor, so the whole slot is interactive.
-            label = ("\u00a0" + text + "\u00a0" * max(1, 8 - len(text))
-                     if self.candidate_rank is not None else text)
+            label = text
             decoration = "text-decoration:none;"
             tooltip = f' title="{escape(departures[index], quote=True)}"' if index in departures else ""
             tokens.append(f'<a href="move:{index}" style="{style} {decoration}"{tooltip}>{escape(label)}</a>')
@@ -156,9 +153,9 @@ class MoveText(QTextBrowser):
                     cursor = QTextCursor(self.document())
                     cursor.setPosition(fragment.position())
                     start = self.cursorRect(cursor)
-                    cursor.setPosition(fragment.position() + fragment.length() - 1)
+                    cursor.setPosition(fragment.position() + fragment.length())
                     end = self.cursorRect(cursor)
-                    rect = start.united(end).adjusted(0, -3, 9, 3)
+                    rect = start.united(end).adjusted(0, -2, 1, 2)
                     if rect.contains(point):
                         return QUrl(fragment.charFormat().anchorHref())
                 iterator += 1

@@ -144,13 +144,13 @@ class CandidatePanel(QWidget):
         moves.reserve_lines(0 if self.expanded or rank in self.expanded_ranks else self.default_pv_lines)
         moves.wheel_navigation = self.wheel_navigation
         moves.candidate_rank = rank
-        # Keep a narrow strip free at the end of the reserved rows for this
-        # candidate's own expand/collapse arrow.
-        moves.setViewportMargins(0, 0, EXPANDER_WIDTH, 0)
+        moves.setViewportMargins(0, 0, 0, 0)
+        moves.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         pv_area = QWidget()
         pv_layout = QGridLayout(pv_area)
         pv_layout.setContentsMargins(0, 0, 0, 0)
         pv_layout.setSpacing(0)
+        pv_layout.setColumnStretch(0, 1)
         expand_button = QToolButton(pv_area)
         expand_button.setAutoRaise(True)
         expand_button.setFixedSize(EXPANDER_WIDTH, 22)
@@ -160,8 +160,9 @@ class CandidatePanel(QWidget):
         self._style_expander(expand_button)
         expand_button.clicked.connect(lambda checked=False, r=rank: self.toggle_expansion(r))
         pv_layout.addWidget(moves, 0, 0)
-        pv_layout.addWidget(expand_button, 0, 0, Qt.AlignmentFlag.AlignRight |
-                            Qt.AlignmentFlag.AlignBottom)
+        # A separate column keeps the browser viewport from covering the
+        # button or intercepting its mouse events. It also stays put on expand.
+        pv_layout.addWidget(expand_button, 0, 1, Qt.AlignmentFlag.AlignTop)
         layout.addWidget(pv_area)
         layout.addWidget(header)
         footer = QLabel()

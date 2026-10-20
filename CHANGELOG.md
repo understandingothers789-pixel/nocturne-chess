@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.7.54 — Clickable expansion arrows and compact move spacing
+
+- Give each candidate arrow its own narrow layout column, preventing the
+  browser viewport from covering its click area. Expanding/collapsing affects
+  only that candidate; the arrow stays at the top of the variation.
+- Replace fixed-width padded SAN slots with normal single-space separation.
+  Tighten move hitboxes to include the final character without overlapping the
+  next move, retaining precise hover, click and wheel interaction.
+- No Maia panel or larger redesign is introduced. Existing larger cursor-board
+  previews and optional candidate statistics remain.
+
 ## 0.5.7.53 — Larger previews and cleaner candidate rows
 
 - Increase the hover board from 256 to 384 logical pixels per side, shrinking

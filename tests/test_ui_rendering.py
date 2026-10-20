@@ -9,7 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtCore import QEvent, QPoint, QPointF, Qt
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QScrollArea
 
 from nocturne.gui.board import BoardWidget
 from nocturne.gui.candidates import CandidatePanel
@@ -99,11 +99,38 @@ class RenderingTests(unittest.TestCase):
         self.assertEqual(layout.lineForTextPosition(score.selectionStart()).y(),
                          layout.lineForTextPosition(move.selectionStart()).y())
         self.assertTrue(header.isHidden())
+
         panel.set_detailed(True)
         self.app.processEvents()
         self.assertGreater(header.mapTo(panel, QPoint()).y(), moves.mapTo(panel, QPoint()).y())
         panel.set_detailed(False)
         self.assertTrue(header.isHidden())
+
+    def test_arrow_receives_real_pointer_click_and_expands_only_its_variation(self):
+        panel = CandidatePanel(MoveText(auto_fit=True))
+        area = QScrollArea()
+        self.addCleanup(area.close)
+        area.setWidgetResizable(True)
+        area.setWidget(panel)
+        area.resize(480, 300)
+        panel.set_multipv(2)
+        info = dict(depth=18, seldepth=25, score_type="cp", score_value=22, score=22,
+                    nodes=1000, pv=["g1f3", "g8f6", "f3g1", "f6g8"] * 12,
+                    san=["Nf3", "Nf6", "Ng1", "Ng8"] * 12)
+        for rank in (1, 2):
+            panel.update_line(info | {"multipv": rank}, 1)
+        area.show()
+        self.app.processEvents()
+        arrow = panel.expand_buttons[1]
+        self.assertTrue(arrow.isVisible())
+        for expected in (0, 1):
+            center = arrow.mapToGlobal(arrow.rect().center())
+            self.assertIs(QApplication.widgetAt(center), arrow)
+            QTest.mouseClick(area.windowHandle(), Qt.MouseButton.LeftButton,
+                             pos=area.mapFromGlobal(center))
+            self.app.processEvents()
+            self.assertEqual(panel.rows[1][2]._reserved_lines, expected)
+            self.assertEqual(panel.rows[2][2]._reserved_lines, 1)
 
     def test_fresh_profile_previews_on_cursor_board_and_keeps_opt_out(self):
         from nocturne.gui.window import MainWindow
