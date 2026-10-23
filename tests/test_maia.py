@@ -85,16 +85,61 @@ class MaiaTests(unittest.TestCase):
         tools.close()
         tools.deleteLater()
 
-    def test_move_map_aggregates_promotions_on_the_same_destination(self):
+    def test_scatter_map_keeps_promotion_identity_and_click_inspects_without_playing(self):
         from nocturne.core.rules import Board
-        from nocturne.core.board import parse_square
-        from nocturne.gui.maia_insights import MoveMap
-        view = MoveMap()
-        view.set_policy(Board("7k/P7/8/8/8/8/8/7K w - - 0 1"), {"a7a8q": 0.6, "a7a8n": 0.4})
-        self.assertEqual(view.destinations[parse_square("a8")], 1)
-        self.assertFalse(view.interactive)
-        self.assertFalse(view.wheel_navigation)
-        view.deleteLater()
+        from nocturne.gui.maia_insights import MaiaInsights
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        board = Board("7k/P7/8/8/8/8/8/7K w - - 0 1")
+        original = board.fen()
+        tools = MaiaInsights()
+        tools.resize(340, 950)
+        policy = {"a7a8q": .6, "a7a8n": .3, "h1h2": .1}
+        lines = {1: {"pv": ["a7a8q"], "score_type": "cp", "score_value": 400},
+                 2: {"pv": ["a7a8n"], "score_type": "cp", "score_value": 200}}
+        tools.set_analysis(policy, board, lines)
+        tools.show()
+        self.app.processEvents()
+        tools.map.grab()
+        points = {uci: point for point, uci in tools.map.points}
+        self.assertEqual(set(points), {"a7a8q", "a7a8n"})
+        self.assertGreater(points["a7a8q"].x(), points["a7a8n"].x())
+        self.assertLess(points["a7a8q"].y(), points["a7a8n"].y())
+        QTest.mouseClick(tools.map, Qt.MouseButton.LeftButton, pos=points["a7a8n"].toPoint())
+        self.assertEqual(tools.blunder.move.currentData(), "a7a8n")
+        self.assertEqual(board.fen(), original)
+        self.assertAlmostEqual(tools.blunder.strip.totals["blunder"], .3)
+        self.assertAlmostEqual(tools.blunder.strip.totals["unknown"], .1)
+        tools.set_analysis({}, Board(), {})
+        self.assertEqual(tools.map.points, [])
+        self.assertEqual(tools.blunder.move.count(), 0)
+        tools.close()
+        tools.deleteLater()
+
+    def test_blunder_buckets_preserve_unknown_mass_and_exact_thresholds(self):
+        from nocturne.maia.risk import assess_moves
+        policy = {"e2e4": .2, "d2d4": .2, "g1f3": .2, "b1c3": .1, "c2c4": .2, "a2a3": .1}
+        lines = {i: {"pv": [uci], "score_type": "cp", "score_value": cp}
+                 for i, (uci, cp) in enumerate(zip(policy, (200, 150, 50, 49, 0)), 1)}
+        lines[5]["bound"] = "upperbound"
+        result = assess_moves(policy, lines)
+        self.assertEqual([d["category"] for d in result.values()],
+                         ["best", "best", "ok", "blunder", "unknown", "unknown"])
+        self.assertAlmostEqual(sum(d["probability"] for d in result.values() if d["category"] == "unknown"), .3)
+        self.assertEqual(result["g1f3"]["loss"], 150)
+        lines[1] = {"pv": ["e2e4"], "score_type": "mate", "score_value": 3}
+        self.assertTrue(all(d["category"] == "unknown" for d in assess_moves(policy, lines).values()))
+
+    def test_black_risk_uses_raw_uci_scores_and_duplicate_roots_count_once(self):
+        from nocturne.maia.risk import assess_moves
+        lines = {1: {"pv": ["e7e5"], "score_type": "cp", "score_value": -50, "depth": 22},
+                 2: {"pv": ["d7d5"], "score_type": "cp", "score_value": -210},
+                 3: {"pv": ["e7e5"], "score_type": "cp", "score_value": 100, "depth": 20}}
+        result = assess_moves({"e7e5": .7, "d7d5": .3}, lines)
+        self.assertEqual(result["e7e5"]["category"], "best")
+        self.assertEqual(result["d7d5"]["loss"], 160)
+        self.assertEqual(result["d7d5"]["category"], "blunder")
+        self.assertEqual(sum(d["probability"] for d in result.values()), 1)
 
     def test_blend_reports_unknown_for_unsearched_bound_and_mate_scores(self):
         from nocturne.maia.blend import move_quality, blend_score

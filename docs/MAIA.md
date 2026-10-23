@@ -45,29 +45,41 @@ opponent. Missing samples remain gaps. Click legend buttons to hide/show curves;
 hover near a point for the exact percentage. The dashed marker is the selected
 rating. Curves are model predictions, not measured database game frequencies.
 
-**Move Map** sums predicted probabilities by destination square. Brighter squares
-are more likely destinations, and arrows show the three most likely moves.
-Hover a square to distinguish individual moves, including underpromotions.
-It follows the main board's position, orientation, appearance and selected rating.
+**Move Map** is a scatter plot comparing human likelihood (vertical axis) with
+Stockfish loss in pawns (horizontal axis). Best moves sit on the right; costly
+choices sit on the left. Points share the meter's green/yellow/red categories.
+Hover for the exact SAN move, likelihood and loss; click a point to select it in
+the meter without playing it. Losses above three pawns sit at the `3+` edge;
+tooltips retain the actual loss. Unsearched moves are omitted from the plot
+rather than assigned an invented engine score. Promotions remain separate moves.
 
-**Blender Meter** compares a selected move without playing it. It shows Maia's
-probability and a Nocturne relative-quality measure from the available Stockfish
-MultiPV search. If exact centipawn scores establish a loss `L` from the best
-searched move, the quality is `Q = exp(-L / 100)`. Thus 0 cp loss means 100%
-relative quality and 100 cp loss means about 36.8%. This is a comparison scale,
-not a win probability or an official Maia statistic. A bound score, mate score,
-or unsearched move leaves the quality and blend unknown.
+**Blunder Meter** groups Maia's predicted choices into **Best moves** (green),
+**OK moves** (yellow) and **Blunders** (red). The stacked bar's widths sum the
+actual Maia probabilities in each category. Each category lists its likeliest
+moves. Select any legal Maia move below it to inspect its likelihood and loss.
+The previous human/engine blend slider and composite score have been replaced.
 
-For slider weight `w` (Human = 0, Engine = 1), the displayed Nocturne blend is
-`100 × ((1-w) × MaiaProbability + w × Q)`. Both inputs remain visible. No extra
-Stockfish search is started merely by using the meter.
+Nocturne uses the centipawn fallback boundaries documented in
+[Maia Platform's classification implementation](https://github.com/CSSLab/maia-platform-frontend/blob/a6e52f5c811ee18863cb2f0e81f2433a5b9905de/src/hooks/useAnalysisController/utils.ts):
+loss up to **50 cp** is green; over 50 through **150 cp** is yellow; over 150 cp
+is red. Loss is relative to the best available exact searched Stockfish move,
+using raw UCI side-to-move scores for both White and Black. These are comparison
+categories, not claims about the game's final outcome or an official Maia-3
+blunder prediction model. Maia Platform can also use winrate-based thresholds;
+Nocturne's meter explicitly uses the centipawn method.
+
+**Not evaluated** probability stays grey. Moves outside MultiPV and bound-only
+scores do not become blunders by default. Exact mate lines leave centipawn
+comparisons unknown. Partial analysis retains its actual policy coverage instead
+of being rescaled to 100%; increase MultiPV to classify more human choices.
+No additional Stockfish searches are started merely by opening these insights.
 
 ## Board indicators
 
 The existing Stockfish rods and numbered circles stay in place. Broad,
 translucent violet Maia arrows are drawn on a separate layer beneath pieces.
 Toggle them or choose the top 1, 3 or 5 in **Engine → Maia-3 79M**. The miniature
-move map has no duplicated board controls. Main-board previews and existing
+scatter map has no duplicated board controls. Main-board previews and existing
 candidate hover/wheel behavior remain available.
 
 ## Reproducibility

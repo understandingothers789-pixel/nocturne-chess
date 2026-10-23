@@ -560,8 +560,6 @@ class MainWindow(QMainWindow):
         side.addWidget(self.save_label)
         splitter.addWidget(self.panel)
         self.maia_insights = MaiaInsights()
-        self.maia_insights.blender.weight.setValue(self.config.get("maia_blend_weight", 50))
-        self.maia_insights.blender.weight.valueChanged.connect(self._set_blend_weight)
         splitter.addWidget(self.maia_insights)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 0)
@@ -1437,10 +1435,6 @@ class MainWindow(QMainWindow):
             return
         self._show_move_preview("candidate", board, caption=f"Candidate preview · ply {ply}")
 
-    def _set_blend_weight(self, weight):
-        self.config["maia_blend_weight"] = weight
-        self._save()
-
     def _set_maia_arrows(self, enabled):
         self.config["maia_arrows"] = bool(enabled)
         self._maia_changed(self.maia.policies)
@@ -1503,7 +1497,6 @@ class MainWindow(QMainWindow):
         self.candidates.set_maia(policy, rating, self.config.get("maia_enabled", True) and self.analysis_mode)
         self.maia_controls.set_policy(policy, self.game.board)
         self.maia_insights.set_data(policies, self.game.board, rating, self._appearance_config())
-        self.maia_insights.map.flipped = self.board_view.flipped
         self.board_view.maia_recommendations = []
         count = self.config.get("maia_arrow_count", 3)
         for uci, probability in sorted(policy.items(), key=lambda item: -item[1])[:count]:
@@ -1513,18 +1506,19 @@ class MainWindow(QMainWindow):
                 pass
         self.board_view.maia_arrows_enabled = self.config.get("maia_arrows", True)
         self.board_view.update()
-        self._sync_blender()
+        self._sync_blunder()
         if self._dock_workspace is not None:
             self._sync_docked_visibility()
         else:
             self.maia_insights.setVisible(self.analysis_mode and self.config.get("maia_enabled", True) and self.config.get("show_maia_insights", True))
 
-    def _sync_blender(self):
+    def _sync_blunder(self):
         if not hasattr(self, "maia"):
             return
-        policy = self.maia.policies.get(str(self.config.get("maia_rating", 1800)), {})
+        policy = (self.maia.policies.get(str(self.config.get("maia_rating", 1800)), {})
+                  if self.analysis_mode and self.config.get("maia_enabled", True) else {})
         lines = self.candidates.lines if self._candidate_identity == self._position_identity() else {}
-        self.maia_insights.blender.set_data(policy, self.game.board, lines)
+        self.maia_insights.set_analysis(policy, self.game.board, lines)
 
     def _maia_move(self, uci):
         try:
@@ -1534,7 +1528,7 @@ class MainWindow(QMainWindow):
         self._human_move(move)
 
     def _sync_candidate_markers(self):
-        self._sync_blender()
+        self._sync_blunder()
         if self._candidate_identity != self._position_identity():
             return
         entries = []
@@ -3157,8 +3151,6 @@ class MainWindow(QMainWindow):
         self.board_view.flip()
         self.eval_bar.flipped = self.board_view.flipped
         self.eval_bar.update()
-        self.maia_insights.map.flipped = self.board_view.flipped
-        self.maia_insights.map.update()
         self._update_players()
 
     def _pause(self):

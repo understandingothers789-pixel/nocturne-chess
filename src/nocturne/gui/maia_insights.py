@@ -1,17 +1,15 @@
 """Native, interactive visualizations of the actual rating-conditioned policy."""
 import math
 
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QFrame, QGridLayout, QLabel, QScrollArea, QToolButton, QVBoxLayout, QWidget, QToolTip,
-    QComboBox, QSlider, QHBoxLayout, QProgressBar, QApplication,
+    QComboBox, QHBoxLayout, QApplication, QSizePolicy,
 )
-from ..core.board import parse_square
 from ..core.notation import san
 from ..maia import RATINGS, percentage
-from ..maia.blend import move_quality, blend_score
-from .board import BoardWidget
+from ..maia.risk import assess_moves
 from .theme import palette
 
 COLORS = ("#8ed5ef", "#d6b46d", "#91c6a4", "#c2a7eb", "#e3a394")
@@ -133,146 +131,261 @@ class RatingChart(QWidget):
         self.setToolTip("")
 
 
-class MoveMap(BoardWidget):
+CATEGORIES = ("best", "ok", "blunder", "unknown")
+CATEGORY_NAMES = {"best": "Best moves", "ok": "OK moves", "blunder": "Blunders", "unknown": "Not evaluated"}
+CATEGORY_COLORS = {"best": "#1a9850", "ok": "#fee08b", "blunder": "#d73027", "unknown": "#526171"}
+METHOD_NOTE = ("Maia likelihood grouped by loss from the best exact searched Stockfish move.\n"
+               "Best: 0–50 cp · OK: over 50–150 cp · Blunder: over 150 cp.\n"
+               "Unsearched, bound-only and mate comparisons stay grey.\n"
+               "Percentages use the full Maia policy, without rescaling partial coverage to 100%.")
+
+
+def category_text_color(category):
+    light = bool(QApplication.instance().property("nocturneLightAppearance"))
+    return ({"best": "#267e49", "ok": "#916817", "blunder": "#b5352d", "unknown": "#637286"}
+            if light else {"best": "#6ac58a", "ok": "#efd484", "blunder": "#ee8a80", "unknown": "#9aabbd"})[category]
+
+
+class ProbabilityStrip(QWidget):
+    """A full-policy bar: uncovered probability remains visibly grey."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumSize(170, 170)
-        self.setMaximumHeight(190)
-        self.setMaximumWidth(230)
-        self.coordinates = False
-        self.interactive = False
-        self.wheel_navigation = False
-        self.policy = {}
-        self.destinations = {}
-
-    def sizeHint(self):
-        return QSize(190, 190)
-
-    def set_policy(self, board, policy):
-        self.set_position(board)
-        self.policy = policy
-        self.destinations = {}
-        for uci, probability in policy.items():
-            square = parse_square(uci[2:4])
-            self.destinations[square] = self.destinations.get(square, 0) + probability
-        self.update()
+        self.setFixedHeight(26)
+        self.totals = {key: 0.0 for key in CATEGORIES}
+        self.setToolTip(METHOD_NOTE)
 
     def paintEvent(self, event):
-        super().paintEvent(event)
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        _, unit = self._geometry()
-        for square, probability in self.destinations.items():
-            color = QColor("#b99dd9")
-            color.setAlpha(round(90 * math.sqrt(probability)))
-            painter.fillRect(self.square_rect(square).adjusted(1, 1, -1, -1), color)
-        for uci, probability in sorted(self.policy.items(), key=lambda item: item[1], reverse=True)[:3]:
-            color = QColor("#d5b2ff")
-            color.setAlpha(100 + round(probability * 100))
-            self._arrow(painter, parse_square(uci[:2]), parse_square(uci[2:4]), color, unit)
+        rect = QRectF(self.rect()).adjusted(0, 1, 0, -1)
+        path = QPainterPath()
+        path.addRoundedRect(rect, 6, 6)
+        painter.setClipPath(path)
+        painter.fillRect(rect, QColor(CATEGORY_COLORS["unknown"]))
+        offset = 0.0
+        for category in CATEGORIES:
+            amount = self.totals[category]
+            width = min(max(0, rect.width()-offset), rect.width()*amount)
+            segment = QRectF(rect.left()+offset, rect.top(), width, rect.height())
+            painter.fillRect(segment, QColor(CATEGORY_COLORS[category]))
+            if width >= 39:
+                painter.setPen(QColor("#fff5f3" if category in ("blunder", "unknown") else "#11251a"))
+                painter.drawText(segment, Qt.AlignmentFlag.AlignCenter, percentage(amount))
+            offset += width
+
+
+class MoveMap(QWidget):
+    """Scatter plot of human likelihood against Stockfish loss, not a board."""
+    move_selected = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumHeight(185)
+        self.setMaximumHeight(210)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.setMouseTracking(True)
+        self.assessments, self.names, self.points = {}, {}, []
+        self.selected = None
+
+    def set_data(self, assessments, names):
+        if assessments == self.assessments and names == self.names:
+            return
+        self.assessments, self.names = assessments, names
+        if self.selected not in assessments:
+            self.selected = None
+        self.points = []
+        self.setToolTip("")
+        QToolTip.hideText()
+        self.update()
+
+    def plot_rect(self):
+        return QRectF(36, 13, max(1, self.width()-53), max(1, self.height()-64))
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        colors = palette(bool(QApplication.instance().property("nocturneLightAppearance")))
+        plot = self.plot_rect()
+        painter.fillRect(plot, QColor(colors["soft"]))
+        font = painter.font()
+        font.setPixelSize(10)
+        painter.setFont(font)
+        known = {uci: data for uci, data in self.assessments.items() if data["loss"] is not None}
+        ceiling = min(1, max(.25, math.ceil(max((d["probability"] for d in known.values()), default=0)*4)/4))
+        for fraction in (0, .5, 1):
+            y = plot.bottom()-fraction*plot.height()
+            painter.setPen(QPen(QColor(colors["border"]), 1, Qt.PenStyle.DotLine))
+            painter.drawLine(QPointF(plot.left(), y), QPointF(plot.right(), y))
+            painter.setPen(QColor(colors["muted"]))
+            painter.drawText(QRectF(0, y-7, 31, 15), Qt.AlignmentFlag.AlignRight, f"{fraction*ceiling:.0%}")
+        for loss in (300, 200, 100, 0):
+            x = plot.right()-loss/300*plot.width()
+            painter.setPen(QPen(QColor(colors["border"]), 1, Qt.PenStyle.DotLine))
+            painter.drawLine(QPointF(x, plot.top()), QPointF(x, plot.bottom()))
+            painter.setPen(QColor(colors["muted"]))
+            painter.drawText(QRectF(x-15, plot.bottom()+4, 30, 15), Qt.AlignmentFlag.AlignCenter,
+                             "3+" if loss == 300 else str(loss//100))
+        painter.drawText(QRectF(plot.left(), 0, plot.width(), 13), Qt.AlignmentFlag.AlignLeft, "Maia likelihood")
+        painter.drawText(QRectF(plot.left()-10, self.height()-27, plot.width()+20, 14),
+                         Qt.AlignmentFlag.AlignCenter, "Stockfish loss · pawns")
+        painter.drawText(QRectF(plot.left()-9, self.height()-13, plot.width()/2+9, 13),
+                         Qt.AlignmentFlag.AlignLeft, "← Costly moves")
+        painter.drawText(QRectF(plot.center().x(), self.height()-13, plot.width()/2+9, 13),
+                         Qt.AlignmentFlag.AlignRight, "Best moves →")
+        self.points = []
+        for uci, data in sorted(known.items(), key=lambda item: item[1]["probability"]):
+            point = QPointF(plot.right()-min(300, data["loss"])/300*plot.width(),
+                            plot.bottom()-data["probability"]/ceiling*plot.height())
+            self.points.append((point, uci))
+            painter.setBrush(QColor(CATEGORY_COLORS[data["category"]]))
+            painter.setPen(QPen(QColor(colors["text"]), 1.5 if uci == self.selected else .6))
+            radius = 4+3*math.sqrt(data["probability"])
+            painter.drawEllipse(point, radius, radius)
+        occupied = []
+        for point, uci in reversed(self.points):
+            if len(occupied) >= 4:
+                break
+            name = self.names.get(uci, uci)
+            width = painter.fontMetrics().horizontalAdvance(name)+6
+            box = QRectF(max(plot.left(), min(plot.right()-width, point.x()+7)),
+                         max(plot.top(), point.y()-18), width, 16)
+            if any(box.intersects(other) for other in occupied):
+                continue
+            painter.fillRect(box, QColor(colors["soft"]))
+            painter.setPen(QColor(colors["text"]))
+            painter.drawText(box, Qt.AlignmentFlag.AlignCenter, name)
+            occupied.append(box)
+        if not known:
+            painter.setPen(QColor(colors["muted"]))
+            painter.drawText(plot, Qt.AlignmentFlag.AlignCenter, "Waiting for exact\nStockfish comparisons")
+
+    def _nearby(self, position):
+        return sorted(((point-position).manhattanLength(), uci) for point, uci in self.points
+                      if (point-position).manhattanLength() <= 14)
 
     def mouseMoveEvent(self, event):
-        square = self.square_at(event.position())
-        rows = []
-        for uci, probability in sorted(self.policy.items(), key=lambda item: -item[1]):
-            if parse_square(uci[2:4]) == square:
-                try:
-                    rows.append(f"{san(self.board, self.board.parse_uci(uci))}: {percentage(probability)}")
-                except ValueError:
-                    pass
-        self.setToolTip("\n".join(rows))
+        nearby = self._nearby(event.position())
+        self.setCursor(Qt.CursorShape.PointingHandCursor if nearby else Qt.CursorShape.ArrowCursor)
+        if nearby:
+            rows = []
+            for _, uci in nearby:
+                data = self.assessments[uci]
+                rows.append(f"{self.names.get(uci, uci)} · {percentage(data['probability'])} Maia · "
+                            f"{data['loss']/100:.2f} pawns loss · {CATEGORY_NAMES[data['category']]}")
+            self.setToolTip("\n".join(rows)+"\nClick to inspect without playing.")
+            QToolTip.showText(event.globalPosition().toPoint(), self.toolTip(), self)
+        else:
+            self.setToolTip("")
+            QToolTip.hideText()
+
+    def leaveEvent(self, event):
+        QToolTip.hideText()
+        self.setToolTip("")
+        super().leaveEvent(event)
 
     def mousePressEvent(self, event):
-        event.accept()
+        if event.button() == Qt.MouseButton.LeftButton:
+            nearby = self._nearby(event.position())
+            if nearby:
+                self.move_selected.emit(nearby[0][1])
+                event.accept()
+                return
+        super().mousePressEvent(event)
 
-    def mouseReleaseEvent(self, event):
-        event.accept()
 
+class BlunderMeter(InsightCard):
+    selection_changed = Signal(str)
 
-class BlenderMeter(InsightCard):
     def __init__(self, parent=None):
-        super().__init__("03", "Blender Meter", parent)
-        layout = self.content
+        super().__init__("03", "Blunder Meter", parent)
+        self.assessments, self.names = {}, {}
+        self.strip = ProbabilityStrip()
+        self.content.addWidget(self.strip)
+        self.category_labels = {}
+        self.move_labels = {}
+        for category in CATEGORIES:
+            line = QHBoxLayout()
+            name = QLabel(CATEGORY_NAMES[category])
+            value = QLabel("—")
+            line.addWidget(name, 1)
+            line.addWidget(value)
+            self.content.addLayout(line)
+            self.category_labels[category] = (name, value)
+            if category != "unknown":
+                moves = QLabel("—")
+                moves.setObjectName("sectionNote")
+                moves.setWordWrap(True)
+                self.content.addWidget(moves)
+                self.move_labels[category] = moves
+        self.coverage = QLabel("Waiting for Maia and Stockfish")
+        self.coverage.setObjectName("sectionNote")
+        self.coverage.setWordWrap(True)
+        self.content.addWidget(self.coverage)
         self.move = QComboBox()
-        self.move.setObjectName("blendChoice")
-        self.move.setToolTip("Compare a move without changing the board. Unsearched moves retain unknown Stockfish quality.")
-        layout.addWidget(self.move)
-        self.human = QProgressBar()
-        self.quality = QProgressBar()
-        self.human.setObjectName("humanMeter")
-        self.quality.setObjectName("qualityMeter")
-        for bar in (self.human, self.quality):
-            bar.setRange(0, 1000)
-            bar.setFixedHeight(19)
-            layout.addWidget(bar)
-        self.human.setToolTip("Maia's predicted human move likelihood at the selected rating.")
-        self.quality.setToolTip("Nocturne relative Stockfish quality: exp(−centipawn loss / 100).\nOnly searched moves with exact centipawn scores can be compared.")
-        self.loss_label = QLabel()
-        self.loss_label.setObjectName("sectionNote")
-        self.loss_label.setWordWrap(True)
-        layout.addWidget(self.loss_label)
-        endpoints = QHBoxLayout()
-        endpoints.addWidget(QLabel("Human"))
-        self.weight = QSlider(Qt.Orientation.Horizontal)
-        self.weight.setRange(0, 100)
-        self.weight.setValue(50)
-        self.weight.setToolTip("Blend weight: 0 = Maia likelihood, 100 = relative Stockfish quality.")
-        endpoints.addWidget(self.weight, 1)
-        endpoints.addWidget(QLabel("Engine"))
-        layout.addLayout(endpoints)
-        self.result = QLabel("Blend —")
-        self.result.setObjectName("blendResult")
-        layout.addWidget(self.result)
-        self.weight_caption = QLabel()
-        self.weight_caption.setObjectName("sectionNote")
-        layout.addWidget(self.weight_caption)
-        self.caption = QLabel("Nocturne comparison score · how it works ⓘ")
-        self.caption.setObjectName("sectionNote")
-        self.caption.setToolTip("Blend = 100 × ((1 − engine weight) × Maia probability + engine weight × SF quality).\n"
-                                "SF quality = exp(−centipawn loss / 100). This is not a win probability or an official Maia statistic.")
-        self.caption.setWordWrap(True)
-        layout.addWidget(self.caption)
-        self.policy = {}
-        self.lines = {}
-        self.move.currentIndexChanged.connect(self.refresh)
-        self.weight.valueChanged.connect(self.refresh)
+        self.move.setObjectName("riskChoice")
+        self.move.setToolTip("Inspect a move without playing it. Grey means Stockfish has not established its loss.")
+        self.content.addWidget(self.move)
+        self.detail = QLabel()
+        self.detail.setWordWrap(True)
+        self.detail.setObjectName("sectionNote")
+        self.content.addWidget(self.detail)
+        self.content.setSpacing(4)
+        self.setToolTip(METHOD_NOTE)
+        self.move.currentIndexChanged.connect(self.refresh_selection)
 
-    def set_data(self, policy, board, lines):
-        self.policy, self.lines = policy, lines
-        selected = self.move.currentData()
-        choices = list(dict.fromkeys([line["pv"][0] for line in lines.values() if line.get("pv")]
-                       + [uci for uci, _ in sorted(policy.items(), key=lambda item: -item[1])[:5]]))
-        key = (board.fen(), tuple(choices))
-        if getattr(self, "_choice_key", None) == key:
-            self.refresh()
-            return
-        self._choice_key = key
-        self.move.blockSignals(True)
-        self.move.clear()
-        for uci in choices:
-            try:
-                self.move.addItem(san(board, board.parse_uci(uci)), uci)
-            except ValueError:
-                pass
-        index = self.move.findData(selected)
-        self.move.setCurrentIndex(index if index >= 0 else 0)
-        self.move.blockSignals(False)
-        self.refresh()
+    def set_data(self, assessments, names, position_key):
+        self.assessments, self.names = assessments, names
+        totals = {category: sum(d["probability"] for d in assessments.values() if d["category"] == category)
+                  for category in CATEGORIES}
+        if assessments:
+            totals["unknown"] = max(totals["unknown"], 1-sum(totals[c] for c in CATEGORIES if c != "unknown"))
+        self.strip.totals = totals
+        self.strip.update()
+        for category, (name, value) in self.category_labels.items():
+            style = f"color: {category_text_color(category)}; font-weight: 600;"
+            name.setStyleSheet(style)
+            value.setStyleSheet(style)
+            value.setText(percentage(totals[category]) if assessments else "—")
+            if category in self.move_labels:
+                moves = [f"{names[uci]} {percentage(data['probability'])}" for uci, data in
+                         sorted(assessments.items(), key=lambda item: -item[1]["probability"])
+                         if data["category"] == category]
+                self.move_labels[category].setText(" · ".join(moves[:3]) or "—")
+                self.move_labels[category].setToolTip("\n".join(moves))
+        coverage = sum(totals[c] for c in CATEGORIES if c != "unknown")
+        self.coverage.setText((f"{coverage:.1%} of Maia choices evaluated · increase MultiPV for more coverage"
+                               if totals["unknown"] > .00001 else "All Maia choices evaluated") if assessments
+                              else "Waiting for Maia predictions")
+        selected = self.move.currentData() if getattr(self, "_position_key", None) == position_key else None
+        self._position_key = position_key
+        choices = sorted(assessments, key=lambda uci: -assessments[uci]["probability"])
+        choice_key = (position_key, tuple((uci, names[uci]) for uci in choices))
+        if choice_key != getattr(self, "_choice_key", None):
+            self._choice_key = choice_key
+            self.move.blockSignals(True)
+            self.move.clear()
+            for uci in choices:
+                self.move.addItem(names[uci], uci)
+            self.move.setCurrentIndex(max(0, self.move.findData(selected)))
+            self.move.setEnabled(bool(choices))
+            self.move.blockSignals(False)
+        self.refresh_selection()
 
-    def refresh(self):
+    def select_move(self, uci):
+        index = self.move.findData(uci)
+        if index >= 0:
+            self.move.setCurrentIndex(index)
+
+    def refresh_selection(self):
         uci = self.move.currentData()
-        probability = self.policy.get(uci)
-        quality, loss = move_quality(self.lines, uci)
-        self.human.setValue(round((probability or 0)*1000))
-        self.human.setFormat("Human likelihood  " + percentage(probability))
-        self.quality.setValue(round((quality or 0)*1000))
-        self.quality.setFormat(f"Engine quality  {quality*100:.1f}%" if quality is not None else "Engine quality  —")
-        self.loss_label.setText(f"{loss} cp loss from the best searched move" if loss is not None
-                                else "An exact Stockfish comparison is not available yet.")
-        weight = self.weight.value()/100
-        value = blend_score(probability, quality, weight)
-        self.result.setText(f"{value*100:.1f} / 100" if value is not None else "— / 100")
-        self.weight_caption.setText(f"{1-weight:.0%} human · {weight:.0%} engine")
+        data = self.assessments.get(uci)
+        if data is None:
+            self.detail.setText("Best ≤50 cp · OK ≤150 cp · Blunder >150 cp")
+        else:
+            loss = f"{data['loss']/100:.2f} pawns loss" if data["loss"] is not None else "Stockfish loss unknown"
+            self.detail.setText(f"{percentage(data['probability'])} Maia · {loss}")
+        self.selection_changed.emit(uci or "")
 
 
 class MaiaInsights(QScrollArea):
@@ -304,15 +417,16 @@ class MaiaInsights(QScrollArea):
         self.body_layout.addWidget(trends)
         move_map = InsightCard("02", "Move Map")
         self.map = MoveMap()
-        self.map.setToolTip("Destination intensity sums Maia probabilities; arrows show the three likeliest moves.")
-        move_map.content.addWidget(self.map, 0, Qt.AlignmentFlag.AlignHCenter)
-        caption = QLabel("Brighter squares are more likely. Hover to inspect.")
+        move_map.content.addWidget(self.map)
+        caption = QLabel("Human likelihood vs engine loss. Hover a dot; click to inspect.")
         caption.setWordWrap(True)
         caption.setObjectName("sectionNote")
         move_map.content.addWidget(caption)
         self.body_layout.addWidget(move_map)
-        self.blender = BlenderMeter()
-        self.body_layout.addWidget(self.blender)
+        self.blunder = BlunderMeter()
+        self.map.move_selected.connect(self.blunder.select_move)
+        self.blunder.selection_changed.connect(self._select_map_move)
+        self.body_layout.addWidget(self.blunder)
         self.body_layout.addStretch()
         self.setWidget(body)
 
@@ -348,11 +462,21 @@ class MaiaInsights(QScrollArea):
                 self.legend_layout.addWidget(button, index//3, index % 3)
                 self.legend_buttons[move] = button
         self.chart.update()
-        if appearance:
-            self.map.light = appearance.get("light", False)
-            self.map.theme = appearance.get("theme", "Classic")
-            self.map.set_piece_set(appearance.get("piece_set", "Nibbler"))
-        self.map.set_policy(board, policy)
+
+    def set_analysis(self, policy, board, lines):
+        names = {}
+        for uci in policy:
+            try:
+                names[uci] = san(board, board.parse_uci(uci))
+            except ValueError:
+                continue
+        assessments = assess_moves({uci: p for uci, p in policy.items() if uci in names}, lines)
+        self.map.set_data(assessments, names)
+        self.blunder.set_data(assessments, names, board.fen())
+
+    def _select_map_move(self, uci):
+        self.map.selected = uci
+        self.map.update()
 
     def _toggle_curve(self, uci, checked):
         if checked:

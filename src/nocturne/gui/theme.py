@@ -157,10 +157,7 @@ def stylesheet(light: bool = False) -> str:
     QWidget#analysisTools QPushButton {{ padding: 6px 9px; font-size: 12px; }}
     QWidget#analysisTools QComboBox {{ padding: 5px 7px; font-size: 12px; min-width: 62px; }}
     QWidget#analysisTools QCheckBox {{ spacing: 6px; font-size: 12px; }}
-    QComboBox#blendChoice {{ padding: 5px 7px; }}
-    QProgressBar#humanMeter::chunk {{ background: {c['maia_fill']}; }}
-    QProgressBar#qualityMeter::chunk {{ background: {c['quality_fill']}; }}
-    QLabel#blendResult {{ color: {c['maia']}; font-size: 22px; font-weight: 600; }}
+    QComboBox#riskChoice {{ padding: 5px 7px; }}
     QToolButton#curveLegend {{ padding: 3px 6px; border-radius: 5px; background: transparent; }}
     QToolButton#curveLegend:checked {{ background: {raised}; border-color: {border}; }}
     QToolButton#curveLegend:!checked {{ color: {muted}; border-color: transparent; }}
