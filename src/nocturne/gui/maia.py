@@ -1,10 +1,27 @@
 """Compact Maia controls and the optional legal-move view inside analysis."""
 from PySide6.QtCore import Signal, Qt, QSize
+from PySide6.QtWidgets import QStylePainter
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QCheckBox,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QGridLayout, QSizePolicy, QScrollArea,
 )
 from ..maia import RATINGS, percentage
+
+
+class StatusLabel(QLabel):
+    """Keep live status updates from shifting the candidate rows below."""
+
+    def setText(self, text):
+        super().setText(text)
+        self.setToolTip(text)
+
+    def paintEvent(self, event):
+        painter = QStylePainter(self)
+        text = self.fontMetrics().elidedText(
+            self.text(), Qt.TextElideMode.ElideRight, self.contentsRect().width()
+        )
+        painter.drawItemText(self.contentsRect(), int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
+                             self.palette(), self.isEnabled(), text, self.foregroundRole())
 
 
 class MaiaControls(QWidget):
@@ -40,9 +57,9 @@ class MaiaControls(QWidget):
         top.addWidget(self.rating, 0, 2)
         top.setColumnStretch(3, 1)
         layout.addLayout(top)
-        self.status = QLabel("Maia-3 79M · local human-move predictions")
-        self.status.setObjectName("muted")
-        self.status.setWordWrap(True)
+        self.status = StatusLabel()
+        self.status.setText("Maia-3 79M · local human-move predictions")
+        self.status.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.status.setObjectName("sectionNote")
         self.all_moves = QCheckBox("All human moves")
         self.all_moves.setToolTip("Show the full legal policy here, including moves outside Stockfish MultiPV.")

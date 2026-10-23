@@ -223,6 +223,15 @@ class RenderingTests(unittest.TestCase):
                         self.assertGreaterEqual(left, 0)
                         self.assertLessEqual(left + widget.width(), viewport.width())
                     self.assertIn("dev-20261017-effdc3fd", window.engine_state.text())
+                    status = window.maia_controls.status
+                    status.setText("Ready")
+                    self.app.processEvents()
+                    row_y = window.candidates.mapTo(viewport, QPoint(0, 0)).y()
+                    message = "Maia is waiting for this position's complete local human-move prediction policy."
+                    status.setText(message)
+                    self.app.processEvents()
+                    self.assertEqual(window.candidates.mapTo(viewport, QPoint(0, 0)).y(), row_y)
+                    self.assertEqual(status.toolTip(), message)
             finally:
                 window.close()
                 window.deleteLater()
