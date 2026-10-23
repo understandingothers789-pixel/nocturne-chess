@@ -192,3 +192,38 @@ class RenderingTests(unittest.TestCase):
         moves._highlight(QUrl("move:1"))
         self.assertEqual(moves._hovered, 1)
         self.assertIsNone(moves.wheel_preview_ply)
+
+    def test_narrow_engine_page_keeps_controls_and_maia_percentages_in_view(self):
+        from nocturne.gui.window import MainWindow
+
+        with tempfile.TemporaryDirectory() as directory:
+            window = MainWindow(Path(directory))
+            try:
+                window.timer.stop()
+                window.autosave_timer.stop()
+                window._analysis_enabled = False
+                window.analysis_mode = True
+                window.resize(1024, 660)
+                window.show()
+                window._refresh()
+                info = dict(depth=18, seldepth=25, score_type="cp", score_value=22, score=22,
+                            nodes=1000, pv=["g1f3"], san=["Nf3"])
+                window.candidates.update_line(info, 1)
+                window._maia_changed({"1800": {"g1f3": 0.4}})
+                for light in (False, True):
+                    window.config["light"] = light
+                    window._apply_settings()
+                    window.engine_state.setText("Stockfish dev-20261017-effdc3fd · saved analysis")
+                    QTest.qWait(60)
+                    viewport = window.panel.viewport()
+                    self.assertEqual(window.panel_body.width(), viewport.width())
+                    for widget in (window.maia_controls.settings_button, window.maia_controls.rating,
+                                   window.eval_label, window.candidates.maia_labels[1]):
+                        left = widget.mapTo(viewport, QPoint(0, 0)).x()
+                        self.assertGreaterEqual(left, 0)
+                        self.assertLessEqual(left + widget.width(), viewport.width())
+                    self.assertIn("dev-20261017-effdc3fd", window.engine_state.text())
+            finally:
+                window.close()
+                window.deleteLater()
+                self.app.processEvents()

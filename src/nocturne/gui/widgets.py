@@ -2,10 +2,57 @@
 
 import math
 
-from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QPointF, QRectF, Qt, Signal, QSize
 from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget, QGridLayout, QScrollArea, QSizePolicy
 from .theme import palette
+
+
+class AnalysisHeader(QWidget):
+    """Keep the full engine name readable alongside review and evaluation."""
+
+    def __init__(self, state, review, evaluation, parent=None):
+        super().__init__(parent)
+        self.state, self.review, self.evaluation = state, review, evaluation
+        self.grid = QGridLayout(self)
+        self.grid.setContentsMargins(0, 0, 0, 0)
+        self.grid.setSpacing(6)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.state.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self._narrow = None
+        self._arrange(False)
+
+    def minimumSizeHint(self):
+        return QSize(0, super().minimumSizeHint().height())
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        ancestor = self.parentWidget()
+        available = self.width()
+        while ancestor is not None:
+            if isinstance(ancestor, QScrollArea):
+                available = ancestor.viewport().width()
+                break
+            ancestor = ancestor.parentWidget()
+        self._arrange(available < 430)
+
+    def _arrange(self, narrow):
+        if narrow == self._narrow:
+            return
+        self._narrow = narrow
+        while self.grid.count():
+            self.grid.takeAt(0)
+        for column in range(3):
+            self.grid.setColumnStretch(column, 0)
+        if narrow:
+            self.grid.addWidget(self.state, 0, 0, 1, 2)
+            self.grid.addWidget(self.review, 1, 0, Qt.AlignmentFlag.AlignLeft)
+            self.grid.addWidget(self.evaluation, 1, 1, Qt.AlignmentFlag.AlignRight)
+            self.grid.setColumnStretch(0, 1)
+        else:
+            for column, widget in enumerate((self.state, self.review, self.evaluation)):
+                self.grid.addWidget(widget, 0, column)
+            self.grid.setColumnStretch(0, 1)
 
 
 class EvaluationBar(QWidget):

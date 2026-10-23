@@ -14,15 +14,39 @@ from ..maia.blend import move_quality, blend_score
 from .board import BoardWidget
 from .theme import palette
 
-COLORS = ("#7fbcd2", "#d6b46d", "#a5bc7b", "#bc9cce", "#d89182")
+COLORS = ("#8ed5ef", "#d6b46d", "#91c6a4", "#c2a7eb", "#e3a394")
+LIGHT_COLORS = ("#197b9c", "#a16c22", "#377e56", "#7b50a8", "#b95844")
+
+
+def curve_colors():
+    return LIGHT_COLORS if QApplication.instance().property("nocturneLightAppearance") else COLORS
+
+
+class InsightCard(QFrame):
+    def __init__(self, number, title, parent=None):
+        super().__init__(parent)
+        self.setObjectName("insightCard")
+        self.content = QVBoxLayout(self)
+        self.content.setContentsMargins(10, 8, 10, 9)
+        self.content.setSpacing(5)
+        self.heading = QHBoxLayout()
+        self.heading.setSpacing(7)
+        index = QLabel(number)
+        index.setObjectName("sectionNumber")
+        title_label = QLabel(title)
+        title_label.setObjectName("sectionTitle")
+        self.heading.addWidget(index)
+        self.heading.addWidget(title_label, 1)
+        self.content.addLayout(self.heading)
+
 
 
 class RatingChart(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMouseTracking(True)
-        self.setMinimumHeight(165)
-        self.setMaximumHeight(230)
+        self.setMinimumHeight(140)
+        self.setMaximumHeight(160)
         self.setMinimumWidth(210)
         self.policies = {}
         self.moves = []
@@ -32,10 +56,10 @@ class RatingChart(QWidget):
         self.points = []
 
     def sizeHint(self):
-        return QSize(300, 190)
+        return QSize(300, 150)
 
     def plot_rect(self):
-        return QRectF(36, 10, max(1, self.width()-48), max(1, self.height()-48))
+        return QRectF(34, 12, max(1, self.width()-46), max(1, self.height()-42))
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -45,6 +69,9 @@ class RatingChart(QWidget):
         maximum = max((p.get(move, 0) for p in self.policies.values() for move in self.moves
                        if move not in self.hidden_moves), default=0)
         ceiling = min(1.0, max(0.25, math.ceil(maximum * 4) / 4))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(colors["soft"]))
+        painter.drawRoundedRect(plot.adjusted(-3, -5, 3, 4), 5, 5)
         painter.setPen(QColor(colors["muted"]))
         font = painter.font()
         font.setPixelSize(10)
@@ -57,9 +84,8 @@ class RatingChart(QWidget):
             painter.drawText(QRectF(0, y-7, 32, 15), Qt.AlignmentFlag.AlignRight, f"{fraction*ceiling*100:.0f}%")
         for rating in (400, 1600, 3000):
             x = plot.left()+(rating-400)/2600*plot.width()
-            painter.drawText(QRectF(x-20, plot.bottom()+5, 40, 16), Qt.AlignmentFlag.AlignCenter, str(rating))
-        painter.drawText(QRectF(plot.left(), plot.bottom()+23, plot.width(), 16), Qt.AlignmentFlag.AlignCenter,
-                         "Lichess blitz rating · equal-rated opponents")
+            painter.drawText(QRectF(max(0, min(self.width()-40, x-20)), plot.bottom()+5, 40, 16), Qt.AlignmentFlag.AlignCenter, str(rating))
+
         marker = plot.left()+(self.rating-400)/2600*plot.width()
         painter.setPen(QPen(QColor("#bca36a"), 1, Qt.PenStyle.DashLine))
         painter.drawLine(QPointF(marker, plot.top()), QPointF(marker, plot.bottom()))
@@ -69,7 +95,7 @@ class RatingChart(QWidget):
                 continue
             path = QPainterPath()
             started = False
-            color = QColor(COLORS[index % len(COLORS)])
+            color = QColor(curve_colors()[index % len(COLORS)])
             for rating in RATINGS:
                 policy = self.policies.get(str(rating))
                 if policy is None:
@@ -111,7 +137,8 @@ class MoveMap(BoardWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMinimumSize(170, 170)
-        self.setMaximumHeight(250)
+        self.setMaximumHeight(190)
+        self.setMaximumWidth(230)
         self.coordinates = False
         self.interactive = False
         self.wheel_navigation = False
@@ -119,7 +146,7 @@ class MoveMap(BoardWidget):
         self.destinations = {}
 
     def sizeHint(self):
-        return QSize(230, 230)
+        return QSize(190, 190)
 
     def set_policy(self, board, policy):
         self.set_position(board)
@@ -162,26 +189,28 @@ class MoveMap(BoardWidget):
         event.accept()
 
 
-class BlenderMeter(QFrame):
+class BlenderMeter(InsightCard):
     def __init__(self, parent=None):
-        super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 6, 0, 0)
-        layout.setSpacing(5)
-        title = QLabel("Blender Meter")
-        title.setStyleSheet("font-size: 15px; font-weight: 600;")
-        layout.addWidget(title)
+        super().__init__("03", "Blender Meter", parent)
+        layout = self.content
         self.move = QComboBox()
+        self.move.setObjectName("blendChoice")
         self.move.setToolTip("Compare a move without changing the board. Unsearched moves retain unknown Stockfish quality.")
         layout.addWidget(self.move)
         self.human = QProgressBar()
         self.quality = QProgressBar()
+        self.human.setObjectName("humanMeter")
+        self.quality.setObjectName("qualityMeter")
         for bar in (self.human, self.quality):
             bar.setRange(0, 1000)
-            bar.setFixedHeight(21)
+            bar.setFixedHeight(19)
             layout.addWidget(bar)
         self.human.setToolTip("Maia's predicted human move likelihood at the selected rating.")
         self.quality.setToolTip("Nocturne relative Stockfish quality: exp(−centipawn loss / 100).\nOnly searched moves with exact centipawn scores can be compared.")
+        self.loss_label = QLabel()
+        self.loss_label.setObjectName("sectionNote")
+        self.loss_label.setWordWrap(True)
+        layout.addWidget(self.loss_label)
         endpoints = QHBoxLayout()
         endpoints.addWidget(QLabel("Human"))
         self.weight = QSlider(Qt.Orientation.Horizontal)
@@ -192,10 +221,15 @@ class BlenderMeter(QFrame):
         endpoints.addWidget(QLabel("Engine"))
         layout.addLayout(endpoints)
         self.result = QLabel("Blend —")
-        self.result.setStyleSheet("font-size: 17px; font-weight: 600; color: #b9b4df;")
+        self.result.setObjectName("blendResult")
         layout.addWidget(self.result)
-        self.caption = QLabel("Nocturne blend = (1 − weight) × Maia probability + weight × SF quality.")
-        self.caption.setObjectName("muted")
+        self.weight_caption = QLabel()
+        self.weight_caption.setObjectName("sectionNote")
+        layout.addWidget(self.weight_caption)
+        self.caption = QLabel("Nocturne comparison score · how it works ⓘ")
+        self.caption.setObjectName("sectionNote")
+        self.caption.setToolTip("Blend = 100 × ((1 − engine weight) × Maia probability + engine weight × SF quality).\n"
+                                "SF quality = exp(−centipawn loss / 100). This is not a win probability or an official Maia statistic.")
         self.caption.setWordWrap(True)
         layout.addWidget(self.caption)
         self.policy = {}
@@ -230,13 +264,15 @@ class BlenderMeter(QFrame):
         probability = self.policy.get(uci)
         quality, loss = move_quality(self.lines, uci)
         self.human.setValue(round((probability or 0)*1000))
-        self.human.setFormat("Human likelihood · " + percentage(probability))
+        self.human.setFormat("Human likelihood  " + percentage(probability))
         self.quality.setValue(round((quality or 0)*1000))
-        self.quality.setFormat(f"SF quality · {quality*100:.1f}% · {loss} cp loss" if quality is not None
-                               else "SF quality · not established")
+        self.quality.setFormat(f"Engine quality  {quality*100:.1f}%" if quality is not None else "Engine quality  —")
+        self.loss_label.setText(f"{loss} cp loss from the best searched move" if loss is not None
+                                else "An exact Stockfish comparison is not available yet.")
         weight = self.weight.value()/100
         value = blend_score(probability, quality, weight)
-        self.result.setText(f"Blend {value*100:.1f}/100 · engine weight {weight:.0%}" if value is not None else "Blend —")
+        self.result.setText(f"{value*100:.1f} / 100" if value is not None else "— / 100")
+        self.weight_caption.setText(f"{1-weight:.0%} human · {weight:.0%} engine")
 
 
 class MaiaInsights(QScrollArea):
@@ -247,32 +283,34 @@ class MaiaInsights(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setMinimumWidth(240)
         self.setMaximumWidth(360)
-        body = QFrame()
-        body.setObjectName("panel")
+        body = QWidget()
         self.body_layout = QVBoxLayout(body)
-        self.body_layout.setContentsMargins(10, 8, 10, 8)
-        self.body_layout.setSpacing(6)
-        title = QLabel("Moves by Rating")
-        title.setStyleSheet("font-size: 15px; font-weight: 600;")
-        self.body_layout.addWidget(title)
+        self.body_layout.setContentsMargins(0, 0, 0, 0)
+        self.body_layout.setSpacing(8)
+        trends = InsightCard("01", "Moves by Rating")
+        self.rating_chip = QLabel("1800")
+        self.rating_chip.setObjectName("sectionNumber")
+        self.rating_chip.setToolTip("Selected Lichess blitz rating; opponent has the same rating.")
+        trends.heading.addWidget(self.rating_chip)
         self.chart = RatingChart()
-        self.chart.setToolTip("Predicted move likelihood, not observed database frequency.\nHover a point for its exact percentage; click a legend to toggle that move.")
-        self.body_layout.addWidget(self.chart)
+        self.chart.setToolTip("Predicted likelihood across equal-rated opponents. Hover a point for its exact percentage; click a legend to toggle a curve.")
+        trends.content.addWidget(self.chart)
         legend = QWidget()
         self.legend_layout = QGridLayout(legend)
         self.legend_layout.setContentsMargins(0, 0, 0, 0)
+        self.legend_layout.setSpacing(3)
         self.legend_buttons = {}
-        self.body_layout.addWidget(legend)
-        map_title = QLabel("Move Map")
-        map_title.setStyleSheet("font-size: 15px; font-weight: 600; padding-top: 5px;")
-        self.body_layout.addWidget(map_title)
+        trends.content.addWidget(legend)
+        self.body_layout.addWidget(trends)
+        move_map = InsightCard("02", "Move Map")
         self.map = MoveMap()
         self.map.setToolTip("Destination intensity sums Maia probabilities; arrows show the three likeliest moves.")
-        self.body_layout.addWidget(self.map)
-        caption = QLabel("Brighter destinations are more likely. Hover a square for its moves.")
+        move_map.content.addWidget(self.map, 0, Qt.AlignmentFlag.AlignHCenter)
+        caption = QLabel("Brighter squares are more likely. Hover to inspect.")
         caption.setWordWrap(True)
-        caption.setObjectName("muted")
-        self.body_layout.addWidget(caption)
+        caption.setObjectName("sectionNote")
+        move_map.content.addWidget(caption)
+        self.body_layout.addWidget(move_map)
         self.blender = BlenderMeter()
         self.body_layout.addWidget(self.blender)
         self.body_layout.addStretch()
@@ -283,7 +321,10 @@ class MaiaInsights(QScrollArea):
         moves = [move for move, _ in sorted(policy.items(), key=lambda item: -item[1])[:5]]
         self.chart.policies = policies
         self.chart.rating = rating
-        if moves != self.chart.moves:
+        self.rating_chip.setText(str(rating))
+        legend_key = (tuple(moves), board.fen(), bool(QApplication.instance().property("nocturneLightAppearance")))
+        if legend_key != getattr(self, "_legend_key", None):
+            self._legend_key = legend_key
             while self.legend_layout.count():
                 item = self.legend_layout.takeAt(0)
                 if item.widget():
@@ -298,15 +339,17 @@ class MaiaInsights(QScrollArea):
                     continue
                 self.chart.names[move] = name
                 button = QToolButton()
+                button.setObjectName("curveLegend")
                 button.setText(name)
                 button.setCheckable(True)
                 button.setChecked(move not in self.chart.hidden_moves)
-                button.setStyleSheet(f"color: {COLORS[index]}; padding: 2px 5px;")
+                button.setStyleSheet(f"color: {curve_colors()[index]};")
                 button.toggled.connect(lambda checked, uci=move: self._toggle_curve(uci, checked))
                 self.legend_layout.addWidget(button, index//3, index % 3)
                 self.legend_buttons[move] = button
         self.chart.update()
         if appearance:
+            self.map.light = appearance.get("light", False)
             self.map.theme = appearance.get("theme", "Classic")
             self.map.set_piece_set(appearance.get("piece_set", "Nibbler"))
         self.map.set_policy(board, policy)

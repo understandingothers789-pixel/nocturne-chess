@@ -129,6 +129,8 @@ class CandidatePanel(QWidget):
 
     def _make_row(self, rank):
         frame = QWidget()
+        frame.setObjectName("candidateRow")
+        frame.setProperty("alternate", rank % 2 == 0)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(0, 1, 0, 1)
         layout.setSpacing(2)
@@ -228,6 +230,7 @@ class CandidatePanel(QWidget):
             )
             self._style_expander(self.expand_buttons[rank])
             self._render_header(rank)
+            self._render_maia(rank)
 
     def _style_expander(self, button):
         colors = palette(self.light)
@@ -321,6 +324,10 @@ class CandidatePanel(QWidget):
             return
         pv = self.lines.get(rank, {}).get("pv", [])
         probability = self.maia_policy.get(pv[0]) if pv else None
+        colors = palette(self.light)
+        label.setStyleSheet(f"color: {colors['maia']}; background: {colors['maia_soft']}; "
+                           "border-radius: 4px; font-family: Consolas; font-size: 12px; "
+                           "font-weight: 600; padding: 3px 5px;")
         label.setVisible(self.maia_enabled)
         label.setText(percentage(probability))
         label.setToolTip(f"Maia-3 79M · {self.maia_rating} vs {self.maia_rating} Lichess blitz\n"

@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QSpinBox,
     QSplitter,
     QTableWidget,
@@ -74,7 +75,7 @@ from .hover_preview import HoverPreview, MiniBoard
 from .wheel import WheelSteps
 from .workspace import DockWorkspace
 from .theme import ASSETS, palette, stylesheet
-from .widgets import EvaluationBar, EvaluationGraph
+from .widgets import AnalysisHeader, EvaluationBar, EvaluationGraph
 
 
 def label(text: str, style: str = "", wrap=False) -> QLabel:
@@ -407,13 +408,11 @@ class MainWindow(QMainWindow):
         engine_page_layout.setSpacing(4)
         self.engine_state = label("Select your UCI engine", "subtitle", True)
         self.eval_label = label("—")
-        self.eval_label.setStyleSheet("font-size: 20px; font-weight: 600;")
-        headline = QHBoxLayout()
-        headline.addWidget(self.engine_state, 1)
-        headline.addWidget(button("Game Review", self._show_review, "quiet"))
-        headline.addWidget(self.eval_label)
-        engine_page_layout.addLayout(headline)
+        self.eval_label.setObjectName("engineEval")
+        headline = AnalysisHeader(self.engine_state, button("Game Review", self._show_review, "quiet"), self.eval_label)
+        engine_page_layout.addWidget(headline)
         self.telemetry = label("Offline analysis · engine supplied by you", "muted", True)
+        self.telemetry.setObjectName("telemetryStrip")
         engine_page_layout.addWidget(self.telemetry)
         self.tablebase_label = label("Syzygy: not configured", "muted", True)
         engine_page_layout.addWidget(self.tablebase_label)
@@ -428,8 +427,9 @@ class MainWindow(QMainWindow):
         self.engine_layout.setContentsMargins(0, 0, 0, 0)
         self.engine_layout.setSpacing(0)
         column_titles = QHBoxLayout()
-        column_titles.addWidget(label("Stockfish · evaluation / principal variation", "muted"), 1)
-        self.maia_column_title = label("Maia 1800", "muted")
+        column_titles.addWidget(label("STOCKFISH", "eyebrow"), 1)
+        self.maia_column_title = label("MAIA · 1800", "maiaHeading")
+        self.maia_column_title.setAlignment(Qt.AlignmentFlag.AlignRight)
         column_titles.addWidget(self.maia_column_title)
         self.engine_layout.addLayout(column_titles)
         self.pv_label = MoveText(auto_fit=True)
@@ -453,6 +453,7 @@ class MainWindow(QMainWindow):
         self.inline_history.move_hovered.connect(self._preview_history)
         self.inline_history.preview_ended.connect(lambda: self._end_preview("history"))
         self.inline_history.wheel_navigated.connect(self._wheel_game)
+        self.engine_layout.addWidget(label("GAME LINE", "gameLineHeading"))
         self.engine_layout.addWidget(self.inline_history)
         self.engine_layout.addStretch()
         self.engine_scroll.setWidget(engine_detail)
@@ -1474,7 +1475,7 @@ class MainWindow(QMainWindow):
         self.maia_controls.rating.blockSignals(True)
         self.maia_controls.rating.setCurrentIndex(self.maia_controls.rating.findData(rating))
         self.maia_controls.rating.blockSignals(False)
-        self.maia_column_title.setText(f"Maia {rating}")
+        self.maia_column_title.setText(f"MAIA · {rating}")
         self.maia_column_title.setVisible(enabled)
         self.maia_enabled_action.setChecked(enabled)
         self.maia_arrows_action.setChecked(self.config.get("maia_arrows", True))
@@ -2570,6 +2571,8 @@ class MainWindow(QMainWindow):
         for view in {self.pv_label, *(widgets[2] for widgets in self.candidates.rows.values())}:
             view.set_moves(view._items, view._current, light=light)
         self.board_view.update()
+        if hasattr(self, "maia"):
+            self._maia_changed(self.maia.policies)
 
     def _apply_settings(self):
         self._apply_appearance(self._appearance_config())
@@ -2649,6 +2652,7 @@ class MainWindow(QMainWindow):
         self.main_splitter.insertWidget(0 if left else 1, self.panel)
         self.main_splitter.setStretchFactor(0, 1)
         self.main_splitter.setStretchFactor(1, 1 if analysis else 0)
+        self.main_splitter.setStretchFactor(2, 1 if analysis else 0)
         if analysis:
             self.tabs.setCurrentIndex(1)
             # Compact analysis/database column: roughly twelve SAN moves on
@@ -2673,6 +2677,11 @@ class MainWindow(QMainWindow):
 
     def _analysis_tab_changed(self, index=None):
         if hasattr(self, "tabs"):
+            # Inactive review pages have wide minimum hints. Let the active
+            # engine page fit its viewport rather than clipping the Maia column.
+            compact = self.analysis_mode and self.tabs.currentIndex() == 1
+            self.tabs.setSizePolicy(QSizePolicy.Policy.Ignored if compact else QSizePolicy.Policy.Preferred,
+                                    QSizePolicy.Policy.Expanding)
             self.tabs.tabBar().setVisible(not self.analysis_mode or self.tabs.currentIndex() != 1)
             self.panel.setVerticalScrollBarPolicy(
                 Qt.ScrollBarPolicy.ScrollBarAsNeeded if self.tabs.currentWidget() is getattr(self, "review_panel", None)

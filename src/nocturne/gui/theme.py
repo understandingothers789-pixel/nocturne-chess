@@ -49,18 +49,22 @@ def install_menu_stripes(app: QApplication) -> None:
 
 def palette(light: bool = False) -> dict[str, str]:
     if light:
-        return dict(bg="#efefed", panel="#fafaf8", raised="#e7e7e4", text="#393c40",
-                    muted="#687580", border="#cececa", accent="#486984", hover="#ddddda",
-                    pressed="#d0d0cc", selection="#d4dfeb", selected_text="#20344b",
-                    primary="#3d4a56", primary_text="#ffffff", primary_hover="#526373",
-                    scroll="#a9a9a5", analysis_white="#43484e", analysis_black="#6a5d55",
-                    history="#476987", metric="#276e92", metadata="#65696f")
-    return dict(bg="#171717", panel="#222222", raised="#2c2c2c", text="#c9cdd2",
-                muted="#97a6b2", border="#3c3c3c", accent="#b5c8da", hover="#383838",
-                pressed="#444444", selection="#394b5d", selected_text="#d8e3ee",
-                primary="#dedbd4", primary_text="#202020", primary_hover="#f0ede7",
-                scroll="#575f67", analysis_white="#c9cdd2", analysis_black="#b4a99f",
-                history="#a4bace", metric="#78bedb", metadata="#a5a7aa")
+        return dict(bg="#edf1f5", panel="#ffffff", raised="#e7edf3", text="#253447",
+                    muted="#63758a", border="#d4dee8", accent="#287d70", hover="#dde8ed",
+                    pressed="#d0dfe6", selection="#d9e9ec", selected_text="#173d43",
+                    primary="#237b6d", primary_text="#ffffff", primary_hover="#2e8d7c",
+                    scroll="#9bacbb", analysis_white="#27394a", analysis_black="#77634f",
+                    history="#426581", metric="#176c8a", metadata="#667689",
+                    maia="#7251a3", maia_soft="#f0eaf8", soft="#f5f8fb", card="#f8fafc",
+                    maia_fill="#d8c9ed", quality_fill="#bfdfd5")
+    return dict(bg="#10161e", panel="#171f2a", raised="#222e3c", text="#dce5ef",
+                muted="#94a6b9", border="#2a394a", accent="#88cfc0", hover="#2a3a4a",
+                pressed="#34495a", selection="#2b4554", selected_text="#e7f7f3",
+                primary="#8bd2c0", primary_text="#112d29", primary_hover="#a0e1d1",
+                scroll="#50667b", analysis_white="#dce5ef", analysis_black="#bba991",
+                history="#b2c6da", metric="#8ed5ef", metadata="#93a6ba",
+                maia="#c2a7eb", maia_soft="#2b263e", soft="#1b2633", card="#1b2532",
+                maia_fill="#654b8b", quality_fill="#285e58")
 
 
 def stylesheet(light: bool = False) -> str:
@@ -70,6 +74,7 @@ def stylesheet(light: bool = False) -> str:
     hover, pressed, selection, selected_text, primary, primary_text, primary_hover, scroll = (
         c[key] for key in ("hover", "pressed", "selection", "selected_text", "primary",
                           "primary_text", "primary_hover", "scroll"))
+    check_icon = (ASSETS / ("check-light.svg" if light else "check-dark.svg")).as_posix()
     return f"""
     QWidget {{ background: transparent; color: {text}; font-family: 'Segoe UI', 'Inter', sans-serif; font-size: 13px; }}
     QMainWindow, QDialog {{ background: {bg}; }}
@@ -78,7 +83,7 @@ def stylesheet(light: bool = False) -> str:
         border-bottom: 1px solid {border}; text-align: left; }}
     QMainWindow#dockSurface::separator {{ background: {bg}; width: 7px; height: 7px; }}
     QMainWindow#dockSurface::separator:hover {{ background: {scroll}; }}
-    QFrame#panel, QFrame#playerCard {{ background: {panel}; border: 1px solid {border}; border-radius: 14px; }}
+    QFrame#panel, QFrame#playerCard {{ background: {panel}; border: 1px solid {border}; border-radius: 12px; }}
     QFrame#clockStrip {{ background: {panel}; border: 1px solid {border}; border-radius: 8px; }}
     QFrame#sidebar {{ background: {panel}; border-right: 1px solid {border}; }}
     QLabel#brand {{ font-size: 21px; font-weight: 700; letter-spacing: 2px; }}
@@ -90,7 +95,7 @@ def stylesheet(light: bool = False) -> str:
     QLabel#analysisClock {{ font-family: 'Cascadia Mono', 'Consolas', monospace; font-size: 23px; font-weight: 600; }}
     QLabel#activeClock {{ background: {primary}; color: {primary_text}; border-radius: 8px;
         font-family: 'Cascadia Mono', 'Consolas', monospace; font-size: 28px; font-weight: 600; }}
-    QPushButton {{ background: {raised}; border: 1px solid {border}; border-radius: 8px; padding: 9px 14px; font-weight: 500; }}
+    QPushButton {{ background: {raised}; border: 1px solid {border}; border-radius: 8px; padding: 8px 12px; font-weight: 500; }}
     QPushButton:hover {{ border-color: {accent}; background: {hover}; color: {text}; }}
     QPushButton:pressed {{ background: {pressed}; }}
     QPushButton:disabled {{ color: {muted}; background: transparent; border-color: {border}; }}
@@ -108,7 +113,10 @@ def stylesheet(light: bool = False) -> str:
     QTextBrowser {{ background: transparent; border: none; }}
     QTabBar::tab {{ background: transparent; color: {muted}; padding: 11px 17px; border-bottom: 2px solid transparent; }}
     QTabBar::tab:selected {{ color: {accent}; border-bottom: 2px solid {accent}; }}
-    QTabBar#studyTabs::tab {{ background: {bg}; }}
+    QTabBar#studyTabs::tab {{ background: {bg}; margin-right: 4px; border-top-left-radius: 8px;
+        border-top-right-radius: 8px; padding: 10px 14px; }}
+    QTabBar#studyTabs::tab:selected {{ background: {panel}; color: {text}; border-bottom-color: {accent}; }}
+    QTabBar#studyTabs::tab:!selected:hover {{ background: {raised}; }}
     QTableWidget, QListWidget {{ background: transparent; border: none; gridline-color: {border}; outline: none; }}
     QTableWidget::item, QListWidget::item {{ padding: 8px; border-radius: 5px; }}
     QTableWidget::item:selected, QListWidget::item:selected {{ background: {selection}; color: {selected_text}; }}
@@ -121,7 +129,7 @@ def stylesheet(light: bool = False) -> str:
     QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: transparent; }}
     QCheckBox {{ spacing: 9px; }}
     QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid {muted}; background: {raised}; }}
-    QCheckBox::indicator:checked {{ background: {accent}; }}
+    QCheckBox::indicator:checked {{ background: {accent}; image: url("{check_icon}"); }}
     QMenuBar {{ background: {panel}; color: {text}; padding: 3px; }}
     QMenuBar::item {{ padding: 6px 12px; background: transparent; }}
     QMenuBar::item:selected {{ background: {raised}; }}
@@ -130,5 +138,34 @@ def stylesheet(light: bool = False) -> str:
     QMenu::item:disabled {{ color: {muted}; }}
     QMenu::item:selected {{ background: {selection}; color: {selected_text}; border-radius: 4px; }}
     QStatusBar {{ color: {muted}; font-size: 11px; }}
-    QSplitter::handle {{ background: transparent; width: 12px; }}
+    QSplitter::handle {{ background: transparent; width: 10px; }}
+    QSplitter::handle:hover {{ background: {border}; }}
+    QToolTip {{ background: {raised}; color: {text}; border: 1px solid {border}; padding: 6px 8px; }}
+    QFrame#insightCard {{ background: {c['card']}; border: 1px solid {border}; border-radius: 10px; }}
+    QLabel#sectionNumber {{ color: {c['maia']}; background: {c['maia_soft']}; border-radius: 5px;
+        font-size: 10px; font-weight: 700; padding: 3px 5px; }}
+    QLabel#sectionTitle {{ color: {text}; font-size: 13px; font-weight: 600; }}
+    QLabel#sectionNote {{ color: {muted}; font-size: 11px; }}
+    QLabel#maiaHeading {{ color: {c['maia']}; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }}
+    QLabel#engineEval {{ background: {c['soft']}; color: {c['metric']}; padding: 5px 9px;
+        border: 1px solid {border}; border-radius: 7px; font-size: 22px; font-weight: 600; }}
+    QLabel#telemetryStrip {{ background: {c['soft']}; border-radius: 6px; padding: 6px 7px; }}
+    QLabel#gameLineHeading {{ color: {muted}; padding-top: 10px; padding-bottom: 4px;
+        font-size: 10px; font-weight: 600; letter-spacing: 1px; }}
+    QWidget#candidateRow {{ border-radius: 4px; }}
+    QWidget#candidateRow[alternate="true"] {{ background: {c['soft']}; }}
+    QWidget#analysisTools QPushButton {{ padding: 6px 9px; font-size: 12px; }}
+    QWidget#analysisTools QComboBox {{ padding: 5px 7px; font-size: 12px; min-width: 62px; }}
+    QWidget#analysisTools QCheckBox {{ spacing: 6px; font-size: 12px; }}
+    QComboBox#blendChoice {{ padding: 5px 7px; }}
+    QProgressBar#humanMeter::chunk {{ background: {c['maia_fill']}; }}
+    QProgressBar#qualityMeter::chunk {{ background: {c['quality_fill']}; }}
+    QLabel#blendResult {{ color: {c['maia']}; font-size: 22px; font-weight: 600; }}
+    QToolButton#curveLegend {{ padding: 3px 6px; border-radius: 5px; background: transparent; }}
+    QToolButton#curveLegend:checked {{ background: {raised}; border-color: {border}; }}
+    QToolButton#curveLegend:!checked {{ color: {muted}; border-color: transparent; }}
+    QSlider::groove:horizontal {{ height: 4px; border-radius: 2px; background: {raised}; }}
+    QSlider::sub-page:horizontal {{ background: {accent}; border-radius: 2px; }}
+    QSlider::handle:horizontal {{ width: 12px; margin: -5px 0; border: 2px solid {panel};
+        border-radius: 7px; background: {accent}; }}
     """
