@@ -1,5 +1,35 @@
 # Windows 11 desktop builds
 
+## [0.5.7.62 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39903683180/artifacts/12480157328)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`9ea262f`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/9ea262fbe8f7f2275b26b6b938167901db5a9d0e)
+replaces the earlier blend comparison with a **Blunder Meter**: a proportional
+green/yellow/red bar, category probabilities and common human choices. Grey
+retains unsearched probability instead of treating moves outside MultiPV as
+blunders or rescaling partial results to 100%. The Move Map becomes a scatter
+plot of Maia likelihood against exact Stockfish loss. Hover shows details;
+clicking selects a move for inspection without playing it. The [Maia guide](MAIA.md)
+documents the 50/150 cp thresholds, provenance and unknown/mate handling.
+
+Eighteen focused Maia/rendering checks passed locally, with two targeted checks
+also passing at 150% display scaling using Qt's offscreen renderer. Coverage
+includes promotion identity, Black's score perspective, exact threshold edges,
+bound/mate exclusions, duplicate root moves, preserved unknown probability and
+scatter-point selection. Dark/light, normal/narrow native UI previews were
+inspected with explicitly labelled fixture data.
+
+Windows run [39903683180](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39903683180)
+passed lint, **268 tests (5 optional skips)**, the official-79M model checks,
+packaging and packaged worker/GUI smoke checks. The live database API check also passed.
+The official model and CPU runtime remain bundled.
+
+Artifact **12480157328**, `Nocturne-0.5.7.62-Windows-x64-unsigned`,
+492,663,481 bytes, expires 2026-11-22T05:09:10Z (UTC).
+GitHub artifact SHA-256:
+`6cd10d9d9897b8064e1aa3d6fc6da17b217827f139e7da91beb96d108261a0e2`.
+
 ## [0.5.7.61 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39901174812/artifacts/12479113267)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.

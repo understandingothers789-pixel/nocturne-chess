@@ -19,8 +19,10 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 ![Nocturne's native analysis studio with a prominent board, integrated Stockfish and Maia rows, and three insight cards](docs/studio-ui.png)
 
-*Native Qt UI preview. Engine evaluations and Maia probability curves in this
+*Native Qt UI preview. Engine evaluations and Maia probabilities in this
 capture are explicitly labelled fixtures, not measured chess analysis.*
+
+**[0.5.7.62](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39903683180/artifacts/12480157328): a red–yellow–green Blunder Meter and a useful Move Map.** The Blunder Meter groups Maia's predicted human choices into Best moves, OK moves and Blunders, with unsearched choices in grey and their actual coverage preserved. The Move Map now plots human likelihood against Stockfish loss instead of duplicating the chessboard. Hover points for details or click to inspect a move without playing it. Extract the unsigned Windows ZIP and open `Nocturne/Nocturne.exe`. See the [Maia guide](docs/MAIA.md) and [build receipt](docs/BUILDING.md).
 
 **[0.5.7.61](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39901174812/artifacts/12479113267): a clearer analysis studio.** A coordinated slate, teal and violet palette distinguishes Stockfish from Maia. Compact numbered insight cards, readable probability badges, a prominent evaluation and tighter controls improve scanning. Smaller windows keep the board useful and the Maia percentages visible; light mode receives matching contrast improvements. Extract the unsigned Windows ZIP and open `Nocturne/Nocturne.exe`. See the [build receipt](docs/BUILDING.md).
 
