@@ -1540,7 +1540,11 @@ class GuiTests(unittest.TestCase):
         self.assertFalse(cursor.isNull(), word)
         cursor.setPosition(cursor.selectionStart() + 1)
         QTest.mouseMove(view.viewport(), pos=view.viewport().rect().bottomRight() - QPointF(4, 4).toPoint())
-        QTest.mouseMove(view.viewport(), pos=view.cursorRect(cursor).center())
+        # Windows delivers native pointer moves asynchronously and can coalesce
+        # consecutive moves. Deliver the reset before entering the target link.
+        QTest.qWait(15)
+        QTest.mouseMove(view.viewport(), pos=view.cursorRect(cursor).center(), delay=15)
+        QTest.qWait(15)
         self.app.processEvents()
 
     def test_analysis_layout_is_left_with_history_below_and_play_restores(self):

@@ -503,6 +503,8 @@ class MainWindow(QMainWindow):
         pgn_layout.addWidget(self.pgn_editor, 1)
         self.apply_pgn_button = button("Apply PGN", self._apply_pgn, "primary")
         self.load_pgn_button = button("Load current", self._load_current_pgn)
+        for control in (self.apply_pgn_button, self.load_pgn_button):
+            control.setMinimumHeight(30)
         self.load_pgn_button.setAccessibleName("Load current game into PGN editor")
         self.apply_pgn_button.setToolTip(
             "Import the text in this editor as a new study and show its moves on the board and in Game Moves."
