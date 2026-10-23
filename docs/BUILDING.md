@@ -1,5 +1,31 @@
 # Windows 11 desktop builds
 
+## [0.5.7.61 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39901174812/artifacts/12479113267)
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Source commit [`504e11e`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/504e11e1e42e1fbb30259a636bfa903b3790134b)
+refreshes the native analysis studio: coordinated dark and light palettes,
+clear Stockfish/Maia column styling, compact numbered insight cards, a prominent
+evaluation badge and responsive controls. Narrow viewports retain visible Maia
+percentages and a useful square board. Maia status messages stay on one line
+with their full text available on hover, keeping candidate rows stable.
+PGN actions keep their minimum readable height on Windows.
+
+Focused rendering, Maia and workspace checks passed locally. Tab dragging and
+narrow layouts also passed at 150% display scaling with Qt's offscreen renderer.
+The UI preview images use labelled fixture data.
+
+Windows run [39901174812](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39901174812)
+passed lint, the full suite, official-79M model checks, packaging, packaged
+worker/GUI smoke checks and the live database API check. The bundled model and
+CPU inference runtime are unchanged from .60. See [Maia details](MAIA.md).
+
+Artifact **12479113267**, `Nocturne-0.5.7.61-Windows-x64-unsigned`,
+492,364,634 bytes, expires 2026-11-22T04:46:25Z (UTC).
+GitHub artifact SHA-256:
+`668798e77e4b802572ac48e3ad3b4feb6fb53855208dcbbcca84a8b549e67e41`.
+
 ## [0.5.7.60 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39393552253/artifacts/12250662522)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.

@@ -17,11 +17,12 @@ available. Database and graph visibility still follow their existing settings.
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
-![Real Qt application with vector pieces and hidden explorer; labelled fixture data](docs/vector-studio-dark.png)
+![Nocturne's native analysis studio with a prominent board, integrated Stockfish and Maia rows, and three insight cards](docs/studio-ui.png)
 
-*This screenshot uses the protocol test simulator, not Stockfish or measured chess
-analysis. The simulator is not bundled in the application. Database counts in this capture
-are explicitly labelled fixtures, not live results.*
+*Native Qt UI preview. Engine evaluations and Maia probability curves in this
+capture are explicitly labelled fixtures, not measured chess analysis.*
+
+**[0.5.7.61](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39901174812/artifacts/12479113267): a clearer analysis studio.** A coordinated slate, teal and violet palette distinguishes Stockfish from Maia. Compact numbered insight cards, readable probability badges, a prominent evaluation and tighter controls improve scanning. Smaller windows keep the board useful and the Maia percentages visible; light mode receives matching contrast improvements. Extract the unsigned Windows ZIP and open `Nocturne/Nocturne.exe`. See the [build receipt](docs/BUILDING.md).
 
 **[0.5.7.60](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39393552253/artifacts/12250662522): complete local Maia-3 79M integration with final mode and performance fixes.** Stockfish evaluations and PVs share rows with correctly matched Maia probabilities. The right column contains Moves by Rating, Move Map and the defined Blender Meter, with translucent Maia arrows alongside Stockfish markers. This build also prevents previous-position Maia overlays appearing in ordinary play and skips new rating sweeps while insights are hidden. The official model and CPU worker are bundled; no token or additional setup is needed. Earlier staged downloads remain below. Extract the unsigned ZIP and open `Nocturne/Nocturne.exe`. Windows tests, real-model checks and packaged smoke checks passed. See the [Maia guide](docs/MAIA.md) and [build receipt](docs/BUILDING.md).
 
