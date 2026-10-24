@@ -1,5 +1,13 @@
 # Windows 11 desktop builds
 
+## [0.5.7.64 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40139154710/artifacts/12577408803)
+
+All Maia moves above 10% now receive board arrows, colored using the same
+exact Stockfish loss categories as the Blunder Meter. Unsearched moves remain
+grey. The previous Top 1/3/5 arrow cap is replaced by the probability threshold.
+Source lint and the Windows validation, packaging and smoke-check pipeline passed.
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
 ## [0.5.7.62 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39903683180/artifacts/12480157328)
 
 Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.

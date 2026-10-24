@@ -28,6 +28,12 @@ for positions you have left cannot replace the current results. Completed
 policies for the last 128 positions, including their rating sweeps, are cached
 locally and can be reused after reopening. History is part of the cache key.
 
+Maia board arrows show every legal move with a probability strictly above 10%,
+with no Top 1/3/5 cap. Their green/yellow/red colors use the Blunder Meter
+classification; moves without an exact Stockfish comparison remain grey.
+Colors update as Stockfish results arrive. Toggle them in **Engine → Maia-3 79M
+→ Show Maia arrows (moves above 10%)**.
+
 ## Insights / Maia Tools
 
 The right column has exactly three primary sections. **Display → Show Maia

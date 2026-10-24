@@ -22,6 +22,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt UI preview. Engine evaluations and Maia probabilities in this
 capture are explicitly labelled fixtures, not measured chess analysis.*
 
+**[0.5.7.64](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40139154710/artifacts/12577408803): all likely Maia moves, colored by risk.** Board arrows now show every Maia move with more than a 10% chance, using the Blunder Meter’s green/yellow/red categories. Unsearched moves remain grey, and colors update with Stockfish results. Extract the unsigned Windows ZIP and open `Nocturne/Nocturne.exe`.
+
 **[0.5.7.63](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40112710365/artifacts/12567695727): drag to adjust Maia rating.** Hold the rating field and move left or right to change Maia’s rating in 200 Elo steps. Click without dragging to open the rating list. Extract the unsigned Windows ZIP and open `Nocturne/Nocturne.exe`.
 
 **[0.5.7.62](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/39903683180/artifacts/12480157328): a red–yellow–green Blunder Meter and a useful Move Map.** The Blunder Meter groups Maia's predicted human choices into Best moves, OK moves and Blunders, with unsearched choices in grey and their actual coverage preserved. The Move Map now plots human likelihood against Stockfish loss instead of duplicating the chessboard. Hover points for details or click to inspect a move without playing it. Extract the unsigned Windows ZIP and open `Nocturne/Nocturne.exe`. See the [Maia guide](docs/MAIA.md) and [build receipt](docs/BUILDING.md).
