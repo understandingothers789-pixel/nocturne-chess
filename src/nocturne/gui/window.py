@@ -43,6 +43,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import __version__
+from ..maia.risk import assess_moves
 from ..maia.controller import MaiaController
 from .maia import MaiaControls
 from .maia_insights import MaiaInsights
@@ -786,14 +787,8 @@ class MainWindow(QMainWindow):
         maia_menu = engine.addMenu("Maia-3 79M")
         self.maia_enabled_action = add(maia_menu, "Enable local Maia predictions", self._set_maia_enabled)
         self.maia_enabled_action.setCheckable(True)
-        self.maia_arrows_action = add(maia_menu, "Show translucent Maia arrows", self._set_maia_arrows)
+        self.maia_arrows_action = add(maia_menu, "Show Maia arrows (moves above 10%)", self._set_maia_arrows)
         self.maia_arrows_action.setCheckable(True)
-        count_menu = maia_menu.addMenu("Maia arrows on board")
-        self.maia_arrow_actions = {}
-        for count in (1, 3, 5):
-            action = add(count_menu, f"Top {count}", lambda checked=False, c=count: self._set_maia_arrow_count(c))
-            action.setCheckable(True)
-            self.maia_arrow_actions[count] = action
         rating_menu = maia_menu.addMenu("Lichess blitz rating (equal-rated opponent)")
         self.maia_rating_actions = {}
         for elo in range(400, 3001, 200):
@@ -1440,13 +1435,6 @@ class MainWindow(QMainWindow):
         self._maia_changed(self.maia.policies)
         self._save()
 
-    def _set_maia_arrow_count(self, count):
-        self.config["maia_arrow_count"] = count
-        for number, action in self.maia_arrow_actions.items():
-            action.setChecked(number == count)
-        self._maia_changed(self.maia.policies)
-        self._save()
-
     def _set_maia_enabled(self, enabled):
         self.config["maia_enabled"] = bool(enabled)
         if not enabled:
@@ -1475,8 +1463,6 @@ class MainWindow(QMainWindow):
         self.maia_column_title.setVisible(enabled)
         self.maia_enabled_action.setChecked(enabled)
         self.maia_arrows_action.setChecked(self.config.get("maia_arrows", True))
-        for count, action in self.maia_arrow_actions.items():
-            action.setChecked(count == self.config.get("maia_arrow_count", 3))
         for elo, action in self.maia_rating_actions.items():
             action.setChecked(elo == rating)
         self.maia_controls.setVisible(self.analysis_mode)
@@ -1497,15 +1483,6 @@ class MainWindow(QMainWindow):
         self.candidates.set_maia(policy, rating, self.config.get("maia_enabled", True) and self.analysis_mode)
         self.maia_controls.set_policy(policy, self.game.board)
         self.maia_insights.set_data(policies, self.game.board, rating, self._appearance_config())
-        self.board_view.maia_recommendations = []
-        count = self.config.get("maia_arrow_count", 3)
-        for uci, probability in sorted(policy.items(), key=lambda item: -item[1])[:count]:
-            try:
-                self.board_view.maia_recommendations.append((self.game.board.parse_uci(uci), probability))
-            except ValueError:
-                pass
-        self.board_view.maia_arrows_enabled = self.config.get("maia_arrows", True)
-        self.board_view.update()
         self._sync_blunder()
         if self._dock_workspace is not None:
             self._sync_docked_visibility()
@@ -1519,6 +1496,17 @@ class MainWindow(QMainWindow):
                   if self.analysis_mode and self.config.get("maia_enabled", True) else {})
         lines = self.candidates.lines if self._candidate_identity == self._position_identity() else {}
         self.maia_insights.set_analysis(policy, self.game.board, lines)
+        self.board_view.maia_recommendations = []
+        for uci, result in sorted(assess_moves(policy, lines).items(), key=lambda item: -item[1]["probability"]):
+            if result["probability"] <= 0.10:
+                continue
+            try:
+                move = self.game.board.parse_uci(uci)
+            except ValueError:
+                continue
+            self.board_view.maia_recommendations.append((move, result["probability"], result["category"]))
+        self.board_view.maia_arrows_enabled = self.config.get("maia_arrows", True)
+        self.board_view.update()
 
     def _maia_move(self, uci):
         try:

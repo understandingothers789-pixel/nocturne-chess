@@ -331,8 +331,8 @@ class BoardWidget(QWidget):
         # Maia's broad translucent arrows sit beneath the pieces. Existing
         # Stockfish rods and numbered endpoints remain on their own layer.
         if not preview and self.overlays and self.maia_arrows_enabled:
-            for move, probability in reversed(self.maia_recommendations):
-                color = QColor("#9b7dc4")
+            for move, probability, category in reversed(self.maia_recommendations):
+                color = QColor({"best": "#1a9850", "ok": "#fee08b", "blunder": "#d73027"}.get(category, "#82909e"))
                 color.setAlpha(round(55 + 80 * math.sqrt(probability)))
                 self._arrow(painter, move.from_sq, self._destination(move), color, unit)
         for square in SQUARES:
