@@ -24,6 +24,42 @@ class StatusLabel(QLabel):
                              self.palette(), self.isEnabled(), text, self.foregroundRole())
 
 
+class RatingDragBox(QComboBox):
+    """Click for the rating list, or scrub horizontally in 200 Elo steps."""
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_origin = event.globalPosition().x()
+            self._drag_rating = self.currentData()
+            self._dragging = False
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() & Qt.MouseButton.LeftButton and hasattr(self, "_drag_origin"):
+            delta = event.globalPosition().x() - self._drag_origin
+            if abs(delta) >= 12:
+                self._dragging = True
+            if self._dragging:
+                rating = max(min(RATINGS), min(max(RATINGS), self._drag_rating + int(delta / 24) * 200))
+                index = self.findData(rating)
+                if index >= 0:
+                    self.setCurrentIndex(index)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton and hasattr(self, "_drag_origin"):
+            if not self._dragging:
+                self.showPopup()
+            del self._drag_origin
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+
 class MaiaControls(QWidget):
     rating_changed = Signal(int)
     enabled_changed = Signal(bool)
@@ -48,11 +84,11 @@ class MaiaControls(QWidget):
         self.enabled.setChecked(True)
         self.enabled.toggled.connect(self.enabled_changed)
         top.addWidget(self.enabled, 0, 1)
-        self.rating = QComboBox()
+        self.rating = RatingDragBox()
         for rating in RATINGS:
             self.rating.addItem(f"{rating} Elo", rating)
         self.rating.setCurrentIndex(RATINGS.index(1800))
-        self.rating.setToolTip("Lichess blitz rating; opponent uses the same rating.\n400–3000 are model inputs, not guaranteed accuracy at the extremes.")
+        self.rating.setToolTip("Drag left/right in 200 Elo steps, or click to choose a rating.\nLichess blitz rating; opponent uses the same rating.\n400–3000 are model inputs, not guaranteed accuracy at the extremes.")
         self.rating.currentIndexChanged.connect(lambda: self.rating_changed.emit(self.rating.currentData()))
         top.addWidget(self.rating, 0, 2)
         top.setColumnStretch(3, 1)
