@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nocturne-chess"
-version = "0.5.7.64"
+version = "0.5.7.65"
 description = "A native offline Stockfish and Maia chess analysis studio"
 readme = "README.md"
 requires-python = ">=3.12"

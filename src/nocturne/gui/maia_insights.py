@@ -395,7 +395,7 @@ class MaiaInsights(QScrollArea):
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setMinimumWidth(240)
-        self.setMaximumWidth(360)
+        self.setMaximumWidth(16777215)
         body = QWidget()
         self.body_layout = QVBoxLayout(body)
         self.body_layout.setContentsMargins(0, 0, 0, 0)

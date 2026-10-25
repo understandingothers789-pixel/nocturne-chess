@@ -65,7 +65,9 @@ class DockWorkspace(QWidget):
         self.surface.setDocumentMode(True)
         # Surplus desktop width belongs beyond the working columns, rather
         # than becoming margins on either side of the square chessboard.
-        self.surface.setCentralWidget(QWidget())
+        center = QWidget()
+        center.setMaximumSize(0, 0)
+        self.surface.setCentralWidget(center)
         layout.addWidget(self.surface, 1)
         self.docks = {}
         for name, (title, widget) in panels.items():
@@ -116,12 +118,15 @@ class DockWorkspace(QWidget):
         for name in ("analysis", "database", "graph"):
             dock = self.docks[name]
             if not dock.isFloating():
-                dock.setMaximumWidth(560)
+                dock.setMaximumWidth(16777215)
         key = (self.width(), self.height(), target)
         if getattr(self, "_fit_key", None) != key:
             self._fit_key = key
             columns, widths = [board], [target]
-            for name, width in (("analysis", 560), ("insights", 340)):
+            remaining = max(560, self.width() - target - 24)
+            has_insights = "insights" in self.docks and not self.docks["insights"].isHidden()
+            insights_width = max(280, round(remaining * 0.38)) if has_insights else 0
+            for name, width in (("analysis", remaining - insights_width), ("insights", insights_width)):
                 dock = self.docks.get(name)
                 if dock is not None and not dock.isFloating() and not dock.isHidden():
                     columns.append(dock)

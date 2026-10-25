@@ -2626,7 +2626,7 @@ class MainWindow(QMainWindow):
         self.panel.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff if analysis else Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self._analysis_tab_changed()
         self.arena.setMaximumWidth(16777215)
-        self.panel.setMaximumWidth(560 if analysis else 420)
+        self.panel.setMaximumWidth(16777215 if analysis else 420)
         if self._dock_workspace is not None:
             if analysis:
                 self.tabs.setCurrentIndex(1)
