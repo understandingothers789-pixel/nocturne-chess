@@ -19,6 +19,21 @@ def configuration():
 class Predictor:
     def __init__(self, checkpoint):
         import torch
+        # DirectML currently uses an older Torch without native RMSNorm.
+        if not hasattr(torch.nn, "RMSNorm"):
+            class RMSNorm(torch.nn.Module):
+                def __init__(self, normalized_shape, eps=None, elementwise_affine=True):
+                    super().__init__()
+                    shape = (normalized_shape,) if isinstance(normalized_shape, int) else tuple(normalized_shape)
+                    self.dims = tuple(range(-len(shape), 0))
+                    self.eps = eps
+                    self.weight = torch.nn.Parameter(torch.ones(shape)) if elementwise_affine else None
+
+                def forward(self, x):
+                    eps = self.eps if self.eps is not None else torch.finfo(x.dtype).eps
+                    result = x * torch.rsqrt(x.pow(2).mean(self.dims, keepdim=True) + eps)
+                    return result * self.weight if self.weight is not None else result
+            torch.nn.RMSNorm = RMSNorm
         from .vendor.models import MAIA3Model
         from .vendor.utils import get_all_possible_moves
         torch.set_num_threads(max(1, min(4, (os.cpu_count() or 2) // 2)))
@@ -30,7 +45,18 @@ class Predictor:
         weights = {k.replace("smolgen", "gab"): v for k, v in weights.items()}
         self.model.load_state_dict(weights, strict=True)
         self.model.eval()
+        from .device import select_device
+        self.device, self.device_label = select_device(torch)
+        try:
+            self.model.to(self.device)
+        except Exception as exc:
+            self._fallback(exc)
         self.indices = {move: i for i, move in enumerate(get_all_possible_moves())}
+
+    def _fallback(self, exc):
+        self.device = self.torch.device("cpu")
+        self.model.to(self.device)
+        self.device_label = f"CPU fallback · {str(exc)[:160]}"
 
     def predict(self, root, moves, ratings):
         import chess
@@ -47,10 +73,19 @@ class Predictor:
             return {str(r): {} for r in ratings}
         tokens = get_historical_tokens(history, self.cfg, 180, 0, 180, 0)
         mask = get_legal_moves_mask(board, self.indices)
-        with torch.inference_mode():
-            elo = torch.tensor(ratings, dtype=torch.long)
-            logits, _, _ = self.model(tokens.unsqueeze(0).expand(len(ratings), -1, -1), elo, elo)
-            probabilities = torch.softmax(logits.float().masked_fill(~mask.unsqueeze(0), float("-inf")), dim=-1)
+        def forward():
+            with torch.inference_mode():
+                elo = torch.tensor(ratings, dtype=torch.long, device=self.device)
+                logits, _, _ = self.model(tokens.to(self.device).unsqueeze(0).expand(len(ratings), -1, -1), elo, elo)
+                # Legal masking and normalization on CPU also support DirectML.
+                return torch.softmax(logits.float().cpu().masked_fill(~mask.unsqueeze(0), float("-inf")), dim=-1)
+        try:
+            probabilities = forward()
+        except Exception as exc:
+            if self.device.type == "cpu":
+                raise
+            self._fallback(exc)
+            probabilities = forward()
         return {str(rating): {m.uci(): float(probabilities[i, self.indices[
             m.uci() if board.turn else mirror_move(m.uci())]]) for m in legal}
             for i, rating in enumerate(ratings)}
@@ -64,7 +99,7 @@ def main():
     checkpoint = Path(sys.argv[1])
     try:
         predictor = Predictor(checkpoint)
-        emit({"ready": True, "model": "Maia-3 79M"})
+        emit({"ready": True, "model": "Maia-3 79M", "device": predictor.device_label})
     except Exception as exc:
         emit({"error": f"Maia could not load: {exc}"})
         return 1
@@ -79,7 +114,7 @@ def main():
             # batches so the GUI gets useful probabilities without waiting.
             for batch in ([ratings[0]], *[ratings[i:i+2] for i in range(1, len(ratings), 2)]):
                 result = predictor.predict(request["root"], request["moves"], batch)
-                emit({"id": request["id"], "policies": result, "complete": batch[-1] == ratings[-1]})
+                emit({"id": request["id"], "policies": result, "device": predictor.device_label, "complete": batch[-1] == ratings[-1]})
         except Exception as exc:
             emit({"id": request.get("id"), "error": str(exc)})
     return 0

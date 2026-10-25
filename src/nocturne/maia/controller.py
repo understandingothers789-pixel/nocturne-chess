@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import sys
 
-from PySide6.QtCore import QObject, QProcess, QTimer, Signal
+from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, QTimer, Signal
 from . import RATINGS, MODEL_REVISION
 
 
@@ -16,6 +16,10 @@ class MaiaController(QObject):
 
     def __init__(self, directory, parent=None):
         super().__init__(parent)
+        self.device_mode = "auto"
+        self.device_label = "not loaded"
+        self._external = False
+        self._cpu_retry = False
         self.directory = Path(directory)
         self.process = QProcess(self)
         self.process.readyReadStandardOutput.connect(self._read)
@@ -76,6 +80,20 @@ class MaiaController(QObject):
                     self.status.emit("Maia-3 79M · model included in Windows download")
                     return
                 command = [sys.executable, "-m", "nocturne.maia.worker", str(checkpoint)]
+            runtime = self.directory / "maia-gpu"
+            python = runtime / "Scripts/python.exe"
+            self._external = (self.device_mode == "auto" and not self._cpu_retry
+                              and (runtime / "ready.json").is_file() and python.is_file())
+            env = QProcessEnvironment.systemEnvironment()
+            env.insert("NOCTURNE_MAIA_DEVICE", "cpu" if self._cpu_retry else self.device_mode)
+            if self._external:
+                source = (Path(sys.executable).parent / "Maia" / "gpu-source" if getattr(sys, "frozen", False)
+                          else Path(__file__).resolve().parents[2])
+                env.insert("PYTHONPATH", str(source))
+                checkpoint = (Path(sys.executable).parent / "Maia" / "maia3-79m.pt" if getattr(sys, "frozen", False)
+                              else Path(__file__).resolve().parents[3] / "models/maia3-79m.pt")
+                command = [str(python), "-m", "nocturne.maia.worker", str(checkpoint)]
+            self.process.setProcessEnvironment(env)
             self.status.emit("Loading Maia-3 79M…")
             self.process.start(command[0], command[1:])
             return
@@ -84,7 +102,7 @@ class MaiaController(QObject):
         self._active, self._queued = self._queued, None
         self._busy = True
         self.process.write((json.dumps(self._active[1]) + "\n").encode())
-        self.status.emit("Maia-3 79M · predicting…")
+        self.status.emit(f"Maia-3 79M · {self.device_label} · predicting…")
 
     def _read(self):
         self._buffer += bytes(self.process.readAllStandardOutput())
@@ -94,6 +112,8 @@ class MaiaController(QObject):
                 message = json.loads(raw)
             except (ValueError, UnicodeError):
                 continue
+            if message.get("device"):
+                self.device_label = message["device"]
             if message.get("ready"):
                 self._ready = True
                 self._dispatch()
@@ -111,7 +131,7 @@ class MaiaController(QObject):
                 self.cache[self._active[0][0]] = self.policies.copy()
                 self.changed.emit(self.policies)
                 if message.get("complete"):
-                    self.status.emit("Maia-3 79M · local")
+                    self.status.emit(f"Maia-3 79M · {self.device_label}")
                     self._save_cache()
             if message.get("complete"):
                 self._busy = False
@@ -129,14 +149,32 @@ class MaiaController(QObject):
         except OSError:
             pass
 
+    def _retry_cpu(self):
+        if not self._external or self._cpu_retry:
+            return False
+        self._cpu_retry = True
+        if self._active and not self._queued:
+            self._queued = self._active
+        self._active = None
+        self._ready = self._busy = self._failed = False
+        self.status.emit("GPU worker unavailable · retrying bundled CPU")
+        QTimer.singleShot(0, self._dispatch)
+        return True
+
     def _error(self, error):
+        if error != QProcess.ProcessError.FailedToStart:
+            return
         if not self._closing:
+            if self._retry_cpu():
+                return
             self._failed = True
             self.status.emit("Maia could not start. The Stockfish analysis remains available.")
 
     def _finished(self, *args):
         self._ready = False
         if not self._closing:
+            if self._retry_cpu():
+                return
             self._failed = True
             self.status.emit("Maia worker stopped. Disable and enable Maia to retry.")
 
@@ -149,6 +187,7 @@ class MaiaController(QObject):
         self.process.waitForFinished(1000)
         self._closing = False
         self._failed = False
+        self._cpu_retry = False
         self._ready = False
         self._busy = False
         self.policies = {}

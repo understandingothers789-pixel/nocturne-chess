@@ -5,8 +5,9 @@ from __future__ import annotations
 from html import escape
 from pathlib import Path
 import random
+import sys
 
-from PySide6.QtCore import QByteArray, QEvent, QStandardPaths, Qt, QTimer, QUrl
+from PySide6.QtCore import QByteArray, QEvent, QProcess, QStandardPaths, Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -204,6 +205,7 @@ class MainWindow(QMainWindow):
         self.engine.status.connect(self.engine_state.setText)
         self.engine.connection.configured.connect(self.resource_controls.refresh)
         self.maia = MaiaController(self.data_directory, self)
+        self.maia.device_mode = self.config.get("maia_device", "auto")
         self.maia.changed.connect(self._maia_changed)
         self.maia.status.connect(self.maia_controls.status.setText)
         self._shortcuts()
@@ -789,6 +791,14 @@ class MainWindow(QMainWindow):
         self.maia_enabled_action.setCheckable(True)
         self.maia_arrows_action = add(maia_menu, "Show Maia arrows (moves above 10%)", self._set_maia_arrows)
         self.maia_arrows_action.setCheckable(True)
+        device_menu = maia_menu.addMenu("Inference device")
+        self.maia_device_actions = {}
+        for key, title in (("auto", "Auto · GPU when available"), ("cpu", "CPU only")):
+            action = add(device_menu, title, lambda checked=False, value=key: self._set_maia_device(value))
+            action.setCheckable(True)
+            action.setChecked(self.config.get("maia_device", "auto") == key)
+            self.maia_device_actions[key] = action
+        add(device_menu, "Set up optional GPU runtime…", self._install_maia_gpu)
         rating_menu = maia_menu.addMenu("Lichess blitz rating (equal-rated opponent)")
         self.maia_rating_actions = {}
         for elo in range(400, 3001, 200):
@@ -1434,6 +1444,63 @@ class MainWindow(QMainWindow):
         self.config["maia_arrows"] = bool(enabled)
         self._maia_changed(self.maia.policies)
         self._save()
+
+    def _set_maia_device(self, device):
+        self.config["maia_device"] = device
+        self.maia.stop()
+        self.maia.device_mode = device
+        for key, action in self.maia_device_actions.items():
+            action.setChecked(key == device)
+        self._request_maia()
+        self._save()
+
+    def _install_maia_gpu(self):
+        if getattr(self, "_gpu_setup", None) is not None:
+            self._gpu_setup.show()
+            self._gpu_setup.raise_()
+            return
+        answer = QMessageBox.question(self, "Optional Maia GPU runtime",
+            "Set up automatic NVIDIA CUDA or AMD ROCm acceleration?\n\n"
+            "Requires Python 3.12 x64 and an internet connection. Downloads may be several GB. "
+            "AMD ROCm requires a supported Radeon GPU and driver 26.2.2. "
+            "Setup uses a separate environment and tests the model on your GPU; the bundled CPU remains available.")
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        frozen = getattr(sys, "frozen", False)
+        base = Path(sys.executable).parent / "Maia" if frozen else Path(__file__).resolve().parents[3]
+        source = base / "gpu-source" if frozen else base / "src"
+        script = base / "install_maia_gpu.py" if frozen else base / "scripts/install_maia_gpu.py"
+        checkpoint = base / "maia3-79m.pt" if frozen else base / "models/maia3-79m.pt"
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Maia GPU setup")
+        dialog.resize(760, 430)
+        layout = QVBoxLayout(dialog)
+        log = QPlainTextEdit()
+        log.setReadOnly(True)
+        layout.addWidget(log)
+        close = QPushButton("Close")
+        close.setEnabled(False)
+        close.clicked.connect(dialog.accept)
+        layout.addWidget(close)
+        process = QProcess(dialog)
+        process.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
+        process.readyReadStandardOutput.connect(lambda: log.appendPlainText(bytes(process.readAllStandardOutput()).decode("utf-8", "replace")))
+        def finished(code, status):
+            close.setEnabled(True)
+            if code == 0:
+                log.appendPlainText("GPU runtime ready. Select Auto to use it. Cached predictions are reused.")
+                self._set_maia_device("auto")
+            else:
+                log.appendPlainText("GPU setup did not complete. CPU inference remains available.")
+        process.finished.connect(finished)
+        process.errorOccurred.connect(lambda error: (log.appendPlainText(process.errorString()), close.setEnabled(True)))
+        dialog.reject = lambda: QDialog.reject(dialog) if process.state() == QProcess.ProcessState.NotRunning else None
+        # Keep setup alive until completion, including when the window close button is used.
+        dialog.setWindowFlag(Qt.WindowType.WindowCloseButtonHint, False)
+        self._gpu_setup = dialog
+        dialog.finished.connect(lambda result: setattr(self, "_gpu_setup", None))
+        dialog.show()
+        process.start("py", ["-3.12", str(script), str(self.data_directory / "maia-gpu"), str(source), str(checkpoint)])
 
     def _set_maia_enabled(self, enabled):
         self.config["maia_enabled"] = bool(enabled)

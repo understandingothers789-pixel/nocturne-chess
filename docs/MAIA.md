@@ -1,7 +1,7 @@
 # Maia-3 in Nocturne
 
 The Windows downloads include the official **Maia-3 79M** checkpoint and a CPU
-inference worker. No Python installation, Lichess token, hosted prediction API,
+inference worker. For CPU inference, no Python installation, Lichess token, hosted prediction API,
 or extra model download is needed. Stockfish remains your separately selected
 UCI engine. Maia predicts human move choices; Stockfish searches for strong moves.
 
@@ -102,3 +102,29 @@ worker source, and the exact architecture settings accompany the source ZIP.
 PyTorch and NumPy runtime license metadata accompany the worker. Build checks
 exercise real White/Black move probabilities, promotion identity, rating
 conditioning, legal-mask normalization, and the packaged worker protocol.
+
+## Optional GPU acceleration (0.5.7.67)
+
+Use **Engine → Maia-3 79M → Inference device**. **Auto** uses a verified optional
+GPU runtime when installed; **CPU only** forces CPU. The ordinary Windows ZIP
+continues to include a working CPU worker.
+
+Choose **Set up optional GPU runtime…** to detect NVIDIA/AMD adapters and install
+an isolated runtime under Nocturne’s local data folder (`maia-gpu`). This setup
+requires Python 3.12 x64 (python.org launcher) and an internet connection, and can
+download several GB. It uses NVIDIA PyTorch CUDA 12.8 or AMD ROCm 7.2.1 / PyTorch 2.9.1;
+actual model inference must succeed on the GPU before setup is marked ready.
+GPU/driver compatibility varies. Setup does not install drivers or change global
+Python packages. If unsupported operations, insufficient memory or a worker
+failure prevent GPU use, inference falls back to CPU. The status line reports
+the actual device, or that the result came from cache. Existing policy caches
+remain reusable; a cached position does not run the GPU again.
+
+Native ROCm uses PyTorch’s `torch.cuda` interface, distinguished by `torch.version.hip`.
+Windows AMD setup follows AMD’s official ROCm 7.2.1 package list and requires
+AMD graphics driver 26.2.2. The supported matrix includes RX 9070 XT; support
+is not assumed for every AMD GPU. See [AMD installation instructions](https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/docs/install/installrad/windows/install-pytorch.html)
+and [Windows hardware matrix](https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/docs/compatibility/compatibilityrad/windows/windows_compatibility.html).
+DirectML is a different Microsoft backend; it is not installed by this setup.
+NVIDIA/AMD hardware has not been available in the development environment;
+Windows CI checks the bundled CPU model, not physical GPU performance.

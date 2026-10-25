@@ -66,6 +66,12 @@ def build_only(skip_tests=False):
     shutil.copy2(ROOT / "models/maia3-79m.pt", ROOT / "dist/Nocturne/Maia/maia3-79m.pt")
     run([python, "scripts/check_maia_model.py", ROOT / "dist/Nocturne/Maia/maia3-79m.pt",
          ROOT / "dist/Nocturne/Maia/NocturneMaia.exe"])
+    gpu_source = ROOT / "dist/Nocturne/Maia/gpu-source/nocturne"
+    gpu_source.mkdir(parents=True, exist_ok=True)
+    (gpu_source / "__init__.py").write_text("", encoding="utf-8")
+    shutil.copytree(ROOT / "src/nocturne/maia", gpu_source / "maia",
+                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    shutil.copy2(ROOT / "scripts/install_maia_gpu.py", ROOT / "dist/Nocturne/Maia/install_maia_gpu.py")
     smoke_test(ROOT / "dist")
     run([python, "scripts/package_source.py"])
     print("Local validation build completed. A signed release archive requires --package-signed.")
