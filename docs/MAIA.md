@@ -184,3 +184,14 @@ reserve the selected MultiPV row count, including positions with fewer legal
 moves. Clearing analysis removes its content while preserving compact row
 heights, keeping the game line under the cursor. Telemetry retains its measured
 height when cleared and adapts again when the panel width changes.
+
+## Structured Game Line (0.5.7.72)
+
+The Game Line under engine candidates uses paired White/Black rows, indented
+variation rows and saved White-perspective evaluations beside each move. Missing
+evaluations stay blank; displaying the tree starts no new searches. The current
+move is highlighted. It occupies the available space and scrolls vertically;
+its wheel no longer navigates the game. Board and bottom Game Moves scrolling
+retain navigation, and the bottom PGN retains parentheses. Clicking a Game Line
+move still navigates directly. Score updates preserve the reader's scroll position;
+explicit move selection reveals the selected row.

@@ -72,6 +72,7 @@ from .opening_coverage import OpeningCoverage
 from .snapshot_dialog import SnapshotDialog
 from ..explorer import RATINGS, SPEEDS
 from .moves import MoveText
+from .game_line import GameLine
 from .study_tabs import StudyTabBar
 from .hover_preview import HoverPreview, MiniBoard
 from .wheel import WheelSteps
@@ -446,19 +447,17 @@ class MainWindow(QMainWindow):
         self.candidates.action.connect(self._candidate_action)
         self.candidates.changed.connect(self._sync_candidate_markers)
         self.engine_layout.addWidget(self.candidates)
-        self.inline_history = MoveText()
-        self.inline_history.setMinimumHeight(75)
-        self.inline_history.setMaximumHeight(135)
+        self.inline_history = GameLine()
+        self.inline_history.setMinimumHeight(160)
+        self.inline_history.setMaximumHeight(16777215)
         self.inline_history.setAccessibleName("Move tree below engine analysis")
         self.inline_history.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.inline_history.customContextMenuRequested.connect(self._inline_history_menu)
         self.inline_history.move_clicked.connect(self._navigate_node)
         self.inline_history.move_hovered.connect(self._preview_history)
         self.inline_history.preview_ended.connect(lambda: self._end_preview("history"))
-        self.inline_history.wheel_navigated.connect(self._wheel_game)
         self.engine_layout.addWidget(label("GAME LINE", "gameLineHeading"))
-        self.engine_layout.addWidget(self.inline_history)
-        self.engine_layout.addStretch()
+        self.engine_layout.addWidget(self.inline_history, 1)
         self.engine_scroll.setWidget(engine_detail)
         self.analysis_detail_splitter = QSplitter(Qt.Orientation.Vertical)
         self.analysis_detail_splitter.setChildrenCollapsible(False)
@@ -2798,8 +2797,8 @@ class MainWindow(QMainWindow):
             if self.config.get("explorer_statistics") else {})
         self.analysis_history.set_moves(tokens, self.game.current_node, self._appearance_config().get("light", False),
                                         book_departure=departure if departure else None, book_departures=markers)
-        self.inline_history.set_moves(tokens, self.game.current_node, self._appearance_config().get("light", False),
-                                      book_departure=departure if departure else None, book_departures=markers)
+        self.inline_history.set_game(self.game, self._appearance_config().get("light", False),
+                                     book_departures=markers)
         self._refresh_raw_pgn()
 
     def _end_preview(self, source):
