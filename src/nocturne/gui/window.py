@@ -479,6 +479,9 @@ class MainWindow(QMainWindow):
         self.maia_controls.enabled_changed.connect(self._set_maia_enabled)
         self.maia_controls.settings_requested.connect(self._manage_engines)
         self.maia_controls.move_selected.connect(self._maia_move)
+        self.maia_controls.preview_requested.connect(self._preview_maia_line)
+        self.maia_controls.preview_ended.connect(lambda: self._end_preview("maia-all"))
+        self.maia_controls.pointer_moved.connect(self._move_cursor_preview)
         engine_page_layout.insertWidget(0, self.maia_controls)
         engine_page_layout.addWidget(self.analysis_detail_splitter, 1)
         self.graph = EvaluationGraph()
@@ -1586,6 +1589,7 @@ class MainWindow(QMainWindow):
                   if self.analysis_mode and self.config.get("maia_enabled", True) else {})
         lines = self.candidates.lines if self._candidate_identity == self._position_identity() else {}
         self.maia_insights.set_analysis(policy, self.game.board, lines)
+        self.maia_controls.set_stockfish(lines, self.game.board.turn)
         self.board_view.maia_recommendations = []
         for uci, result in sorted(assess_moves(policy, lines).items(), key=lambda item: -item[1]["probability"]):
             if result["probability"] <= 0.10:
@@ -1597,6 +1601,22 @@ class MainWindow(QMainWindow):
             self.board_view.maia_recommendations.append((move, result["probability"], result["category"]))
         self.board_view.maia_arrows_enabled = self.config.get("maia_arrows", True)
         self.board_view.update()
+
+    def _preview_maia_line(self, pv, ply, uci):
+        position = self.game.board.copy()
+        last = None
+        try:
+            for move in pv[:ply]:
+                last = position.parse_uci(move)
+                position.push(last)
+        except ValueError:
+            self._end_preview("maia-all")
+            return
+        # The all-human-moves table always uses the small cursor board.
+        self._preview_source = "maia-all"
+        self.board_view.clear_preview()
+        self.hover_preview.show_position(position, last, self.board_view,
+                                         f"Stockfish variation · {uci} · ply {ply}")
 
     def _maia_move(self, uci):
         try:

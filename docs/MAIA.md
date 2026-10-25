@@ -19,7 +19,12 @@ the Maia column belongs to that row's **first legal UCI move**, including its
 promotion suffix. Stockfish ordering never determines which probability is used.
 Small probabilities retain their actual value; a dash means no result is ready.
 **Inspect all Maia-ranked legal moves** opens the full policy inside the existing
-analysis area, including moves outside MultiPV. Clicking a move plays it.
+analysis area, including moves outside MultiPV. The table columns are Move,
+Stockfish eval (White’s perspective), and Maia probability. Missing engine
+evaluations show a dash rather than an invented score. Hover the Move column
+for a small-board Stockfish PV preview and scroll up/down to step backward/forward.
+Changing rows resets the preview; moves without an engine PV show a brief message.
+Scrolling the other columns scrolls the table normally. Clicking a move plays it.
 
 The model uses the current PGN branch's actual history (up to eight positions),
 with the official earliest-position padding when history is short. It stays
@@ -166,3 +171,7 @@ profiles. Moves therefore appear immediately after a click or drag; the Display
 menu can still enable animations later if explicitly desired. Moves by Rating
 labels have their own tooltip hit areas, referencing the actual last sample
 rather than a nearby curve when collision spacing displaces the label.
+
+The insight cards are ordered **01 Moves by Rating**, **02 Blunder Meter**, then
+**03 Move Map**. Practical traps remain a design proposal; no additional engine
+searches are started for them in this version.

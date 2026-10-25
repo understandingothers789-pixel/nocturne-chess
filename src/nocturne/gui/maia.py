@@ -1,11 +1,13 @@
 """Compact Maia controls and the optional legal-move view inside analysis."""
-from PySide6.QtCore import Signal, Qt, QSize
-from PySide6.QtWidgets import QStylePainter
+from PySide6.QtCore import Signal, Qt, QSize, QEvent
+from PySide6.QtWidgets import QStylePainter, QToolTip
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QCheckBox,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QGridLayout, QSizePolicy, QScrollArea,
 )
 from ..maia import RATINGS, percentage
+from ..engine.uci_types import score_label
+from .wheel import WheelSteps
 
 
 class StatusLabel(QLabel):
@@ -65,6 +67,9 @@ class MaiaControls(QWidget):
     enabled_changed = Signal(bool)
     move_selected = Signal(str)
     settings_requested = Signal()
+    preview_requested = Signal(object, int, str)
+    preview_ended = Signal()
+    pointer_moved = Signal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -104,8 +109,14 @@ class MaiaControls(QWidget):
         secondary.addWidget(self.status, 1)
         secondary.addWidget(self.all_moves)
         layout.addLayout(secondary)
-        self.table = QTableWidget(0, 2)
-        self.table.setHorizontalHeaderLabels(["Move", "Maia probability"])
+        self.table = QTableWidget(0, 3)
+        self._stockfish = {}
+        self._table_fen = None
+        self._hover_move = None
+        self._hover_pv = []
+        self._hover_ply = 1
+        self._wheel = WheelSteps()
+        self.table.setHorizontalHeaderLabels(["Move", "Stockfish eval", "Maia probability"])
         self.table.verticalHeader().hide()
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -113,6 +124,9 @@ class MaiaControls(QWidget):
         self.table.setMinimumHeight(120)
         self.table.setMaximumHeight(190)
         self.table.hide()
+        self.table.setMouseTracking(True)
+        self.table.viewport().setMouseTracking(True)
+        self.table.viewport().installEventFilter(self)
         self.table.cellClicked.connect(self._select)
         self.all_moves.toggled.connect(self.table.setVisible)
         layout.addWidget(self.table)
@@ -155,9 +169,74 @@ class MaiaControls(QWidget):
         if item:
             self.move_selected.emit(item.data(Qt.ItemDataRole.UserRole))
 
+    def _end_hover(self):
+        self._hover_move = None
+        self._hover_pv = []
+        self._hover_ply = 1
+        self._wheel.reset()
+        self.preview_ended.emit()
+        QToolTip.hideText()
+
+    def eventFilter(self, watched, event):
+        if watched is self.table.viewport():
+            if event.type() in (QEvent.Type.Leave, QEvent.Type.Hide):
+                self._end_hover()
+            elif event.type() in (QEvent.Type.MouseMove, QEvent.Type.Wheel):
+                index = self.table.indexAt(event.position().toPoint())
+                item = self.table.item(index.row(), 0) if index.isValid() and index.column() == 0 else None
+                if item is None:
+                    self._end_hover()
+                else:
+                    uci = item.data(Qt.ItemDataRole.UserRole)
+                    if uci != self._hover_move:
+                        self._end_hover()
+                        self._hover_move = uci
+                        self._hover_pv = list(self._stockfish.get(uci, {}).get("pv", []))
+                    if event.type() == QEvent.Type.Wheel:
+                        steps = self._wheel.consume(event)
+                        if steps is not None:
+                            self._hover_ply = max(0, min(len(self._hover_pv), self._hover_ply + steps))
+                    if self._hover_pv:
+                        self.preview_requested.emit(self._hover_pv, self._hover_ply, uci)
+                        self.pointer_moved.emit(event.globalPosition().toPoint())
+                    else:
+                        QToolTip.showText(event.globalPosition().toPoint(),
+                                          "No Stockfish variation available for this move.", self.table)
+                    if event.type() == QEvent.Type.Wheel:
+                        event.accept()
+                        return True
+        return super().eventFilter(watched, event)
+
+    def set_stockfish(self, lines, turn):
+        self._stockfish = {}
+        for line in lines.values():
+            if line.get("pv"):
+                uci = line["pv"][0]
+                previous = self._stockfish.get(uci, {})
+                if (line.get("depth", 0), line.get("nodes", 0)) >= (previous.get("depth", 0), previous.get("nodes", 0)):
+                    self._stockfish[uci] = line
+        if self._hover_move and not self._hover_pv:
+            self._hover_pv = list(self._stockfish.get(self._hover_move, {}).get("pv", []))
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, 0)
+            line = self._stockfish.get(item.data(Qt.ItemDataRole.UserRole)) if item else None
+            has_score = line and line.get("score_type") in ("cp", "mate") and isinstance(line.get("score_value"), (int, float))
+            score = QTableWidgetItem(score_label(line, turn) if has_score else "—")
+            score.setToolTip("Stockfish evaluation · White's perspective" if line else "No Stockfish analysis for this move")
+            self.table.setItem(row, 1, score)
+
     def set_policy(self, policy, board):
+        if board.fen() != self._table_fen:
+            self._end_hover()
+            self._stockfish = {}
+            self._table_fen = board.fen()
+        ordered = sorted(policy.items(), key=lambda pair: -pair[1])
+        old_order = [self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
+                     for row in range(self.table.rowCount()) if self.table.item(row, 0)]
+        if old_order != [uci for uci, _ in ordered]:
+            self._end_hover()
         self.table.setRowCount(len(policy))
-        for row, (uci, probability) in enumerate(sorted(policy.items(), key=lambda pair: -pair[1])):
+        for row, (uci, probability) in enumerate(ordered):
             try:
                 from ..core.notation import san
                 text = san(board, board.parse_uci(uci))
@@ -166,4 +245,4 @@ class MaiaControls(QWidget):
             move = QTableWidgetItem(text)
             move.setData(Qt.ItemDataRole.UserRole, uci)
             self.table.setItem(row, 0, move)
-            self.table.setItem(row, 1, QTableWidgetItem(percentage(probability)))
+            self.table.setItem(row, 2, QTableWidgetItem(percentage(probability)))

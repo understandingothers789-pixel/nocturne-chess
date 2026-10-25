@@ -354,7 +354,7 @@ class BlunderMeter(InsightCard):
     selection_changed = Signal(str)
 
     def __init__(self, parent=None):
-        super().__init__("03", "Blunder Meter", parent)
+        super().__init__("02", "Blunder Meter", parent)
         self.assessments, self.names = {}, {}
         self.strip = ProbabilityStrip()
         self.content.addWidget(self.strip)
@@ -471,18 +471,18 @@ class MaiaInsights(QScrollArea):
         self.legend_buttons = {}
         trends.content.addWidget(legend)
         self.body_layout.addWidget(trends)
-        move_map = InsightCard("02", "Move Map")
+        move_map = InsightCard("03", "Move Map")
         self.map = MoveMap()
         move_map.content.addWidget(self.map)
         caption = QLabel("Human likelihood vs engine loss. Hover a dot; click to inspect.")
         caption.setWordWrap(True)
         caption.setObjectName("sectionNote")
         move_map.content.addWidget(caption)
-        self.body_layout.addWidget(move_map)
         self.blunder = BlunderMeter()
         self.map.move_selected.connect(self.blunder.select_move)
         self.blunder.selection_changed.connect(self._select_map_move)
         self.body_layout.addWidget(self.blunder)
+        self.body_layout.addWidget(move_map)
         self.body_layout.addStretch()
         self.setWidget(body)
 
