@@ -1449,22 +1449,41 @@ class MainWindow(QMainWindow):
         self.config["maia_device"] = device
         self.maia.stop()
         self.maia.device_mode = device
+        if device == "auto":
+            # A deliberate Auto selection also retries a previously failed setup.
+            try:
+                (self.data_directory / "maia-gpu-auto-attempted").unlink(missing_ok=True)
+            except OSError:
+                pass
         for key, action in self.maia_device_actions.items():
             action.setChecked(key == device)
         self._request_maia()
         self._save()
 
+    def _ensure_maia_gpu(self):
+        if (self._closing or not getattr(sys, "frozen", False) or sys.platform != "win32"
+                or not self.analysis_mode or not self.config.get("maia_enabled", True)
+                or self.config.get("maia_device", "auto") != "auto"):
+            return
+        runtime = self.data_directory / "maia-gpu"
+        if (runtime / "ready.json").is_file() and (runtime / "Scripts/python.exe").is_file():
+            return
+        if getattr(self, "_gpu_setup", None) is not None:
+            return
+        attempted = self.data_directory / "maia-gpu-auto-attempted"
+        if attempted.exists():
+            return
+        try:
+            self.data_directory.mkdir(parents=True, exist_ok=True)
+            attempted.write_text("Automatic GPU setup attempted; select Auto again to retry.\n", encoding="utf-8")
+        except OSError:
+            return
+        self._install_maia_gpu()
+
     def _install_maia_gpu(self):
         if getattr(self, "_gpu_setup", None) is not None:
             self._gpu_setup.show()
             self._gpu_setup.raise_()
-            return
-        answer = QMessageBox.question(self, "Optional Maia GPU runtime",
-            "Set up automatic NVIDIA CUDA or AMD ROCm acceleration?\n\n"
-            "Requires Python 3.12 x64 and an internet connection. Downloads may be several GB. "
-            "AMD ROCm requires a supported Radeon GPU and driver 26.2.2. "
-            "Setup uses a separate environment and tests the model on your GPU; the bundled CPU remains available.")
-        if answer != QMessageBox.StandardButton.Yes:
             return
         frozen = getattr(sys, "frozen", False)
         base = Path(sys.executable).parent / "Maia" if frozen else Path(__file__).resolve().parents[3]
@@ -1488,8 +1507,13 @@ class MainWindow(QMainWindow):
         def finished(code, status):
             close.setEnabled(True)
             if code == 0:
-                log.appendPlainText("GPU runtime ready. Select Auto to use it. Cached predictions are reused.")
-                self._set_maia_device("auto")
+                log.appendPlainText("GPU runtime ready. Auto will reuse this installation on future launches. Cached predictions are reused.")
+                try:
+                    (self.data_directory / "maia-gpu-auto-attempted").unlink(missing_ok=True)
+                except OSError:
+                    pass
+                if self.config.get("maia_device", "auto") == "auto":
+                    self._set_maia_device("auto")
             else:
                 log.appendPlainText("GPU setup did not complete. CPU inference remains available.")
         process.finished.connect(finished)
@@ -1500,6 +1524,8 @@ class MainWindow(QMainWindow):
         self._gpu_setup = dialog
         dialog.finished.connect(lambda result: setattr(self, "_gpu_setup", None))
         dialog.show()
+        log.appendPlainText("Auto GPU setup: detects NVIDIA/AMD and downloads the compatible runtime once. "
+                            "Python 3.12 x64 is required; CPU inference stays available.")
         process.start("py", ["-3.12", str(script), str(self.data_directory / "maia-gpu"), str(source), str(checkpoint)])
 
     def _set_maia_enabled(self, enabled):
@@ -1539,6 +1565,7 @@ class MainWindow(QMainWindow):
             self._maia_changed({})
             return
         if enabled and self.analysis_mode:
+            QTimer.singleShot(0, self._ensure_maia_gpu)
             path = self.game.node_path(self.game.current_node)[1:]
             self.maia.request(self.game.initial_fen, [self.game.nodes[n].move.uci() for n in path], rating, sweep=self.config.get("show_maia_insights", True))
         self._maia_changed(self.maia.policies if enabled else {})

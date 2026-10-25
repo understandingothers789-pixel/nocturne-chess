@@ -109,7 +109,13 @@ Use **Engine → Maia-3 79M → Inference device**. **Auto** uses a verified opt
 GPU runtime when installed; **CPU only** forces CPU. The ordinary Windows ZIP
 continues to include a working CPU worker.
 
-Choose **Set up optional GPU runtime…** to detect NVIDIA/AMD adapters and install
+In the Windows app, **Auto** reuses a ready GPU environment across launches and
+updates. If it is missing, Auto starts setup automatically, without a separate
+setup click or confirmation. A failed automatic attempt is remembered to avoid
+repeated downloads; deliberately select Auto again to retry after fixing the
+reported problem. **CPU only** never starts GPU setup.
+
+**Set up optional GPU runtime…** also lets you manually reinstall: it detects NVIDIA/AMD adapters and installs
 an isolated runtime under Nocturne’s local data folder (`maia-gpu`). This setup
 requires Python 3.12 x64 (python.org launcher) and an internet connection, and can
 download several GB. It uses NVIDIA PyTorch CUDA 12.8 or AMD ROCm 7.2.1 / PyTorch 2.9.1;
