@@ -479,7 +479,10 @@ class CandidatePanel(QWidget):
 
     def _refresh_expander(self, rank):
         button = self.expand_buttons.get(rank)
-        if button is None or rank not in self.lines:
+        if button is None:
+            return
+        if rank not in self.lines:
+            button.hide()
             return
         moves = self.rows[rank][2]
         expanded = rank in self.expanded_ranks
