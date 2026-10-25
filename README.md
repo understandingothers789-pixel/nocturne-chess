@@ -22,7 +22,9 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt UI preview. Engine evaluations and Maia probabilities in this
 capture are explicitly labelled fixtures, not measured chess analysis.*
 
-**[0.5.7.65](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40159206059/artifacts/12584999426): use the full analysis workspace.** Removed fixed analysis and Maia width caps and the empty dock area that consumed the right side. Analysis, database and Maia panels now expand across the available window width, including Arrange mode and restored layouts, while the board stays square. Extract the unsigned Windows ZIP and open `Nocturne/Nocturne.exe`.
+**[0.5.7.66](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40161107406/artifacts/12586302514): clearer Moves by Rating.** Fixed unintended solid polygon fills between rating curves. Deliberate transparent baseline shading, a taller plot and additional grid lines make small probabilities easier to read. Move Map is unchanged. Extract the unsigned ZIP and open `Nocturne/Nocturne.exe`.
+
+**[0.5.7.65](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40159206059/artifacts/12584999426): use the full analysis workspace.** Analysis and Maia panels now fill the available width, including Arrange mode.
 
 **[0.5.7.64](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40139154710/artifacts/12577408803): all likely Maia moves, colored by risk.** Board arrows now show every Maia move with more than a 10% chance, using the Blunder Meter’s green/yellow/red categories. Unsearched moves remain grey, and colors update with Stockfish results. Extract the unsigned Windows ZIP and open `Nocturne/Nocturne.exe`.
 
