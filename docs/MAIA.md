@@ -195,3 +195,11 @@ its wheel no longer navigates the game. Board and bottom Game Moves scrolling
 retain navigation, and the bottom PGN retains parentheses. Clicking a Game Line
 move still navigates directly. Score updates preserve the reader's scroll position;
 explicit move selection reveals the selected row.
+
+## Connected variation guides (0.5.7.73)
+
+Game Line groups variations with continuous guide rails and short branch ticks.
+Nested alternatives share their parent rail and receive their own indentation.
+Move numbers stay in a separate gutter; saved evaluations remain beside moves.
+The guides follow the text layout when scrolling or resizing. Bottom PGN notation
+and board navigation remain unchanged.
