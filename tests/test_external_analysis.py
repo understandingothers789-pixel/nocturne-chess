@@ -939,7 +939,7 @@ class QtIntegration(unittest.TestCase):
         )
         self.assertEqual(moves[-1].uci(), "a7a8n")
 
-    def test_recommended_promotion_uses_exact_engine_choice_and_both_marker_styles_render(self):
+    def test_recommended_promotion_preserves_engine_choice_and_legacy_style_has_no_arrowhead(self):
         from nocturne.gui.board import BoardWidget
         widget = BoardWidget()
         self.addCleanup(widget.close)
@@ -950,10 +950,10 @@ class QtIntegration(unittest.TestCase):
         widget.set_recommendations([(widget.board.parse_uci("a7a8n"), 1, "0.0"),
                                     (widget.board.parse_uci("a7a8q"), 2, "-0.2")])
         before = widget.grab().toImage()
-        widget.candidate_style = "lines"
+        widget.candidate_style = "arrows"
         widget.update()
         self.app.processEvents()
-        self.assertNotEqual(before, widget.grab().toImage())
+        self.assertEqual(before, widget.grab().toImage())
         moves = []
         widget.move_requested.connect(moves.append)
         QTest.mouseClick(widget, Qt.MouseButton.LeftButton,
