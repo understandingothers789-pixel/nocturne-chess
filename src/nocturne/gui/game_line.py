@@ -1,7 +1,7 @@
 """Scrollable move pairs with branch rows and saved, White-perspective scores."""
 from html import escape
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QTextBrowser
 
 from .moves import MoveText
@@ -15,7 +15,23 @@ class GameLine(MoveText):
         super().__init__(parent)
         self.setAccessibleName("Game line: move pairs, variations and evaluations")
         self._game_signature = None
+        self._pending_game = None
+        self._eval_refresh = QTimer(self)
+        self._eval_refresh.setSingleShot(True)
+        self._eval_refresh.setInterval(500)
+        self._eval_refresh.timeout.connect(self._refresh_saved_values)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+    def refresh_evaluation(self, game):
+        self._pending_game = game
+        if not self._eval_refresh.isActive():
+            self._eval_refresh.start()
+
+    def _refresh_saved_values(self):
+        game = self._pending_game
+        self._pending_game = None
+        if self.isVisible() and game is not None and self._game_signature and game.id == self._game_signature[0]:
+            self.set_game(game, self._light, self._book_departures)
 
     def wheelEvent(self, event):
         # The board and bottom PGN keep navigation; this panel scrolls its text.
@@ -24,7 +40,8 @@ class GameLine(MoveText):
         event.accept()
 
     def set_game(self, game, light=False, book_departures=None):
-        departures = book_departures or {}
+        departures = dict(book_departures or {})
+        self._book_departures = departures
         nodes = game.nodes
         current = game.current_node
         signature = (game.id, current, light, tuple(sorted(departures.items())),

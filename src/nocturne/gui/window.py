@@ -1702,7 +1702,10 @@ class MainWindow(QMainWindow):
             return
         value = info["score"] * turn
         node = game.nodes[node_id]
+        previous_value = node.evaluation
         node.evaluation = value
+        if node_id and game is self.game and previous_value != value:
+            self.inline_history.refresh_evaluation(game)
         from datetime import datetime, timezone
 
         node.analysis = {
