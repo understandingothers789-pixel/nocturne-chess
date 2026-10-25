@@ -1461,7 +1461,8 @@ class MainWindow(QMainWindow):
         self._save()
 
     def _ensure_maia_gpu(self):
-        if (self._closing or not getattr(sys, "frozen", False) or sys.platform != "win32"
+        if (self._closing or "--smoke-test" in sys.argv
+                or not getattr(sys, "frozen", False) or sys.platform != "win32"
                 or not self.analysis_mode or not self.config.get("maia_enabled", True)
                 or self.config.get("maia_device", "auto") != "auto"):
             return
@@ -3978,6 +3979,12 @@ class MainWindow(QMainWindow):
         if self.engine.busy and self.config.get("analysis_snapshots", False):
             self.engine._flush_snapshot()
         self._closing = True
+        setup = getattr(self, "_gpu_setup", None)
+        if setup is not None:
+            process = setup.findChild(QProcess)
+            if process is not None and process.state() != QProcess.ProcessState.NotRunning:
+                process.kill()
+                process.waitForFinished(1000)
         self._clear_move_preview()
         self._explorer_active = False
         self.timer.stop()
