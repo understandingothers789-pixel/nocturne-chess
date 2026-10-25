@@ -74,6 +74,7 @@ class CandidatePanel(QWidget):
                 self.primary.setParent(self)
             self.layout.removeWidget(widgets[0])
             widgets[0].hide()
+            widgets[0].setParent(None)
             widgets[0].deleteLater()
         self.rows = {}
         self.maia_labels = {}
