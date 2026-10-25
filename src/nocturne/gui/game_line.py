@@ -33,6 +33,7 @@ class GameLine(MoveText):
         if signature == self._game_signature:
             return
         previous_current = self._current
+        previous_game = self._game_signature[0] if self._game_signature else None
         scroll = self.verticalScrollBar().value()
         self._game_signature = signature
         self._current = current
@@ -46,7 +47,7 @@ class GameLine(MoveText):
 
         def cell(index, indent):
             if index is None:
-                return '<td width="46%"></td>'
+                return '<td width="44%"></td>'
             node = nodes[index]
             active = index == current
             bg = colors['selection'] if active else colors['soft'] if indent else colors['panel']
@@ -56,10 +57,11 @@ class GameLine(MoveText):
             value = plot_score_label(node.evaluation) if node.evaluation is not None else ''
             title = departures.get(index, '')
             punctuation = {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}
-            text = escape(node.san + "".join(punctuation.get(nag, f" ${nag}") for nag in node.nags))
+            text = ('&nbsp;' * (2 * min(indent, 5))
+                    + escape(node.san + "".join(punctuation.get(nag, f" ${nag}") for nag in node.nags)))
             # Use a nested two-cell table to align the evaluation at the right
             # of each move without relying on unsupported CSS floats.
-            return (f'<td width="46%" bgcolor="{bg}"><a name="node{index}"></a>'
+            return (f'<td width="44%" bgcolor="{bg}"><a name="node{index}"></a>'
                     f'<table width="100%" cellspacing="0" cellpadding="4"><tr>'
                     f'<td><a href="move:{index}" title="{escape(title, quote=True)}" '
                     f'style="color:{fg};text-decoration:none;">{text}</a></td>'
@@ -82,7 +84,7 @@ class GameLine(MoveText):
             if paired is not None:
                 branches.extend(node.children[1:])
             prefix = ('│&nbsp;' * min(indent, 5)) + ('↳&nbsp;' if indent else '')
-            rows.append(f'<tr><td width="8%" valign="middle" style="color:{colors["muted"]};'
+            rows.append(f'<tr><td width="12%" valign="middle" style="color:{colors["muted"]};'
                         f'font-size:11px;">{prefix}{number}{"…" if not white else "."}</td>'
                         + cell(first if white else None, indent)
                         + cell(paired if white else first, indent) + '</tr>')
@@ -92,7 +94,7 @@ class GameLine(MoveText):
         self.setHtml('<div style="font-family:Segoe UI,sans-serif;font-size:14px;">'
                      '<table width="100%" cellspacing="1" cellpadding="0">'
                      + ''.join(rows) + '</table></div>')
-        if previous_current != current and current:
+        if (previous_current != current or previous_game != game.id) and current:
             self.scrollToAnchor(f'node{current}')
         else:
             self.verticalScrollBar().setValue(scroll)
