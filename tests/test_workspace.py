@@ -72,7 +72,7 @@ class WorkspaceTests(unittest.TestCase):
             self.app.processEvents()
         board, analysis = host.docks["board"], host.docks["analysis"]
         self.assertLessEqual(window.board_view.width(), window.board_view.height() + 2)
-        self.assertLessEqual(analysis.width(), 560)
+        self.assertLess(host.surface.centralWidget().width(), 12)
         self.assertLess(abs(analysis.x() - board.geometry().right()), 12)
         self.assertGreater(host.docks["moves"].width(), board.width() + analysis.width())
 
