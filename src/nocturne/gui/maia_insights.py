@@ -57,7 +57,7 @@ class RatingChart(QWidget):
         return QSize(340, 250)
 
     def plot_rect(self):
-        return QRectF(42, 14, max(1, self.width()-90), max(1, self.height()-46))
+        return QRectF(42, 14, max(1, self.width()-106), max(1, self.height()-46))
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -88,6 +88,7 @@ class RatingChart(QWidget):
         painter.setPen(QPen(QColor("#bca36a"), 1, Qt.PenStyle.DashLine))
         painter.drawLine(QPointF(marker, plot.top()), QPointF(marker, plot.bottom()))
         self.points = []
+        labels = []
         for index, move in enumerate(self.moves):
             if move in self.hidden_moves:
                 continue
@@ -138,6 +139,31 @@ class RatingChart(QWidget):
                 if uci == move:
                     painter.drawEllipse(point, 2.2 if rating == self.rating else 1.3,
                                         2.2 if rating == self.rating else 1.3)
+            if segment:
+                labels.append((segment[-1], self.names.get(move, move), color))
+            elif segments:
+                labels.append((segments[-1][-1], self.names.get(move, move), color))
+        # Reserve a lane for labels; spread clustered endpoints vertically and
+        # connect each label to its actual curve without moving any data points.
+        labels.sort(key=lambda item: item[0].y())
+        positions = []
+        for point, name, color in labels:
+            positions.append(max(plot.top() + 8, point.y(), positions[-1] + 16 if positions else plot.top() + 8))
+        if positions and positions[-1] > plot.bottom() - 8:
+            positions[-1] = plot.bottom() - 8
+            for index in range(len(positions)-2, -1, -1):
+                positions[index] = min(positions[index], positions[index+1]-16)
+        font.setPixelSize(11)
+        font.setBold(True)
+        painter.setFont(font)
+        label_x = plot.right() + 12
+        for (point, name, color), y in zip(labels, positions):
+            painter.setPen(QPen(color, 1))
+            painter.drawLine(point, QPointF(label_x-3, y))
+            text = painter.fontMetrics().elidedText(name, Qt.TextElideMode.ElideRight,
+                                                  max(1, int(self.width()-label_x-2)))
+            painter.drawText(QRectF(label_x, y-8, self.width()-label_x, 16),
+                             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, text)
         if not self.policies:
             painter.setPen(QColor(colors["muted"]))
             painter.drawText(plot, Qt.AlignmentFlag.AlignCenter, "Waiting for Maia predictions")

@@ -236,13 +236,29 @@ class BoardWidget(QWidget):
         # pixel ratio; its asset viewBox alone controls piece size and spacing.
         self._renderers[piece].render(painter, rect)
 
-    def _arrow(self, painter: QPainter, src: int, dst: int, color: QColor, unit: float, *, subtle=False):
+    def _arrow(self, painter: QPainter, src: int, dst: int, color: QColor, unit: float, *, subtle=False, maia=False):
         if src == dst:
             return
         a, b = self.square_rect(src).center(), self.square_rect(dst).center()
         dx, dy = b.x() - a.x(), b.y() - a.y()
         distance = math.hypot(dx, dy)
         dx, dy = dx / distance, dy / distance
+        if maia:
+            # A single wide silhouette with an outline stays distinct beneath
+            # the much slimmer Stockfish rod, even when they share a color.
+            direction = QPointF(dx, dy)
+            normal = QPointF(-dy, dx)
+            base = b - direction * (unit * 0.43)
+            half_shaft = unit * 0.105
+            half_head = unit * 0.30
+            shape = QPolygonF([a + normal * half_shaft, base + normal * half_shaft,
+                               base + normal * half_head, b, base - normal * half_head,
+                               base - normal * half_shaft, a - normal * half_shaft])
+            painter.setPen(QPen(QColor(25, 38, 48, 215), max(1.5, unit * 0.023),
+                                Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            painter.setBrush(color)
+            painter.drawPolygon(shape)
+            return
         width = max(2.0, unit * 0.060) if subtle else unit * 0.115
         head_length = unit * (0.22 if subtle else 0.37)
         head_width = unit * (0.13 if subtle else 0.20)
@@ -333,8 +349,8 @@ class BoardWidget(QWidget):
         if not preview and self.overlays and self.maia_arrows_enabled:
             for move, probability, category in reversed(self.maia_recommendations):
                 color = QColor({"best": "#1a9850", "ok": "#fee08b", "blunder": "#d73027"}.get(category, "#82909e"))
-                color.setAlpha(round(55 + 80 * math.sqrt(probability)))
-                self._arrow(painter, move.from_sq, self._destination(move), color, unit)
+                color.setAlpha(round(145 + 75 * math.sqrt(probability)))
+                self._arrow(painter, move.from_sq, self._destination(move), color, unit, maia=True)
         for square in SQUARES:
             piece = board.cells[square]
             if not piece or (not preview and self._drag_pos is not None and square == self._pressed):

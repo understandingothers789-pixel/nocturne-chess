@@ -82,10 +82,11 @@ No additional Stockfish searches are started merely by opening these insights.
 
 ## Board indicators
 
-The existing Stockfish rods and numbered circles stay in place. Broad,
-translucent violet Maia arrows are drawn on a separate layer beneath pieces.
-Toggle them or choose the top 1, 3 or 5 in **Engine → Maia-3 79M**. The miniature
-scatter map has no duplicated board controls. Main-board previews and existing
+Stockfish uses slim rods and numbered circles. Maia uses wider, outlined arrows
+with stronger opacity, drawn beneath pieces. Maia colors follow the Blunder
+Meter categories; unsearched moves remain grey. Every move above 10% is shown.
+Toggle Maia arrows in **Engine → Maia-3 79M**. The scatter map has no duplicated
+board controls. Main-board previews and existing
 candidate hover/wheel behavior remain available.
 
 ## Reproducibility
@@ -144,3 +145,11 @@ circle. A Stockfish-only candidate has a rod and circle; a Maia-only move has an
 arrow. Existing profiles using the old Stockfish arrow style receive the same
 new rendering. Manual arrows and variation previews retain their own behavior.
 The obsolete candidate-arrow style menu has been removed.
+
+## Direct chart labels (0.5.7.70)
+
+Moves by Rating labels each visible curve directly at its right endpoint using
+the same SAN name and color as its legend button. A reserved label lane and
+connector lines keep low-probability labels from overlapping without moving
+the plotted values. Labels follow the last available sample when sweeps are
+incomplete. The buttons below remain available to hide/show curves.
