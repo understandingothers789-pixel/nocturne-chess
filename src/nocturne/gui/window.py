@@ -2760,6 +2760,9 @@ class MainWindow(QMainWindow):
     def _fit_analysis_columns(self):
         if self._closing or not self.analysis_mode:
             return
+        if getattr(self, "_telemetry_reserved_width", self.telemetry.width()) != self.telemetry.width():
+            self.telemetry.setMinimumHeight(0)
+            self._telemetry_reserved_width = self.telemetry.width()
         if self._dock_workspace is not None:
             self._dock_workspace.fit_columns()
             return
@@ -3813,8 +3816,12 @@ class MainWindow(QMainWindow):
         self.board_view.interactive = kind == "analysis"
 
     def _clear_analysis_output(self):
+        if self._last_info is not None:
+            self.telemetry.setMinimumHeight(max(self.telemetry.minimumHeight(), self.telemetry.height()))
+            self._telemetry_reserved_width = self.telemetry.width()
         self.board_view.best_move = None
         self.board_view.set_recommendations([])
+        self.candidates.set_multipv(self._effective_multipv())
         self.candidates.clear()
         self.pv_label.set_moves([])
         self._candidate_identity = None

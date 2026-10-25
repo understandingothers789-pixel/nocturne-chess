@@ -175,3 +175,12 @@ rather than a nearby curve when collision spacing displaces the label.
 The insight cards are ordered **01 Moves by Rating**, **02 Blunder Meter**, then
 **03 Move Map**. Practical traps remain a design proposal; no additional engine
 searches are started for them in this version.
+
+## Stable navigation spacing (0.5.7.72)
+
+Maia tips now stop 25% inside the destination square, halfway between its
+approach edge and center. Stockfish keeps its center circles. Empty positions
+reserve the selected MultiPV row count, including positions with fewer legal
+moves. Clearing analysis removes its content while preserving compact row
+heights, keeping the game line under the cursor. Telemetry retains its measured
+height when cleared and adapts again when the panel width changes.

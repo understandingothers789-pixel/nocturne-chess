@@ -72,6 +72,8 @@ class CandidatePanel(QWidget):
             widgets[2].cancel_preview()
             if rank == 1:
                 self.primary.setParent(self)
+            self.layout.removeWidget(widgets[0])
+            widgets[0].hide()
             widgets[0].deleteLater()
         self.rows = {}
         self.maia_labels = {}
@@ -85,6 +87,11 @@ class CandidatePanel(QWidget):
         self.primary.setViewportMargins(0, 0, 0, 0)
         self.primary.reserve_lines(0 if self.expanded else self.default_pv_lines)
         self.primary.set_moves([])
+        # Keep the compact analysis slots present on unanalysed positions so
+        # the game line below cannot jump away from the scrolling cursor.
+        for rank in range(1, self.multipv + 1):
+            self._make_row(rank)
+        self.slot_count = self.multipv
         self._clearing = False
         self.changed.emit()
 
@@ -120,7 +127,7 @@ class CandidatePanel(QWidget):
         self.changed.emit()
 
     def reserve_slots(self, count):
-        count = max(1, min(32, count))
+        count = max(self.multipv, max(1, min(32, count)))
         if count < self.slot_count:
             self.clear()
         for rank in range(self.slot_count + 1, count + 1):
@@ -134,7 +141,7 @@ class CandidatePanel(QWidget):
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(0, 1, 0, 1)
         layout.setSpacing(2)
-        header = QLabel("Waiting for engine")
+        header = QLabel("")
         header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         header.setTextFormat(Qt.TextFormat.RichText)
         header.setWordWrap(True)
@@ -171,7 +178,7 @@ class CandidatePanel(QWidget):
         # A separate column keeps the browser viewport from covering the
         # button or intercepting its mouse events. It also stays put on expand.
         pv_layout.addWidget(expand_button, 0, 1, Qt.AlignmentFlag.AlignTop)
-        probability = QLabel("—")
+        probability = QLabel("")
         probability.setFixedWidth(66)
         probability.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         probability.setStyleSheet("color: #b9b4df; font-family: Consolas; padding-right: 3px;")
@@ -329,7 +336,7 @@ class CandidatePanel(QWidget):
                            "border-radius: 4px; font-family: Consolas; font-size: 12px; "
                            "font-weight: 600; padding: 3px 5px;")
         label.setVisible(self.maia_enabled)
-        label.setText(percentage(probability))
+        label.setText(percentage(probability) if pv else "")
         label.setToolTip(f"Maia-3 79M · {self.maia_rating} vs {self.maia_rating} Lichess blitz\n"
                          + (f"{pv[0]}: {probability * 100:.8g}% predicted likelihood" if probability is not None
                             else "Waiting for this position’s policy; no probability has been substituted."))

@@ -248,8 +248,8 @@ class BoardWidget(QWidget):
             # the much slimmer Stockfish rod, even when they share a color.
             direction = QPointF(dx, dy)
             # Intersect the approach ray with the target square's inset box.
-            # The tip ends 5% inside its edge, leaving the center badge clear.
-            b -= direction * (unit * 0.45 / max(abs(dx), abs(dy)))
+            # The tip ends 25% inside its edge, leaving the center badge clear.
+            b -= direction * (unit * 0.25 / max(abs(dx), abs(dy)))
             normal = QPointF(-dy, dx)
             a += direction * (unit * 0.25)
             remaining = math.hypot((b-a).x(), (b-a).y())
