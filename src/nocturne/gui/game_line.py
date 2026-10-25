@@ -2,6 +2,7 @@
 from html import escape
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QColor, QPainter, QPen, QTextCursor
 from PySide6.QtWidgets import QTextBrowser
 
 from .moves import MoveText
@@ -14,6 +15,7 @@ class GameLine(MoveText):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAccessibleName("Game line: move pairs, variations and evaluations")
+        self._branch_guides = []
         self._game_signature = None
         self._pending_game = None
         self._eval_refresh = QTimer(self)
@@ -61,10 +63,11 @@ class GameLine(MoveText):
         root = Board(game.initial_fen)
         offset = int(root.turn < 0)
         rows = []
+        row_paths = []
 
         def cell(index, indent):
             if index is None:
-                return '<td width="44%"></td>'
+                return f'<td width="44%" bgcolor="{colors["soft"] if indent else colors["panel"]}"></td>'
             node = nodes[index]
             active = index == current
             bg = colors['selection'] if active else colors['soft'] if indent else colors['panel']
@@ -74,8 +77,7 @@ class GameLine(MoveText):
             value = plot_score_label(node.evaluation) if node.evaluation is not None else ''
             title = departures.get(index, '')
             punctuation = {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}
-            text = ('&nbsp;' * (2 * min(indent, 5))
-                    + escape(node.san + "".join(punctuation.get(nag, f" ${nag}") for nag in node.nags)))
+            text = escape(node.san + "".join(punctuation.get(nag, f" ${nag}") for nag in node.nags))
             # Use a nested two-cell table to align the evaluation at the right
             # of each move without relying on unsupported CSS floats.
             return (f'<td width="44%" bgcolor="{bg}"><a name="node{index}"></a>'
@@ -86,9 +88,10 @@ class GameLine(MoveText):
                     f'{escape(value)}</span></td></tr></table></td>')
 
         # Iterative traversal keeps nested variations safe even in large PGNs.
-        stack = [(nodes[0].children[0], 0)] if nodes[0].children else []
+        stack = [(nodes[0].children[0], ())] if nodes[0].children else []
         while stack:
-            first, indent = stack.pop()
+            first, path = stack.pop()
+            indent = len(path)
             node = nodes[first]
             white = (node.depth - 1 + offset) % 2 == 0
             paired = node.children[0] if white and node.children else None
@@ -100,21 +103,64 @@ class GameLine(MoveText):
                 branches.extend(parent.children[1:])
             if paired is not None:
                 branches.extend(node.children[1:])
-            prefix = ('│&nbsp;' * min(indent, 5)) + ('↳&nbsp;' if indent else '')
-            rows.append(f'<tr><td width="12%" valign="middle" style="color:{colors["muted"]};'
-                        f'font-size:11px;">{prefix}{number}{"…" if not white else "."}</td>'
-                        + cell(first if white else None, indent)
-                        + cell(paired if white else first, indent) + '</tr>')
+            # A single gutter belongs to the entire branch, rather than
+            # repeating tree glyphs inside each move-number cell.
+            gutter = min(3 + 3 * indent, 30)
+            row = (f'<table width="100%" cellspacing="0" cellpadding="0"><tr>'
+                   f'<td width="{gutter}%"></td><td width="{100-gutter}%">'
+                   f'<table width="100%" cellspacing="0" cellpadding="0"><tr>'
+                   f'<td width="12%" style="color:{colors["muted"]};'
+                   f'font-size:11px;"><a name="row{first}"></a>{number}{"…" if not white else "."}</td>'
+                   + cell(first if white else None, indent)
+                   + cell(paired if white else first, indent) + '</tr></table></td></tr></table>')
+            rows.append(row)
+            row_paths.append((first, path))
             if nodes[last].children:
-                stack.append((nodes[last].children[0], indent))
-            stack.extend((child, indent + 1) for child in reversed(branches))
-        self.setHtml('<div style="font-family:Segoe UI,sans-serif;font-size:14px;">'
-                     '<table width="100%" cellspacing="1" cellpadding="0">'
-                     + ''.join(rows) + '</table></div>')
+                stack.append((nodes[last].children[0], path))
+            stack.extend((child, path + (child,)) for child in reversed(branches))
+        self.setHtml(f'<body bgcolor="{colors["panel"]}"><div style="font-family:Segoe UI,sans-serif;font-size:14px;">'
+                     + ''.join(rows) + '</div></body>')
+        anchors = {}
+        block = self.document().begin()
+        while block.isValid():
+            iterator = block.begin()
+            while not iterator.atEnd():
+                fragment = iterator.fragment()
+                for name in fragment.charFormat().anchorNames():
+                    if name.startswith('row'):
+                        cursor = QTextCursor(self.document())
+                        cursor.setPosition(fragment.position())
+                        anchors[int(name[3:])] = cursor
+                iterator += 1
+            block = block.next()
+        groups = {}
+        for first, path in row_paths:
+            if first in anchors:
+                for depth, branch in enumerate(path):
+                    groups.setdefault((depth, branch), []).append(anchors[first])
+        self._branch_guides = [(depth, cursors)
+                               for (depth, _), cursors in groups.items()]
+        self.viewport().update()
         if (previous_current != current or previous_game != game.id) and current:
             self.scrollToAnchor(f'node{current}')
         else:
             self.verticalScrollBar().setValue(scroll)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self.viewport())
+        painter.setPen(QPen(QColor('#a7a7a7' if self._light else '#566371'), 1))
+        for depth, cursors in self._branch_guides:
+            first, last = cursors[0], cursors[-1]
+            top = self.cursorRect(first).center().y()
+            bottom = self.cursorRect(last).center().y()
+            x = self.cursorRect(first).left() - 10
+            painter.drawLine(x, top - 10, x, bottom)
+            for cursor in cursors:
+                y = self.cursorRect(cursor).center().y()
+                if self.cursorRect(cursor).left() == self.cursorRect(first).left():
+                    painter.drawLine(x, y, x + 7, y)
+        painter.end()
 
     def scrollToAnchor(self, name):
         # QTextBrowser normally aligns an anchor at the top. Centering the
