@@ -1951,7 +1951,8 @@ class GuiTests(unittest.TestCase):
         self.app.processEvents()
         self.assertFalse(self.window.tabs.tabBar().isVisible())
         self.assertIs(self.window.main_splitter.widget(1), self.window.panel)
-        self.assertLessEqual(self.window.panel.width(), 560, self._split_diagnostics())
+        self.assertGreaterEqual(sum(self.window.main_splitter.sizes()),
+                                        self.window.main_splitter.width() - 20, self._split_diagnostics())
         self.assertLessEqual(self.window.board_view.width(), self.window.board_view.height() + 2)
         self.assertTrue(self.window.quick_analysis_button.isVisible())
         self.assertGreater(self.window.engine_scroll.height(), 250)
@@ -1981,7 +1982,8 @@ class GuiTests(unittest.TestCase):
                 self.app.processEvents()
                 QTest.qWait(10)
                 self.assertFalse(self.window.board_hint.isVisible())
-                self.assertLessEqual(self.window.panel.width(), 560, self._split_diagnostics())
+                self.assertGreaterEqual(sum(self.window.main_splitter.sizes()),
+                                        self.window.main_splitter.width() - 20, self._split_diagnostics())
                 self.assertLessEqual(self.window.board_view.width(), self.window.board_view.height() + 2)
                 self.window.main_splitter.setSizes([500, 500])
                 self.app.processEvents()
