@@ -47,7 +47,7 @@ class BoardWidget(QWidget):
         self.smart_move = False
         self.maia_recommendations = []
         self.maia_arrows_enabled = True
-        self.candidate_style = "arrows"
+        self.candidate_style = "lines"
         self.branch_moves = []
         self.selected: int | None = None
         self.legal: list[Move] = []
@@ -363,17 +363,16 @@ class BoardWidget(QWidget):
                 marker = CANDIDATE_MARKERS[0 if rank == 1 else 2 if rank in self.inferior_ranks else 1]
                 color = QColor(marker)
                 color.setAlpha(225)
-                if self.candidate_style == "lines":
-                    start = self.square_rect(move.from_sq).center()
-                    end = self.square_rect(self._destination(move)).center()
-                    delta = end - start
-                    length = math.hypot(delta.x(), delta.y())
-                    if length:
-                        start += delta * (unit * 0.25 / length)
-                    painter.setPen(QPen(color, max(2.0, unit * 0.065), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-                    painter.drawLine(start, end)
-                else:
-                    self._arrow(painter, move.from_sq, self._destination(move), color, unit, subtle=True)
+                # Stockfish is always a rod plus numbered circle. Maia supplies
+                # the broad arrowhead when both engines suggest the same move.
+                start = self.square_rect(move.from_sq).center()
+                end = self.square_rect(self._destination(move)).center()
+                delta = end - start
+                length = math.hypot(delta.x(), delta.y())
+                if length:
+                    start += delta * (unit * 0.25 / length)
+                painter.setPen(QPen(color, max(2.0, unit * 0.065), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                painter.drawLine(start, end)
             # Put every endpoint above every rod so crossing candidates cannot
             # obscure the numbered circles.
             for move, rank, text in reversed(entries):

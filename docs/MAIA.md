@@ -134,3 +134,13 @@ and [Windows hardware matrix](https://rocm.docs.amd.com/projects/radeon-ryzen/en
 DirectML is a different Microsoft backend; it is not installed by this setup.
 NVIDIA/AMD hardware has not been available in the development environment;
 Windows CI checks the bundled CPU model, not physical GPU performance.
+
+## Board overlay components (0.5.7.69)
+
+Stockfish candidates use slim rods and numbered endpoint circles, without
+arrowheads. Maia moves above 10% retain their broad translucent arrows. A move
+shared by both therefore has one Maia arrow, one Stockfish rod and one numbered
+circle. A Stockfish-only candidate has a rod and circle; a Maia-only move has an
+arrow. Existing profiles using the old Stockfish arrow style receive the same
+new rendering. Manual arrows and variation previews retain their own behavior.
+The obsolete candidate-arrow style menu has been removed.

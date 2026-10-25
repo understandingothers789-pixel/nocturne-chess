@@ -743,12 +743,7 @@ class MainWindow(QMainWindow):
             action = add(display, text, lambda checked, k=key: self._set_display(k, checked))
             action.setCheckable(True)
             self.display_actions[key] = action
-        markers = display.addMenu("Candidate markers")
         self.marker_actions = {}
-        for key, title in (("arrows", "Arrows · Lichess style"), ("lines", "Lines · Nibbler style")):
-            action = add(markers, title, lambda checked=False, k=key: self._set_display("candidate_style", k))
-            action.setCheckable(True)
-            self.marker_actions[key] = action
         for rank in range(1, 4):
             add(
                 analysis,
