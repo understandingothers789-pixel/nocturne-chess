@@ -43,8 +43,8 @@ class RatingChart(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMouseTracking(True)
-        self.setMinimumHeight(140)
-        self.setMaximumHeight(160)
+        self.setMinimumHeight(220)
+        self.setMaximumHeight(280)
         self.setMinimumWidth(210)
         self.policies = {}
         self.moves = []
@@ -54,10 +54,10 @@ class RatingChart(QWidget):
         self.points = []
 
     def sizeHint(self):
-        return QSize(300, 150)
+        return QSize(340, 250)
 
     def plot_rect(self):
-        return QRectF(34, 12, max(1, self.width()-46), max(1, self.height()-42))
+        return QRectF(42, 14, max(1, self.width()-90), max(1, self.height()-46))
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -74,13 +74,13 @@ class RatingChart(QWidget):
         font = painter.font()
         font.setPixelSize(10)
         painter.setFont(font)
-        for fraction in (0, 0.5, 1):
+        for fraction in (0, 0.25, 0.5, 0.75, 1):
             y = plot.bottom()-fraction*plot.height()
             painter.setPen(QPen(QColor(colors["border"]), 1, Qt.PenStyle.DotLine))
             painter.drawLine(QPointF(plot.left(), y), QPointF(plot.right(), y))
             painter.setPen(QColor(colors["muted"]))
             painter.drawText(QRectF(0, y-7, 32, 15), Qt.AlignmentFlag.AlignRight, f"{fraction*ceiling*100:.0f}%")
-        for rating in (400, 1600, 3000):
+        for rating in (range(400, 3001, 400) if self.width() >= 340 else (400, 1600, 3000)):
             x = plot.left()+(rating-400)/2600*plot.width()
             painter.drawText(QRectF(max(0, min(self.width()-40, x-20)), plot.bottom()+5, 40, 16), Qt.AlignmentFlag.AlignCenter, str(rating))
 
@@ -93,10 +93,15 @@ class RatingChart(QWidget):
                 continue
             path = QPainterPath()
             started = False
+            segments = []
+            segment = []
             color = QColor(curve_colors()[index % len(COLORS)])
             for rating in RATINGS:
                 policy = self.policies.get(str(rating))
                 if policy is None:
+                    if segment:
+                        segments.append(segment)
+                        segment = []
                     started = False
                     continue
                 probability = policy.get(move, 0)
@@ -107,7 +112,25 @@ class RatingChart(QWidget):
                 else:
                     path.moveTo(point)
                     started = True
+                segment.append(point)
                 self.points.append((point, move, rating, probability))
+            if segment:
+                segments.append(segment)
+            # Fill each contiguous sample range to the baseline with low alpha.
+            # Always clear the brush before stroking: point-marker brushes must
+            # never implicitly close and fill the next open curve.
+            painter.setPen(Qt.PenStyle.NoPen)
+            fill = QColor(color)
+            fill.setAlpha(22)
+            painter.setBrush(fill)
+            for sample in segments:
+                area = QPainterPath(QPointF(sample[0].x(), plot.bottom()))
+                for point in sample:
+                    area.lineTo(point)
+                area.lineTo(QPointF(sample[-1].x(), plot.bottom()))
+                area.closeSubpath()
+                painter.drawPath(area)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(QPen(color, 2))
             painter.drawPath(path)
             painter.setBrush(color)
