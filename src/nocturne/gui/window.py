@@ -2629,7 +2629,7 @@ class MainWindow(QMainWindow):
         self.board_view.theme = appearance.get("theme", "Classic")
         self.board_view.set_piece_set(appearance.get("piece_set", "Nibbler"))
         self.board_view.coordinates = appearance.get("coordinates", True)
-        self.board_view.animations = appearance.get("animations", True)
+        self.board_view.animations = appearance.get("animations", False)
         self.board_view.overlays = appearance.get("overlays", True)
         self.history.setStyleSheet(f"QTableWidget {{ color: {palette(light)['history']}; }}")
         self.eval_label.setStyleSheet(f"color: {palette(light)['metric']};")

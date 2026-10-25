@@ -52,6 +52,7 @@ class RatingChart(QWidget):
         self.hidden_moves = set()
         self.rating = 1800
         self.points = []
+        self.label_hits = []
 
     def sizeHint(self):
         return QSize(340, 250)
@@ -88,6 +89,7 @@ class RatingChart(QWidget):
         painter.setPen(QPen(QColor("#bca36a"), 1, Qt.PenStyle.DashLine))
         painter.drawLine(QPointF(marker, plot.top()), QPointF(marker, plot.bottom()))
         self.points = []
+        self.label_hits = []
         labels = []
         for index, move in enumerate(self.moves):
             if move in self.hidden_moves:
@@ -140,14 +142,14 @@ class RatingChart(QWidget):
                     painter.drawEllipse(point, 2.2 if rating == self.rating else 1.3,
                                         2.2 if rating == self.rating else 1.3)
             if segment:
-                labels.append((segment[-1], self.names.get(move, move), color))
+                labels.append((segment[-1], move, self.names.get(move, move), color))
             elif segments:
-                labels.append((segments[-1][-1], self.names.get(move, move), color))
+                labels.append((segments[-1][-1], move, self.names.get(move, move), color))
         # Reserve a lane for labels; spread clustered endpoints vertically and
         # connect each label to its actual curve without moving any data points.
         labels.sort(key=lambda item: item[0].y())
         positions = []
-        for point, name, color in labels:
+        for point, move, name, color in labels:
             positions.append(max(plot.top() + 8, point.y(), positions[-1] + 16 if positions else plot.top() + 8))
         if positions and positions[-1] > plot.bottom() - 8:
             positions[-1] = plot.bottom() - 8
@@ -157,25 +159,30 @@ class RatingChart(QWidget):
         font.setBold(True)
         painter.setFont(font)
         label_x = plot.right() + 12
-        for (point, name, color), y in zip(labels, positions):
+        for (point, move, name, color), y in zip(labels, positions):
             painter.setPen(QPen(color, 1))
             painter.drawLine(point, QPointF(label_x-3, y))
             text = painter.fontMetrics().elidedText(name, Qt.TextElideMode.ElideRight,
                                                   max(1, int(self.width()-label_x-2)))
-            painter.drawText(QRectF(label_x, y-8, self.width()-label_x, 16),
-                             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, text)
+            label_rect = QRectF(label_x, y-8, self.width()-label_x, 16)
+            painter.drawText(label_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, text)
+            endpoint = next(item for item in reversed(self.points) if item[1] == move)
+            self.label_hits.append((label_rect, endpoint))
         if not self.policies:
             painter.setPen(QColor(colors["muted"]))
             painter.drawText(plot, Qt.AlignmentFlag.AlignCenter, "Waiting for Maia predictions")
 
     def mouseMoveEvent(self, event):
-        if self.points:
+        hit = next((data for rect, data in self.label_hits if rect.contains(event.position())), None)
+        if hit is None and self.points:
             nearest = min(self.points, key=lambda item: (item[0]-event.position()).manhattanLength())
             if (nearest[0]-event.position()).manhattanLength() < 28:
-                _, move, rating, probability = nearest
-                self.setToolTip(f"{self.names.get(move, move)} · {rating} vs {rating}\n{probability*100:.6g}% predicted likelihood")
-                QToolTip.showText(event.globalPosition().toPoint(), self.toolTip(), self)
-                return
+                hit = nearest
+        if hit is not None:
+            _, move, rating, probability = hit
+            self.setToolTip(f"{self.names.get(move, move)} · {rating} vs {rating}\n{probability*100:.6g}% predicted likelihood")
+            QToolTip.showText(event.globalPosition().toPoint(), self.toolTip(), self)
+            return
         QToolTip.hideText()
         self.setToolTip("")
 

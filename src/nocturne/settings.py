@@ -36,7 +36,8 @@ DEFAULTS = {
     "cursor_preview_version": 1,
     "wheel_game_moves": True,
     "wheel_analysis_moves": True,
-    "animations": True,
+    "animations": False,
+    "animation_version": 1,
     "overlays": True,
     "show_eval_graph": True,
     "hash_mb": 32,
@@ -140,6 +141,9 @@ def normalize(data) -> dict:
     ):
         if isinstance(data.get(key), bool):
             result[key] = data[key]
+    # Prefer instant placement, including profiles saved with the old default.
+    if data.get("animation_version") != 1:
+        result["animations"] = False
     # The database explorer used to be enabled in some saved profiles. Make
     # the new opt-in default consistent on the first run after this change.
     if data.get("explorer_enabled_version") != 1:

@@ -1,16 +1,16 @@
 VSVersionInfo(
   ffi=FixedFileInfo(
-  filevers=(0, 5, 7, 70), prodvers=(0, 5, 7, 70), mask=0x3f,
+  filevers=(0, 5, 7, 71), prodvers=(0, 5, 7, 71), mask=0x3f,
     flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0, date=(0, 0)
   ),
   kids=[StringFileInfo([StringTable('040904B0', [
     StringStruct('CompanyName', 'Nocturne Chess contributors'),
     StringStruct('FileDescription', 'Nocturne Chess'),
-    StringStruct('FileVersion', '0.5.7.70'),
+    StringStruct('FileVersion', '0.5.7.71'),
     StringStruct('InternalName', 'Nocturne'),
     StringStruct('LegalCopyright', 'Copyright 2026 Nocturne Chess contributors'),
     StringStruct('OriginalFilename', 'Nocturne.exe'),
     StringStruct('ProductName', 'Nocturne Chess'),
-    StringStruct('ProductVersion', '0.5.7.70')
+    StringStruct('ProductVersion', '0.5.7.71')
   ])]), VarFileInfo([VarStruct('Translation', [1033, 1200])])]
 )

@@ -35,7 +35,7 @@ class BoardWidget(QWidget):
         self._wheel_steps = WheelSteps()
         self.light = False
         self.interactive = True
-        self.animations = True
+        self.animations = False
         self.overlays = True
         self.last_move: Move | None = None
         self.best_move: Move | None = None
@@ -247,10 +247,16 @@ class BoardWidget(QWidget):
             # A single wide silhouette with an outline stays distinct beneath
             # the much slimmer Stockfish rod, even when they share a color.
             direction = QPointF(dx, dy)
+            # Intersect the approach ray with the target square's inset box.
+            # The tip ends 5% inside its edge, leaving the center badge clear.
+            b -= direction * (unit * 0.45 / max(abs(dx), abs(dy)))
             normal = QPointF(-dy, dx)
-            base = b - direction * (unit * 0.43)
-            half_shaft = unit * 0.105
-            half_head = unit * 0.30
+            a += direction * (unit * 0.25)
+            remaining = math.hypot((b-a).x(), (b-a).y())
+            head_length = min(unit * 0.43, remaining * 0.75)
+            base = b - direction * head_length
+            half_head = min(unit * 0.30, head_length * 0.70)
+            half_shaft = min(unit * 0.105, half_head * 0.55)
             shape = QPolygonF([a + normal * half_shaft, base + normal * half_shaft,
                                base + normal * half_head, b, base - normal * half_head,
                                base - normal * half_shaft, a - normal * half_shaft])
@@ -344,13 +350,6 @@ class BoardWidget(QWidget):
                     painter.setPen(Qt.PenStyle.NoPen)
                     painter.setBrush(QColor(30, 30, 30, 95))
                     painter.drawEllipse(target.center(), unit * 0.135, unit * 0.135)
-        # Maia's broad translucent arrows sit beneath the pieces. Existing
-        # Stockfish rods and numbered endpoints remain on their own layer.
-        if not preview and self.overlays and self.maia_arrows_enabled:
-            for move, probability, category in reversed(self.maia_recommendations):
-                color = QColor({"best": "#1a9850", "ok": "#fee08b", "blunder": "#d73027"}.get(category, "#82909e"))
-                color.setAlpha(round(145 + 75 * math.sqrt(probability)))
-                self._arrow(painter, move.from_sq, self._destination(move), color, unit, maia=True)
         for square in SQUARES:
             piece = board.cells[square]
             if not piece or (not preview and self._drag_pos is not None and square == self._pressed):
@@ -365,6 +364,13 @@ class BoardWidget(QWidget):
             piece = self.board.cells[self._anim_move.to_sq]
             if piece:
                 self._piece(painter, piece, QRectF(pos.x(), pos.y(), unit, unit))
+        # Short Maia arrows sit above pieces so one-square moves remain visible;
+        # Stockfish rods and endpoint circles are drawn above this layer.
+        if not preview and self.overlays and self.maia_arrows_enabled:
+            for move, probability, category in reversed(self.maia_recommendations):
+                color = QColor({"best": "#1a9850", "ok": "#fee08b", "blunder": "#d73027"}.get(category, "#82909e"))
+                color.setAlpha(round(145 + 75 * math.sqrt(probability)))
+                self._arrow(painter, move.from_sq, self._destination(move), color, unit, maia=True)
         for src, dst in () if preview else self.arrows:
             self._arrow(painter, src, dst, QColor(232, 175, 79, 200), unit)
         if not preview and self.overlays:
