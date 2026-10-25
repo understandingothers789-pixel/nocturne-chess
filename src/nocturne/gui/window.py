@@ -1602,7 +1602,7 @@ class MainWindow(QMainWindow):
         self.board_view.maia_arrows_enabled = self.config.get("maia_arrows", True)
         self.board_view.update()
 
-    def _preview_maia_line(self, pv, ply, uci):
+    def _preview_maia_line(self, pv, ply, name):
         position = self.game.board.copy()
         last = None
         try:
@@ -1616,7 +1616,7 @@ class MainWindow(QMainWindow):
         self._preview_source = "maia-all"
         self.board_view.clear_preview()
         self.hover_preview.show_position(position, last, self.board_view,
-                                         f"Stockfish variation · {uci} · ply {ply}")
+                                         f"Stockfish variation · {name} · ply {ply}")
 
     def _maia_move(self, uci):
         try:

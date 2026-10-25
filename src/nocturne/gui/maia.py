@@ -115,6 +115,7 @@ class MaiaControls(QWidget):
         self._hover_move = None
         self._hover_pv = []
         self._hover_ply = 1
+        self._shown_preview = None
         self._wheel = WheelSteps()
         self.table.setHorizontalHeaderLabels(["Move", "Stockfish eval", "Maia probability"])
         self.table.verticalHeader().hide()
@@ -128,6 +129,7 @@ class MaiaControls(QWidget):
         self.table.viewport().setMouseTracking(True)
         self.table.viewport().installEventFilter(self)
         self.table.cellClicked.connect(self._select)
+        self.table.verticalScrollBar().valueChanged.connect(lambda value: self._end_hover())
         self.all_moves.toggled.connect(self.table.setVisible)
         layout.addWidget(self.table)
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
@@ -173,6 +175,7 @@ class MaiaControls(QWidget):
         self._hover_move = None
         self._hover_pv = []
         self._hover_ply = 1
+        self._shown_preview = None
         self._wheel.reset()
         self.preview_ended.emit()
         QToolTip.hideText()
@@ -197,7 +200,10 @@ class MaiaControls(QWidget):
                         if steps is not None:
                             self._hover_ply = max(0, min(len(self._hover_pv), self._hover_ply + steps))
                     if self._hover_pv:
-                        self.preview_requested.emit(self._hover_pv, self._hover_ply, uci)
+                        signature = (uci, tuple(self._hover_pv), self._hover_ply)
+                        if signature != self._shown_preview:
+                            self.preview_requested.emit(self._hover_pv, self._hover_ply, item.text())
+                            self._shown_preview = signature
                         self.pointer_moved.emit(event.globalPosition().toPoint())
                     else:
                         QToolTip.showText(event.globalPosition().toPoint(),
