@@ -22,7 +22,9 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt UI preview. Engine evaluations and Maia probabilities in this
 capture are explicitly labelled fixtures, not measured chess analysis.*
 
-**[0.5.7.66](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40161107406/artifacts/12586302514): clearer Moves by Rating.** Fixed unintended solid polygon fills between rating curves. Deliberate transparent baseline shading, a taller plot and additional grid lines make small probabilities easier to read. Move Map is unchanged. Extract the unsigned ZIP and open `Nocturne/Nocturne.exe`.
+**[0.5.7.67](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40162129568/artifacts/12587410656): optional NVIDIA CUDA and AMD ROCm acceleration.** Engine → Maia-3 79M → Inference device now offers Auto, CPU only and optional GPU setup. Setup detects NVIDIA/AMD, installs an isolated runtime, and verifies actual Maia inference before enabling it. AMD uses native ROCm 7.2.1 (supported GPU and driver 26.2.2 required), not DirectML. Setup needs Python 3.12 x64 and a potentially multi-GB download. The bundled CPU worker remains available; the status reports the active device or cached results. Physical GPU performance was not measured in CI. Extract the unsigned ZIP and open `Nocturne/Nocturne.exe`. See the [Maia GPU guide](docs/MAIA.md#optional-gpu-acceleration-05767).
+
+**[0.5.7.66](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40161107406/artifacts/12586302514): clearer Moves by Rating.** Fixed unintended solid polygon fills, with transparent shading and a taller chart.
 
 **[0.5.7.65](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40159206059/artifacts/12584999426): use the full analysis workspace.** Analysis and Maia panels now fill the available width, including Arrange mode.
 
