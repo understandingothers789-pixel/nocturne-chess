@@ -1026,3 +1026,11 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - [Run 40407442538](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40407442538): lint, full Windows tests, packaged application/worker checks and live API checks passed.
 - [Unsigned Windows x64 artifact](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40407442538/artifacts/12690793804): 494,310,202 bytes; expires November 25, 2026.
 - Focused local checks: 25 passed; gap hit-testing and the updated optional-control regression also passed.
+
+
+## Windows build receipt · 0.5.7.92
+
+- Source: `174bd1c45771901397d067f0f0a5b242cacaaec9`
+- [Run 40413308005](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40413308005): lint, 297 tests (5 skipped), packaged application/worker checks and live API checks passed.
+- [Unsigned Windows x64 artifact](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40413308005/artifacts/12693529587): 494,321,897 bytes; expires November 25, 2026.
+- Focused local checks cover preview transitions/exits, restricted foreground and prefetch requests, range selection/clamping, numeric controls, drag-collapse and top-Maia arrow identity/threshold.

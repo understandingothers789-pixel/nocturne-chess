@@ -240,3 +240,16 @@ Drag the visible horizontal divider below Stockfish to resize the section beneat
 The bottom **Game Moves** strip has a collapse arrow. Collapse leaves its header and an expand arrow visible near the bottom edge; hover the arrow for its tooltip and click to reopen. The collapsed preference is saved.
 
 Spaces between Stockfish PV moves are part of their hover targets, preventing the board preview from disappearing between adjacent moves. Blank space beyond the final move remains outside the preview target.
+
+
+## Calculated rating range (0.5.7.92)
+
+Open **Details → Calculate ratings** to set the minimum and maximum Elo. Defaults are **600–3000**, sampled in 200-point steps. The setting is saved. Selected-rating controls are limited to that interval; a selected rating outside a newly narrowed interval moves to the nearest endpoint.
+
+This is an inference limit, not just an axis filter. Foreground sweeps and GPU variation prefetch both request only ratings inside the interval. Changing it cancels the old worker work and prefetch queue before issuing new requests. Cached predictions remain reusable if you later expand the range. The chart uses the same range. Neither the default request list nor the worker permits ratings below 600.
+
+Candidate previews stay visible while crossing the padding between Stockfish variation rows; actual exits clear after a short grace interval. Navigation and replacement of a variation still clear immediately. The board **?** shows a hover hint and opens a fuller guide on click.
+
+The bottom Game Moves divider also supports drag-to-collapse: drag it all the way down, then use the remaining expand control near the bottom to reopen. In Details, **Maia moves shown** is a static label beside a separate number box with up/down controls; only that number is editable.
+
+Bottom Game Moves retains its hover preview when crossing spaces or line gaps within the section, and clears it on exit or navigation. Maia's highest-probability eligible move uses the Lichess pale-blue brush (#003088 at 40% opacity); other eligible moves use pale gray (#4a4a4a at 40%). Both retain the strictly-greater-than-10% threshold. Stockfish's rods and rank circles remain independent. Blue identifies human likelihood, not Stockfish rank or move quality.
