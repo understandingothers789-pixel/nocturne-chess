@@ -463,6 +463,9 @@ class MainWindow(QMainWindow):
         self.candidate_splitter = QSplitter(Qt.Orientation.Vertical)
         self.candidate_splitter.setChildrenCollapsible(False)
         self.candidate_splitter.setHandleWidth(7)
+        self.candidate_splitter.setStyleSheet(
+            "QSplitter::handle:vertical {background:rgba(130,150,160,65); height:7px;}"
+            "QSplitter::handle:vertical:hover {background:rgba(130,150,160,150);}")
         self.candidate_splitter.setToolTip("Drag the divider to resize Stockfish and the section below")
         self.candidate_splitter.addWidget(self.candidates)
         self.engine_layout.addWidget(self.candidate_splitter, 1)
