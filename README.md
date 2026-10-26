@@ -22,7 +22,7 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt capture of the main line after 13...Bd7. Stockfish 17.1 NNUE reached depth 25 and reported +0.49 after 9,528,716 nodes. Maia is disabled in this capture.*
 
 
-**0.5.7.86: faster analysis updates.** Maia move names are reused within a position, unchanged policy tables keep their cells, and history move numbers no longer require replaying the game. See the [performance notes](docs/audits/0.5.7.86.md).
+**[Download 0.5.7.86 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40275855138/artifacts/12630945556): faster analysis updates.** Maia move names are reused within a position, unchanged policy tables keep their cells, and history move numbers no longer require replaying the game. See the [performance notes](docs/audits/0.5.7.86.md).
 
 **[Download 0.5.7.85 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40273139223/artifacts/12628584327): promote a Game Line variation from its context menu. Right-click an alternate move to make its line the mainline while keeping the previous mainline as an alternative, or promote it and delete the previous mainline.** Full Windows tests and packaged smoke checks passed. The artifact expires November 25, 2026.
 
