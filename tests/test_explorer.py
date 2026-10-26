@@ -328,21 +328,23 @@ class CachedGuiTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             explorer = OpeningExplorer(Path(directory) / "cache.sqlite3")
-            self.addCleanup(explorer.close_client)
-            query = ExplorerQuery(Game().board.fen())
-            explorer.query = query
-            empty = statistics(query.fen) | {"total": 0, "moves": []}
-            explorer._result(query.key, empty, "Cached · Lichess Masters")
-            self.assertIn("No games found", explorer.summary.text())
-            self.assertLessEqual(explorer.maximumHeight(), 88)
-            self.assertTrue(explorer.table.isHidden())
+            try:
+                query = ExplorerQuery(Game().board.fen())
+                explorer.query = query
+                empty = statistics(query.fen) | {"total": 0, "moves": []}
+                explorer._result(query.key, empty, "Cached · Lichess Masters")
+                self.assertIn("No games found", explorer.summary.text())
+                self.assertLessEqual(explorer.maximumHeight(), 88)
+                self.assertTrue(explorer.table.isHidden())
 
-            populated = statistics(query.fen) | {"total": 20}
-            for row in populated["moves"]:
-                row["total"] = 20
-            explorer._result(query.key, populated, "Cached · Lichess Masters")
-            self.assertEqual(explorer.maximumHeight(), 16777215)
-            self.assertFalse(explorer.table.isHidden())
+                populated = statistics(query.fen) | {"total": 20}
+                for row in populated["moves"]:
+                    row["total"] = 20
+                explorer._result(query.key, populated, "Cached · Lichess Masters")
+                self.assertEqual(explorer.maximumHeight(), 16777215)
+                self.assertFalse(explorer.table.isHidden())
+            finally:
+                explorer.close_client()
 
     def test_lichess_session_token_is_host_scoped_and_never_saved(self):
         directory = tempfile.TemporaryDirectory()
