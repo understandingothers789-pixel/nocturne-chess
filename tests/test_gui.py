@@ -2118,7 +2118,10 @@ class GuiTests(unittest.TestCase):
         for kind in (QComboBox, QSpinBox, QToolButton):
             controls = [control for control in self.window.tabs.widget(1).findChildren(kind)
                         if control not in self.window.candidates.expand_buttons.values()]
-            self.assertEqual(controls, [self.window.maia_controls.rating] if kind is QComboBox else [])
+            expected = ([self.window.maia_controls.rating] if kind is QComboBox
+                        else [self.window.maia_controls.move_limit] if kind is QSpinBox else [])
+            self.assertEqual(controls, expected)
+        self.assertTrue(self.window.maia_controls.move_limit.isHidden())
         self.assertIn(self.window.resource_controls.menus["Threads"].menuAction(), self.window.menus["Engine"].actions())
         self.assertIn(self.window.multipv_menu.menuAction(), self.window.menus["Engine"].actions())
 
