@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtCore import QEvent, QPoint, QPointF, Qt, QUrl
@@ -82,6 +83,22 @@ class RenderingTests(unittest.TestCase):
             right = int((rect.right() - unit * 0.25) * ratio)
             self.assertEqual(bare.copy(left, y, width, height), labelled.copy(left, y, width, height))
             self.assertNotEqual(bare.copy(right, y, width, height), labelled.copy(right, y, width, height))
+
+    def test_blue_maia_arrow_tracks_highest_probability_not_stockfish_rank(self):
+        board = BoardWidget()
+        self.addCleanup(board.close)
+        board.resize(600, 600)
+        moves = [board.board.parse_uci(uci) for uci in ("d2d4", "e2e4", "g1f3")]
+        board.maia_recommendations = [(moves[0], .2, "best"), (moves[1], .7, "best"), (moves[2], .1, "best")]
+        board.set_recommendations([(moves[0], 1, "+0.2")])
+        board.show()
+        self.app.processEvents()
+        with patch.object(board, "_maia_arrow") as arrow:
+            board.grab()
+        self.assertEqual(arrow.call_count, 2)
+        blue = [call for call in arrow.call_args_list if call.kwargs["top"]]
+        self.assertEqual(len(blue), 1)
+        self.assertEqual((blue[0].args[1], blue[0].args[2]), (moves[1].from_sq, moves[1].to_sq))
 
     def test_vertical_candidate_transition_keeps_preview_until_real_exit(self):
         panel = CandidatePanel(MoveText(auto_fit=True))

@@ -22,6 +22,7 @@ class MoveText(QTextBrowser):
 
     def __init__(self, parent=None, *, auto_fit=False, reserved_lines=0):
         super().__init__(parent)
+        self.continuous_preview = False
         self._figurines = False
         self._auto_fit = auto_fit
         self._reserved_lines = reserved_lines
@@ -58,6 +59,8 @@ class MoveText(QTextBrowser):
     def _highlight(self, url):
         text = url.toString()
         index = int(text[5:]) if text.startswith("move:") and text[5:].isdigit() else None
+        if index is None and self.continuous_preview and self._hovered is not None:
+            return
         if index == self._hovered:
             return
         self._hovered = index
@@ -127,7 +130,7 @@ class MoveText(QTextBrowser):
                           f'{escape(self.candidate_evaluation)}</span> ')
         for offset, (text, index) in enumerate(self._items):
             if index is None:
-                tokens.append(escape(text))
+                tokens.append(escape(text) + (" " if self.continuous_preview else ""))
                 continue
             move_color = color
             if self.candidate_rank is not None:
@@ -141,11 +144,11 @@ class MoveText(QTextBrowser):
             label = text
             decoration = "text-decoration:none;"
             tooltip = f' title="{escape(departures[index], quote=True)}"' if index in departures else ""
-            gap = " " if self.candidate_rank is not None and offset < len(self._items) - 1 else ""
+            gap = " " if (self.candidate_rank is not None or self.continuous_preview) and offset < len(self._items) - 1 else ""
             tokens.append(f'<a href="move:{index}" style="{style} {decoration}"{tooltip}>{notation_html(label) if figurines else escape(label)}{gap}</a>')
         size, spacing = (16, 155) if self._auto_fit else (14, 140)
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'
-                     + ("" if self.candidate_rank is not None else " ").join(tokens) + "</div>")
+                     + ("" if self.candidate_rank is not None or self.continuous_preview else " ").join(tokens) + "</div>")
 
     def _move_at(self, point):
         """Include the padding above and below each candidate anchor."""

@@ -364,7 +364,7 @@ class MainWindow(QMainWindow):
         board_tools.addWidget(button("Copy FEN", self._copy_fen, "quiet"))
         guide = button("?", self._show_board_guide, "quiet")
         guide.setAccessibleName("Board symbols guide")
-        guide.setToolTip("Click to learn what the numbered Stockfish rods, gray Maia arrows and percentages mean.")
+        guide.setToolTip("Click to learn what the numbered Stockfish rods, Maia arrows and percentages mean.")
         guide.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips)
         guide.setToolTipDuration(15000)
         self.board_guide_button = guide
@@ -641,6 +641,7 @@ class MainWindow(QMainWindow):
         history_tools.addWidget(self.bottom_moves_toggle)
         history_layout.addLayout(history_tools)
         self.analysis_history = MoveText()
+        self.analysis_history.continuous_preview = True
         self.analysis_history.setAccessibleName("Analysis game moves")
         self.analysis_history.setMinimumHeight(36)
         self.analysis_history.move_hovered.connect(self._preview_history)
@@ -3014,11 +3015,12 @@ class MainWindow(QMainWindow):
             "Stockfish — rods and numbered circles\n"
             "Each rod points to an engine candidate. The circle number is its Stockfish rank: 1 is the top recommendation, "
             "2 is the second, and so on. These numbers are rankings, not probabilities.\n\n"
-            "Maia — transparent gray arrows\n"
+            "Maia — transparent arrows\n"
             "An arrow appears for every move Maia predicts has more than a 10% chance of being played at the selected rating. "
-            "Gray shows human likelihood, not move quality.\n\n"
+            "Blue marks Maia's most likely move; gray marks the other moves above 10%. "
+            "These arrow colors indicate human likelihood, not move quality.\n\n"
             "When both agree\n"
-            "A gray arrow and a Stockfish rod/circle can point to the same destination. "
+            "A Maia arrow and a Stockfish rod/circle can point to the same destination. "
             "Stockfish ranks the move and Maia predicts that people will play it.\n\n"
             "Maia percentages and the Blunder Meter\n"
             "Percentages estimate human move choices. Green, yellow and red in the Blunder Meter "

@@ -257,15 +257,15 @@ class BoardWidget(QWidget):
         normal = QPointF(-dy, dx) * head_width
         painter.drawPolygon(QPolygonF([b, base + normal, base - normal]))
 
-    def _maia_arrow(self, painter, src, dst, unit):
-        """Lichess paleGrey brush: round shaft, SVG marker proportions, 40% opacity."""
+    def _maia_arrow(self, painter, src, dst, unit, *, top=False):
+        """Lichess pale brushes: round shafts, SVG marker proportions, 40% opacity."""
         if src == dst:
             return
         start = self.square_rect(src).center()
         target = self.square_rect(dst).center()
         delta = target - start
         length = math.hypot(delta.x(), delta.y())
-        width = unit * 0.15625
+        width = unit * (0.234375 if top else 0.15625)
         end = length - unit * 0.15625
         shaft = QPainterPath()
         shaft.moveTo(0, 0)
@@ -284,7 +284,7 @@ class BoardWidget(QWidget):
         painter.rotate(math.degrees(math.atan2(delta.y(), delta.x())))
         # Fill one silhouette so shaft/head overlap cannot darken the arrow.
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(74, 74, 74, 102))
+        painter.setBrush(QColor(0, 48, 136, 102) if top else QColor(74, 74, 74, 102))
         painter.drawPath(stroker.createStroke(shaft).united(head))
         painter.restore()
 
@@ -376,9 +376,10 @@ class BoardWidget(QWidget):
         # Lichess-style Maia arrows overlay pieces; Stockfish rods and badges
         # retain their independent layer above them.
         if not preview and self.overlays and self.maia_arrows_enabled:
+            top_move = max(self.maia_recommendations, key=lambda entry: entry[1], default=(None, 0, ""))[0]
             for move, probability, category in reversed(self.maia_recommendations):
                 if probability > 0.10:
-                    self._maia_arrow(painter, move.from_sq, self._destination(move), unit)
+                    self._maia_arrow(painter, move.from_sq, self._destination(move), unit, top=move == top_move)
         for src, dst in () if preview else self.arrows:
             self._arrow(painter, src, dst, QColor(232, 175, 79, 200), unit)
         if not preview and self.overlays:

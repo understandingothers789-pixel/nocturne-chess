@@ -1730,7 +1730,7 @@ class GuiTests(unittest.TestCase):
         self.assertTrue(self.window.tabs.isTabVisible(0))
         self.assertTrue(self.window.sidebar.isVisible())
 
-    def test_history_mouse_hover_is_display_only_and_blank_space_restores(self):
+    def test_history_mouse_hover_is_display_only_and_blank_space_preserves(self):
         self._analysis_game()
         game = self.window.game
         before, key, generation = deepcopy(game.to_dict()), game.board.key, self.window.engine.generation
@@ -1743,6 +1743,8 @@ class GuiTests(unittest.TestCase):
         view = self.window.analysis_history
         QTest.mouseMove(view.viewport(), pos=view.viewport().rect().bottomRight() - QPointF(4, 4).toPoint())
         self.app.processEvents()
+        self.assertEqual(self.window.board_view.display_board.fen(), expected)
+        self.app.sendEvent(view.viewport(), QEvent(QEvent.Type.Leave))
         self.assertIsNone(self.window.board_view.preview_board)
         self.assertIs(self.window.board_view.display_board, game.board)
 
