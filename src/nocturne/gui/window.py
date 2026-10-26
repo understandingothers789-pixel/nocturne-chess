@@ -6,6 +6,7 @@ from html import escape
 from pathlib import Path
 import random
 import sys
+import time
 
 from PySide6.QtCore import QByteArray, QEvent, QProcess, QStandardPaths, Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence
@@ -102,6 +103,7 @@ class MainWindow(QMainWindow):
     def __init__(self, data_dir: Path | None = None):
         super().__init__()
         self._closing = False
+        self._last_save_at = None
         self._gpu_hardware_detected = False
         self._gpu_hash_default_profiles = set()
         self.setWindowTitle(f"Nocturne Chess · {__version__}")
@@ -224,8 +226,8 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self._tick)
         self.timer.start(100)
         self.autosave_timer = QTimer(self)
-        self.autosave_timer.timeout.connect(self._save)
-        self.autosave_timer.start(15000)
+        self.autosave_timer.timeout.connect(lambda: self._save(force=True))
+        self.autosave_timer.start(60000)
         self.archive_timer = QTimer(self)
         self.archive_timer.setInterval(40)
         self.archive_timer.timeout.connect(self._archive_previous_pgn)
@@ -1713,7 +1715,7 @@ class MainWindow(QMainWindow):
         for move in parsed:
             self.game.play(move)
         self._refresh(animate=len(parsed) == 1)
-        self._save()
+        self._save(defer=True)
         self._schedule_engine()
 
     def _candidate_action(self, rank, action):
@@ -2001,7 +2003,7 @@ class MainWindow(QMainWindow):
         else:
             self.game.select_node(node_id)
         self._refresh()
-        self._save()
+        self._save(defer=True)
 
     def _auto_evaluate_line(self):
         if self._review and self._review.get("kind") == "auto_eval":
@@ -2056,7 +2058,7 @@ class MainWindow(QMainWindow):
                 self.quick_analysis_button.setText("Pause auto-play")
                 self.statusBar().showMessage("Auto-play resumed")
                 self._schedule_engine()
-            self._save()
+            self._save(defer=True)
             return
         if not self._profile():
             self._manage_engines()
@@ -2077,7 +2079,7 @@ class MainWindow(QMainWindow):
         self.tabs.setCurrentIndex(1)
         self._refresh()
         self.quick_analysis_button.setText("Pause auto-play")
-        self._save()
+        self._save(defer=True)
         self._schedule_engine()
 
     def _analyze_game(self):
@@ -2304,7 +2306,7 @@ class MainWindow(QMainWindow):
             state["index"] += 1
             self.engine_state.setText(self._active_engine_name() + " · position saved")
             self._update_graph()
-            self._save()
+            self._save(defer=True)
             self._render_move_history()
             QTimer.singleShot(0, self._review_next)
             return True
@@ -2316,7 +2318,7 @@ class MainWindow(QMainWindow):
                 if info["pv"][0] != played:
                     state["stage"] = "confirm_played" if state["stage"] == "confirm_best" else "played"
                     QTimer.singleShot(0, self._review_next)
-                    self._save()
+                    self._save(defer=True)
                     return True
                 if self._classify_review(line[index + 1], info, info):
                     return True
@@ -3011,7 +3013,7 @@ class MainWindow(QMainWindow):
         self.board_view.set_position(self.game.board, move, animate=False)
         self.board_view.repaint()
         self._refresh(board_ready=True)
-        self._save()
+        self._save(defer=True)
         self._schedule_engine()
 
     def _refresh(self, animate=False, board_ready=False):
@@ -3542,7 +3544,7 @@ class MainWindow(QMainWindow):
         self.tabs.setCurrentIndex(1)
         self.paused = False
         self._refresh()
-        self._save()
+        self._save(force=True)
         return True
 
     def _export(self):
@@ -3554,8 +3556,12 @@ class MainWindow(QMainWindow):
             except OSError as exc:
                 self._error("Export failed", str(exc))
 
-    def _save(self):
+    def _save(self, *, force=False, defer=False):
         if not self.store:
+            return
+        now = time.monotonic()
+        if defer and not force and self._last_save_at is not None and now - self._last_save_at < 60000:
+            self.save_label.setText("CHANGES PENDING · SAVED WITHIN 1 MINUTE")
             return
         saved_job = checkpoint_job(self._review)
         if saved_job:
@@ -3570,8 +3576,20 @@ class MainWindow(QMainWindow):
             self.store.set("workspace_layout", state)
             self.store.set("settings", self.config)
             self.store.set("engine_profiles", self.profiles)
-            self.store.set("open_studies", list(self._study_games)[-20:])
-            self.store.save(self.game)
+            studies = dict(self._study_games)
+            studies[self.game.id] = self.game
+            if force:
+                saved_studies = list(studies.items())[-20:]
+                if self.game.id not in dict(saved_studies):
+                    saved_studies[-1] = (self.game.id, self.game)
+            else:
+                saved_studies = [(self.game.id, self.game)]
+            self.store.set("open_studies", [key for key, _study in saved_studies])
+            for _key, study in saved_studies:
+                self.store.save(study)
+            self._last_save_at = time.monotonic()
+            if not self._closing and hasattr(self, "autosave_timer"):
+                self.autosave_timer.start(60000)
             self.save_label.setText("SAVED ON THIS DEVICE")
         except StorageError as exc:
             self.save_label.setText("SAVE FAILED · SEE STATUS")
@@ -4066,7 +4084,7 @@ class MainWindow(QMainWindow):
             else:
                 delay = self.config.get("watch_delay_ms", 500) if self._auto_play_active or self.config.get("mode") == "ai_ai" else 80
                 QTimer.singleShot(delay, self._schedule_engine)
-        self._save()
+        self._save(defer=True)
 
     def _show_info(self, info, job, *, store=True):
         if not info:
@@ -4187,7 +4205,7 @@ class MainWindow(QMainWindow):
         self.engine.close()
         self.maia.stop()
         self.game.pause_clock()
-        self._save()
+        self._save(force=True)
         if self._dock_workspace is not None:
             self._dock_workspace.hide_floating_panels()
         if self.store:

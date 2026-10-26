@@ -1430,6 +1430,20 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(self.window.game.board.cells[parse_square("e4")], 1)
         self.assertIs(self.window.board_view.board, self.window.game.board)
 
+    def test_autosave_is_rate_limited_and_imported_pgn_is_saved_immediately(self):
+        window = self.window
+        self.assertEqual(window.autosave_timer.interval(), 60000)
+        window._last_save_at = time.monotonic()
+        with patch.object(window.store, "save") as save:
+            window._save(defer=True)
+            save.assert_not_called()
+            window._save(force=True)
+            save.assert_called_once_with(window.game)
+        self.assertTrue(window._import_text("1.e4 c5 *"))
+        pgn_path = window.store.pgn_path(window.game.id)
+        self.assertTrue(pgn_path.is_file())
+        self.assertEqual(Game.from_pgn(pgn_path.read_text(encoding="utf-8")).sans, ["e4", "c5"])
+
     def test_prior_pgns_are_retained_and_folder_is_accessible(self):
         window = self.window
         window._import_text("1.e4 {prior study} (1.d4 d5) e5 *")

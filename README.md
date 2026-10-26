@@ -23,6 +23,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 capture are explicitly labelled fixtures, not measured chess analysis.*
 
 
+**[0.5.7.83](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml): calmer autosaving.** Move and analysis saves are coalesced to at most once per minute; settings save when changed. Closing the app and importing a PGN save immediately.
+
 **[0.5.7.82](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml): Maia and hardware defaults.** Maia predictions now cover 600–3000 Elo in 200-point steps, and the outcome rail shows White's expected score including half the draw rate. GPU-equipped systems default Stockfish Hash to 8 GB unless a custom value is set. The Database menu highlights a missing Lichess token after an authentication response. F11 engine self-play stops Maia inference and restores it when self-play ends.
 
 **[0.5.7.81](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40263779061/artifacts/12625279239): Lichess notation throughout analysis and subtle practical-risk highlights.** Stockfish variations and Maia insight labels use Lichess piece glyphs; the bottom Game Moves PGN remains standard SAN. In the Game Line, a played blunder is softly highlighted when the position is under four pawns and Maia's green Best moves share is below 50%. Windows lint, tests, packaging and smoke checks passed.
