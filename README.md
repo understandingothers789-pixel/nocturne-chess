@@ -17,10 +17,9 @@ available. Database and graph visibility still follow their existing settings.
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
-![Nocturne's native analysis studio with a prominent board, integrated Stockfish and Maia rows, and three insight cards](docs/studio-ui.png)
+![Nocturne analyzing the Ruy Lopez Chigorin main line after 13...Bd7 with Stockfish 17.1 at depth 25](docs/studio-ui.png)
 
-*Native Qt UI preview. Engine evaluations and Maia probabilities in this
-capture are explicitly labelled fixtures, not measured chess analysis.*
+*Native Qt capture of the main line after 13...Bd7. Stockfish 17.1 NNUE reached depth 25 and reported +0.49 after 9,528,716 nodes. Maia is disabled in this capture.*
 
 
 **[Download 0.5.7.85 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40273139223/artifacts/12628584327): promote a Game Line variation from its context menu. Right-click an alternate move to make its line the mainline while keeping the previous mainline as an alternative, or promote it and delete the previous mainline.** Full Windows tests and packaged smoke checks passed. The artifact expires November 25, 2026.
