@@ -220,3 +220,14 @@ old policy-only entries are refreshed. This is a human outcome prediction, not c
 
 Game Line notation uses the bundled Cburnett SVG piece shapes rendered at high
 resolution for clear small icons. Stored and copied PGN remains standard SAN.
+
+
+## Layout and symbol guide (0.5.7.89)
+
+The **Top N Maia moves** toggle reports the number of moves in the loaded policy. It opens the policy table, ranked by probability; its count is independent of Stockfish MultiPV and the >10% board-arrow threshold.
+
+**Display → Swap Moves by Rating and Game Line** puts the rating chart beneath Stockfish and Game Line at the top of the insights column. The preference is saved. When Maia insights are hidden or disabled, Game Line returns to the analysis column so it remains accessible.
+
+Click **?** beside **Flip / Copy FEN** for the board-symbol guide. It explains Stockfish rods and rank circles, Maia arrows, overlapping recommendations, quality categories and previews.
+
+**Database → Lichess access token** has an amber row whenever the session token is blank. Entering a token removes the highlight; clearing it restores the highlight. Tokens remain session-only.
