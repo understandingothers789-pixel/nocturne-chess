@@ -1567,14 +1567,14 @@ class MainWindow(QMainWindow):
             path = self.game.node_path(self.game.current_node)[1:]
             self.maia.request(self.game.initial_fen, [self.game.nodes[n].move.uci() for n in path], rating, sweep=self.config.get("show_maia_insights", True))
             self.maia.foreground_busy = lambda: self.engine.busy or self._closing or bool(self._review)
-            histories = []
+            continuation = []
             moves = [self.game.nodes[n].move.uci() for n in path]
             index = self.game.current_node
             selected_future = iter(self.game._line_nodes[self.game.cursor + 1:])
             while self.game.nodes[index].children:
                 index = next(selected_future, self.game.nodes[index].children[0])
-                moves = moves + [self.game.nodes[index].move.uci()]
-                histories.append(moves)
+                continuation.append(self.game.nodes[index].move.uci())
+            histories = (moves + continuation[:i] for i in range(1, len(continuation) + 1))
             self.maia.prefetch(self.game.initial_fen, histories, rating)
         self._maia_changed(self.maia.policies if enabled else {})
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nocturne-chess"
-version = "0.5.7.79"
+version = "0.5.7.80"
 description = "A native offline Stockfish and Maia chess analysis studio"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -24,7 +24,7 @@ nocturne = "nocturne.__main__:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-nocturne = ["assets/*.svg", "assets/*.ico", "assets/pieces/*.svg", "assets/pieces/original/*.svg", "assets/pieces/nibbler/*.png", "assets/pieces/nibbler/source/*.svg"]
+nocturne = ["assets/fonts/*.ttf", "assets/fonts/*.sfd", "assets/*.svg", "assets/*.ico", "assets/pieces/*.svg", "assets/pieces/original/*.svg", "assets/pieces/nibbler/*.png", "assets/pieces/nibbler/source/*.svg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

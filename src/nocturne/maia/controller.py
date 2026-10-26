@@ -17,6 +17,7 @@ class MaiaController(QObject):
     def __init__(self, directory, parent=None):
         super().__init__(parent)
         self.prefetch_queue = []
+        self._prefetch_iter = iter(())
         self._prefetch_active = None
         self._prefetch_id = 0
         self.foreground_busy = lambda: False
@@ -47,11 +48,17 @@ class MaiaController(QObject):
         self.cache = OrderedDict()
         self.value_cache = {}
         self.cache_path = self.directory / "maia-policy-cache.json"
+        self.cache_timer = QTimer(self)
+        self.cache_timer.setSingleShot(True)
+        self.cache_timer.setInterval(5000)
+        self.cache_timer.timeout.connect(self._flush_background_cache)
         try:
             data = json.loads(self.cache_path.read_text())
             if data.get("model") == MODEL_REVISION:
-                self.value_cache = data.get("outcomes", {})
-                self.cache.update(list(data.get("positions", {}).items())[-128:])
+                positions, outcomes = data.get("positions", {}), data.get("outcomes", {})
+                if isinstance(positions, dict) and isinstance(outcomes, dict):
+                    self.cache.update((k, v) for k, v in list(positions.items())[-128:] if isinstance(v, dict))
+                    self.value_cache = {k: v for k, v in outcomes.items() if k in self.cache and isinstance(v, dict)}
         except (OSError, ValueError, AttributeError):
             pass
         self.debounce = QTimer(self)
@@ -64,7 +71,8 @@ class MaiaController(QObject):
         return hashlib.sha256(json.dumps([MODEL_REVISION, "white-wdl-v1", root, moves], separators=(",", ":")).encode()).hexdigest()
 
     def prefetch(self, root, histories, rating):
-        self.prefetch_queue = [(root, list(moves), rating) for moves in histories]
+        self.prefetch_queue = []
+        self._prefetch_iter = ((root, moves, rating) for moves in histories)
 
     def _prefetch_next(self):
         gpu = self.device_label.startswith(("NVIDIA CUDA", "AMD ROCm", "DirectML"))
@@ -72,7 +80,13 @@ class MaiaController(QObject):
                 or not self._ready or self._busy or self._queued or self.debounce.isActive()
                 or self.foreground_busy()):
             return
-        while self.prefetch_queue:
+        # Bound each timer tick even when a long variation is already cached.
+        for _ in range(8):
+            if not self.prefetch_queue:
+                task = next(self._prefetch_iter, None)
+                if task is None:
+                    return
+                self.prefetch_queue.append(task)
             root, moves, rating = self.prefetch_queue.pop(0)
             key = self.position_key(root, moves)
             if all(str(r) in self.cache.get(key, {}) and str(r) in self.value_cache.get(key, {}) for r in RATINGS):
@@ -89,14 +103,20 @@ class MaiaController(QObject):
 
     def request(self, root, moves, rating=1800, sweep=False):
         self.prefetch_queue = []
+        self._prefetch_iter = iter(())
         ratings = [rating] + ([r for r in RATINGS if r != rating] if sweep else [])
-        key = hashlib.sha256(json.dumps([MODEL_REVISION, "white-wdl-v1", root, moves], separators=(",", ":")).encode()).hexdigest()
+        key = self.position_key(root, moves)
         signature = (key, tuple(ratings))
         if self._queued and self._queued[0] == signature:
             return
-        if self._active and self._active[0] == signature:
+        if (not self._queued and self._active and self._active[0] == signature
+                and self._active[1]["id"] == self._serial
+                and (self._busy or all(str(r) in self.cache.get(key, {})
+                                       and str(r) in self.value_cache.get(key, {}) for r in ratings))):
             return
         self._serial += 1
+        if key in self.cache:
+            self.cache.move_to_end(key)
         self.outcomes = dict(self.value_cache.get(key, {}))
         self.policies = dict(self.cache.get(key, {}))
         self.changed.emit(self.policies)
@@ -154,17 +174,25 @@ class MaiaController(QObject):
                 message = json.loads(raw)
             except (ValueError, UnicodeError):
                 continue
+            if not isinstance(message, dict):
+                continue
             background = self._prefetch_active
             if background and message.get("id") == background[0]:
                 if message.get("device"):
                     self.device_label = message["device"]
                 key = background[1]
                 self.cache.setdefault(key, {}).update(message.get("policies", {}))
+                self.cache.move_to_end(key)
                 self.value_cache.setdefault(key, {}).update(message.get("outcomes", {}))
                 if message.get("complete") or message.get("error"):
                     self._prefetch_active = None
                     self._busy = False
-                    self._save_cache()
+                    self._trim_cache()
+                    if not self.cache_timer.isActive():
+                        self.cache_timer.start()
+                    if message.get("error"):
+                        self.prefetch_queue = []
+                        self._prefetch_iter = iter(())
                     if self._queued:
                         self._dispatch()
                 continue
@@ -196,10 +224,20 @@ class MaiaController(QObject):
                 if self._queued:
                     self._dispatch()
 
-    def _save_cache(self):
+    def _flush_background_cache(self):
+        if self._busy or self._queued or self.foreground_busy():
+            self.cache_timer.start()
+        else:
+            self._save_cache()
+
+    def _trim_cache(self):
         while len(self.cache) > 128:
             key, _ = self.cache.popitem(last=False)
             self.value_cache.pop(key, None)
+
+    def _save_cache(self):
+        self.cache_timer.stop()
+        self._trim_cache()
         try:
             self.directory.mkdir(parents=True, exist_ok=True)
             temporary = self.cache_path.with_suffix(".tmp")
@@ -211,6 +249,10 @@ class MaiaController(QObject):
     def _retry_cpu(self):
         if not self._external or self._cpu_retry:
             return False
+        self._prefetch_active = None
+        self.prefetch_queue = []
+        self._prefetch_iter = iter(())
+        self._buffer = b""
         self._cpu_retry = True
         if self._active and not self._queued:
             self._queued = self._active
@@ -238,7 +280,11 @@ class MaiaController(QObject):
             self.status.emit("Maia worker stopped. Disable and enable Maia to retry.")
 
     def stop(self):
+        if self.cache_timer.isActive():
+            self._save_cache()
+        self._buffer = b""
         self.prefetch_queue = []
+        self._prefetch_iter = iter(())
         self._prefetch_active = None
         self.debounce.stop()
         self._serial += 1

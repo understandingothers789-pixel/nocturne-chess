@@ -188,3 +188,19 @@ class StorageTests(unittest.TestCase):
                 store.load(game.id)
             self.assertEqual(len(store.list_games()), 1)
             store.close()
+
+class PreferenceWriteTests(unittest.TestCase):
+    def test_identical_preferences_do_not_rewrite_database_rows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = Store(Path(directory) / 'games.sqlite')
+            try:
+                store.set('settings', {'enabled': True})
+                changes = store.db.total_changes
+                for _ in range(100):
+                    store.set('settings', {'enabled': True})
+                self.assertEqual(store.db.total_changes, changes)
+                store.set('settings', {'enabled': False})
+                self.assertEqual(store.db.total_changes, changes + 1)
+                self.assertEqual(store.get('settings'), {'enabled': False})
+            finally:
+                store.close()

@@ -200,7 +200,8 @@ class Store:
         try:
             encoded = json.dumps(value, allow_nan=False)
             with self.db:
-                self.db.execute("INSERT OR REPLACE INTO preferences VALUES (?, ?)", (key, encoded))
+                self.db.execute("INSERT INTO preferences VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET "
+                                "value=excluded.value WHERE preferences.value != excluded.value", (key, encoded))
         except (sqlite3.Error, ValueError, TypeError) as exc:
             raise StorageError(f"Cannot save preference: {exc}") from exc
 
