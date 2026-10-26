@@ -466,7 +466,6 @@ class MainWindow(QMainWindow):
         self.candidate_splitter.setStyleSheet(
             "QSplitter::handle:vertical {background:rgba(130,150,160,65); height:7px;}"
             "QSplitter::handle:vertical:hover {background:rgba(130,150,160,150);}")
-        self.candidate_splitter.setToolTip("Drag the divider to resize Stockfish and the section below")
         self.candidate_splitter.addWidget(self.candidates)
         self.engine_layout.addWidget(self.candidate_splitter, 1)
         self.inline_history = GameLine()
@@ -484,6 +483,7 @@ class MainWindow(QMainWindow):
         game_line_layout.addWidget(label("GAME LINE", "gameLineHeading"))
         game_line_layout.addWidget(self.inline_history, 1)
         self.candidate_splitter.addWidget(self.game_line_panel)
+        self.candidate_splitter.handle(1).setToolTip("Drag to resize Stockfish and the section below")
         self.candidate_splitter.setStretchFactor(1, 1)
         self._rating_game_line_swapped = False
         self.engine_scroll.setWidget(engine_detail)
@@ -1637,7 +1637,7 @@ class MainWindow(QMainWindow):
         if collapsed == getattr(self, "_bottom_collapsed_state", None):
             return
         self._bottom_collapsed_state = collapsed
-        if collapsed and not self.analysis_history.isHidden():
+        if collapsed and self.analysis_moves_panel.isVisible() and not self.analysis_history.isHidden():
             self._bottom_expanded_height = self.analysis_moves_panel.height()
         self.analysis_history.setVisible(not collapsed)
         self.opening_coverage_label.setVisible(not collapsed)
