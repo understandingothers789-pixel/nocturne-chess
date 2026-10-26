@@ -985,3 +985,11 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - Performance evidence and scope: [0.5.7.86 notes](audits/0.5.7.86.md).
 
 Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
+
+
+## Windows build receipt · 0.5.7.87
+
+- Source commit: `5d5d00de0cc8670592cb7326ff8fd9409706902a`
+- [Windows run 40277516019](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40277516019): lint, full tests, packaged application/worker checks and live API checks passed.
+- [Portable Windows artifact](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40277516019/artifacts/12630729307): 494,293,488 bytes; expires November 25, 2026.
+- Header rendering checks and the updated evaluation/details regression passed locally.
