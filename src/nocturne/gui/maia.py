@@ -227,16 +227,28 @@ class MaiaControls(QWidget):
             item = self.table.item(row, 0)
             line = self._stockfish.get(item.data(Qt.ItemDataRole.UserRole)) if item else None
             has_score = line and line.get("score_type") in ("cp", "mate") and isinstance(line.get("score_value"), (int, float))
-            score = QTableWidgetItem(score_label(line, turn) if has_score else "—")
-            score.setToolTip("Stockfish evaluation · White's perspective" if line else "No Stockfish analysis for this move")
-            self.table.setItem(row, 1, score)
+            text = score_label(line, turn) if has_score else "—"
+            tooltip = "Stockfish evaluation · White's perspective" if line else "No Stockfish analysis for this move"
+            score = self.table.item(row, 1)
+            if score is None:
+                score = QTableWidgetItem()
+                self.table.setItem(row, 1, score)
+            if score.text() != text:
+                score.setText(text)
+            if score.toolTip() != tooltip:
+                score.setToolTip(tooltip)
 
     def set_policy(self, policy, board):
-        if board.fen() != self._table_fen:
+        fen = board.fen()
+        if fen != self._table_fen:
             self._end_hover()
             self._stockfish = {}
-            self._table_fen = board.fen()
+            self._table_fen = fen
         ordered = sorted(policy.items(), key=lambda pair: -pair[1])
+        signature = (fen, board.chess960, tuple(ordered))
+        if signature == getattr(self, "_policy_signature", None):
+            return
+        self._policy_signature = signature
         old_order = [self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
                      for row in range(self.table.rowCount()) if self.table.item(row, 0)]
         if old_order != [uci for uci, _ in ordered]:

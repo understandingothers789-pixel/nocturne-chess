@@ -21,6 +21,45 @@ class MaiaTests(unittest.TestCase):
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
 
+    def test_analysis_name_cache_tracks_mutated_positions_and_policy_moves(self):
+        from nocturne.core.rules import Board
+        from nocturne.core.notation import san
+        from nocturne.gui.maia_insights import MaiaInsights
+        tools = MaiaInsights()
+        board = Board()
+        with patch("nocturne.gui.maia_insights.san", wraps=san) as formatter:
+            tools.set_analysis({"e2e4": .7}, board, {})
+            tools.set_analysis({"e2e4": .5}, board, {})
+            self.assertEqual(formatter.call_count, 1)
+            tools.set_analysis({"e2e4": .5, "d2d4": .4}, board, {})
+            self.assertEqual(tools._analysis_names, {"e2e4": "e4", "d2d4": "d4"})
+            board.play_uci("e2e4")
+            tools.set_analysis({"e2e4": .5, "e7e5": .4}, board, {})
+            self.assertEqual(tools._analysis_names, {"e7e5": "e5"})
+        tools.deleteLater()
+
+    def test_unchanged_policy_keeps_items_but_scores_and_pvs_still_refresh(self):
+        from nocturne.core.rules import Board
+        from nocturne.gui.maia import MaiaControls
+        tools, board = MaiaControls(), Board()
+        tools.set_policy({"e2e4": .7}, board)
+        item = tools.table.item(0, 0)
+        tools.set_policy({"e2e4": .7}, board)
+        self.assertIs(tools.table.item(0, 0), item)
+        line = {"pv": ["e2e4", "e7e5"], "score_type": "cp", "score_value": 25}
+        tools.set_stockfish({1: line}, 1)
+        score = tools.table.item(0, 1)
+        tools.set_stockfish({1: line | {"pv": ["e2e4", "c7c5"]}}, 1)
+        self.assertIs(tools.table.item(0, 1), score)
+        self.assertEqual(tools._stockfish["e2e4"]["pv"], ["e2e4", "c7c5"])
+        tools.set_policy({"e2e4": .6}, board)
+        self.assertEqual(tools.table.item(0, 2).text(), "60.0%")
+        board.play_uci("e2e4")
+        tools.set_policy({"e7e5": .8}, board)
+        self.assertEqual(tools.table.item(0, 0).text(), "e5")
+        self.assertFalse(tools._stockfish)
+        tools.deleteLater()
+
     def test_probability_matches_uci_move_when_stockfish_order_differs(self):
         panel = CandidatePanel(MoveText(auto_fit=True))
         panel.set_maia({"d2d4": 0.1, "e2e4": 0.9}, 1800)

@@ -3089,18 +3089,19 @@ class MainWindow(QMainWindow):
             self._history_signature = signature
             # Honor a FEN that starts with Black to move or at a later move number.
             initial = Board(self.game.initial_fen)
+            offset = int(initial.turn < 0)
             self._history_cells = {}
             self.history.setRowCount(0)
             row = -1
             for index, notation in enumerate(self.game.sans):
-                if initial.turn == 1 or row == -1:
+                ply = index + offset
+                if ply % 2 == 0 or row == -1:
                     row += 1
                     self.history.insertRow(row)
-                    self.history.setItem(row, 0, QTableWidgetItem(str(initial.fullmove)))
-                column = 1 if initial.turn == 1 else 2
+                    self.history.setItem(row, 0, QTableWidgetItem(str(initial.fullmove + ply // 2)))
+                column = 1 if ply % 2 == 0 else 2
                 self.history.setItem(row, column, QTableWidgetItem(notation))
                 self._history_cells[(row, column)] = index + 1
-                initial.push(self.game.moves[index])
         self.history.clearSelection()
         for (row, column), cursor in getattr(self, "_history_cells", {}).items():
             if cursor == self.game.cursor:

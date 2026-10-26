@@ -216,6 +216,18 @@ class GuiTests(unittest.TestCase):
         self.assertIn("Make this variation the mainline and delete the previous mainline", labels)
         menu.deleteLater()
 
+    def test_history_numbers_for_black_to_move_fen(self):
+        game = Game("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 20")
+        for move in ("e7e5", "e2e4", "b8c6"):
+            game.play(game.board.parse_uci(move))
+        self.window.game = game
+        self.window._refresh()
+        table = self.window.history
+        self.assertEqual([table.item(i, 0).text() for i in range(2)], ["20", "21"])
+        self.assertEqual(table.item(0, 2).text(), "e5")
+        self.assertEqual(table.item(1, 1).text(), "e4")
+        self.assertEqual(table.item(1, 2).text(), "Nc6")
+
     def test_backing_out_of_variation_resumes_mainline_on_forward_navigation(self):
         window = self.window
         window.game = Game.from_pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 (3...Nf6) 4. Ba4 *")

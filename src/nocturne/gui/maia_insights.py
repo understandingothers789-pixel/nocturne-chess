@@ -564,12 +564,19 @@ class MaiaInsights(QScrollArea):
         self.chart.update()
 
     def set_analysis(self, policy, board, lines):
-        names = {}
-        for uci in policy:
-            try:
-                names[uci] = san(board, board.parse_uci(uci))
-            except ValueError:
-                continue
+        # Engine scores change much more often than the position or legal SAN.
+        # Retain only the currently displayed position's move names.
+        key = (board.fen(), board.chess960, frozenset(policy))
+        if key != getattr(self, "_analysis_names_key", None):
+            names = {}
+            for uci in policy:
+                try:
+                    names[uci] = san(board, board.parse_uci(uci))
+                except ValueError:
+                    continue
+            self._analysis_names_key = key
+            self._analysis_names = names
+        names = self._analysis_names
         assessments = assess_moves({uci: p for uci, p in policy.items() if uci in names}, lines)
         self.map.set_data(assessments, names)
         self.blunder.set_data(assessments, names, board.fen())
