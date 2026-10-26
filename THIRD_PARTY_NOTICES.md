@@ -114,3 +114,9 @@ The corresponding worker source and upstream components accompany each Windows
 build in its source ZIP. The local worker uses PyTorch (BSD-style license) and
 NumPy (BSD-3-Clause); their license texts accompany the worker distribution.
 Maia predicts human move likelihood. Its probabilities are not Stockfish evaluations.
+
+## Lichess chess notation font
+
+Game Line uses the Lichess/pgn4web notation glyphs from public/font/lichess-chess.woff2
+in https://github.com/lichess-org/lila (GPL-2.0-or-later; see licenses/LICHESS-NOTATION-NOTICE.txt).
+The bundled TTF preserves glyph outlines; only font-container conversion and family naming changed.

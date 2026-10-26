@@ -1,11 +1,10 @@
 """Scrollable move pairs with branch rows and saved, White-perspective scores."""
 from html import escape
 
-from PySide6.QtCore import Qt, QTimer, QUrl, QRectF
-from PySide6.QtGui import QColor, QPainter, QPen, QTextCursor, QImage, QTextDocument
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QColor, QPainter, QPen, QTextCursor, QFontDatabase
 from PySide6.QtWidgets import QTextBrowser
 
-from PySide6.QtSvg import QSvgRenderer
 from ..pieces import ASSET_ROOT
 from .moves import MoveText
 from .theme import palette
@@ -67,19 +66,15 @@ class GameLine(MoveText):
         rows = []
         row_paths = []
 
-        if not getattr(self, "_notation_icons_ready", False):
-            for kind in "KQRBN":
-                image = QImage(60, 60, QImage.Format.Format_ARGB32_Premultiplied)
-                image.fill(Qt.GlobalColor.transparent)
-                painter = QPainter(image)
-                QSvgRenderer(str(ASSET_ROOT / f"w{kind.lower()}.svg")).render(painter, QRectF(0, 0, 60, 60))
-                painter.end()
-                self.document().addResource(QTextDocument.ResourceType.ImageResource, QUrl(f"piece:{kind}"), image)
-            self._notation_icons_ready = True
+        if not getattr(self, "_notation_font_ready", False):
+            font_id = QFontDatabase.addApplicationFont(str(ASSET_ROOT.parent / "fonts/lichess-notation.ttf"))
+            families = QFontDatabase.applicationFontFamilies(font_id)
+            self._notation_family = families[0] if families else "Segoe UI Symbol"
+            self._notation_font_ready = True
 
         def figurine(san):
-            return ''.join(f'<img src="piece:{c}" width="19" height="19" />' if c in "KQRBN" else escape(c)
-                           for c in san)
+            return ''.join(f'<span style="font-family:{self._notation_family};font-size:17px;">{c}</span>'
+                           if c in "KQRBN" else escape(c) for c in san)
 
         def cell(index, indent):
             if index is None:

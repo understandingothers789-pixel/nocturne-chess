@@ -1,0 +1,7 @@
+Lichess chess notation font, by the pgn4web authors, with Noto Sans portions copyright 2012 Google Inc.
+Source: https://github.com/lichess-org/lila/tree/master/public/font
+Lichess license declaration: https://github.com/lichess-org/lila/blob/master/COPYING.md
+Chess notation glyphs: GNU GPL version 2 or later (see MERIDA-GPL-2.0-or-later.txt).
+Noto Sans portions: Apache License 2.0 (see NOTO-APACHE-2.0.txt).
+Original editable source: src/nocturne/assets/fonts/lichess-chess.sfd
+Converted from WOFF2 to TTF with FontTools, family renamed LichessNotation. Glyph outlines unchanged.
