@@ -444,9 +444,46 @@ class BlunderMeter(InsightCard):
         self.selection_changed.emit(uci or "")
 
 
+class MaiaOutcomeBar(QWidget):
+    """White-perspective model outcomes; grey remains explicitly draw probability."""
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.values = None
+        self.setAccessibleName("Maia outcome prediction from White's perspective")
+
+    def set_outcome(self, values):
+        self.values = values
+        self.setToolTip((f"Maia · White win {values[0]:.1%} · Draw {values[1]:.1%} · Black win {values[2]:.1%}"
+                         f"\nWhite expected score: {values[0] + values[1]/2:.1%} (win + half draws)")
+                        if values else "Maia outcome prediction unavailable / loading")
+        self.update()
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setPen(QColor("#9fc7cc"))
+        p.drawText(QRectF(0, 0, self.width(), 22), Qt.AlignmentFlag.AlignCenter, "M3")
+        bar = QRectF(12, 28, 16, max(0, self.height()-62))
+        if self.values:
+            y = bar.top()
+            for value, color in zip(reversed(self.values), ("#252a32", "#789097", "#edf0e8")):
+                h = bar.height()*value
+                p.fillRect(QRectF(bar.left(), y, bar.width(), h), QColor(color))
+                y += h
+            score = f"{100*(self.values[0]+self.values[1]/2):.0f}%"
+        else:
+            p.fillRect(bar, QColor("#46535d"))
+            score = "—"
+        p.setPen(QColor("#9fc7cc"))
+        p.drawText(QRectF(0, self.height()-28, self.width(), 22), Qt.AlignmentFlag.AlignCenter, score)
+        p.end()
+
+
 class MaiaInsights(QScrollArea):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setViewportMargins(42, 0, 0, 0)
+        self.outcome_bar = MaiaOutcomeBar(self)
+        self.outcome_bar.show()
         self.setWidgetResizable(True)
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -485,6 +522,10 @@ class MaiaInsights(QScrollArea):
         self.body_layout.addWidget(move_map)
         self.body_layout.addStretch()
         self.setWidget(body)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.outcome_bar.setGeometry(0, 0, 40, self.height())
 
     def set_data(self, policies, board, rating, appearance=None):
         policy = policies.get(str(rating), {})

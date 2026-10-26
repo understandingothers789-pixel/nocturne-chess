@@ -57,7 +57,8 @@ class MaiaTests(unittest.TestCase):
             restored = MaiaController(Path(folder))
             restored.request("root", ["b1c3"], 1800)
             self.assertEqual(restored.policies, {"1800": {"a2a3": 1}})
-            self.assertIsNone(restored._queued)
+            # Policy-only caches must backfill the newly exposed outcome head.
+            self.assertIsNotNone(restored._queued)
             controller.stop()
             restored.stop()
 

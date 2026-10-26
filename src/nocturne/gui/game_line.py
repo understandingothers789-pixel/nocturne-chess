@@ -1,10 +1,12 @@
 """Scrollable move pairs with branch rows and saved, White-perspective scores."""
 from html import escape
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QColor, QPainter, QPen, QTextCursor
+from PySide6.QtCore import Qt, QTimer, QUrl, QRectF
+from PySide6.QtGui import QColor, QPainter, QPen, QTextCursor, QImage, QTextDocument
 from PySide6.QtWidgets import QTextBrowser
 
+from PySide6.QtSvg import QSvgRenderer
+from ..pieces import ASSET_ROOT
 from .moves import MoveText
 from .theme import palette
 from ..core.rules import Board
@@ -65,8 +67,17 @@ class GameLine(MoveText):
         rows = []
         row_paths = []
 
+        for kind in "KQRBN":
+            image = QImage(60, 60, QImage.Format.Format_ARGB32_Premultiplied)
+            image.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(image)
+            QSvgRenderer(str(ASSET_ROOT / f"w{kind.lower()}.svg")).render(painter, QRectF(0, 0, 60, 60))
+            painter.end()
+            self.document().addResource(QTextDocument.ResourceType.ImageResource, QUrl(f"piece:{kind}"), image)
+
         def figurine(san):
-            return san.translate(str.maketrans({"K": "♔", "Q": "♕", "R": "♖", "B": "♗", "N": "♘"}))
+            return ''.join(f'<img src="piece:{c}" width="19" height="19" />' if c in "KQRBN" else escape(c)
+                           for c in san)
 
         def cell(index, indent):
             if index is None:
@@ -80,7 +91,7 @@ class GameLine(MoveText):
             value = plot_score_label(node.evaluation) if node.evaluation is not None else ''
             title = departures.get(index, '')
             punctuation = {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}
-            text = escape(figurine(node.san) + "".join(punctuation.get(nag, f" ${nag}") for nag in node.nags))
+            text = figurine(node.san) + escape("".join(punctuation.get(nag, f" ${nag}") for nag in node.nags))
             # Use a nested two-cell table to align the evaluation at the right
             # of each move without relying on unsupported CSS floats.
             return (f'<td width="44%" bgcolor="{bg}"><a name="node{index}"></a>'
@@ -99,7 +110,7 @@ class GameLine(MoveText):
             fg = colors['selected_text'] if active else ('#cbd9dc' if not light else '#334b50')
             bg = f"background-color:{colors['selection']};" if active else ""
             punctuation = {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}
-            san = escape(figurine(node.san) + "".join(punctuation.get(n, f" ${n}") for n in node.nags))
+            san = figurine(node.san) + escape("".join(punctuation.get(n, f" ${n}") for n in node.nags))
             value = plot_score_label(node.evaluation) if node.evaluation is not None else ''
             title = departures.get(index, '')
             if value:

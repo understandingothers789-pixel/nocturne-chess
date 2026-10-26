@@ -1574,6 +1574,7 @@ class MainWindow(QMainWindow):
                   else {})
         self.candidates.set_maia(policy, rating, self.config.get("maia_enabled", True) and self.analysis_mode)
         self.maia_controls.set_policy(policy, self.game.board)
+        self.maia_insights.outcome_bar.set_outcome(self.maia.outcomes.get(str(rating)) if self.analysis_mode and self.config.get("maia_enabled", True) else None)
         self.maia_insights.set_data(policies, self.game.board, rating, self._appearance_config())
         self._sync_blunder()
         if self._dock_workspace is not None:

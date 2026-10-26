@@ -69,14 +69,23 @@ class Predictor:
             board.push_uci(uci)
             history.append(tokenize_board(board))
         legal = list(board.legal_moves)
+        self.outcomes = {}
         if board.is_game_over():
+            result = board.outcome()
+            white = (1.0 if result.winner else 0.0) if result.winner is not None else 0.0
+            draw = float(result.winner is None)
+            self.outcomes = {str(r): [white, draw, 1-white-draw] for r in ratings}
             return {str(r): {} for r in ratings}
         tokens = get_historical_tokens(history, self.cfg, 180, 0, 180, 0)
         mask = get_legal_moves_mask(board, self.indices)
         def forward():
             with torch.inference_mode():
                 elo = torch.tensor(ratings, dtype=torch.long, device=self.device)
-                logits, _, _ = self.model(tokens.to(self.device).unsqueeze(0).expand(len(ratings), -1, -1), elo, elo)
+                logits, values, _ = self.model(tokens.to(self.device).unsqueeze(0).expand(len(ratings), -1, -1), elo, elo)
+                # Official Maia labels: side-to-move loss, draw, win.
+                values = torch.softmax(values.float().cpu(), dim=-1).tolist()
+                self.outcomes = {str(r): ([v[2], v[1], v[0]] if board.turn else v)
+                                 for r, v in zip(ratings, values)}
                 # Legal masking and normalization on CPU also support DirectML.
                 return torch.softmax(logits.float().cpu().masked_fill(~mask.unsqueeze(0), float("-inf")), dim=-1)
         try:
@@ -114,7 +123,7 @@ def main():
             # batches so the GUI gets useful probabilities without waiting.
             for batch in ([ratings[0]], *[ratings[i:i+2] for i in range(1, len(ratings), 2)]):
                 result = predictor.predict(request["root"], request["moves"], batch)
-                emit({"id": request["id"], "policies": result, "device": predictor.device_label, "complete": batch[-1] == ratings[-1]})
+                emit({"id": request["id"], "policies": result, "outcomes": predictor.outcomes, "device": predictor.device_label, "complete": batch[-1] == ratings[-1]})
         except Exception as exc:
             emit({"id": request.get("id"), "error": str(exc)})
     return 0

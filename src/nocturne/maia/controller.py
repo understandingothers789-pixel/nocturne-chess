@@ -34,12 +34,15 @@ class MaiaController(QObject):
         self._busy = False
         self._failed = False
         self._closing = False
+        self.outcomes = {}
         self.policies = {}
         self.cache = OrderedDict()
+        self.value_cache = {}
         self.cache_path = self.directory / "maia-policy-cache.json"
         try:
             data = json.loads(self.cache_path.read_text())
             if data.get("model") == MODEL_REVISION:
+                self.value_cache = data.get("outcomes", {})
                 self.cache.update(list(data.get("positions", {}).items())[-128:])
         except (OSError, ValueError, AttributeError):
             pass
@@ -50,18 +53,19 @@ class MaiaController(QObject):
 
     def request(self, root, moves, rating=1800, sweep=False):
         ratings = [rating] + ([r for r in RATINGS if r != rating] if sweep else [])
-        key = hashlib.sha256(json.dumps([MODEL_REVISION, root, moves], separators=(",", ":")).encode()).hexdigest()
+        key = hashlib.sha256(json.dumps([MODEL_REVISION, "white-wdl-v1", root, moves], separators=(",", ":")).encode()).hexdigest()
         signature = (key, tuple(ratings))
         if self._queued and self._queued[0] == signature:
             return
         if self._active and self._active[0] == signature:
             return
         self._serial += 1
+        self.outcomes = dict(self.value_cache.get(key, {}))
         self.policies = dict(self.cache.get(key, {}))
         self.changed.emit(self.policies)
         request = {"id": self._serial, "root": root, "moves": moves, "ratings": ratings}
         self._queued = (signature, request)
-        if all(str(r) in self.policies for r in ratings):
+        if all(str(r) in self.policies and str(r) in self.outcomes for r in ratings):
             self._active, self._queued = self._queued, None
             self.status.emit("Maia-3 79M · cached")
             return
@@ -127,6 +131,8 @@ class MaiaController(QObject):
                     if self._queued:
                         self._dispatch()
             elif self._active and message.get("id") == self._serial == self._active[1]["id"]:
+                self.outcomes.update(message.get("outcomes", {}))
+                self.value_cache[self._active[0][0]] = self.outcomes.copy()
                 self.policies.update(message.get("policies", {}))
                 self.cache[self._active[0][0]] = self.policies.copy()
                 self.changed.emit(self.policies)
@@ -140,11 +146,12 @@ class MaiaController(QObject):
 
     def _save_cache(self):
         while len(self.cache) > 128:
-            self.cache.popitem(last=False)
+            key, _ = self.cache.popitem(last=False)
+            self.value_cache.pop(key, None)
         try:
             self.directory.mkdir(parents=True, exist_ok=True)
             temporary = self.cache_path.with_suffix(".tmp")
-            temporary.write_text(json.dumps({"model": MODEL_REVISION, "positions": self.cache}), encoding="utf-8")
+            temporary.write_text(json.dumps({"model": MODEL_REVISION, "positions": self.cache, "outcomes": self.value_cache}), encoding="utf-8")
             temporary.replace(self.cache_path)
         except OSError:
             pass
@@ -190,5 +197,6 @@ class MaiaController(QObject):
         self._cpu_retry = False
         self._ready = False
         self._busy = False
+        self.outcomes = {}
         self.policies = {}
         self.changed.emit({})
