@@ -1009,3 +1009,12 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - [Run 40366879677](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40366879677): lint, full tests, packaged application/worker checks and live API checks passed.
 - [Unsigned Windows x64 artifact](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40366879677/artifacts/12670987454): 494,296,821 bytes; expires November 25, 2026.
 - Local full suite: 288 tests, 5 skipped. Focused checks cover layout restoration, guide text, token highlighting and dynamic move counts.
+
+
+## Windows build receipt · 0.5.7.90
+
+- Source: `e0d47e8ea62bb7ebd5a7de1343c9f9fb772c4a7f`
+- [Run 40401079661](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40401079661): lint, 290 tests (5 skipped), packaged application/worker checks and live API checks passed.
+- Native Windows test verifies real-process job assignment, CPU rate changes, disabling and cleanup.
+- [Unsigned Windows artifact](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40401079661/artifacts/12689602556): 494,305,473 bytes; expires November 25, 2026.
+- Local CPU-budget settings validation passed (Windows-only test skipped); 33 external-engine checks passed.

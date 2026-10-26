@@ -22,6 +22,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt capture of the main line after 13...Bd7. Stockfish 17.1 NNUE reached depth 25 and reported +0.49 after 9,528,716 nodes. Maia is disabled in this capture.*
 
 
+**[Download 0.5.7.90 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40401079661/artifacts/12689602556): Stockfish CPU budget.** Engine → Stockfish CPU budget caps the external engine at 10%, 25%, 50% or 75% of total CPU capacity, independently of Threads. Unrestricted remains the default. Changes apply live and the choice persists. See the [CPU budget guide](docs/CPU_BUDGET.md). Full Windows tests, native job-object verification and packaged checks passed.
+
 **[Download 0.5.7.89 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40366879677/artifacts/12670987454): Maia layout and discoverability.** Display → Swap Moves by Rating and Game Line exchanges those sections. The Maia toggle reports the loaded move count; an amber Database token row flags a missing session token. A ? beside Flip/Copy FEN explains board symbols. Engine Threads includes 3. Full Windows tests and packaged checks passed.
 
 **[Download 0.5.7.88 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40363857280/artifacts/12670386014): Lichess-style Maia arrows.** Maia moves strictly above 10% use transparent pale-gray arrows matching the supplied Lichess SVG brush: #4a4a4a at 40% opacity, round shafts and triangular heads. Stockfish rods and numbered badges retain their style. Full Windows tests and packaged checks passed.
