@@ -469,7 +469,7 @@ class MaiaOutcomeBar(QWidget):
                 h = bar.height()*value
                 p.fillRect(QRectF(bar.left(), y, bar.width(), h), QColor(color))
                 y += h
-            score = f"{100*(self.values[0]+self.values[1]/2):.0f}%"
+            score = f"{100*self.values[0]:.0f}%"
         else:
             p.fillRect(bar, QColor("#46535d"))
             score = "—"
