@@ -2868,11 +2868,15 @@ class MainWindow(QMainWindow):
         except ValueError as exc:
             self.statusBar().showMessage(str(exc), 4000)
             return
-        self._refresh(animate=True)
+        # Commit pixels before history formatting, persistence or analysis UI.
+        # repaint() paints this widget only; it does not process queued input.
+        self.board_view.set_position(self.game.board, move, animate=False)
+        self.board_view.repaint()
+        self._refresh(board_ready=True)
         self._save()
         self._schedule_engine()
 
-    def _refresh(self, animate=False):
+    def _refresh(self, animate=False, board_ready=False):
         self.delete_line_action.setEnabled(self.analysis_mode and self.game.current_node != 0)
         self._register_study()
         self._update_review_panel()
@@ -2885,7 +2889,8 @@ class MainWindow(QMainWindow):
             self.pgn_editor.document().setModified(False)
             self._pgn_game_id = self.game.id
         last = self.game.moves[self.game.cursor - 1] if self.game.cursor else None
-        self.board_view.set_position(self.game.board, last, animate)
+        if not board_ready:
+            self.board_view.set_position(self.game.board, last, animate)
         next_game_move = (
             self.game.moves[self.game.cursor]
             if self.game.cursor < len(self.game.moves)

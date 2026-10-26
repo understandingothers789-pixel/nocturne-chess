@@ -67,13 +67,15 @@ class GameLine(MoveText):
         rows = []
         row_paths = []
 
-        for kind in "KQRBN":
-            image = QImage(60, 60, QImage.Format.Format_ARGB32_Premultiplied)
-            image.fill(Qt.GlobalColor.transparent)
-            painter = QPainter(image)
-            QSvgRenderer(str(ASSET_ROOT / f"w{kind.lower()}.svg")).render(painter, QRectF(0, 0, 60, 60))
-            painter.end()
-            self.document().addResource(QTextDocument.ResourceType.ImageResource, QUrl(f"piece:{kind}"), image)
+        if not getattr(self, "_notation_icons_ready", False):
+            for kind in "KQRBN":
+                image = QImage(60, 60, QImage.Format.Format_ARGB32_Premultiplied)
+                image.fill(Qt.GlobalColor.transparent)
+                painter = QPainter(image)
+                QSvgRenderer(str(ASSET_ROOT / f"w{kind.lower()}.svg")).render(painter, QRectF(0, 0, 60, 60))
+                painter.end()
+                self.document().addResource(QTextDocument.ResourceType.ImageResource, QUrl(f"piece:{kind}"), image)
+            self._notation_icons_ready = True
 
         def figurine(san):
             return ''.join(f'<img src="piece:{c}" width="19" height="19" />' if c in "KQRBN" else escape(c)

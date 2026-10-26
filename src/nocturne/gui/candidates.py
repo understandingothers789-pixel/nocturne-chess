@@ -68,6 +68,26 @@ class CandidatePanel(QWidget):
         self.hovered = None
         self.pending.clear()
         self.preview_end.emit()
+        if set(self.rows) == set(range(1, self.multipv + 1)):
+            # Retain browser widgets and their layout/scrollbar geometry across
+            # position changes, rather than tearing down every PV row.
+            self.lines.clear()
+            self.details.clear()
+            self.pinned.clear()
+            self.expanded_ranks.clear()
+            for rank, (_, header, moves) in self.rows.items():
+                moves.cancel_preview()
+                moves.setViewportMargins(0, 0, 0, 0)
+                moves.reserve_lines(0 if self.expanded else self.default_pv_lines)
+                moves.set_moves([])
+                header.clear()
+                self.maia_labels[rank].clear()
+                self.footers[rank].clear()
+                self.footers[rank].hide()
+                self._refresh_expander(rank)
+            self._clearing = False
+            self.changed.emit()
+            return
         for rank, widgets in self.rows.items():
             widgets[2].cancel_preview()
             if rank == 1:
