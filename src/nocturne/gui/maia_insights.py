@@ -498,6 +498,7 @@ class MaiaInsights(QScrollArea):
         self.body_layout.setContentsMargins(0, 0, 0, 0)
         self.body_layout.setSpacing(8)
         trends = InsightCard("01", "Moves by Rating")
+        self.trends_card = trends
         self.rating_chip = QLabel("1800")
         self.rating_chip.setObjectName("sectionNumber")
         self.rating_chip.setToolTip("Selected Lichess blitz rating; opponent has the same rating.")

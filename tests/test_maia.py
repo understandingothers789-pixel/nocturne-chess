@@ -43,6 +43,7 @@ class MaiaTests(unittest.TestCase):
         from nocturne.gui.maia import MaiaControls
         tools, board = MaiaControls(), Board()
         tools.set_policy({"e2e4": .7}, board)
+        self.assertEqual(tools.all_moves.text(), "Top 1 Maia move")
         item = tools.table.item(0, 0)
         tools.set_policy({"e2e4": .7}, board)
         self.assertIs(tools.table.item(0, 0), item)

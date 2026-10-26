@@ -216,6 +216,29 @@ class GuiTests(unittest.TestCase):
         self.assertIn("Make this variation the mainline and delete the previous mainline", labels)
         menu.deleteLater()
 
+    def test_rating_chart_can_swap_with_game_line_without_losing_state(self):
+        window = self.window
+        window.analysis_mode = True
+        window.config.update(maia_enabled=True, show_maia_insights=True)
+        game = window.game
+        line, chart = window.game_line_panel, window.maia_insights.trends_card
+        window._set_display("swap_rating_game_line", True)
+        self.assertTrue(window._rating_game_line_swapped)
+        self.assertGreaterEqual(window.engine_layout.indexOf(chart), 0)
+        self.assertEqual(window.maia_insights.body_layout.indexOf(line), 0)
+        window._set_display("show_maia_insights", False)
+        self.assertFalse(window._rating_game_line_swapped)
+        self.assertGreaterEqual(window.engine_layout.indexOf(line), 0)
+        window._set_display("show_maia_insights", True)
+        self.assertTrue(window._rating_game_line_swapped)
+        window._set_display("swap_rating_game_line", False)
+        self.assertEqual(window.maia_insights.body_layout.indexOf(chart), 0)
+        self.assertIs(window.game, game)
+        with patch("nocturne.gui.window.QMessageBox.information") as guide:
+            window._show_board_guide()
+        self.assertIn("10%", guide.call_args.args[2])
+        self.assertIn("rankings, not probabilities", guide.call_args.args[2])
+
     def test_history_numbers_for_black_to_move_fen(self):
         game = Game("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 20")
         for move in ("e7e5", "e2e4", "b8c6"):

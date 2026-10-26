@@ -42,6 +42,7 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
+    QWidgetAction,
 )
 
 from .. import __version__
@@ -359,6 +360,10 @@ class MainWindow(QMainWindow):
         board_tools.addStretch()
         board_tools.addWidget(button("⇅  Flip", self._flip, "quiet"))
         board_tools.addWidget(button("Copy FEN", self._copy_fen, "quiet"))
+        guide = button("?", self._show_board_guide, "quiet")
+        guide.setAccessibleName("Board symbols guide")
+        guide.setToolTip("Click for a guide to Stockfish rods, numbered circles and Maia arrows.")
+        board_tools.addWidget(guide)
         board_layout.addLayout(board_tools)
         splitter.addWidget(arena)
         self.panel = QScrollArea()
@@ -464,8 +469,13 @@ class MainWindow(QMainWindow):
         self.inline_history.move_clicked.connect(self._navigate_node)
         self.inline_history.move_hovered.connect(self._preview_history)
         self.inline_history.preview_ended.connect(lambda: self._end_preview("history"))
-        self.engine_layout.addWidget(label("GAME LINE", "gameLineHeading"))
-        self.engine_layout.addWidget(self.inline_history, 1)
+        self.game_line_panel = QWidget()
+        game_line_layout = QVBoxLayout(self.game_line_panel)
+        game_line_layout.setContentsMargins(0, 0, 0, 0)
+        game_line_layout.addWidget(label("GAME LINE", "gameLineHeading"))
+        game_line_layout.addWidget(self.inline_history, 1)
+        self.engine_layout.addWidget(self.game_line_panel, 1)
+        self._rating_game_line_swapped = False
         self.engine_scroll.setWidget(engine_detail)
         self.analysis_detail_splitter = QSplitter(Qt.Orientation.Vertical)
         self.analysis_detail_splitter.setChildrenCollapsible(False)
@@ -751,6 +761,7 @@ class MainWindow(QMainWindow):
             ("smart_move", "Smart Move · click recommended destinations"),
             ("branch_arrows", "Show saved continuation arrows"),
             ("show_maia_insights", "Show Maia insights"),
+            ("swap_rating_game_line", "Swap Moves by Rating and Game Line"),
             ("details", "Detailed analysis statistics"),
             ("show_seldepth", "Show selective depth (seldepth)"),
             ("wheel_game_moves", "Wheel navigates game moves"),
@@ -839,8 +850,16 @@ class MainWindow(QMainWindow):
             self.explorer_actions[("explorer_rating", value)] = action
         self.explorer_filter_menus = (speeds, ratings)
         database.addSeparator()
-        self.lichess_token_action = add(database, "Lichess access token…", self._lichess_token_dialog)
-        self._lichess_token_warning = False
+        self.lichess_token_action = QWidgetAction(database)
+        self.lichess_token_row = QPushButton()
+        self.lichess_token_row.setAccessibleName("Lichess access token")
+        self.lichess_token_action.setDefaultWidget(self.lichess_token_row)
+        self.lichess_token_action.triggered.connect(self._lichess_token_dialog)
+        self.lichess_token_row.clicked.connect(lambda: (database.close(), self.lichess_token_action.trigger()))
+        database.addAction(self.lichess_token_action)
+        self.menu_actions["Lichess access token…"] = self.lichess_token_action
+        database.aboutToShow.connect(lambda: self._set_lichess_token_warning(True))
+        self._set_lichess_token_warning(True)
         add(database, "Create a Lichess access token…", lambda: QDesktopServices.openUrl(
             QUrl("https://lichess.org/account/oauth/token/create?description=Nocturne%20database%20explorer")))
         self.clear_lichess_token_action = add(database, "Clear session access token", self._clear_lichess_token)
@@ -984,7 +1003,7 @@ class MainWindow(QMainWindow):
         self._save()
 
     def _lichess_connection_status(self, key, message):
-        """Highlight token setup only after a Lichess request reports missing auth."""
+        """Refresh the token setup hint when a Lichess request reports status."""
         if not hasattr(self, "lichess_token_action"):
             return
         clients = (self.explorer.client, self.opening_coverage.client)
@@ -998,15 +1017,21 @@ class MainWindow(QMainWindow):
             self._set_lichess_token_warning(True)
 
     def _set_lichess_token_warning(self, warning):
-        self._lichess_token_warning = bool(warning) and not self.explorer.client.has_lichess_token
+        self._lichess_token_warning = not self.explorer.client.has_lichess_token
         action = self.lichess_token_action
         action.setText("⚠ Lichess access token required…" if self._lichess_token_warning
                        else "Lichess access token…")
         font = action.font()
         font.setBold(self._lichess_token_warning)
         action.setFont(font)
-        action.setToolTip("Lichess rejected the database request because no session token is set."
+        action.setToolTip("No Lichess access token is set. Click here to add a token for Lichess databases."
                           if self._lichess_token_warning else "")
+        self.lichess_token_row.setText(action.text())
+        self.lichess_token_row.setToolTip(action.toolTip())
+        self.lichess_token_row.setStyleSheet(
+            "QPushButton { text-align:left; padding:8px 20px; background:#694b20; color:#ffe2a6; border:0; font-weight:bold; }"
+            "QPushButton:hover, QPushButton:focus { background:#89652d; }"
+            if self._lichess_token_warning else "QPushButton { text-align:left; padding:8px 20px; border:0; }")
 
     def _set_explorer_option(self, key, value):
         self.config[key] = value
@@ -1626,6 +1651,7 @@ class MainWindow(QMainWindow):
         self._maia_changed(self.maia.policies if enabled else {})
 
     def _maia_changed(self, policies):
+        self._sync_insight_layout()
         if self._auto_play_active:
             policies = {}
         rating = self.config.get("maia_rating", 1800)
@@ -2798,12 +2824,13 @@ class MainWindow(QMainWindow):
             self._maia_changed(self.maia.policies)
 
     def _apply_settings(self):
+        self._sync_insight_layout()
         self._apply_appearance(self._appearance_config())
         self.candidates.set_show_seldepth(self.config.get("show_seldepth", False))
         self.candidates.set_detailed(self.config.get("details", False))
         if self._last_info:
             self._render_telemetry(self._last_info, self._last_info_turn)
-        self.tablebase_label.setVisible(bool(self.config.get("syzygy_path")))
+        self.tablebase_label.setVisible(self.maia_controls.details.isChecked())
         self.board_view.smart_move = self.config.get("smart_move", True)
         self.board_view.candidate_style = self.config.get("candidate_style", "lines")
         for key, action in self.marker_actions.items():
@@ -2831,7 +2858,45 @@ class MainWindow(QMainWindow):
         self.engine.set_snapshot_capture(self.config.get("analysis_snapshots", False))
         self.confirm_review_action.setChecked(self.config.get("review_confirm", True))
 
+    def _sync_insight_layout(self):
+        if not hasattr(self, "maia_insights"):
+            return
+        swap = (self.analysis_mode and self.config.get("swap_rating_game_line", False)
+                and self.config.get("maia_enabled", True) and self.config.get("show_maia_insights", True))
+        if swap == self._rating_game_line_swapped:
+            return
+        trends, line = self.maia_insights.trends_card, self.game_line_panel
+        self.maia_insights.chart.setMaximumHeight(16777215 if swap else 280)
+        trends.content.setStretch(1, 1)
+        for widget in (trends, line):
+            self.engine_layout.removeWidget(widget)
+            self.maia_insights.body_layout.removeWidget(widget)
+        self.engine_layout.addWidget(trends if swap else line, 1)
+        self.maia_insights.body_layout.insertWidget(0, line if swap else trends)
+        line.setMinimumHeight(160 if swap else 0)
+        trends.show()
+        line.show()
+        self._rating_game_line_swapped = swap
+
+    def _show_board_guide(self):
+        QMessageBox.information(self, "Board symbols guide",
+            "Stockfish — rods and numbered circles\n"
+            "Each rod points to an engine candidate. The circle number is its Stockfish rank: 1 is the top recommendation, "
+            "2 is the second, and so on. These numbers are rankings, not probabilities.\n\n"
+            "Maia — transparent gray arrows\n"
+            "An arrow appears for every move Maia predicts has more than a 10% chance of being played at the selected rating. "
+            "Gray shows human likelihood, not move quality.\n\n"
+            "When both agree\n"
+            "A gray arrow and a Stockfish rod/circle can point to the same destination. "
+            "Stockfish ranks the move and Maia predicts that people will play it.\n\n"
+            "Maia percentages and the Blunder Meter\n"
+            "Percentages estimate human move choices. Green, yellow and red in the Blunder Meter "
+            "describe Stockfish-assessed move quality; gray there means not evaluated.\n\n"
+            "Move previews\n"
+            "Hover a variation and scroll to explore it on the preview board. The main board stays on your game position.")
+
     def _sync_workspace_layout(self):
+        self._sync_insight_layout()
         analysis = self.analysis_mode
         signature = (analysis, self.config.get("layout", "classic"), self._dock_workspace is not None)
         if self._analysis_layout_active == signature:

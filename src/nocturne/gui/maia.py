@@ -102,8 +102,8 @@ class MaiaControls(QWidget):
         self.status.setText("Maia-3 79M · local human-move predictions")
         self.status.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.status.setObjectName("sectionNote")
-        self.all_moves = QCheckBox("All human moves")
-        self.all_moves.setToolTip("Show the full legal policy here, including moves outside Stockfish MultiPV.")
+        self.all_moves = QCheckBox("Maia moves")
+        self.all_moves.setToolTip("Show the listed Maia moves, ranked by probability, with available Stockfish evaluations.")
         self.details = QPushButton("▸ Details")
         self.details.setCheckable(True)
         self.details.setToolTip("Show engine, GPU and tablebase information")
@@ -257,6 +257,7 @@ class MaiaControls(QWidget):
             self._stockfish = {}
             self._table_fen = fen
         ordered = sorted(policy.items(), key=lambda pair: -pair[1])
+        self.all_moves.setText(f"Top {len(ordered)} Maia move" + ("s" if len(ordered) != 1 else "") if ordered else "Maia moves")
         signature = (fen, board.chess960, tuple(ordered))
         if signature == getattr(self, "_policy_signature", None):
             return

@@ -358,7 +358,8 @@ class CachedGuiTests(unittest.TestCase):
         query = ExplorerQuery(window.game.board.fen())
         client.query = query
         client.status.emit(query.key, "Lichess Masters unavailable (HTTP 500)")
-        self.assertEqual(window.lichess_token_action.text(), "Lichess access token…")
+        self.assertTrue(window.lichess_token_action.text().startswith("⚠"))
+        self.assertIn("background:#694b20", window.lichess_token_row.styleSheet())
         client.status.emit(query.key, "Lichess Masters access token required · Database → Lichess access token…")
         self.assertTrue(window.lichess_token_action.text().startswith("⚠"))
         self.assertTrue(window.lichess_token_action.font().bold())
