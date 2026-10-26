@@ -224,10 +224,19 @@ resolution for clear small icons. Stored and copied PGN remains standard SAN.
 
 ## Layout and symbol guide (0.5.7.89)
 
-The **Top N Maia moves** toggle reports the number of moves in the loaded policy. It opens the policy table, ranked by probability; its count is independent of Stockfish MultiPV and the >10% board-arrow threshold.
+The **Top N Maia moves** toggle opens the probability-ranked table. N defaults to **5** and stays fixed as you change positions. Open **Details → Maia moves shown** to choose 1–64 rows; the choice is saved. Positions with fewer legal moves show fewer rows. This only limits the table: probabilities are not renormalized, Stockfish MultiPV is independent, and board arrows retain the >10% threshold.
 
 **Display → Swap Moves by Rating and Game Line** puts the rating chart beneath Stockfish and Game Line at the top of the insights column. The preference is saved. When Maia insights are hidden or disabled, Game Line returns to the analysis column so it remains accessible.
 
 Click **?** beside **Flip / Copy FEN** for the board-symbol guide. It explains Stockfish rods and rank circles, Maia arrows, overlapping recommendations, quality categories and previews.
 
 **Database → Lichess access token** has an amber row whenever the session token is blank. Entering a token removes the highlight; clearing it restores the highlight. Tokens remain session-only.
+
+
+## Pane controls (0.5.7.91)
+
+Drag the visible horizontal divider below Stockfish to resize the section beneath it, including Moves by Rating in the swapped layout.
+
+The bottom **Game Moves** strip has a collapse arrow. Collapse leaves its header and an expand arrow visible near the bottom edge; hover the arrow for its tooltip and click to reopen. The collapsed preference is saved.
+
+Spaces between Stockfish PV moves are part of their hover targets, preventing the board preview from disappearing between adjacent moves. Blank space beyond the final move remains outside the preview target.
