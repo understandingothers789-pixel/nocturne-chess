@@ -1570,8 +1570,9 @@ class MainWindow(QMainWindow):
             histories = []
             moves = [self.game.nodes[n].move.uci() for n in path]
             index = self.game.current_node
+            selected_future = iter(self.game._line_nodes[self.game.cursor + 1:])
             while self.game.nodes[index].children:
-                index = self.game.nodes[index].children[0]
+                index = next(selected_future, self.game.nodes[index].children[0])
                 moves = moves + [self.game.nodes[index].move.uci()]
                 histories.append(moves)
             self.maia.prefetch(self.game.initial_fen, histories, rating)

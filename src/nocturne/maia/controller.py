@@ -106,6 +106,7 @@ class MaiaController(QObject):
             self._active, self._queued = self._queued, None
             self.status.emit("Maia-3 79M · cached")
             return
+        self.status.emit("Maia-3 79M · calculating…")
         self.debounce.start()
 
     def _dispatch(self):
