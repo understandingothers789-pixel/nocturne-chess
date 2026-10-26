@@ -22,6 +22,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt UI preview. Engine evaluations and Maia probabilities in this
 capture are explicitly labelled fixtures, not measured chess analysis.*
 
+**[0.5.7.77](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40255877979/artifacts/12623265326): show board moves before side-panel work.** Direct board moves paint immediately without slide animation, before history rendering and persistence. Candidate rows retain their widgets across position changes to avoid layout churn, and Game Line piece icons are rendered once and reused. Move validation, saves and engine restart remain intact. In a local branching-study sample, first board paint began about 4 ms into the move handler; this is not a Windows performance guarantee.
+
 **[0.5.7.76](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40254481071/artifacts/12622157517): clear vector piece icons and a Maia outcome rail.** Game Line uses high-resolution Cburnett piece shapes instead of font glyphs. A bar along the left edge of the insight cards shows Maia’s White win / draw / Black win probabilities from its actual value head, at the selected rating. The number is White’s win probability; hover for all outcomes and expected score. Predictions remain in White’s perspective on either turn.
 
 **[0.5.7.75](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40251984062/artifacts/12621488272): a softer, more readable Game Line.** Chess-piece symbols replace SAN piece letters in the display, with muted teal guides, softer variation backgrounds and refined text spacing. Copied PGN retains standard notation.
