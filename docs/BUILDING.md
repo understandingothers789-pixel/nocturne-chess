@@ -942,3 +942,14 @@ Connectivity-only run 39065979799/job 117493627053 passed on Windows for
 authentication-required responses; no authenticated data claim is made. ChessDB
 returned valid JSON containing 29 locally validated legal moves for 1.e4 e5.
 The UTF-8 diagnostic completed without callback errors.
+
+
+## Windows build receipt · 0.5.7.83
+
+- Source commit: `368d6776934cae5084ec5e2d133ee4ee4989bd53`
+- Windows workflow: [run 40268790525](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40268790525)
+- Artifact: [Nocturne-0.5.7.83-Windows-x64-unsigned](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40268790525/artifacts/12627083667)
+- Artifact size: 494,305,072 bytes; retained until November 25, 2026.
+- Full Windows test suite and packaged application/worker smoke checks passed.
+
+Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
