@@ -23,6 +23,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 capture are explicitly labelled fixtures, not measured chess analysis.*
 
 
+**[0.5.7.84 Windows build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml): interactive saved-game preview and a compact empty explorer.** In the Saved PGNs dialog, click a move or use the mouse wheel to preview that mainline position; clicking blank space returns the board to the ending position. The preview opens at the ending position. The database explorer collapses to a small header and message when no games match.
+
 **[Download 0.5.7.83 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40268790525/artifacts/12627083667): calmer autosaving.** Move and analysis saves are coalesced to at most once per minute; settings save when changed. Closing the app and importing a PGN save immediately. Full Windows tests and packaged smoke checks passed. Maia is suspended during F11 self-play. The artifact expires November 25, 2026.
 
 **[0.5.7.82](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml): Maia and hardware defaults.** Maia predictions now cover 600–3000 Elo in 200-point steps, and the outcome rail shows White's expected score including half the draw rate. GPU-equipped systems default Stockfish Hash to 8 GB unless a custom value is set. The Database menu highlights a missing Lichess token after an authentication response. F11 engine self-play stops Maia inference and restores it when self-play ends.

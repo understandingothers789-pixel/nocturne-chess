@@ -53,7 +53,6 @@ from ..maia.risk import assess_moves
 from ..core.board import Move, SQUARES
 from ..core.rules import Board
 from ..core.game import Game, TimeControl
-from ..core.variation import mainline
 from ..core.notation import pgn_clock
 from ..core.notation import parse_san
 from ..engine.uci_types import AnalysisLimits as SearchLimits, score_label, plot_score_label as score_text
@@ -75,6 +74,7 @@ from .snapshot_dialog import SnapshotDialog
 from ..explorer import RATINGS, SPEEDS
 from .moves import MoveText
 from .game_line import GameLine
+from .saved_game_preview import SavedGameMoves
 from .study_tabs import StudyTabBar
 from .hover_preview import HoverPreview, MiniBoard
 from .wheel import WheelSteps
@@ -3642,10 +3642,10 @@ class MainWindow(QMainWindow):
         move_preview = QVBoxLayout()
         preview_title = label("Hover over a saved game to preview it", "subtitle", True)
         move_preview.addWidget(preview_title)
-        move_preview.addWidget(label("Opening · first six moves", "eyebrow"))
-        opening = label("", "", True)
-        opening.setStyleSheet("font-family: Consolas, monospace; font-size: 14px;")
-        opening.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        move_preview.addWidget(label("Click a move or scroll to preview a position · click blank space to return to the end",
+                                     "eyebrow", True))
+        opening = SavedGameMoves()
+        opening.position_selected.connect(lambda ply: show_game_position(ply))
         move_preview.addWidget(opening, 1)
         preview_layout.addLayout(move_preview, 1)
         content.addWidget(preview)
@@ -3654,6 +3654,20 @@ class MainWindow(QMainWindow):
         layout.addWidget(content, 1)
 
         preview_cache = {}
+        preview_game = {"game": None}
+
+        def show_game_position(ply):
+            game = preview_game["game"]
+            if game is None:
+                return
+            node_id = opening._line[max(0, min(len(opening._line) - 1, ply))]
+            node = game.nodes[node_id]
+            mini_board.set_position(game.position_at_node(node_id), node.move)
+            final_ply = len(opening._line) - 1
+            if ply >= final_ply:
+                preview_title.setText(f"Final position · {game.metadata.get('title', 'Saved game')}")
+            else:
+                preview_title.setText(f"After {node.san} · {game.metadata.get('title', 'Saved game')}")
 
         def show_game_preview(item, *_):
             if item is None:
@@ -3667,20 +3681,9 @@ class MainWindow(QMainWindow):
                 preview_title.setText("Cannot preview this game")
                 opening.setText(str(exc))
                 return
-            line = mainline(game.nodes)
-            end_node = line[-1]
-            final_move = game.nodes[end_node].move if end_node else None
-            mini_board.set_position(game.position_at_node(end_node), final_move)
-            preview_title.setText(f"Final position · {game.metadata.get('title', 'Saved game')}")
-            position = game.position_at_node(0)
-            moves = []
-            for node_id in line[1:13]:
-                node = game.nodes[node_id]
-                move_number = position.fullmove
-                notation = f"{move_number}. {node.san}" if position.turn > 0 else f"{move_number}... {node.san}"
-                moves.append(notation)
-                position.push(node.move)
-            opening.setText(" ".join(moves) if moves else "No moves in this game.")
+            preview_game["game"] = game
+            opening.set_game(game, self._appearance_config().get("light", False))
+            show_game_position(opening.selected_ply)
 
         listing.itemEntered.connect(show_game_preview)
         listing.currentItemChanged.connect(show_game_preview)

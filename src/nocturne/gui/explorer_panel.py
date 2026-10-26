@@ -50,6 +50,7 @@ class OpeningExplorer(QWidget):
         self.statistics_origin = ""
         self.statistics_status = ""
         self._hover = None
+        self._compact_empty = False
         self.setMinimumHeight(170)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 4, 0, 0)
@@ -103,8 +104,19 @@ class OpeningExplorer(QWidget):
         self.statistics_status = ""
         self.statistics_changed.emit()
 
+    def _set_compact_empty(self, empty):
+        empty = bool(empty)
+        if empty == self._compact_empty:
+            return
+        self._compact_empty = empty
+        self.table.setVisible(not empty)
+        self.status_label.setVisible(not empty)
+        self.setMinimumHeight(0 if empty else 170)
+        self.setMaximumHeight(88 if empty else 16777215)
+
     def set_position(self, board, identity, enabled, source="masters", speed="all", rating=0):
         if not enabled:
+            self._set_compact_empty(False)
             self.client.cancel()
             self.query = None
             self.identity = None
@@ -131,6 +143,7 @@ class OpeningExplorer(QWidget):
         if self.query and self.query.key == query.key:
             return
         self._end_preview()
+        self._set_compact_empty(False)
         self.query = query
         self._clear_statistics()
         self.rows = []
@@ -158,6 +171,7 @@ class OpeningExplorer(QWidget):
         self.rows = data["moves"]
         self.table.setRowCount(len(self.rows))
         if self.query.source == "chessdb":
+            self._set_compact_empty(not bool(self.rows))
             for i, row in enumerate(self.rows):
                 for column, value in enumerate((row["san"], chessdb_score(row["score"], self.query.fen), row["note"])):
                     self.table.setItem(i, column, QTableWidgetItem(value))
@@ -167,6 +181,7 @@ class OpeningExplorer(QWidget):
             }[data["status"]])
             self.status_label.setText(origin)
             return
+        self._set_compact_empty(not bool(self.rows))
         for i, row in enumerate(self.rows):
             self.table.setItem(i, 0, QTableWidgetItem(row["san"]))
             self.table.setItem(i, 1, QTableWidgetItem(f"{row['total']:,}"))

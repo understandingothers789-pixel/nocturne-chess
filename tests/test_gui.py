@@ -17,7 +17,7 @@ from nocturne.core.notation import san
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 try:
     from PySide6.QtCore import QEvent, QPoint, QPointF, QTimer, Qt
-    from PySide6.QtGui import QMouseEvent, QTextDocument, QWheelEvent, QColor, QFontMetricsF
+    from PySide6.QtGui import QMouseEvent, QTextCursor, QTextDocument, QWheelEvent, QColor, QFontMetricsF
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QMenu, QScrollArea, QWidget
     from nocturne.gui.window import MainWindow
@@ -1429,6 +1429,45 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(self.window.history.item(0, 1).text(), "e4")
         self.assertEqual(self.window.game.board.cells[parse_square("e4")], 1)
         self.assertIs(self.window.board_view.board, self.window.game.board)
+
+    def test_saved_game_preview_click_wheel_and_blank_reset(self):
+        from nocturne.gui.saved_game_preview import SavedGameMoves
+
+        preview = SavedGameMoves()
+        preview.setFixedSize(420, 130)
+        preview.set_game(Game.from_pgn("1.d4 d5 2.c4 e6 *"))
+        preview.show()
+        self.app.processEvents()
+        self.assertEqual(preview.selected_ply, 4)  # Open at the final position.
+
+        cursor = QTextCursor(preview.document())
+        block = preview.document().begin()
+        d4_point = None
+        while block.isValid():
+            fragment = block.begin()
+            while not fragment.atEnd():
+                current = fragment.fragment()
+                if current.charFormat().anchorHref() == "ply:1":
+                    cursor.setPosition(current.position() + 2)
+                    d4_point = preview.cursorRect(cursor).center()
+                    break
+                fragment += 1
+            if d4_point is not None:
+                break
+            block = block.next()
+        self.assertIsNotNone(d4_point)
+        QTest.mouseClick(preview.viewport(), Qt.MouseButton.LeftButton, pos=d4_point)
+        self.app.processEvents()
+        self.assertEqual(preview.selected_ply, 1)
+
+        self._wheel(preview.viewport(), -120)
+        self.assertEqual(preview.selected_ply, 2)
+        self._wheel(preview.viewport(), 120)
+        self.assertEqual(preview.selected_ply, 1)
+        QTest.mouseClick(preview.viewport(), Qt.MouseButton.LeftButton, pos=QPoint(410, 120))
+        self.app.processEvents()
+        self.assertEqual(preview.selected_ply, 4)
+        preview.close()
 
     def test_autosave_is_rate_limited_and_imported_pgn_is_saved_immediately(self):
         window = self.window
