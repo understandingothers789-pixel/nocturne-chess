@@ -200,6 +200,24 @@ class Game:
             children.insert(0, child)
         self._main_result = "*"
 
+    def promote_node_line(self, index, *, delete_previous=False):
+        """Make the line through *index* mainline, optionally removing the old one."""
+        path = self.node_path(index)
+        previous_mainline = mainline(self.nodes)
+        divergence = next((ply for ply, (old, new) in enumerate(zip(previous_mainline, path))
+                           if old != new), None)
+        if divergence is None:
+            return False
+
+        previous_branch = previous_mainline[divergence]
+        self.select_node(index)
+        self.promote_current_line()
+        if delete_previous:
+            self.select_node(previous_branch)
+            self.delete_current_line()
+            self.select_node(self.mainline_node(min(len(path) - 1, len(mainline(self.nodes)) - 1)))
+        return True
+
     def delete_current_line(self) -> bool:
         """Remove this move and its subtree; select the nearest surviving sibling."""
         index = self.current_node

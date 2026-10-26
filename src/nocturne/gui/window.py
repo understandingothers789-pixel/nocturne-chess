@@ -53,6 +53,7 @@ from ..maia.risk import assess_moves
 from ..core.board import Move, SQUARES
 from ..core.rules import Board
 from ..core.game import Game, TimeControl
+from ..core.variation import mainline
 from ..core.notation import pgn_clock
 from ..core.notation import parse_san
 from ..engine.uci_types import AnalysisLimits as SearchLimits, score_label, plot_score_label as score_text
@@ -3387,9 +3388,32 @@ class MainWindow(QMainWindow):
             self._navigate(cursor)
 
     def _inline_history_menu(self, position):
+        menu = self._inline_history_context_menu(position)
+        menu.exec(self.inline_history.mapToGlobal(position))
+
+    def _inline_history_context_menu(self, position):
         menu = QMenu(self.inline_history)
         menu.addAction("Copy PGN", self._copy_pgn)
-        menu.exec(self.inline_history.mapToGlobal(position))
+        anchor = self.inline_history.anchorAt(position)
+        if anchor.startswith("move:") and anchor[5:].isdigit():
+            node_id = int(anchor[5:])
+            if node_id and node_id not in mainline(self.game.nodes):
+                menu.addSeparator()
+                menu.addAction("Make this variation the mainline",
+                               lambda node_id=node_id: self._promote_node_line(node_id))
+                menu.addAction("Make this variation the mainline and delete the previous mainline",
+                               lambda node_id=node_id: self._promote_node_line(node_id, delete_previous=True))
+        return menu
+
+    def _promote_node_line(self, node_id, *, delete_previous=False):
+        if not 0 < node_id < len(self.game.nodes):
+            return
+        self._stop_engine()
+        self._ensure_analysis_copy()
+        if self.game.promote_node_line(node_id, delete_previous=delete_previous):
+            self._refresh()
+            self._save()
+            self._schedule_engine()
 
     def _history_context_menu(self, position):
         menu = QMenu(self.analysis_history)

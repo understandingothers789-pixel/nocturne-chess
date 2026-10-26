@@ -69,6 +69,30 @@ class VariationTests(unittest.TestCase):
         self.assertEqual(restored.sans[-1], "Nf6")
         self.assertEqual(restored.board.key, game.position_at_node(original).key)
 
+    def test_promote_alternative_keeps_old_mainline_as_sibling(self):
+        game = Game.from_pgn("1.e4 e5 2.Nf3 Nc6 (2...Nf6 3.d4) *")
+        nf3 = next(i for i, node in enumerate(game.nodes) if node.san == "Nf3")
+        old_mainline = next(i for i, node in enumerate(game.nodes) if node.san == "Nc6")
+        target = next(i for i, node in enumerate(game.nodes) if node.san == "Nf6")
+
+        self.assertTrue(game.promote_node_line(target))
+        self.assertEqual(game.nodes[nf3].children, [target, old_mainline])
+        self.assertEqual(game.sans, ["e4", "e5", "Nf3", "Nf6", "d4"])
+        restored = Game.from_dict(json.loads(json.dumps(game.to_dict())))
+        self.assertEqual(restored.pgn(), game.pgn())
+        self.assertIn("Nc6", restored.pgn())
+
+    def test_promote_alternative_can_delete_previous_mainline(self):
+        game = Game.from_pgn("1.e4 e5 2.Nf3 Nc6 (2...Nf6 3.d4) *")
+        nf3 = next(i for i, node in enumerate(game.nodes) if node.san == "Nf3")
+        target = next(i for i, node in enumerate(game.nodes) if node.san == "Nf6")
+
+        self.assertTrue(game.promote_node_line(target, delete_previous=True))
+        self.assertEqual(game.nodes[nf3].children, [game.mainline_node(4)])
+        self.assertEqual(game.sans, ["e4", "e5", "Nf3", "Nf6", "d4"])
+        self.assertNotIn("Nc6", game.pgn())
+        self.assertEqual(Game.from_dict(json.loads(json.dumps(game.to_dict()))).pgn(), game.pgn())
+
     def test_old_schema_migrates_and_invalid_side_branch_rejected(self):
         game, _ = self.study()
         data = game.to_dict()

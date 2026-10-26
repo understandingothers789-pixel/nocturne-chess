@@ -187,6 +187,35 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(window.game.sans[4:], ["Nc3"])
         self.assertIn("(", window.game.pgn())
 
+    def test_game_line_context_menu_offers_mainline_actions_on_alternative(self):
+        window = self.window
+        window.analysis_mode = True
+        window.game = Game.from_pgn("1.e4 e5 2.Nf3 Nc6 (2...Nf6 3.d4) *")
+        alternative = next(i for i, node in enumerate(window.game.nodes) if node.san == "Nf6")
+        window._refresh()
+
+        cursor = QTextCursor(window.inline_history.document())
+        block = window.inline_history.document().begin()
+        point = None
+        while block.isValid() and point is None:
+            iterator = block.begin()
+            while not iterator.atEnd():
+                fragment = iterator.fragment()
+                if fragment.charFormat().anchorHref() == f"move:{alternative}":
+                    cursor.setPosition(fragment.position() + 1)
+                    point = window.inline_history.cursorRect(cursor).center()
+                    break
+                iterator += 1
+            block = block.next()
+        self.assertIsNotNone(point)
+        self.assertEqual(window.inline_history.anchorAt(point), f"move:{alternative}")
+
+        menu = window._inline_history_context_menu(point)
+        labels = [action.text() for action in menu.actions()]
+        self.assertIn("Make this variation the mainline", labels)
+        self.assertIn("Make this variation the mainline and delete the previous mainline", labels)
+        menu.deleteLater()
+
     def test_backing_out_of_variation_resumes_mainline_on_forward_navigation(self):
         window = self.window
         window.game = Game.from_pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 (3...Nf6) 4. Ba4 *")
