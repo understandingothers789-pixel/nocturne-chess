@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import QEasingCurve, QPointF, QRectF, QSize, Qt, QVariantAnimation, Signal
-from PySide6.QtGui import QColor, QFont, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QPolygonF
+from PySide6.QtGui import QColor, QFont, QIcon, QMouseEvent, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QMenu, QWidget
 
@@ -236,35 +236,13 @@ class BoardWidget(QWidget):
         # pixel ratio; its asset viewBox alone controls piece size and spacing.
         self._renderers[piece].render(painter, rect)
 
-    def _arrow(self, painter: QPainter, src: int, dst: int, color: QColor, unit: float, *, subtle=False, maia=False):
+    def _arrow(self, painter: QPainter, src: int, dst: int, color: QColor, unit: float, *, subtle=False):
         if src == dst:
             return
         a, b = self.square_rect(src).center(), self.square_rect(dst).center()
         dx, dy = b.x() - a.x(), b.y() - a.y()
         distance = math.hypot(dx, dy)
         dx, dy = dx / distance, dy / distance
-        if maia:
-            # A single wide silhouette with an outline stays distinct beneath
-            # the much slimmer Stockfish rod, even when they share a color.
-            direction = QPointF(dx, dy)
-            # Intersect the approach ray with the target square's inset box.
-            # The tip ends 25% inside its edge, leaving the center badge clear.
-            b -= direction * (unit * 0.25 / max(abs(dx), abs(dy)))
-            normal = QPointF(-dy, dx)
-            a += direction * (unit * 0.25)
-            remaining = math.hypot((b-a).x(), (b-a).y())
-            head_length = min(unit * 0.43, remaining * 0.75)
-            base = b - direction * head_length
-            half_head = min(unit * 0.30, head_length * 0.70)
-            half_shaft = min(unit * 0.105, half_head * 0.55)
-            shape = QPolygonF([a + normal * half_shaft, base + normal * half_shaft,
-                               base + normal * half_head, b, base - normal * half_head,
-                               base - normal * half_shaft, a - normal * half_shaft])
-            painter.setPen(QPen(QColor(25, 38, 48, 215), max(1.5, unit * 0.023),
-                                Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-            painter.setBrush(color)
-            painter.drawPolygon(shape)
-            return
         width = max(2.0, unit * 0.060) if subtle else unit * 0.115
         head_length = unit * (0.22 if subtle else 0.37)
         head_width = unit * (0.13 if subtle else 0.20)
@@ -278,6 +256,37 @@ class BoardWidget(QWidget):
         base = b - QPointF(dx, dy) * head_length
         normal = QPointF(-dy, dx) * head_width
         painter.drawPolygon(QPolygonF([b, base + normal, base - normal]))
+
+    def _maia_arrow(self, painter, src, dst, unit):
+        """Lichess paleGrey brush: round shaft, SVG marker proportions, 40% opacity."""
+        if src == dst:
+            return
+        start = self.square_rect(src).center()
+        target = self.square_rect(dst).center()
+        delta = target - start
+        length = math.hypot(delta.x(), delta.y())
+        width = unit * 0.15625
+        end = length - unit * 0.15625
+        shaft = QPainterPath()
+        shaft.moveTo(0, 0)
+        shaft.lineTo(end, 0)
+        stroker = QPainterPathStroker()
+        stroker.setWidth(width)
+        stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+        # SVG marker: M0,0 V4 L3,2 Z, refX=2.05, refY=2.
+        head = QPainterPath()
+        head.moveTo(end - 2.05 * width, -2 * width)
+        head.lineTo(end - 2.05 * width, 2 * width)
+        head.lineTo(end + 0.95 * width, 0)
+        head.closeSubpath()
+        painter.save()
+        painter.translate(start)
+        painter.rotate(math.degrees(math.atan2(delta.y(), delta.x())))
+        # Fill one silhouette so shaft/head overlap cannot darken the arrow.
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(74, 74, 74, 102))
+        painter.drawPath(stroker.createStroke(shaft).united(head))
+        painter.restore()
 
     @staticmethod
     def last_move_color(base):
@@ -364,13 +373,12 @@ class BoardWidget(QWidget):
             piece = self.board.cells[self._anim_move.to_sq]
             if piece:
                 self._piece(painter, piece, QRectF(pos.x(), pos.y(), unit, unit))
-        # Short Maia arrows sit above pieces so one-square moves remain visible;
-        # Stockfish rods and endpoint circles are drawn above this layer.
+        # Lichess-style Maia arrows overlay pieces; Stockfish rods and badges
+        # retain their independent layer above them.
         if not preview and self.overlays and self.maia_arrows_enabled:
             for move, probability, category in reversed(self.maia_recommendations):
-                color = QColor({"best": "#1a9850", "ok": "#fee08b", "blunder": "#d73027"}.get(category, "#82909e"))
-                color.setAlpha(round(145 + 75 * math.sqrt(probability)))
-                self._arrow(painter, move.from_sq, self._destination(move), color, unit, maia=True)
+                if probability > 0.10:
+                    self._maia_arrow(painter, move.from_sq, self._destination(move), unit)
         for src, dst in () if preview else self.arrows:
             self._arrow(painter, src, dst, QColor(232, 175, 79, 200), unit)
         if not preview and self.overlays:
