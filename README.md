@@ -23,7 +23,7 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 capture are explicitly labelled fixtures, not measured chess analysis.*
 
 
-**[0.5.7.84 Windows build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/workflows/windows.yml): interactive saved-game preview and a compact empty explorer.** In the Saved PGNs dialog, click a move or use the mouse wheel to preview that mainline position; clicking blank space returns the board to the ending position. The preview opens at the ending position. The database explorer collapses to a small header and message when no games match.
+**[Download 0.5.7.84 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40270943009/artifacts/12628642792): interactive saved-game preview and a compact empty explorer.** In the Saved PGNs dialog, click a move or use the mouse wheel to preview that mainline position; clicking blank space returns the board to the ending position. The preview opens at the ending position. The database explorer collapses to a small header and message when no games match. Full Windows tests and packaged smoke checks passed. The artifact expires November 25, 2026.
 
 **[Download 0.5.7.83 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40268790525/artifacts/12627083667): calmer autosaving.** Move and analysis saves are coalesced to at most once per minute; settings save when changed. Closing the app and importing a PGN save immediately. Full Windows tests and packaged smoke checks passed. Maia is suspended during F11 self-play. The artifact expires November 25, 2026.
 
