@@ -44,10 +44,10 @@ from PySide6.QtWidgets import (
 )
 
 from .. import __version__
-from ..maia.risk import assess_moves
 from ..maia.controller import MaiaController
 from .maia import MaiaControls
 from .maia_insights import MaiaInsights
+from ..maia.risk import assess_moves
 from ..core.board import Move, SQUARES
 from ..core.rules import Board
 from ..core.game import Game, TimeControl
@@ -2811,8 +2811,27 @@ class MainWindow(QMainWindow):
             if self.config.get("explorer_statistics") else {})
         self.analysis_history.set_moves(tokens, self.game.current_node, self._appearance_config().get("light", False),
                                         book_departure=departure if departure else None, book_departures=markers)
+        move_risks = {}
+        current = self.game.current_node
+        if current and self.analysis_mode and self.config.get("maia_enabled", True):
+            node = self.game.nodes[current]
+            parent = node.parent
+            if node.evaluation is not None and abs(node.evaluation) < 400 and parent is not None:
+                path = self.game.node_path(parent)[1:]
+                history = [self.game.nodes[index].move.uci() for index in path]
+                key = self.maia.position_key(self.game.initial_fen, history)
+                rating = self.config.get("maia_rating", 1800)
+                policy = self.maia.cache.get(key, {}).get(str(rating), {})
+                saved = self.game.nodes[parent].analysis
+                lines = saved.get("multipv_lines") or [saved]
+                candidates = {line["pv"][0]: line for line in lines if isinstance(line, dict) and line.get("pv")}
+                assessed = assess_moves(policy, candidates)
+                green_share = sum(move["probability"] for move in assessed.values()
+                                  if move["category"] == "best")
+                if green_share < .5 and assessed.get(node.move.uci(), {}).get("category") == "blunder":
+                    move_risks[current] = True
         self.inline_history.set_game(self.game, self._appearance_config().get("light", False),
-                                     book_departures=markers)
+                                     book_departures=markers, move_risks=move_risks)
         self._refresh_raw_pgn()
 
     def _end_preview(self, source):

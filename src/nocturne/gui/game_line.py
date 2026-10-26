@@ -2,10 +2,10 @@
 from html import escape
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QColor, QPainter, QPen, QTextCursor, QFontDatabase
+from PySide6.QtGui import QColor, QPainter, QPen, QTextCursor
 from PySide6.QtWidgets import QTextBrowser
 
-from ..pieces import ASSET_ROOT
+from .notation import html as notation_html
 from .moves import MoveText
 from .theme import palette
 from ..core.rules import Board
@@ -42,14 +42,15 @@ class GameLine(MoveText):
         QTextBrowser.wheelEvent(self, event)
         event.accept()
 
-    def set_game(self, game, light=False, book_departures=None):
+    def set_game(self, game, light=False, book_departures=None, move_risks=None):
         departures = dict(book_departures or {})
+        move_risks = dict(move_risks or {})
         self._book_departures = departures
         nodes = game.nodes
         current = game.current_node
         signature = (game.id, current, light, tuple(sorted(departures.items())),
                      tuple((node.parent, tuple(node.children), node.san, node.evaluation, tuple(node.nags))
-                           for node in nodes))
+                           for node in nodes), tuple(sorted(move_risks.items())))
         if signature == self._game_signature:
             return
         previous_current = self._current
@@ -66,22 +67,16 @@ class GameLine(MoveText):
         rows = []
         row_paths = []
 
-        if not getattr(self, "_notation_font_ready", False):
-            font_id = QFontDatabase.addApplicationFont(str(ASSET_ROOT.parent / "fonts/lichess-notation.ttf"))
-            families = QFontDatabase.applicationFontFamilies(font_id)
-            self._notation_family = families[0] if families else "Segoe UI Symbol"
-            self._notation_font_ready = True
-
         def figurine(san):
-            return ''.join(f'<span style="font-family:{self._notation_family};font-size:17px;">{c}</span>'
-                           if c in "KQRBN" else escape(c) for c in san)
+            return notation_html(san)
 
         def cell(index, indent):
             if index is None:
                 return f'<td width="44%" bgcolor="{colors["soft"] if indent else colors["panel"]}"></td>'
             node = nodes[index]
             active = index == current
-            bg = colors['selection'] if active else colors['soft'] if indent else colors['panel']
+            flagged = index in move_risks
+            bg = ("#59463a" if not light else "#f1dfc9") if flagged else colors['selection'] if active else colors['soft'] if indent else colors['panel']
             fg = colors['selected_text'] if active else ('#cbd9dc' if not light else '#334b50')
             if index in departures:
                 fg = '#87713f' if light else '#c3b07c'

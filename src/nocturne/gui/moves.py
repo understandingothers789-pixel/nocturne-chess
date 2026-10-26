@@ -7,6 +7,7 @@ from PySide6.QtCore import QEvent, QPoint, Signal, Qt, QUrl
 from PySide6.QtGui import QTextDocument, QTextCursor, QTextOption
 from PySide6.QtWidgets import QTextBrowser
 from .theme import palette
+from .notation import html as notation_html
 from .wheel import WheelSteps
 
 
@@ -20,6 +21,7 @@ class MoveText(QTextBrowser):
 
     def __init__(self, parent=None, *, auto_fit=False, reserved_lines=0):
         super().__init__(parent)
+        self._figurines = False
         self._auto_fit = auto_fit
         self._reserved_lines = reserved_lines
         self._reserved_measurement = None
@@ -95,20 +97,21 @@ class MoveText(QTextBrowser):
             self.cancel_preview()
         return super().viewportEvent(event)
 
-    def set_moves(self, items, current=None, light=False, *, book_departure=None, book_departures=None):
-        signature = (list(items), current, light)
+    def set_moves(self, items, current=None, light=False, *, book_departure=None, book_departures=None, figurines=False):
+        signature = (list(items), current, light, figurines)
         candidate_style = (self.candidate_rank, self.candidate_turn, self.candidate_evaluation)
         departures = dict(book_departures or {})
         if book_departure is not None and book_departure not in departures:
             departures[book_departure] = "Lichess Masters: first position with no games found"
-        if (signature == (self._items, self._current, self._light)
+        if (signature == (self._items, self._current, self._light, self._figurines)
                 and candidate_style == self._candidate_style and book_departure == self._book_departure
                 and departures == self._book_departures):
             return
         self.preview_ended.emit()
         self._hovered = None
         self._last_pointer_hovered = None
-        self._items, self._current, self._light = signature
+        self._items, self._current, self._light = signature[:3]
+        self._figurines = figurines
         self._candidate_style = candidate_style
         self._book_departure = book_departure
         self._book_departures = departures
@@ -137,7 +140,7 @@ class MoveText(QTextBrowser):
             label = text
             decoration = "text-decoration:none;"
             tooltip = f' title="{escape(departures[index], quote=True)}"' if index in departures else ""
-            tokens.append(f'<a href="move:{index}" style="{style} {decoration}"{tooltip}>{escape(label)}</a>')
+            tokens.append(f'<a href="move:{index}" style="{style} {decoration}"{tooltip}>{notation_html(label) if figurines else escape(label)}</a>')
         size, spacing = (16, 155) if self._auto_fit else (14, 140)
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'
                      + " ".join(tokens) + "</div>")

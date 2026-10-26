@@ -4,13 +4,14 @@ import math
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
-    QFrame, QGridLayout, QLabel, QScrollArea, QToolButton, QVBoxLayout, QWidget, QToolTip,
+    QFrame, QGridLayout, QLabel, QScrollArea, QVBoxLayout, QWidget, QToolTip,
     QComboBox, QHBoxLayout, QApplication, QSizePolicy,
 )
 from ..core.notation import san
 from ..maia import RATINGS, percentage
 from ..maia.risk import assess_moves
 from .theme import palette
+from .notation import FigurineToolButton, draw as draw_notation, html as notation_html
 
 COLORS = ("#8ed5ef", "#d6b46d", "#91c6a4", "#c2a7eb", "#e3a394")
 LIGHT_COLORS = ("#197b9c", "#a16c22", "#377e56", "#7b50a8", "#b95844")
@@ -162,10 +163,11 @@ class RatingChart(QWidget):
         for (point, move, name, color), y in zip(labels, positions):
             painter.setPen(QPen(color, 1))
             painter.drawLine(point, QPointF(label_x-3, y))
-            text = painter.fontMetrics().elidedText(name, Qt.TextElideMode.ElideRight,
-                                                  max(1, int(self.width()-label_x-2)))
-            label_rect = QRectF(label_x, y-8, self.width()-label_x, 16)
-            painter.drawText(label_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, text)
+            label_rect = QRectF(label_x, y-9, self.width()-label_x, 18)
+            painter.save()
+            painter.setClipRect(label_rect)
+            draw_notation(painter, label_x, y+4, name)
+            painter.restore()
             endpoint = next(item for item in reversed(self.points) if item[1] == move)
             self.label_hits.append((label_rect, endpoint))
         if not self.policies:
@@ -310,7 +312,7 @@ class MoveMap(QWidget):
                 continue
             painter.fillRect(box, QColor(colors["soft"]))
             painter.setPen(QColor(colors["text"]))
-            painter.drawText(box, Qt.AlignmentFlag.AlignCenter, name)
+            draw_notation(painter, box.left()+3, box.center().y()+5, name)
             occupied.append(box)
         if not known:
             painter.setPen(QColor(colors["muted"]))
@@ -404,7 +406,7 @@ class BlunderMeter(InsightCard):
             value.setStyleSheet(style)
             value.setText(percentage(totals[category]) if assessments else "—")
             if category in self.move_labels:
-                moves = [f"{names[uci]} {percentage(data['probability'])}" for uci, data in
+                moves = [f"{notation_html(names[uci], size=14)} {percentage(data['probability'])}" for uci, data in
                          sorted(assessments.items(), key=lambda item: -item[1]["probability"])
                          if data["category"] == category]
                 self.move_labels[category].setText(" · ".join(moves[:3]) or "—")
@@ -549,9 +551,8 @@ class MaiaInsights(QScrollArea):
                 except ValueError:
                     continue
                 self.chart.names[move] = name
-                button = QToolButton()
+                button = FigurineToolButton(name)
                 button.setObjectName("curveLegend")
-                button.setText(name)
                 button.setCheckable(True)
                 button.setChecked(move not in self.chart.hidden_moves)
                 button.setStyleSheet(f"color: {curve_colors()[index]};")

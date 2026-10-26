@@ -330,7 +330,7 @@ class CandidatePanel(QWidget):
         frame, header, moves = self.rows[rank]
         moves.candidate_turn = turn
         moves.candidate_evaluation = score_label(info, turn)
-        moves.set_moves([(text, i + 1) for i, text in enumerate(info["san"])], light=light)
+        moves.set_moves([(text, i + 1) for i, text in enumerate(info["san"])], light=light, figurines=True)
         if (previous and previous.get("pv")
                 and (not info.get("pv") or previous["pv"][0] != info["pv"][0])):
             self.expanded_ranks.discard(rank)
