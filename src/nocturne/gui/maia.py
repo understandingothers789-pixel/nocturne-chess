@@ -93,7 +93,7 @@ class MaiaControls(QWidget):
         for rating in RATINGS:
             self.rating.addItem(f"{rating} Elo", rating)
         self.rating.setCurrentIndex(RATINGS.index(1800))
-        self.rating.setToolTip("Drag left/right in 200 Elo steps, or click to choose a rating.\nLichess blitz rating; opponent uses the same rating.\n400–3000 are model inputs, not guaranteed accuracy at the extremes.")
+        self.rating.setToolTip("Drag left/right in 200 Elo steps, or click to choose a rating.\nLichess blitz rating; opponent uses the same rating.\n600–3000 are model inputs, not guaranteed accuracy at the extremes.")
         self.rating.currentIndexChanged.connect(lambda: self.rating_changed.emit(self.rating.currentData()))
         top.addWidget(self.rating, 0, 2)
         top.setColumnStretch(3, 1)

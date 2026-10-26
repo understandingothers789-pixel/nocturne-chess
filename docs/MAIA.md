@@ -8,7 +8,7 @@ UCI engine. Maia predicts human move choices; Stockfish searches for strong move
 ## Analysis and ratings
 
 Enable or disable Maia in **Engine → Maia-3 79M**, or use the checkbox above
-analysis. The adjacent rating selector accepts 400–3000 in steps of 200 and uses
+analysis. The adjacent rating selector accepts 600–3000 in steps of 200 and uses
 an equally rated opponent. Maia is used for standard chess; Chess960 keeps its
 existing Stockfish analysis and does not receive unsupported Maia predictions.
 These are Lichess blitz rating inputs, not guaranteed
@@ -51,7 +51,7 @@ panels. Reset layout returns to the standard arrangement. The main board remains
 square, with coordinates inside its edges and its evaluation bar on the right.
 
 **Moves by Rating** plots the five likeliest moves at the selected rating across
-400–3000. Each point is an actual inference at that rating, with an equally rated
+600–3000. Each point is an actual inference at that rating, with an equally rated
 opponent. Missing samples remain gaps. Click legend buttons to hide/show curves;
 hover near a point for the exact percentage. The dashed marker is the selected
 rating. Curves are model predictions, not measured database game frequencies.

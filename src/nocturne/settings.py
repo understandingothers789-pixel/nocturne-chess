@@ -1,6 +1,7 @@
 """Validate persisted preferences before they cross into UI or search limits."""
 
 import math
+from .maia import RATINGS as MAIA_RATINGS
 from .pieces import DEFAULT_PIECE_SET, PIECE_SET_NAMES
 
 DEFAULTS = {
@@ -81,7 +82,7 @@ def normalize(data) -> dict:
     choices = {
         "mode": ("human_ai", "human", "ai_ai", "analysis"),
         "human_color": (-1, 0, 1),
-        "maia_rating": tuple(range(400, 3001, 200)),
+        "maia_rating": MAIA_RATINGS,
         "maia_device": ("auto", "cpu"),
         "maia_arrow_count": (1, 3, 5),
         "difficulty": ("Beginner", "Casual", "Intermediate", "Advanced", "Expert", "Maximum"),

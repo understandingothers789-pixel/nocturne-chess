@@ -6,11 +6,11 @@ VSVersionInfo(
   kids=[StringFileInfo([StringTable('040904B0', [
     StringStruct('CompanyName', 'Nocturne Chess contributors'),
     StringStruct('FileDescription', 'Nocturne Chess'),
-    StringStruct('FileVersion', '0.5.7.81'),
+    StringStruct('FileVersion', '0.5.7.82'),
     StringStruct('InternalName', 'Nocturne'),
     StringStruct('LegalCopyright', 'Copyright 2026 Nocturne Chess contributors'),
     StringStruct('OriginalFilename', 'Nocturne.exe'),
     StringStruct('ProductName', 'Nocturne Chess'),
-    StringStruct('ProductVersion', '0.5.7.81')
+    StringStruct('ProductVersion', '0.5.7.82')
   ])]), VarFileInfo([VarStruct('Translation', [1033, 1200])])]
 )

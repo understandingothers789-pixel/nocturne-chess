@@ -10,7 +10,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtCore import QByteArray
 from PySide6.QtWidgets import QApplication
 
-from nocturne.maia import percentage
+from nocturne.maia import RATINGS, percentage
 from nocturne.maia.controller import MaiaController
 from nocturne.gui.candidates import CandidatePanel
 from nocturne.gui.moves import MoveText
@@ -72,19 +72,35 @@ class MaiaTests(unittest.TestCase):
         from nocturne.gui.maia_insights import MaiaInsights
         tools = MaiaInsights()
         tools.resize(340, 700)
-        data = {"400": {"e2e4": 0.3, "d2d4": 0.7}, "1800": {"e2e4": 0.6, "d2d4": 0.4}}
+        data = {"600": {"e2e4": 0.3, "d2d4": 0.7}, "1800": {"e2e4": 0.6, "d2d4": 0.4},
+                "3000": {"e2e4": 0.8, "d2d4": 0.2}}
         tools.set_data(data, Board(), 1800)
         tools.show()
         self.app.processEvents()
         tools.grab()
         points = [(move, rating, probability) for _, move, rating, probability in tools.chart.points]
-        self.assertIn(("e2e4", 400, 0.3), points)
+        self.assertEqual(RATINGS, tuple(range(600, 3001, 200)))
+        self.assertIn(("e2e4", 600, 0.3), points)
         self.assertIn(("e2e4", 1800, 0.6), points)
-        self.assertNotIn(600, [rating for _, rating, _ in points])
+        self.assertIn(("e2e4", 3000, 0.8), points)
+        self.assertNotIn(400, [rating for _, rating, _ in points])
+        self.assertNotIn(500, [rating for _, rating, _ in points])
+        plotted = {rating: point for point, move, rating, _ in tools.chart.points if move == "e2e4"}
+        self.assertAlmostEqual(plotted[600].x(), tools.chart.plot_rect().left())
+        self.assertAlmostEqual(plotted[3000].x(), tools.chart.plot_rect().right())
         tools.legend_buttons["e2e4"].click()
         self.assertIn("e2e4", tools.chart.hidden_moves)
         tools.close()
         tools.deleteLater()
+
+    def test_maia_outcome_rail_shows_white_expected_score_including_draws(self):
+        from nocturne.gui.maia_insights import MaiaOutcomeBar
+        bar = MaiaOutcomeBar(None)
+        bar.set_outcome((0.15, 0.70, 0.15))
+        self.assertAlmostEqual(bar.white_expected_score, 0.5)
+        self.assertIn("White expected score: 50.0%", bar.toolTip())
+        bar.set_outcome(None)
+        self.assertIsNone(bar.white_expected_score)
 
     def test_scatter_map_keeps_promotion_identity_and_click_inspects_without_playing(self):
         from nocturne.core.rules import Board
@@ -201,6 +217,31 @@ class MaiaTests(unittest.TestCase):
                 window.config["show_maia_insights"] = True
                 window._request_maia()
                 self.assertTrue(request.call_args.kwargs["sweep"])
+            window.close()
+            window.deleteLater()
+            self.app.processEvents()
+
+    def test_f11_self_play_suspends_maia_and_resumes_on_exit(self):
+        from nocturne.gui.window import MainWindow
+        with tempfile.TemporaryDirectory() as directory:
+            window = MainWindow(Path(directory))
+            window.timer.stop()
+            window.autosave_timer.stop()
+            window._analysis_enabled = False
+            window.analysis_mode = True
+            window._auto_play_active = True
+            window.maia.policies = {"1800": {"e2e4": 1.0}}
+            with patch.object(window.maia, "stop") as stop, \
+                    patch.object(window.maia, "request") as request:
+                window._request_maia()
+                stop.assert_called_once_with()
+                request.assert_not_called()
+                self.assertEqual(window.board_view.maia_recommendations, [])
+                self.assertEqual(window.maia_insights.chart.policies, {})
+
+                window._auto_play_active = False
+                window._resume_maia_after_auto_play()
+                request.assert_called_once()
             window.close()
             window.deleteLater()
             self.app.processEvents()

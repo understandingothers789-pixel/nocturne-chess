@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import sys
 from types import SimpleNamespace
+from . import RATINGS
 
 
 def configuration():
@@ -117,7 +118,9 @@ def main():
         try:
             request = json.loads(raw)
             ratings = request["ratings"]
-            if not ratings or len(ratings) > 14 or any(type(r) is not int or not 400 <= r <= 3000 for r in ratings):
+            if (not ratings or len(ratings) > len(RATINGS)
+                    or len(set(ratings)) != len(ratings)
+                    or any(type(r) is not int or r not in RATINGS for r in ratings)):
                 raise ValueError("Invalid rating selection")
             # The selected rating is returned first; the sweep follows in small
             # batches so the GUI gets useful probabilities without waiting.

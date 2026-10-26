@@ -1613,6 +1613,30 @@ class GuiTests(unittest.TestCase):
         self.assertIsNone(self.window.board_view.preview_board)
         self.assertEqual(self.window.board_view.display_board.fen(), actual)
 
+    def test_detected_gpu_selects_eight_gigabyte_hash_only_for_default_profiles(self):
+        from nocturne.gui.hardware import has_discrete_gpu
+
+        self.assertTrue(has_discrete_gpu("Intel UHD Graphics\nAMD Radeon RX 9070 XT"))
+        self.assertTrue(has_discrete_gpu("NVIDIA GeForce"))
+        self.assertFalse(has_discrete_gpu("Intel UHD Graphics\nMicrosoft Basic Display Adapter"))
+        self.window._gpu_hardware_detected = True
+        option = {"kind": "spin", "default": "16", "minimum": 1, "maximum": 65536}
+        default_profile = {
+            "id": "gpu-default", "path": "stockfish", "values": {"Hash": "16"},
+            "options": {"Hash": option}, "options_detected": True,
+        }
+        custom_profile = {
+            "id": "gpu-custom", "path": "stockfish", "values": {"Hash": "4096"},
+            "options": {"Hash": option}, "options_detected": True,
+        }
+        self.window.profiles.extend((default_profile, custom_profile))
+        with patch("nocturne.gui.hardware.hash_budget_mb", return_value=16384):
+            self.window._maybe_apply_gpu_hash_default(default_profile)
+            self.window._maybe_apply_gpu_hash_default(custom_profile)
+        self.assertEqual(default_profile["values"]["Hash"], 8192)
+        self.assertEqual(default_profile["gpu_hash_defaulted"], 8192)
+        self.assertEqual(custom_profile["values"]["Hash"], "4096")
+
     def test_hover_special_moves_uses_copies_and_preserves_hash_and_cursor(self):
         cases = [
             ("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", "e1g1"),

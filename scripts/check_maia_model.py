@@ -26,13 +26,13 @@ def main():
         board = chess.Board(root)
         for move in moves:
             board.push_uci(move)
-        policies = predictor.predict(root, moves, [400, 1800, 3000])
+        policies = predictor.predict(root, moves, [600, 1800, 3000])
         legal = {m.uci() for m in board.legal_moves}
         for policy in policies.values():
             assert set(policy) == legal
             assert abs(sum(policy.values()) - 1) < 1e-5
             assert all(0 <= p <= 1 for p in policy.values())
-        assert policies['400'] != policies['3000']
+        assert policies['600'] != policies['3000']
     print("Official 79M model: White, Black, underpromotions and rating conditioning passed")
 
 

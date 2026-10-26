@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import __version__
+from ..maia import RATINGS as MAIA_RATINGS
 from ..maia.controller import MaiaController
 from .maia import MaiaControls
 from .maia_insights import MaiaInsights
@@ -101,6 +102,8 @@ class MainWindow(QMainWindow):
     def __init__(self, data_dir: Path | None = None):
         super().__init__()
         self._closing = False
+        self._gpu_hardware_detected = False
+        self._gpu_hash_default_profiles = set()
         self.setWindowTitle(f"Nocturne Chess · {__version__}")
         self.setWindowIcon(QIcon(str(ASSETS / "icon.svg")))
         self.resize(1340, 920)
@@ -184,6 +187,7 @@ class MainWindow(QMainWindow):
         self._review = restore_job(self.game)
         self._auto_play_active = False
         self._auto_play_paused = False
+        self._maia_suspended_for_auto_play = False
         self._job = None
         self._lab = None
         self._benchmark_report = None
@@ -230,6 +234,7 @@ class MainWindow(QMainWindow):
         if self._storage_message:
             QTimer.singleShot(0, lambda: self._error("Library unavailable", self._storage_message))
         QTimer.singleShot(100, self._schedule_engine)
+        QTimer.singleShot(0, self._probe_gpu_hardware)
 
     def _build(self):
         root = QWidget()
@@ -464,6 +469,7 @@ class MainWindow(QMainWindow):
         self.analysis_detail_splitter.addWidget(self.engine_scroll)
         self.explorer = OpeningExplorer(self.data_directory / "opening-cache.sqlite3")
         self.explorer.statistics_changed.connect(self._sync_candidate_database)
+        self.explorer.client.status.connect(self._lichess_connection_status)
         self.explorer.move_selected.connect(self._explorer_move)
         self.explorer.move_hovered.connect(self._preview_explorer)
         self.explorer.preview_ended.connect(lambda: self._end_preview("explorer"))
@@ -473,6 +479,7 @@ class MainWindow(QMainWindow):
         self._explorer_active = False
         self.opening_coverage = OpeningCoverage(self.data_directory / "opening-cache.sqlite3", self)
         self.opening_coverage.changed.connect(self._update_opening_coverage)
+        self.opening_coverage.client.status.connect(self._lichess_connection_status)
         self.maia_controls = MaiaControls()
         self.maia_controls.rating_changed.connect(self._set_maia_rating)
         self.maia_controls.enabled_changed.connect(self._set_maia_enabled)
@@ -798,7 +805,7 @@ class MainWindow(QMainWindow):
         add(device_menu, "Set up optional GPU runtime…", self._install_maia_gpu)
         rating_menu = maia_menu.addMenu("Lichess blitz rating (equal-rated opponent)")
         self.maia_rating_actions = {}
-        for elo in range(400, 3001, 200):
+        for elo in MAIA_RATINGS:
             action = add(rating_menu, str(elo), lambda checked=False, r=elo: self._set_maia_rating(r))
             action.setCheckable(True)
             self.maia_rating_actions[elo] = action
@@ -825,7 +832,8 @@ class MainWindow(QMainWindow):
             self.explorer_actions[("explorer_rating", value)] = action
         self.explorer_filter_menus = (speeds, ratings)
         database.addSeparator()
-        add(database, "Lichess access token…", self._lichess_token_dialog)
+        self.lichess_token_action = add(database, "Lichess access token…", self._lichess_token_dialog)
+        self._lichess_token_warning = False
         add(database, "Create a Lichess access token…", lambda: QDesktopServices.openUrl(
             QUrl("https://lichess.org/account/oauth/token/create?description=Nocturne%20database%20explorer")))
         self.clear_lichess_token_action = add(database, "Clear session access token", self._clear_lichess_token)
@@ -944,6 +952,8 @@ class MainWindow(QMainWindow):
             except ValueError as exc:
                 self._error("Invalid access token", str(exc))
                 return
+            self.opening_coverage.client.set_lichess_token(token)
+            self._set_lichess_token_warning(False)
             if not self.explorer.client.has_lichess_token:
                 self.config["explorer_source"] = "chessdb"
             elif self.config.get("explorer_source") == "chessdb":
@@ -959,11 +969,37 @@ class MainWindow(QMainWindow):
         self.explorer.client.set_lichess_token("")
         self.opening_coverage.cancel()
         self.opening_coverage.client.set_lichess_token("")
+        self._set_lichess_token_warning(False)
         if self.explorer.query and self.explorer.query.source != "chessdb":
             self.explorer.client.cancel()
         self.config["explorer_source"] = "chessdb"
         self._sync_explorer()
         self._save()
+
+    def _lichess_connection_status(self, key, message):
+        """Highlight token setup only after a Lichess request reports missing auth."""
+        if not hasattr(self, "lichess_token_action"):
+            return
+        clients = (self.explorer.client, self.opening_coverage.client)
+        query = next((client.query for client in clients
+                      if client.query is not None and client.query.key == key), None)
+        if query is None or query.source not in ("masters", "lichess"):
+            return
+        if self.explorer.client.has_lichess_token:
+            self._set_lichess_token_warning(False)
+        elif "access token required" in message.casefold():
+            self._set_lichess_token_warning(True)
+
+    def _set_lichess_token_warning(self, warning):
+        self._lichess_token_warning = bool(warning) and not self.explorer.client.has_lichess_token
+        action = self.lichess_token_action
+        action.setText("⚠ Lichess access token required…" if self._lichess_token_warning
+                       else "Lichess access token…")
+        font = action.font()
+        font.setBold(self._lichess_token_warning)
+        action.setFont(font)
+        action.setToolTip("Lichess rejected the database request because no session token is set."
+                          if self._lichess_token_warning else "")
 
     def _set_explorer_option(self, key, value):
         self.config[key] = value
@@ -1557,6 +1593,10 @@ class MainWindow(QMainWindow):
         for elo, action in self.maia_rating_actions.items():
             action.setChecked(elo == rating)
         self.maia_controls.setVisible(self.analysis_mode)
+        if self._auto_play_active:
+            self._suspend_maia_for_auto_play()
+            self._maia_changed({})
+            return
         if enabled and self.analysis_mode and getattr(self.game.board, "chess960", False):
             self.maia.stop()
             self.maia_controls.status.setText("Maia predicts standard chess only; Stockfish remains available for Chess960.")
@@ -1579,6 +1619,8 @@ class MainWindow(QMainWindow):
         self._maia_changed(self.maia.policies if enabled else {})
 
     def _maia_changed(self, policies):
+        if self._auto_play_active:
+            policies = {}
         rating = self.config.get("maia_rating", 1800)
         policy = (policies.get(str(rating), {}) if self.analysis_mode and self.config.get("maia_enabled", True)
                   else {})
@@ -2027,6 +2069,7 @@ class MainWindow(QMainWindow):
         self._analysis_enabled = False
         self._auto_play_active = True
         self._auto_play_paused = False
+        self._suspend_maia_for_auto_play()
         self.config.pop("searchmoves", None)
         self.game.pause_clock()
         self.analysis_nav.setChecked(True)
@@ -2380,6 +2423,7 @@ class MainWindow(QMainWindow):
             return
         self._cancel_review()
         self.config["engine_id"] = profile_id
+        self._maybe_apply_gpu_hash_default(self._profile())
         self.resource_controls.refresh()
         if hasattr(self, "engine"):
             self._stop_engine()
@@ -2400,13 +2444,77 @@ class MainWindow(QMainWindow):
         self._stop_engine()
         if value is None:
             profile["values"].pop(name, None)
+            if name == "Hash":
+                profile["gpu_hash_default_suppressed"] = True
         else:
             profile["values"][name] = number
+            if name == "Hash":
+                profile.pop("gpu_hash_default_suppressed", None)
         self._analysis_context = None
         self._clear_analysis_output()
         self._save()
         self.resource_controls.refresh()
         self._schedule_engine()
+
+    def _probe_gpu_hardware(self):
+        """Query Windows asynchronously so GPU detection never delays launch."""
+        if sys.platform != "win32" or self._closing:
+            return
+        process = QProcess(self)
+        self._gpu_inventory_process = process
+        process.finished.connect(self._gpu_inventory_finished)
+        process.start("powershell.exe", [
+            "-NoProfile", "-NonInteractive", "-Command",
+            "Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name",
+        ])
+
+    def _gpu_inventory_finished(self, exit_code, _exit_status):
+        process = self.sender()
+        if process is None:
+            return
+        inventory = bytes(process.readAllStandardOutput()).decode("utf-8", errors="replace")
+        from .hardware import has_discrete_gpu
+
+        self._gpu_hardware_detected = exit_code == 0 and has_discrete_gpu(inventory)
+        if self._gpu_hardware_detected:
+            self._maybe_apply_gpu_hash_default(self._profile())
+
+    def _maybe_apply_gpu_hash_default(self, profile):
+        """Use an 8 GB starting Hash on detected-GPU desktops, respecting overrides."""
+        if (not self._gpu_hardware_detected or not profile or not profile.get("options_detected")
+                or profile.get("gpu_hash_default_suppressed")
+                or profile["id"] in self._gpu_hash_default_profiles):
+            return
+        option = profile.get("options", {}).get("Hash")
+        if not isinstance(option, dict) or option.get("kind") != "spin":
+            return
+        saved = profile.get("values", {}).get("Hash")
+        if saved is not None and str(saved) != str(option.get("default", "")):
+            return
+
+        from .hardware import hash_budget_mb
+
+        minimum = int(option.get("minimum", 1))
+        maximum = min(8192, int(option.get("maximum", 8192)))
+        budget = hash_budget_mb(self.resource_controls.allocated_hash())
+        if budget is not None:
+            maximum = min(maximum, budget)
+        if maximum < minimum:
+            return
+        target = maximum
+        self._gpu_hash_default_profiles.add(profile["id"])
+        profile["gpu_hash_defaulted"] = target
+        if saved is not None and str(saved) == str(target):
+            return
+        if profile is self._profile():
+            QTimer.singleShot(0, lambda p=profile, value=target: self._apply_gpu_hash_default(p, value))
+        else:
+            profile.setdefault("values", {})["Hash"] = target
+            self._save()
+
+    def _apply_gpu_hash_default(self, profile, value):
+        if not self._closing and profile is self._profile():
+            self._set_engine_resource("Hash", value)
 
     def _effective_multipv(self):
         profile = self._profile()
@@ -2593,6 +2701,7 @@ class MainWindow(QMainWindow):
             profile["name"] = data["name"]
             profile["options"] = {n: asdict(o) for n, o in data["options"].items()}
             profile["options_detected"] = True
+            self._maybe_apply_gpu_hash_default(profile)
             count = self._effective_multipv()
             restart = (self._job and self._job["kind"] == "analysis"
                        and self._job.get("multipv", 1) != count and not self.config.get("searchmoves"))
@@ -3728,6 +3837,7 @@ class MainWindow(QMainWindow):
         return "UCI engine"
 
     def _stop_engine(self):
+        was_auto_playing = self._auto_play_active
         self._auto_play_active = False
         self._auto_play_paused = False
         if self._review and not self._review.get("paused"):
@@ -3744,6 +3854,24 @@ class MainWindow(QMainWindow):
         if old_job and old_job["kind"] != "benchmark":
             self.engine_state.setText("Search canceled")
             self.statusBar().showMessage("Search canceled", 3000)
+        if was_auto_playing:
+            self._resume_maia_after_auto_play()
+
+    def _suspend_maia_for_auto_play(self):
+        if self._maia_suspended_for_auto_play or not hasattr(self, "maia"):
+            return
+        self._maia_suspended_for_auto_play = True
+        self.maia.stop()
+        self.maia.policies = {}
+        self.maia.outcomes = {}
+        self._maia_changed({})
+
+    def _resume_maia_after_auto_play(self):
+        if not self._maia_suspended_for_auto_play:
+            return
+        self._maia_suspended_for_auto_play = False
+        if not self._closing:
+            self._request_maia()
 
     def _interrupt_automation(self):
         """Only deliberate board/history/PV input calls this, never menu scrolling."""
@@ -3934,6 +4062,7 @@ class MainWindow(QMainWindow):
             if self.game.outcome:
                 self._auto_play_active = False
                 self.quick_analysis_button.setText("Analyze")
+                self._resume_maia_after_auto_play()
             else:
                 delay = self.config.get("watch_delay_ms", 500) if self._auto_play_active or self.config.get("mode") == "ai_ai" else 80
                 QTimer.singleShot(delay, self._schedule_engine)
@@ -4044,6 +4173,10 @@ class MainWindow(QMainWindow):
             if process is not None and process.state() != QProcess.ProcessState.NotRunning:
                 process.kill()
                 process.waitForFinished(1000)
+        inventory = getattr(self, "_gpu_inventory_process", None)
+        if inventory is not None and inventory.state() != QProcess.ProcessState.NotRunning:
+            inventory.kill()
+            inventory.waitForFinished(1000)
         self._clear_move_preview()
         self._explorer_active = False
         self.timer.stop()

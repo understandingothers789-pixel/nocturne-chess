@@ -3,6 +3,12 @@
 import os
 
 
+def has_discrete_gpu(inventory):
+    """Recognize NVIDIA/AMD display adapters from the Windows inventory text."""
+    names = str(inventory).casefold()
+    return any(vendor in names for vendor in ("nvidia", "amd", "radeon"))
+
+
 def hash_budget_mb(allocated_mb=0):
     """Include replaceable hash already acknowledged by the running engine."""
     try:

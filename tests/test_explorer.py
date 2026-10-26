@@ -332,12 +332,20 @@ class CachedGuiTests(unittest.TestCase):
         window._analysis_enabled = False
         client = window.explorer.client
         self.assertEqual(window.config["explorer_source"], "chessdb")
+        query = ExplorerQuery(window.game.board.fen())
+        client.query = query
+        client.status.emit(query.key, "Lichess Masters unavailable (HTTP 500)")
+        self.assertEqual(window.lichess_token_action.text(), "Lichess access token…")
+        client.status.emit(query.key, "Lichess Masters access token required · Database → Lichess access token…")
+        self.assertTrue(window.lichess_token_action.text().startswith("⚠"))
+        self.assertTrue(window.lichess_token_action.font().bold())
         with patch("PySide6.QtWidgets.QInputDialog.getText", return_value=("lip_unit_test_only", True)) as dialog:
             window._lichess_token_dialog()
         from PySide6.QtWidgets import QLineEdit
         self.assertEqual(dialog.call_args.args[-1], QLineEdit.EchoMode.Password)
         self.assertEqual(window.config["explorer_source"], "masters")
-        query = ExplorerQuery(window.game.board.fen())
+        self.assertTrue(window.opening_coverage.client.has_lichess_token)
+        self.assertEqual(window.lichess_token_action.text(), "Lichess access token…")
         self.assertEqual(bytes(client.request_for(query).rawHeader("Authorization")), b"Bearer lip_unit_test_only")
         self.assertEqual(bytes(client.request_for(ExplorerQuery(query.fen, "chessdb")).rawHeader("Authorization")), b"")
         for other in ("https://example.test", "http://explorer.lichess.org", "https://explorer.lichess.org:444"):

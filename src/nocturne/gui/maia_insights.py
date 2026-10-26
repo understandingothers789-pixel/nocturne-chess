@@ -82,11 +82,11 @@ class RatingChart(QWidget):
             painter.drawLine(QPointF(plot.left(), y), QPointF(plot.right(), y))
             painter.setPen(QColor(colors["muted"]))
             painter.drawText(QRectF(0, y-7, 32, 15), Qt.AlignmentFlag.AlignRight, f"{fraction*ceiling*100:.0f}%")
-        for rating in (range(400, 3001, 400) if self.width() >= 340 else (400, 1600, 3000)):
-            x = plot.left()+(rating-400)/2600*plot.width()
+        for rating in (range(600, 3001, 400) if self.width() >= 340 else (600, 1800, 3000)):
+            x = plot.left()+(rating-600)/2400*plot.width()
             painter.drawText(QRectF(max(0, min(self.width()-40, x-20)), plot.bottom()+5, 40, 16), Qt.AlignmentFlag.AlignCenter, str(rating))
 
-        marker = plot.left()+(self.rating-400)/2600*plot.width()
+        marker = plot.left()+(self.rating-600)/2400*plot.width()
         painter.setPen(QPen(QColor("#bca36a"), 1, Qt.PenStyle.DashLine))
         painter.drawLine(QPointF(marker, plot.top()), QPointF(marker, plot.bottom()))
         self.points = []
@@ -109,7 +109,7 @@ class RatingChart(QWidget):
                     started = False
                     continue
                 probability = policy.get(move, 0)
-                point = QPointF(plot.left()+(rating-400)/2600*plot.width(),
+                point = QPointF(plot.left()+(rating-600)/2400*plot.width(),
                                 plot.bottom()-probability/ceiling*plot.height())
                 if started:
                     path.lineTo(point)
@@ -451,12 +451,14 @@ class MaiaOutcomeBar(QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self.values = None
+        self.white_expected_score = None
         self.setAccessibleName("Maia outcome prediction from White's perspective")
 
     def set_outcome(self, values):
         self.values = values
+        self.white_expected_score = values[0] + values[1] / 2 if values else None
         self.setToolTip((f"Maia · White win {values[0]:.1%} · Draw {values[1]:.1%} · Black win {values[2]:.1%}"
-                         f"\nWhite expected score: {values[0] + values[1]/2:.1%} (win + half draws)")
+                         f"\nWhite expected score: {self.white_expected_score:.1%} (win + half draws)")
                         if values else "Maia outcome prediction unavailable / loading")
         self.update()
 
@@ -471,7 +473,7 @@ class MaiaOutcomeBar(QWidget):
                 h = bar.height()*value
                 p.fillRect(QRectF(bar.left(), y, bar.width(), h), QColor(color))
                 y += h
-            score = f"{100*self.values[0]:.0f}%"
+            score = f"{100*self.white_expected_score:.0f}%"
         else:
             p.fillRect(bar, QColor("#46535d"))
             score = "—"
