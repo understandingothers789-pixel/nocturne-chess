@@ -954,6 +954,16 @@ The UTF-8 diagnostic completed without callback errors.
 
 Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 
+## Windows build receipt · 0.5.7.85
+
+- Source commit: `c2591bdc943179b94eece93d3fa1a7698c486420`
+- Windows workflow: [run 40273139223](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40273139223)
+- Artifact: [Nocturne-0.5.7.85-Windows-x64-unsigned](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40273139223/artifacts/12628584327)
+- Artifact size: 494,315,287 bytes; retained until November 25, 2026.
+- Lint, all 284 Windows tests (5 skipped), packaged application/worker smoke checks, and live database API checks passed.
+
+Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
+
 ## Windows build receipt · 0.5.7.84
 
 - Source commit: `f95f25dfceb70225a60d173de97d85f2716e37e1`
