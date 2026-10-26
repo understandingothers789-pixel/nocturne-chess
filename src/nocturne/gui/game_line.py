@@ -65,23 +65,26 @@ class GameLine(MoveText):
         rows = []
         row_paths = []
 
+        def figurine(san):
+            return san.translate(str.maketrans({"K": "♔", "Q": "♕", "R": "♖", "B": "♗", "N": "♘"}))
+
         def cell(index, indent):
             if index is None:
                 return f'<td width="44%" bgcolor="{colors["soft"] if indent else colors["panel"]}"></td>'
             node = nodes[index]
             active = index == current
             bg = colors['selection'] if active else colors['soft'] if indent else colors['panel']
-            fg = colors['selected_text'] if active else colors['history']
+            fg = colors['selected_text'] if active else ('#cbd9dc' if not light else '#334b50')
             if index in departures:
                 fg = '#87713f' if light else '#c3b07c'
             value = plot_score_label(node.evaluation) if node.evaluation is not None else ''
             title = departures.get(index, '')
             punctuation = {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}
-            text = escape(node.san + "".join(punctuation.get(nag, f" ${nag}") for nag in node.nags))
+            text = escape(figurine(node.san) + "".join(punctuation.get(nag, f" ${nag}") for nag in node.nags))
             # Use a nested two-cell table to align the evaluation at the right
             # of each move without relying on unsupported CSS floats.
             return (f'<td width="44%" bgcolor="{bg}"><a name="node{index}"></a>'
-                    f'<table width="100%" cellspacing="0" cellpadding="4"><tr>'
+                    f'<table width="100%" cellspacing="0" cellpadding="5"><tr>'
                     f'<td><a href="move:{index}" title="{escape(title, quote=True)}" '
                     f'style="color:{fg};text-decoration:none;">{text}</a></td>'
                     f'<td align="right"><span style="font-size:11px;color:{colors["muted"]};">'
@@ -93,10 +96,10 @@ class GameLine(MoveText):
             number = root.fullmove + (node.depth - 1 + offset) // 2
             prefix = f"{number}." if white else f"{number}…" if first else ""
             active = index == current
-            fg = colors['selected_text'] if active else colors['history']
+            fg = colors['selected_text'] if active else ('#cbd9dc' if not light else '#334b50')
             bg = f"background-color:{colors['selection']};" if active else ""
             punctuation = {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}
-            san = escape(node.san + "".join(punctuation.get(n, f" ${n}") for n in node.nags))
+            san = escape(figurine(node.san) + "".join(punctuation.get(n, f" ${n}") for n in node.nags))
             value = plot_score_label(node.evaluation) if node.evaluation is not None else ''
             title = departures.get(index, '')
             if value:
@@ -121,12 +124,12 @@ class GameLine(MoveText):
                         break
                     index = nodes[index].children[0]
                 gutter = min(3 + 3 * indent, 30)
-                size = 13 if indent == 1 else 12
-                text = ' '.join(variation_move(i, j == 0) for j, i in enumerate(run))
+                size = 14 if indent == 1 else 13
+                text = '&nbsp; '.join(variation_move(i, j == 0) for j, i in enumerate(run))
                 rows.append(f'<table width="100%" cellspacing="0" cellpadding="0"><tr>'
                             f'<td width="{gutter}%"></td><td width="{100-gutter}%" '
-                            f'bgcolor="{colors["soft"]}" style="font-size:{size}px;">'
-                            f'<p style="margin-top:5px;margin-bottom:5px;">'
+                            f'bgcolor="{('#202d37' if not light else '#eef2ef')}" style="font-size:{size}px;">'
+                            f'<p style="margin-top:7px;margin-bottom:7px;">'
                             f'<a name="row{first}"></a>{text}'
                             f'<a name="rowend{first}"></a></p></td></tr></table>')
                 row_paths.append((first, path))
@@ -200,7 +203,7 @@ class GameLine(MoveText):
     def paintEvent(self, event):
         super().paintEvent(event)
         painter = QPainter(self.viewport())
-        painter.setPen(QPen(QColor('#a7a7a7' if self._light else '#566371'), 1))
+        painter.setPen(QPen(QColor('#b4c4c1' if self._light else '#3c5961'), 1))
         for depth, cursors in self._branch_guides:
             first, last = cursors[0], cursors[-1]
             top = self.cursorRect(first).center().y()
