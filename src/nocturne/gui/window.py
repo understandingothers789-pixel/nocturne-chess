@@ -460,7 +460,12 @@ class MainWindow(QMainWindow):
         self.candidates.navigate.connect(self._insert_candidate)
         self.candidates.action.connect(self._candidate_action)
         self.candidates.changed.connect(self._sync_candidate_markers)
-        self.engine_layout.addWidget(self.candidates)
+        self.candidate_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.candidate_splitter.setChildrenCollapsible(False)
+        self.candidate_splitter.setHandleWidth(7)
+        self.candidate_splitter.setToolTip("Drag the divider to resize Stockfish and the section below")
+        self.candidate_splitter.addWidget(self.candidates)
+        self.engine_layout.addWidget(self.candidate_splitter, 1)
         self.inline_history = GameLine()
         self.inline_history.setMinimumHeight(160)
         self.inline_history.setMaximumHeight(16777215)
@@ -475,7 +480,8 @@ class MainWindow(QMainWindow):
         game_line_layout.setContentsMargins(0, 0, 0, 0)
         game_line_layout.addWidget(label("GAME LINE", "gameLineHeading"))
         game_line_layout.addWidget(self.inline_history, 1)
-        self.engine_layout.addWidget(self.game_line_panel, 1)
+        self.candidate_splitter.addWidget(self.game_line_panel)
+        self.candidate_splitter.setStretchFactor(1, 1)
         self._rating_game_line_swapped = False
         self.engine_scroll.setWidget(engine_detail)
         self.analysis_detail_splitter = QSplitter(Qt.Orientation.Vertical)
@@ -495,6 +501,7 @@ class MainWindow(QMainWindow):
         self.opening_coverage.changed.connect(self._update_opening_coverage)
         self.opening_coverage.client.status.connect(self._lichess_connection_status)
         self.maia_controls = MaiaControls()
+        self.maia_controls.move_limit_changed.connect(self._set_maia_move_limit)
         self.engine_state.hide()
         self.tablebase_label.hide()
         self.maia_controls.details.toggled.connect(self.engine_state.setVisible)
@@ -620,6 +627,9 @@ class MainWindow(QMainWindow):
             control.setFixedHeight(22)
             control.setStyleSheet("padding: 1px 8px;")
             history_tools.addWidget(control)
+        self.bottom_moves_toggle = button("▾", self._toggle_bottom_moves, "quiet")
+        self.bottom_moves_toggle.setFixedSize(26, 22)
+        history_tools.addWidget(self.bottom_moves_toggle)
         history_layout.addLayout(history_tools)
         self.analysis_history = MoveText()
         self.analysis_history.setAccessibleName("Analysis game moves")
@@ -1606,6 +1616,37 @@ class MainWindow(QMainWindow):
             self.maia_controls.status.setText("Maia disabled")
         self._request_maia()
         self._save()
+
+    def _set_maia_move_limit(self, count):
+        self.config["maia_move_limit"] = count
+        self.maia_controls._policy_signature = None
+        self._maia_changed(self.maia.policies)
+        self._save()
+
+    def _toggle_bottom_moves(self):
+        collapsed = not self.config.get("bottom_moves_collapsed", False)
+        self.config["bottom_moves_collapsed"] = collapsed
+        self._sync_bottom_moves()
+        self._save()
+
+    def _sync_bottom_moves(self):
+        collapsed = self.config.get("bottom_moves_collapsed", False)
+        if collapsed == getattr(self, "_bottom_collapsed_state", None):
+            return
+        self._bottom_collapsed_state = collapsed
+        if collapsed and not self.analysis_history.isHidden():
+            self._bottom_expanded_height = self.analysis_moves_panel.height()
+        self.analysis_history.setVisible(not collapsed)
+        self.opening_coverage_label.setVisible(not collapsed)
+        self.analysis_moves_panel.setMinimumHeight(32 if collapsed else 90)
+        self.analysis_moves_panel.setMaximumHeight(34 if collapsed else 16777215)
+        self.bottom_moves_toggle.setText("▴" if collapsed else "▾")
+        self.bottom_moves_toggle.setToolTip("Expand Game Moves" if collapsed else "Collapse Game Moves")
+        self.bottom_moves_toggle.setAccessibleName(self.bottom_moves_toggle.toolTip())
+        if not collapsed and self._dock_workspace is None:
+            total = sum(self.workspace_splitter.sizes())
+            height = getattr(self, "_bottom_expanded_height", 100)
+            self.workspace_splitter.setSizes([max(100, total-height), height])
 
     def _set_maia_rating(self, rating):
         self.config["maia_rating"] = rating
@@ -2853,6 +2894,10 @@ class MainWindow(QMainWindow):
         self._save()
 
     def _apply_settings(self):
+        self._sync_bottom_moves()
+        self.maia_controls.move_limit.blockSignals(True)
+        self.maia_controls.move_limit.setValue(self.config.get("maia_move_limit", 5))
+        self.maia_controls.move_limit.blockSignals(False)
         self.engine.connection.cpu_budget = self.config.get("engine_cpu_budget", 100) if os.name == "nt" else 100
         self._sync_insight_layout()
         self._apply_appearance(self._appearance_config())
@@ -2899,9 +2944,9 @@ class MainWindow(QMainWindow):
         self.maia_insights.chart.setMaximumHeight(16777215 if swap else 280)
         trends.content.setStretch(1, 1)
         for widget in (trends, line):
-            self.engine_layout.removeWidget(widget)
             self.maia_insights.body_layout.removeWidget(widget)
-        self.engine_layout.addWidget(trends if swap else line, 1)
+            widget.setParent(None)
+        self.candidate_splitter.addWidget(trends if swap else line)
         self.maia_insights.body_layout.insertWidget(0, line if swap else trends)
         line.setMinimumHeight(160 if swap else 0)
         trends.show()

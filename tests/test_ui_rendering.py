@@ -99,6 +99,13 @@ class RenderingTests(unittest.TestCase):
         self.assertEqual(layout.lineForTextPosition(score.selectionStart()).y(),
                          layout.lineForTextPosition(move.selectionStart()).y())
         self.assertTrue(header.isHidden())
+        gap = moves.document().find("e4")
+        gap.setPosition(gap.selectionEnd())
+        point = moves.cursorRect(gap).center() + QPoint(3, 0)
+        self.assertEqual(moves._move_at(point).toString(), "move:1")
+        end = moves.document().find("e5")
+        end.setPosition(end.selectionEnd())
+        self.assertTrue(moves._move_at(moves.cursorRect(end).center() + QPoint(12, 0)).isEmpty())
 
         panel.set_detailed(True)
         self.app.processEvents()

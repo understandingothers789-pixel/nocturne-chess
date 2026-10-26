@@ -123,8 +123,8 @@ class MoveText(QTextBrowser):
         tokens = []
         if self.candidate_rank is not None and self.candidate_evaluation:
             tokens.append(f'<span style="color:{colors["metric"]};">'
-                          f'{escape(self.candidate_evaluation)}</span>')
-        for text, index in self._items:
+                          f'{escape(self.candidate_evaluation)}</span> ')
+        for offset, (text, index) in enumerate(self._items):
             if index is None:
                 tokens.append(escape(text))
                 continue
@@ -140,10 +140,11 @@ class MoveText(QTextBrowser):
             label = text
             decoration = "text-decoration:none;"
             tooltip = f' title="{escape(departures[index], quote=True)}"' if index in departures else ""
-            tokens.append(f'<a href="move:{index}" style="{style} {decoration}"{tooltip}>{notation_html(label) if figurines else escape(label)}</a>')
+            gap = " " if self.candidate_rank is not None and offset < len(self._items) - 1 else ""
+            tokens.append(f'<a href="move:{index}" style="{style} {decoration}"{tooltip}>{notation_html(label) if figurines else escape(label)}{gap}</a>')
         size, spacing = (16, 155) if self._auto_fit else (14, 140)
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'
-                     + " ".join(tokens) + "</div>")
+                     + ("" if self.candidate_rank is not None else " ").join(tokens) + "</div>")
 
     def _move_at(self, point):
         """Include the padding above and below each candidate anchor."""

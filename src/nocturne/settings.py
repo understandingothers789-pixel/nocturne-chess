@@ -7,6 +7,8 @@ from .pieces import DEFAULT_PIECE_SET, PIECE_SET_NAMES
 DEFAULTS = {
     "mode": "analysis",
     "engine_cpu_budget": 100,
+    "maia_move_limit": 5,
+    "bottom_moves_collapsed": False,
     "human_color": 1,
     "difficulty": "Intermediate",
     "seconds": 0,
@@ -125,6 +127,7 @@ def normalize(data) -> dict:
         "maia_arrows",
         "show_maia_insights",
         "swap_rating_game_line",
+        "bottom_moves_collapsed",
         "expand_pv",
         "cursor_preview",
         "wheel_game_moves",
@@ -217,4 +220,6 @@ def normalize(data) -> dict:
     result["auto_eval_limit_version"] = 2
     budget = data.get("engine_cpu_budget", 100)
     result["engine_cpu_budget"] = budget if type(budget) is int and 1 <= budget <= 100 else 100
+    limit = data.get("maia_move_limit", 5)
+    result["maia_move_limit"] = limit if type(limit) is int and 1 <= limit <= 64 else 5
     return result

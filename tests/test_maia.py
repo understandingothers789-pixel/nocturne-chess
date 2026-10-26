@@ -43,7 +43,7 @@ class MaiaTests(unittest.TestCase):
         from nocturne.gui.maia import MaiaControls
         tools, board = MaiaControls(), Board()
         tools.set_policy({"e2e4": .7}, board)
-        self.assertEqual(tools.all_moves.text(), "Top 1 Maia move")
+        self.assertEqual(tools.all_moves.text(), "Top 5 Maia moves")
         item = tools.table.item(0, 0)
         tools.set_policy({"e2e4": .7}, board)
         self.assertIs(tools.table.item(0, 0), item)
@@ -59,6 +59,19 @@ class MaiaTests(unittest.TestCase):
         tools.set_policy({"e7e5": .8}, board)
         self.assertEqual(tools.table.item(0, 0).text(), "e5")
         self.assertFalse(tools._stockfish)
+        tools.deleteLater()
+
+    def test_policy_table_defaults_to_five_and_has_configurable_limit(self):
+        from nocturne.core.rules import Board
+        from nocturne.gui.maia import MaiaControls
+        tools, board = MaiaControls(), Board()
+        policy = {m.uci(): .05 for m in board.legal_moves()}
+        tools.set_policy(policy, board)
+        self.assertEqual(tools.table.rowCount(), 5)
+        tools.move_limit.setValue(8)
+        tools.set_policy(policy, board)
+        self.assertEqual(tools.table.rowCount(), 8)
+        self.assertEqual(tools.all_moves.text(), "Top 8 Maia moves")
         tools.deleteLater()
 
     def test_probability_matches_uci_move_when_stockfish_order_differs(self):

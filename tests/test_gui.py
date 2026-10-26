@@ -224,11 +224,11 @@ class GuiTests(unittest.TestCase):
         line, chart = window.game_line_panel, window.maia_insights.trends_card
         window._set_display("swap_rating_game_line", True)
         self.assertTrue(window._rating_game_line_swapped)
-        self.assertGreaterEqual(window.engine_layout.indexOf(chart), 0)
+        self.assertGreaterEqual(window.candidate_splitter.indexOf(chart), 0)
         self.assertEqual(window.maia_insights.body_layout.indexOf(line), 0)
         window._set_display("show_maia_insights", False)
         self.assertFalse(window._rating_game_line_swapped)
-        self.assertGreaterEqual(window.engine_layout.indexOf(line), 0)
+        self.assertGreaterEqual(window.candidate_splitter.indexOf(line), 0)
         window._set_display("show_maia_insights", True)
         self.assertTrue(window._rating_game_line_swapped)
         window._set_display("swap_rating_game_line", False)
@@ -238,6 +238,16 @@ class GuiTests(unittest.TestCase):
             window._show_board_guide()
         self.assertIn("10%", guide.call_args.args[2])
         self.assertIn("rankings, not probabilities", guide.call_args.args[2])
+
+    def test_bottom_moves_can_collapse_and_reopen(self):
+        w = self.window
+        w._toggle_bottom_moves()
+        self.assertTrue(w.analysis_history.isHidden())
+        self.assertLessEqual(w.analysis_moves_panel.maximumHeight(), 34)
+        self.assertFalse(w.bottom_moves_toggle.isHidden())
+        w._toggle_bottom_moves()
+        self.assertFalse(w.analysis_history.isHidden())
+        self.assertGreater(w.analysis_moves_panel.maximumHeight(), 100)
 
     def test_history_numbers_for_black_to_move_fen(self):
         game = Game("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 20")

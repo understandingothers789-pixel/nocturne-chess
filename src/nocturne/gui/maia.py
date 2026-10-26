@@ -3,7 +3,7 @@ from PySide6.QtCore import Signal, Qt, QSize, QEvent
 from PySide6.QtWidgets import QStylePainter, QToolTip
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QCheckBox,
-    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QGridLayout, QSizePolicy, QScrollArea,
+    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QGridLayout, QSizePolicy, QScrollArea, QSpinBox,
 )
 from ..maia import RATINGS, percentage
 from ..engine.uci_types import score_label
@@ -63,6 +63,7 @@ class RatingDragBox(QComboBox):
 
 
 class MaiaControls(QWidget):
+    move_limit_changed = Signal(int)
     rating_changed = Signal(int)
     enabled_changed = Signal(bool)
     move_selected = Signal(str)
@@ -112,7 +113,15 @@ class MaiaControls(QWidget):
         secondary.setSpacing(8)
         secondary.addWidget(self.status, 1)
         self.status.hide()
+        self.move_limit = QSpinBox()
+        self.move_limit.setRange(1, 64)
+        self.move_limit.setValue(5)
+        self.move_limit.setPrefix("Maia moves shown: ")
+        self.move_limit.setAccessibleName("Number of Maia moves shown")
+        self.move_limit.valueChanged.connect(self.move_limit_changed)
+        self.move_limit.hide()
         layout.addLayout(secondary)
+        layout.addWidget(self.move_limit)
         self.table = QTableWidget(0, 3)
         self._stockfish = {}
         self._table_fen = None
@@ -176,6 +185,7 @@ class MaiaControls(QWidget):
 
     def _show_details(self, expanded):
         self.status.setVisible(expanded)
+        self.move_limit.setVisible(expanded)
         self.details.setText("▾ Details" if expanded else "▸ Details")
 
     def _select(self, row, column):
@@ -256,8 +266,8 @@ class MaiaControls(QWidget):
             self._end_hover()
             self._stockfish = {}
             self._table_fen = fen
-        ordered = sorted(policy.items(), key=lambda pair: -pair[1])
-        self.all_moves.setText(f"Top {len(ordered)} Maia move" + ("s" if len(ordered) != 1 else "") if ordered else "Maia moves")
+        ordered = sorted(policy.items(), key=lambda pair: -pair[1])[:self.move_limit.value()]
+        self.all_moves.setText(f"Top {self.move_limit.value()} Maia moves")
         signature = (fen, board.chess960, tuple(ordered))
         if signature == getattr(self, "_policy_signature", None):
             return
@@ -266,7 +276,7 @@ class MaiaControls(QWidget):
                      for row in range(self.table.rowCount()) if self.table.item(row, 0)]
         if old_order != [uci for uci, _ in ordered]:
             self._end_hover()
-        self.table.setRowCount(len(policy))
+        self.table.setRowCount(len(ordered))
         for row, (uci, probability) in enumerate(ordered):
             try:
                 from ..core.notation import san
