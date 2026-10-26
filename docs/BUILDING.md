@@ -1,5 +1,16 @@
 # Windows 11 desktop builds
 
+## [0.5.7.81 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40263779061/artifacts/12625279239)
+
+Source commit [`ecb10a3`](https://github.com/understandingothers789-pixel/nocturne-chess/commit/ecb10a389dd739f9d69fb49a21921a1a42b976d7) adds Lichess notation glyphs to Stockfish variations, Maia rating curves and insight labels. The standard SAN in the bottom Game Moves PGN is unchanged. Game Line softly marks a played Maia-blunder move when the absolute Stockfish evaluation is below four pawns and Maia's green Best moves share at the parent position is under 50%.
+
+Local Ruff and all 275 tests passed (5 optional skips); the rendering checks also passed at 150% scaling. Windows lint, the full suite, packaging, packaged smoke checks and the live database API check passed.
+
+Extract All, then open **Nocturne/Nocturne.exe**. The executable is unsigned.
+
+Artifact **12625279239**, `Nocturne-0.5.7.81-Windows-x64-unsigned`, 494,321,499 bytes; expires 2026-11-25 03:27 UTC. SHA-256:
+`191dd9162d2ad51d24dd20c8918d73f9acb3dab3bf2a601cdc27d4875ff3ac87`.
+
 ## [0.5.7.64 — Download Windows ZIP](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40139154710/artifacts/12577408803)
 
 All Maia moves above 10% now receive board arrows, colored using the same
