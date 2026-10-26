@@ -22,6 +22,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt UI preview. Engine evaluations and Maia probabilities in this
 capture are explicitly labelled fixtures, not measured chess analysis.*
 
+**[0.5.7.75](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40251984062/artifacts/12621488272): a softer, more readable Game Line.** Chess-piece symbols replace SAN piece letters in the display, with muted teal guides, softer variation backgrounds and refined text spacing. Copied PGN retains standard notation.
+
 **[0.5.7.74](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40249391355/artifacts/12619414024): compact, horizontal subvariations.** Consecutive variation moves flow across the panel and wrap naturally, with smaller text for nested branches and connected guides at forks. The main line retains paired White/Black rows and saved evaluations. Variation evaluations are available on hover; move clicking, previews and list scrolling remain available.
 
 ![Horizontal subvariations](docs/previews/inline-variations-74.png)
