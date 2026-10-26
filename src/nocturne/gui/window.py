@@ -651,6 +651,8 @@ class MainWindow(QMainWindow):
         self.analysis_history.customContextMenuRequested.connect(self._history_context_menu)
         history_layout.addWidget(self.analysis_history, 1)
         self.workspace_splitter.addWidget(self.analysis_moves_panel)
+        self.workspace_splitter.setCollapsible(1, True)
+        self.workspace_splitter.splitterMoved.connect(self._bottom_splitter_moved)
         self.workspace_splitter.setStretchFactor(0, 1)
         self.workspace_splitter.setStretchFactor(1, 0)
         self.analysis_moves_panel.hide()
@@ -1509,6 +1511,7 @@ class MainWindow(QMainWindow):
             self.main_splitter.insertWidget(1, self.panel)
             self.main_splitter.addWidget(self.maia_insights)
             self.workspace_splitter.addWidget(self.analysis_moves_panel)
+            self.workspace_splitter.setCollapsible(1, True)
             self.analysis_detail_splitter.addWidget(self.explorer)
             self.engine_page_layout.addWidget(self.graph)
             self.graph.setMaximumHeight(85)
@@ -1660,6 +1663,19 @@ class MainWindow(QMainWindow):
         self._maia_changed(self.maia.policies)
         self._save()
 
+    def _bottom_splitter_moved(self, position, index):
+        if self._dock_workspace is not None or not self.analysis_mode:
+            return
+        sizes = self.workspace_splitter.sizes()
+        if len(sizes) == 2 and sizes[1] == 0:
+            if not self.config.get("bottom_moves_collapsed", False):
+                self.config["bottom_moves_collapsed"] = True
+                self._sync_bottom_moves()
+                self._save()
+            self.workspace_splitter.setSizes([max(100, sum(sizes)-32), 32])
+        elif len(sizes) == 2 and not self.config.get("bottom_moves_collapsed", False):
+            self._bottom_expanded_height = sizes[1]
+
     def _toggle_bottom_moves(self):
         collapsed = not self.config.get("bottom_moves_collapsed", False)
         self.config["bottom_moves_collapsed"] = collapsed
@@ -1671,7 +1687,7 @@ class MainWindow(QMainWindow):
         if collapsed == getattr(self, "_bottom_collapsed_state", None):
             return
         self._bottom_collapsed_state = collapsed
-        if collapsed and self.analysis_moves_panel.isVisible() and not self.analysis_history.isHidden():
+        if collapsed and self.analysis_moves_panel.isVisible() and not self.analysis_history.isHidden() and self.analysis_moves_panel.height() >= 90:
             self._bottom_expanded_height = self.analysis_moves_panel.height()
         self.analysis_history.setVisible(not collapsed)
         self.opening_coverage_label.setVisible(not collapsed)

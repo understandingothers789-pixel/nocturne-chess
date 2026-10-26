@@ -256,6 +256,21 @@ class GuiTests(unittest.TestCase):
             w.eventFilter(w.board_guide_button, QEvent(QEvent.Type.Enter))
         self.assertIn("Click to learn", tooltip.call_args.args[1])
 
+    def test_dragging_bottom_splitter_to_zero_collapses_moves(self):
+        w = self.window
+        w.analysis_mode = True
+        w._refresh()
+        self.app.processEvents()
+        self.assertTrue(w.workspace_splitter.isCollapsible(1))
+        w.workspace_splitter.setSizes([800, 0])
+        w._bottom_splitter_moved(w.workspace_splitter.height(), 1)
+        self.assertTrue(w.config["bottom_moves_collapsed"])
+        self.assertTrue(w.analysis_history.isHidden())
+        w._toggle_bottom_moves()
+        self.assertFalse(w.analysis_history.isHidden())
+        self.assertGreater(w.workspace_splitter.sizes()[1], 0)
+        self.assertEqual(w.maia_controls.move_limit.prefix(), "")
+
     def test_bottom_moves_can_collapse_and_reopen(self):
         w = self.window
         w._toggle_bottom_moves()
