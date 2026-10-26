@@ -52,6 +52,7 @@ class RatingChart(QWidget):
         self.names = {}
         self.hidden_moves = set()
         self.rating = 1800
+        self.ratings = RATINGS
         self.points = []
         self.label_hits = []
 
@@ -82,11 +83,13 @@ class RatingChart(QWidget):
             painter.drawLine(QPointF(plot.left(), y), QPointF(plot.right(), y))
             painter.setPen(QColor(colors["muted"]))
             painter.drawText(QRectF(0, y-7, 32, 15), Qt.AlignmentFlag.AlignRight, f"{fraction*ceiling*100:.0f}%")
-        for rating in (range(600, 3001, 400) if self.width() >= 340 else (600, 1800, 3000)):
-            x = plot.left()+(rating-600)/2400*plot.width()
+        low, high = self.ratings[0], self.ratings[-1]
+        ticks = self.ratings[::2] if self.width() >= 340 else (low, self.ratings[len(self.ratings)//2], high)
+        for rating in sorted(set((*ticks, high))):
+            x = plot.left()+(rating-low)/(high-low)*plot.width()
             painter.drawText(QRectF(max(0, min(self.width()-40, x-20)), plot.bottom()+5, 40, 16), Qt.AlignmentFlag.AlignCenter, str(rating))
 
-        marker = plot.left()+(self.rating-600)/2400*plot.width()
+        marker = plot.left()+(self.rating-low)/(high-low)*plot.width()
         painter.setPen(QPen(QColor("#bca36a"), 1, Qt.PenStyle.DashLine))
         painter.drawLine(QPointF(marker, plot.top()), QPointF(marker, plot.bottom()))
         self.points = []
@@ -100,7 +103,7 @@ class RatingChart(QWidget):
             segments = []
             segment = []
             color = QColor(curve_colors()[index % len(COLORS)])
-            for rating in RATINGS:
+            for rating in self.ratings:
                 policy = self.policies.get(str(rating))
                 if policy is None:
                     if segment:
@@ -109,7 +112,7 @@ class RatingChart(QWidget):
                     started = False
                     continue
                 probability = policy.get(move, 0)
-                point = QPointF(plot.left()+(rating-600)/2400*plot.width(),
+                point = QPointF(plot.left()+(rating-low)/(high-low)*plot.width(),
                                 plot.bottom()-probability/ceiling*plot.height())
                 if started:
                     path.lineTo(point)
@@ -533,6 +536,7 @@ class MaiaInsights(QScrollArea):
         self.outcome_bar.setGeometry(0, 0, 40, self.height())
 
     def set_data(self, policies, board, rating, appearance=None):
+        policies = {str(r): policies[str(r)] for r in self.chart.ratings if str(r) in policies}
         policy = policies.get(str(rating), {})
         moves = [move for move, _ in sorted(policy.items(), key=lambda item: -item[1])[:5]]
         self.chart.policies = policies

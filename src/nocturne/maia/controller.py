@@ -43,6 +43,7 @@ class MaiaController(QObject):
         self._busy = False
         self._failed = False
         self._closing = False
+        self.ratings = getattr(self, "ratings", RATINGS)
         self.outcomes = {}
         self.policies = {}
         self.cache = OrderedDict()
@@ -66,11 +67,21 @@ class MaiaController(QObject):
         self.debounce.setInterval(100)
         self.debounce.timeout.connect(self._dispatch)
 
+    def set_rating_range(self, minimum, maximum):
+        if type(minimum) is not int or type(maximum) is not int or minimum not in RATINGS or maximum not in RATINGS or minimum >= maximum:
+            raise ValueError("Choose an increasing Maia range between 600 and 3000")
+        ratings = tuple(r for r in RATINGS if minimum <= r <= maximum)
+        if ratings != self.ratings:
+            self.stop()  # Cancel old foreground batches and prefetch work.
+            self.ratings = ratings
+
     @staticmethod
     def position_key(root, moves):
         return hashlib.sha256(json.dumps([MODEL_REVISION, "white-wdl-v1", root, moves], separators=(",", ":")).encode()).hexdigest()
 
     def prefetch(self, root, histories, rating):
+        if rating not in self.ratings:
+            raise ValueError("Selected Maia rating is outside the configured range")
         self.prefetch_queue = []
         self._prefetch_iter = ((root, moves, rating) for moves in histories)
 
@@ -89,11 +100,11 @@ class MaiaController(QObject):
                 self.prefetch_queue.append(task)
             root, moves, rating = self.prefetch_queue.pop(0)
             key = self.position_key(root, moves)
-            if all(str(r) in self.cache.get(key, {}) and str(r) in self.value_cache.get(key, {}) for r in RATINGS):
+            if all(str(r) in self.cache.get(key, {}) and str(r) in self.value_cache.get(key, {}) for r in self.ratings):
                 continue
             self._prefetch_id -= 1
             self._prefetch_active = (self._prefetch_id, key)
-            ratings = [r for r in [rating] + [r for r in RATINGS if r != rating]
+            ratings = [r for r in [rating] + [r for r in self.ratings if r != rating]
                        if str(r) not in self.cache.get(key, {}) or str(r) not in self.value_cache.get(key, {})][:2]
             self.prefetch_queue.insert(0, (root, moves, rating))
             self._busy = True
@@ -104,7 +115,9 @@ class MaiaController(QObject):
     def request(self, root, moves, rating=1800, sweep=False):
         self.prefetch_queue = []
         self._prefetch_iter = iter(())
-        ratings = [rating] + ([r for r in RATINGS if r != rating] if sweep else [])
+        if rating not in self.ratings:
+            raise ValueError("Selected Maia rating is outside the configured range")
+        ratings = [rating] + ([r for r in self.ratings if r != rating] if sweep else [])
         key = self.position_key(root, moves)
         signature = (key, tuple(ratings))
         if self._queued and self._queued[0] == signature:
@@ -297,6 +310,7 @@ class MaiaController(QObject):
         self._cpu_retry = False
         self._ready = False
         self._busy = False
+        self.ratings = getattr(self, "ratings", RATINGS)
         self.outcomes = {}
         self.policies = {}
         self.changed.emit({})

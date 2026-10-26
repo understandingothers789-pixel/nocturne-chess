@@ -63,6 +63,7 @@ class RatingDragBox(QComboBox):
 
 
 class MaiaControls(QWidget):
+    range_changed = Signal(int, int)
     move_limit_changed = Signal(int)
     rating_changed = Signal(int)
     enabled_changed = Signal(bool)
@@ -122,6 +123,22 @@ class MaiaControls(QWidget):
         self.move_limit.hide()
         layout.addLayout(secondary)
         layout.addWidget(self.move_limit)
+        self.range_controls = QWidget()
+        ranges = QHBoxLayout(self.range_controls)
+        ranges.setContentsMargins(0, 0, 0, 0)
+        ranges.addWidget(QLabel("Calculate ratings:"))
+        self.range_min, self.range_max = QComboBox(), QComboBox()
+        for control in (self.range_min, self.range_max):
+            for value in RATINGS:
+                control.addItem(str(value), value)
+        self.range_max.setCurrentIndex(len(RATINGS)-1)
+        ranges.addWidget(self.range_min)
+        ranges.addWidget(QLabel("to"))
+        ranges.addWidget(self.range_max)
+        self.range_min.currentIndexChanged.connect(lambda: self.range_changed.emit(self.range_min.currentData(), self.range_max.currentData()))
+        self.range_max.currentIndexChanged.connect(lambda: self.range_changed.emit(self.range_min.currentData(), self.range_max.currentData()))
+        self.range_controls.hide()
+        layout.addWidget(self.range_controls)
         self.table = QTableWidget(0, 3)
         self._stockfish = {}
         self._table_fen = None
@@ -186,6 +203,7 @@ class MaiaControls(QWidget):
     def _show_details(self, expanded):
         self.status.setVisible(expanded)
         self.move_limit.setVisible(expanded)
+        self.range_controls.setVisible(expanded)
         self.details.setText("▾ Details" if expanded else "▸ Details")
 
     def _select(self, row, column):

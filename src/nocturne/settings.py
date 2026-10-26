@@ -8,6 +8,8 @@ DEFAULTS = {
     "mode": "analysis",
     "engine_cpu_budget": 100,
     "maia_move_limit": 5,
+    "maia_rating_min": 600,
+    "maia_rating_max": 3000,
     "bottom_moves_collapsed": False,
     "human_color": 1,
     "difficulty": "Intermediate",
@@ -222,4 +224,8 @@ def normalize(data) -> dict:
     result["engine_cpu_budget"] = budget if type(budget) is int and 1 <= budget <= 100 else 100
     limit = data.get("maia_move_limit", 5)
     result["maia_move_limit"] = limit if type(limit) is int and 1 <= limit <= 64 else 5
+    low, high = data.get("maia_rating_min", 600), data.get("maia_rating_max", 3000)
+    if type(low) is int and type(high) is int and low in MAIA_RATINGS and high in MAIA_RATINGS and low < high:
+        result["maia_rating_min"], result["maia_rating_max"] = low, high
+    result["maia_rating"] = max(result["maia_rating_min"], min(result["maia_rating_max"], result["maia_rating"]))
     return result

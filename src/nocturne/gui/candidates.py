@@ -4,7 +4,7 @@ from html import escape
 import math
 
 from PySide6.QtCore import QPoint, Signal, Qt, QTimer
-from PySide6.QtGui import QTextDocument
+from PySide6.QtGui import QTextDocument, QCursor
 from PySide6.QtWidgets import (
     QLabel, QMenu, QVBoxLayout, QWidget, QLayout, QSizePolicy, QGridLayout, QToolButton,
 )
@@ -58,11 +58,16 @@ class CandidatePanel(QWidget):
         self.slot_count = 0
         self._header_row_height = None
         self.hovered = None
+        self._leave_timer = QTimer(self)
+        self._leave_timer.setSingleShot(True)
+        self._leave_timer.setInterval(140)
+        self._leave_timer.timeout.connect(self._end_pointer_hover)
         self.pending = {}
         self._clearing = False
         self._revision = 0
 
     def clear(self):
+        self._leave_timer.stop()
         self._clearing = True
         self._revision += 1
         self.hovered = None
@@ -223,6 +228,7 @@ class CandidatePanel(QWidget):
         if rank != 1 or not getattr(self, "_primary_connected", False):
             moves.move_hovered.connect(lambda ply, r=rank: self._hover(r, ply))
             moves.preview_ended.connect(lambda r=rank: self._end_hover(r))
+            moves.preview_gap_ended.connect(lambda r=rank: self._defer_end_hover(r))
             moves.move_clicked.connect(lambda ply, r=rank: self.navigate.emit(r, ply))
             moves.pointer_moved.connect(self.pointer_moved)
             moves.manual_navigation.connect(self.manual_navigation)
@@ -272,18 +278,38 @@ class CandidatePanel(QWidget):
     def _hover(self, rank, ply):
         if rank not in self.lines:
             return
+        self._leave_timer.stop()
         if self.hovered is not None and self.hovered != rank:
-            self._end_hover(self.hovered)
+            self._end_hover(self.hovered, notify=False)
         self.hovered = rank
         self.preview.emit(rank, ply)
 
-    def _end_hover(self, rank):
-        if self._clearing or self.hovered != rank:
+    def _end_pointer_hover(self):
+        position = QCursor.pos()
+        views = [row[2].viewport() for row in self.rows.values()]
+        # Inter-row padding belongs to the candidate list: retain the board even
+        # if the user pauses there. Empty space after a row's last move can exit.
+        between_rows = (self.isVisible() and self.rect().contains(self.mapFromGlobal(position))
+                        and not any(view.rect().contains(view.mapFromGlobal(position)) for view in views)
+                        and any(0 <= view.mapFromGlobal(position).x() < view.width() for view in views))
+        if between_rows:
+            self._leave_timer.start()
+        else:
+            self._end_hover(self.hovered)
+
+    def _defer_end_hover(self, rank):
+        if not self._clearing and self.hovered == rank:
+            self._leave_timer.start()
+
+    def _end_hover(self, rank, notify=True):
+        if rank is None or self._clearing or self.hovered != rank:
             return
+        self._leave_timer.stop()
         self.hovered = None
         if rank in self.rows:
             self.rows[rank][2].cancel_preview()
-        self.preview_end.emit()
+        if notify:
+            self.preview_end.emit()
         if rank in self.pending:
             revision = self._revision
             QTimer.singleShot(0, lambda: self._flush(rank, revision))

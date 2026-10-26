@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QWidgetAction,
+    QToolTip,
 )
 
 from .. import __version__
@@ -363,7 +364,11 @@ class MainWindow(QMainWindow):
         board_tools.addWidget(button("Copy FEN", self._copy_fen, "quiet"))
         guide = button("?", self._show_board_guide, "quiet")
         guide.setAccessibleName("Board symbols guide")
-        guide.setToolTip("Click for a guide to Stockfish rods, numbered circles and Maia arrows.")
+        guide.setToolTip("Click to learn what the numbered Stockfish rods, gray Maia arrows and percentages mean.")
+        guide.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips)
+        guide.setToolTipDuration(15000)
+        self.board_guide_button = guide
+        guide.installEventFilter(self)
         board_tools.addWidget(guide)
         board_layout.addLayout(board_tools)
         splitter.addWidget(arena)
@@ -505,6 +510,7 @@ class MainWindow(QMainWindow):
         self.opening_coverage.client.status.connect(self._lichess_connection_status)
         self.maia_controls = MaiaControls()
         self.maia_controls.move_limit_changed.connect(self._set_maia_move_limit)
+        self.maia_controls.range_changed.connect(self._set_maia_range)
         self.engine_state.hide()
         self.tablebase_label.hide()
         self.maia_controls.details.toggled.connect(self.engine_state.setVisible)
@@ -1188,6 +1194,11 @@ class MainWindow(QMainWindow):
         super().keyPressEvent(event)
 
     def eventFilter(self, watched, event):
+        if watched is getattr(self, "board_guide_button", None):
+            if event.type() == QEvent.Type.Enter:
+                QToolTip.showText(watched.mapToGlobal(watched.rect().bottomLeft()), watched.toolTip(), watched)
+            elif event.type() == QEvent.Type.Leave:
+                QToolTip.hideText()
         if self._closing:
             return super().eventFilter(watched, event)
         if watched is getattr(self, "board_view", None) and event.type() == QEvent.Type.Resize:
@@ -1620,6 +1631,29 @@ class MainWindow(QMainWindow):
         self._request_maia()
         self._save()
 
+    def _set_maia_range(self, low, high):
+        if low >= high:
+            self._sync_maia_range_controls()
+            return
+        self.config.update(maia_rating_min=low, maia_rating_max=high)
+        self.config["maia_rating"] = max(low, min(high, self.config.get("maia_rating", 1800)))
+        self.maia.set_rating_range(low, high)
+        self._sync_maia_range_controls()
+        self._request_maia()
+        self._save()
+
+    def _sync_maia_range_controls(self):
+        low, high = self.config.get("maia_rating_min", 600), self.config.get("maia_rating_max", 3000)
+        for control, value in ((self.maia_controls.range_min, low), (self.maia_controls.range_max, high)):
+            control.blockSignals(True)
+            control.setCurrentIndex(control.findData(value))
+            control.blockSignals(False)
+        self.maia_insights.chart.ratings = tuple(r for r in MAIA_RATINGS if low <= r <= high)
+        for elo, action in self.maia_rating_actions.items():
+            action.setEnabled(low <= elo <= high)
+        for i in range(self.maia_controls.rating.count()):
+            self.maia_controls.rating.model().item(i).setEnabled(low <= self.maia_controls.rating.itemData(i) <= high)
+
     def _set_maia_move_limit(self, count):
         self.config["maia_move_limit"] = count
         self.maia_controls._policy_signature = None
@@ -1652,13 +1686,15 @@ class MainWindow(QMainWindow):
             self.workspace_splitter.setSizes([max(100, total-height), height])
 
     def _set_maia_rating(self, rating):
-        self.config["maia_rating"] = rating
+        self.config["maia_rating"] = max(self.config.get("maia_rating_min", 600), min(self.config.get("maia_rating_max", 3000), rating))
         self._request_maia()
         self._save()
 
     def _request_maia(self):
         if not hasattr(self, "maia"):
             return
+        self.maia.set_rating_range(self.config.get("maia_rating_min", 600), self.config.get("maia_rating_max", 3000))
+        self._sync_maia_range_controls()
         enabled = self.config.get("maia_enabled", True)
         rating = self.config.get("maia_rating", 1800)
         self.maia_controls.enabled.blockSignals(True)
@@ -2898,6 +2934,7 @@ class MainWindow(QMainWindow):
 
     def _apply_settings(self):
         self._sync_bottom_moves()
+        self._sync_maia_range_controls()
         self.maia_controls.move_limit.blockSignals(True)
         self.maia_controls.move_limit.setValue(self.config.get("maia_move_limit", 5))
         self.maia_controls.move_limit.blockSignals(False)
@@ -2970,6 +3007,17 @@ class MainWindow(QMainWindow):
             "Maia percentages and the Blunder Meter\n"
             "Percentages estimate human move choices. Green, yellow and red in the Blunder Meter "
             "describe Stockfish-assessed move quality; gray there means not evaluated.\n\n"
+            "How to read both models\n"
+            "Stockfish evaluates objective playing strength; Maia predicts human choices at the selected rating. "
+            "A popular move is not necessarily a good move. Stockfish circle colors identify its top candidate (cyan), "
+            "other candidates (green), and candidates at least half a pawn below its best (yellow).\n\n"
+            "Scores and ratings\n"
+            "Stockfish scores are from White's perspective: + favors White, − favors Black. "
+            "Maia percentages are probabilities of choosing moves, not winning the game. The Maia outcome rail "
+            "shows White's expected score: win probability plus half the draw probability.\n\n"
+            "Rating curves\n"
+            "Moves by Rating compares the same position across equal-rated opponents. "
+            "Details → Calculate ratings controls which ratings Maia actually computes.\n\n"
             "Move previews\n"
             "Hover a variation and scroll to explore it on the preview board. The main board stays on your game position.")
 

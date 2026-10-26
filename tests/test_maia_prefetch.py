@@ -12,6 +12,29 @@ class PrefetchTests(unittest.TestCase):
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
 
+    def test_configured_range_limits_foreground_and_prefetch_requests(self):
+        self.assertEqual(RATINGS[0], 600)
+        with tempfile.TemporaryDirectory() as folder:
+            c = MaiaController(folder)
+            c.set_rating_range(1200, 2000)
+            c.request('root', [], 1800, sweep=True)
+            self.assertEqual(set(c._queued[1]['ratings']), {1200, 1400, 1600, 1800, 2000})
+            c._queued = None
+            c.debounce.stop()
+            c._ready = True
+            c.device_label = 'AMD ROCm'
+            c.prefetch('root', [['e2e4']], 1800)
+            with patch.object(c.process, 'write') as write:
+                c._prefetch_next()
+                request = json.loads(bytes(write.call_args.args[0]))
+                self.assertTrue(set(request['ratings']) <= set(c.ratings))
+            c.set_rating_range(1400, 1800)
+            self.assertIsNone(c._prefetch_active)
+            self.assertFalse(c.prefetch_queue)
+            with self.assertRaises(ValueError):
+                c.request('root', [], 1000, sweep=True)
+            c.stop()
+
     def test_gpu_priority_pause_resume_and_cache(self):
         with tempfile.TemporaryDirectory() as folder:
             c = MaiaController(folder)

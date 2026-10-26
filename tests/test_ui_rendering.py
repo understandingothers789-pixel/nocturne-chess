@@ -83,6 +83,24 @@ class RenderingTests(unittest.TestCase):
             self.assertEqual(bare.copy(left, y, width, height), labelled.copy(left, y, width, height))
             self.assertNotEqual(bare.copy(right, y, width, height), labelled.copy(right, y, width, height))
 
+    def test_vertical_candidate_transition_keeps_preview_until_real_exit(self):
+        panel = CandidatePanel(MoveText(auto_fit=True))
+        self.addCleanup(panel.close)
+        for rank in (1, 2):
+            panel.update_line(dict(multipv=rank, depth=18, score_type="cp", score_value=22,
+                                   score=22, pv=["e2e4"], san=["e4"]), 1)
+        endings = []
+        panel.preview_end.connect(lambda: endings.append(True))
+        panel._hover(1, 1)
+        panel._defer_end_hover(1)
+        panel._hover(2, 1)
+        QTest.qWait(180)
+        self.assertFalse(endings)
+        self.assertEqual(panel.hovered, 2)
+        panel._defer_end_hover(2)
+        QTest.qWait(180)
+        self.assertEqual(len(endings), 1)
+
     def test_first_move_follows_evaluation_on_same_visual_line(self):
         panel = CandidatePanel(MoveText(auto_fit=True))
         self.addCleanup(panel.close)

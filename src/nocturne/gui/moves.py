@@ -16,6 +16,7 @@ class MoveText(QTextBrowser):
     move_hovered = Signal(int)
     move_clicked = Signal(int)
     preview_ended = Signal()
+    preview_gap_ended = Signal()
     pointer_moved = Signal(QPoint)
     manual_navigation = Signal()
 
@@ -61,7 +62,7 @@ class MoveText(QTextBrowser):
             return
         self._hovered = index
         if index is None:
-            self.preview_ended.emit()
+            (self.preview_gap_ended if self.candidate_rank is not None else self.preview_ended).emit()
         else:
             self.move_hovered.emit(index)
 
@@ -78,7 +79,7 @@ class MoveText(QTextBrowser):
         self.wheel_preview_ply = None
         self._hovered = None
         self._last_pointer_hovered = None
-        self.preview_ended.emit()
+        (self.preview_gap_ended if self.candidate_rank is not None else self.preview_ended).emit()
         super().leaveEvent(event)
 
     def focusOutEvent(self, event):
@@ -94,7 +95,7 @@ class MoveText(QTextBrowser):
 
     def viewportEvent(self, event):
         if event.type() == QEvent.Type.Leave:
-            self.cancel_preview()
+            self.cancel_preview(pointer=True)
         return super().viewportEvent(event)
 
     def set_moves(self, items, current=None, light=False, *, book_departure=None, book_departures=None, figurines=False):
@@ -160,6 +161,10 @@ class MoveText(QTextBrowser):
                     cursor.setPosition(fragment.position() + fragment.length())
                     end = self.cursorRect(cursor)
                     rect = start.united(end).adjusted(0, -2, 1, 2)
+                    if (self.candidate_rank is not None and self._reserved_lines == 1
+                            and rect.intersects(self.viewport().rect())):
+                        rect.setTop(0)
+                        rect.setBottom(self.viewport().height())
                     if rect.contains(point):
                         return QUrl(fragment.charFormat().anchorHref())
                 iterator += 1
@@ -223,7 +228,7 @@ class MoveText(QTextBrowser):
         self.verticalScrollBar().setValue(0)
         self.horizontalScrollBar().setValue(0)
 
-    def cancel_preview(self):
+    def cancel_preview(self, *, pointer=False):
         self._wheel_steps.reset()
         self.wheel_preview_ply = None
         self._hovered = None
@@ -231,7 +236,7 @@ class MoveText(QTextBrowser):
         if self.candidate_rank is not None:
             self.verticalScrollBar().setValue(0)
             self.horizontalScrollBar().setValue(0)
-        self.preview_ended.emit()
+        (self.preview_gap_ended if pointer and self.candidate_rank is not None else self.preview_ended).emit()
 
     def _fit_height(self, *_):
         if self._auto_fit:

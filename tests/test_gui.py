@@ -239,6 +239,23 @@ class GuiTests(unittest.TestCase):
         self.assertIn("10%", guide.call_args.args[2])
         self.assertIn("rankings, not probabilities", guide.call_args.args[2])
 
+    def test_maia_range_updates_requests_chart_and_selected_rating(self):
+        from nocturne.settings import normalize
+        w = self.window
+        w.analysis_mode = True
+        with patch.object(w.maia, "request") as request:
+            w._set_maia_range(1200, 2000)
+            self.assertEqual(w.maia.ratings, (1200, 1400, 1600, 1800, 2000))
+            self.assertEqual(w.maia_insights.chart.ratings, w.maia.ratings)
+            w._set_maia_rating(3000)
+            self.assertEqual(w.config["maia_rating"], 2000)
+            self.assertEqual(request.call_args.args[2], 2000)
+        restored = normalize(w.config)
+        self.assertEqual((restored["maia_rating_min"], restored["maia_rating_max"]), (1200, 2000))
+        with patch("nocturne.gui.window.QToolTip.showText") as tooltip:
+            w.eventFilter(w.board_guide_button, QEvent(QEvent.Type.Enter))
+        self.assertIn("Click to learn", tooltip.call_args.args[1])
+
     def test_bottom_moves_can_collapse_and_reopen(self):
         w = self.window
         w._toggle_bottom_moves()
@@ -1476,7 +1493,7 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(panel.lines[3]["pv"][0], "b1c3")
         self.assertEqual(third._items[0][0], "Nc3")
         QTest.mouseMove(third.viewport(), pos=third.viewport().rect().bottomRight() - QPointF(4, 4).toPoint())
-        QTest.qWait(20)
+        QTest.qWait(200)
         self.assertEqual(panel.lines[3]["pv"][0], "d2d4")
         self.assertIsNone(self.window.board_view.preview_board)
         self.assertIn("d2d4", [m.uci() for m, rank, _ in self.window.board_view.recommendations if rank == 3])
@@ -1728,6 +1745,7 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(self.window.game.to_dict(), before)
         self.assertEqual(self.window.engine.generation, generation)
         self.app.sendEvent(self.window.pv_label.viewport(), QEvent(QEvent.Type.Leave))
+        QTest.qWait(200)
         self.assertIsNone(self.window.board_view.preview_board)
         self.assertEqual(self.window.game.to_dict(), before)
 
@@ -2118,7 +2136,7 @@ class GuiTests(unittest.TestCase):
         for kind in (QComboBox, QSpinBox, QToolButton):
             controls = [control for control in self.window.tabs.widget(1).findChildren(kind)
                         if control not in self.window.candidates.expand_buttons.values()]
-            expected = ([self.window.maia_controls.rating] if kind is QComboBox
+            expected = ([self.window.maia_controls.rating, self.window.maia_controls.range_min, self.window.maia_controls.range_max] if kind is QComboBox
                         else [self.window.maia_controls.move_limit] if kind is QSpinBox else [])
             self.assertEqual(controls, expected)
         self.assertTrue(self.window.maia_controls.move_limit.isHidden())
