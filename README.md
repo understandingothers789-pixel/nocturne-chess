@@ -22,6 +22,12 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt UI preview. Engine evaluations and Maia probabilities in this
 capture are explicitly labelled fixtures, not measured chess analysis.*
 
+**[0.5.7.74](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40249391355/artifacts/12619414024): compact, horizontal subvariations.** Consecutive variation moves flow across the panel and wrap naturally, with smaller text for nested branches and connected guides at forks. The main line retains paired White/Black rows and saved evaluations. Variation evaluations are available on hover; move clicking, previews and list scrolling remain available.
+
+![Horizontal subvariations](docs/previews/inline-variations-74.png)
+
+*Preview evaluations are illustrative fixtures.*
+
 **[0.5.7.73](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40241682337/artifacts/12617480888): connected Game Line branches.** Continuous guide rails and short branch ticks replace repeated tree characters. Nested variations form clear groups, with move numbers in a separate gutter and saved evaluations beside the moves. Scrolling, move selection and bottom PGN notation retain their behavior.
 
 ![Connected Game Line variation guides](docs/previews/connected-line-73.png)
