@@ -7,6 +7,7 @@ import os
 from PySide6.QtCore import QObject, QProcess, QTimer, Signal
 
 from ..engine.uci_types import parse_info, parse_option
+from .cpu_budget import CpuBudget
 
 
 class UciConnection(QObject):
@@ -20,6 +21,8 @@ class UciConnection(QObject):
 
     def __init__(self, parent=None, timeout_ms=5000):
         super().__init__(parent)
+        self.cpu_budget = 100
+        self._cpu_limiter = CpuBudget()
         self.process = QProcess(self)
         self.process.setProcessChannelMode(QProcess.ProcessChannelMode.SeparateChannels)
         self.process.started.connect(self._started)
@@ -78,7 +81,19 @@ class UciConnection(QObject):
         self.log.append("> " + text)
         self.process.write((text + "\n").encode("utf-8"))
 
+    def set_cpu_budget(self, percent):
+        if type(percent) is not int or not 1 <= percent <= 100:
+            raise ValueError("CPU budget must be between 1 and 100 percent")
+        if self.alive:
+            self._cpu_limiter.apply(int(self.process.processId()), percent)
+        self.cpu_budget = percent
+
     def _started(self):
+        try:
+            self._cpu_limiter.apply(int(self.process.processId()), self.cpu_budget)
+        except OSError as exc:
+            self._fail(f"CPU budget could not be applied: {exc}")
+            return
         self.phase = "uci"
         self.send("uci")
 
@@ -241,6 +256,7 @@ class UciConnection(QObject):
             self._fail("Engine process error: " + self.process.errorString())
 
     def _finished(self, code, status):
+        self._cpu_limiter.close()
         if not self._quitting and self.phase != "failed":
             self._fail(f"Engine exited unexpectedly (code {code}). Open engine diagnostics for details.")
 

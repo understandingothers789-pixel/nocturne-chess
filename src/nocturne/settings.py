@@ -6,6 +6,7 @@ from .pieces import DEFAULT_PIECE_SET, PIECE_SET_NAMES
 
 DEFAULTS = {
     "mode": "analysis",
+    "engine_cpu_budget": 100,
     "human_color": 1,
     "difficulty": "Intermediate",
     "seconds": 0,
@@ -214,4 +215,6 @@ def normalize(data) -> dict:
         result["multipv"] = 1
     result["analysis_limit_version"] = 2
     result["auto_eval_limit_version"] = 2
+    budget = data.get("engine_cpu_budget", 100)
+    result["engine_cpu_budget"] = budget if type(budget) is int and 1 <= budget <= 100 else 100
     return result

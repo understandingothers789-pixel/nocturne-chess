@@ -5,6 +5,7 @@ from __future__ import annotations
 from html import escape
 from pathlib import Path
 import random
+import os
 import sys
 import time
 
@@ -785,6 +786,10 @@ class MainWindow(QMainWindow):
         add(engine, "Engine profiles and options…", self._manage_engines)
         engine.addSeparator()
         engine.addMenu(self.resource_controls.menus["Threads"])
+        self.cpu_budget_menu = engine.addMenu("Stockfish CPU budget")
+        self.cpu_budget_menu.setToolTipsVisible(True)
+        self.cpu_budget_menu.aboutToShow.connect(self._refresh_cpu_budget_menu)
+        self._refresh_cpu_budget_menu()
         engine.addMenu(self.resource_controls.menus["Hash"])
         self.multipv_menu = engine.addMenu("MultiPV")
         self.profile_menu = engine.addMenu("Active engine")
@@ -2823,7 +2828,32 @@ class MainWindow(QMainWindow):
         if hasattr(self, "maia"):
             self._maia_changed(self.maia.policies)
 
+    def _refresh_cpu_budget_menu(self):
+        self.cpu_budget_menu.clear()
+        current = self.config.get("engine_cpu_budget", 100)
+        self.cpu_budget_menu.setTitle(f"Stockfish CPU budget ({current}%)")
+        for value in (10, 25, 50, 75, 100):
+            action = self.cpu_budget_menu.addAction("Unrestricted (100%)" if value == 100 else f"{value}% of total CPU")
+            action.setCheckable(True)
+            action.setChecked(value == current)
+            action.setEnabled(os.name == "nt")
+            action.setToolTip("Limits the external UCI engine only. Threads stay unchanged. Lower budgets can reduce heat and fan noise.")
+            action.triggered.connect(lambda checked=False, p=value: self._set_cpu_budget(p))
+        if os.name != "nt":
+            self.cpu_budget_menu.addAction("Available on Windows").setEnabled(False)
+
+    def _set_cpu_budget(self, percent):
+        try:
+            self.engine.connection.set_cpu_budget(percent)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "CPU budget not applied", str(exc))
+            return
+        self.config["engine_cpu_budget"] = percent
+        self._refresh_cpu_budget_menu()
+        self._save()
+
     def _apply_settings(self):
+        self.engine.connection.cpu_budget = self.config.get("engine_cpu_budget", 100) if os.name == "nt" else 100
         self._sync_insight_layout()
         self._apply_appearance(self._appearance_config())
         self.candidates.set_show_seldepth(self.config.get("show_seldepth", False))
