@@ -104,10 +104,14 @@ class MaiaControls(QWidget):
         self.status.setObjectName("sectionNote")
         self.all_moves = QCheckBox("All human moves")
         self.all_moves.setToolTip("Show the full legal policy here, including moves outside Stockfish MultiPV.")
+        self.details = QPushButton("▸ Details")
+        self.details.setCheckable(True)
+        self.details.setToolTip("Show engine, GPU and tablebase information")
+        self.details.toggled.connect(self._show_details)
         secondary = QHBoxLayout()
         secondary.setSpacing(8)
         secondary.addWidget(self.status, 1)
-        secondary.addWidget(self.all_moves)
+        self.status.hide()
         layout.addLayout(secondary)
         self.table = QTableWidget(0, 3)
         self._stockfish = {}
@@ -146,25 +150,33 @@ class MaiaControls(QWidget):
                 available = ancestor.viewport().width()
                 break
             ancestor = ancestor.parentWidget()
-        narrow = available < 390
+        narrow = available < 560
         if narrow == self._narrow:
             return
         self._narrow = narrow
         layout = self.tools_layout
         while layout.count():
             layout.takeAt(0)
-        for column in range(4):
+        for column in range(6):
             layout.setColumnStretch(column, 0)
         if narrow:
             layout.addWidget(self.enabled, 0, 0)
             layout.addWidget(self.rating, 0, 1)
             layout.addWidget(self.settings_button, 1, 0, 1, 2, Qt.AlignmentFlag.AlignLeft)
             layout.setColumnStretch(1, 1)
+            layout.addWidget(self.all_moves, 2, 0)
+            layout.addWidget(self.details, 2, 1, Qt.AlignmentFlag.AlignRight)
         else:
             layout.addWidget(self.settings_button, 0, 0)
             layout.addWidget(self.enabled, 0, 1)
             layout.addWidget(self.rating, 0, 2)
             layout.setColumnStretch(3, 1)
+            layout.addWidget(self.all_moves, 0, 4)
+            layout.addWidget(self.details, 0, 5)
+
+    def _show_details(self, expanded):
+        self.status.setVisible(expanded)
+        self.details.setText("▾ Details" if expanded else "▸ Details")
 
     def _select(self, row, column):
         item = self.table.item(row, 0)

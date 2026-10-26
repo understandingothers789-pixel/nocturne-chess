@@ -421,11 +421,11 @@ class MainWindow(QMainWindow):
         self.engine_state = label("Select your UCI engine", "subtitle", True)
         self.eval_label = label("—")
         self.eval_label.setObjectName("engineEval")
-        headline = AnalysisHeader(self.engine_state, button("Game Review", self._show_review, "quiet"), self.eval_label)
-        engine_page_layout.addWidget(headline)
         self.telemetry = label("Offline analysis · engine supplied by you", "muted", True)
         self.telemetry.setObjectName("telemetryStrip")
-        engine_page_layout.addWidget(self.telemetry)
+        headline = AnalysisHeader(self.telemetry, button("Game Review", self._show_review, "quiet"), self.eval_label)
+        engine_page_layout.addWidget(headline)
+        engine_page_layout.addWidget(self.engine_state)
         self.tablebase_label = label("Syzygy: not configured", "muted", True)
         engine_page_layout.addWidget(self.tablebase_label)
         self.analysis_scope = ""
@@ -484,6 +484,10 @@ class MainWindow(QMainWindow):
         self.opening_coverage.changed.connect(self._update_opening_coverage)
         self.opening_coverage.client.status.connect(self._lichess_connection_status)
         self.maia_controls = MaiaControls()
+        self.engine_state.hide()
+        self.tablebase_label.hide()
+        self.maia_controls.details.toggled.connect(self.engine_state.setVisible)
+        self.maia_controls.details.toggled.connect(self.tablebase_label.setVisible)
         self.maia_controls.rating_changed.connect(self._set_maia_rating)
         self.maia_controls.enabled_changed.connect(self._set_maia_enabled)
         self.maia_controls.settings_requested.connect(self._manage_engines)
@@ -4183,8 +4187,6 @@ class MainWindow(QMainWindow):
 
         separator = f'<span style="color:{colors["metadata"]};"> · </span>'
         values = [
-            f'<span style="color:{colors["metric"]};font-size:15px;'
-            f'font-weight:600;">{escape(str(evaluation))}</span>',
             metric("Depth", depth),
             metric("Nodes", f"{info['nodes']:,}"),
             metric("Nodes/second", f"{info.get('nps', 0):,}"),
