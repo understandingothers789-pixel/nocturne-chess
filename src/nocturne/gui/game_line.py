@@ -87,11 +87,54 @@ class GameLine(MoveText):
                     f'<td align="right"><span style="font-size:11px;color:{colors["muted"]};">'
                     f'{escape(value)}</span></td></tr></table></td>')
 
+        def variation_move(index, first=False):
+            node = nodes[index]
+            white = (node.depth - 1 + offset) % 2 == 0
+            number = root.fullmove + (node.depth - 1 + offset) // 2
+            prefix = f"{number}." if white else f"{number}…" if first else ""
+            active = index == current
+            fg = colors['selected_text'] if active else colors['history']
+            bg = f"background-color:{colors['selection']};" if active else ""
+            punctuation = {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}
+            san = escape(node.san + "".join(punctuation.get(n, f" ${n}") for n in node.nags))
+            value = plot_score_label(node.evaluation) if node.evaluation is not None else ''
+            title = departures.get(index, '')
+            if value:
+                title = f"{title} · {value}" if title else value
+            return (f'<a name="node{index}"></a><a href="move:{index}" '
+                    f'title="{escape(title, quote=True)}" style="color:{fg};{bg}'
+                    f'text-decoration:none;">{prefix}{"&nbsp;" if prefix else ""}{san}</a>')
+
         # Iterative traversal keeps nested variations safe even in large PGNs.
         stack = [(nodes[0].children[0], ())] if nodes[0].children else []
         while stack:
             first, path = stack.pop()
             indent = len(path)
+            if indent:
+                # A variation reads as a sentence. Only a fork interrupts it;
+                # natural wrapping handles the available panel width.
+                run = []
+                index = first
+                while True:
+                    run.append(index)
+                    if len(nodes[index].children) != 1:
+                        break
+                    index = nodes[index].children[0]
+                gutter = min(3 + 3 * indent, 30)
+                size = 13 if indent == 1 else 12
+                text = ' '.join(variation_move(i, j == 0) for j, i in enumerate(run))
+                rows.append(f'<table width="100%" cellspacing="0" cellpadding="0"><tr>'
+                            f'<td width="{gutter}%"></td><td width="{100-gutter}%" '
+                            f'bgcolor="{colors["soft"]}" style="font-size:{size}px;">'
+                            f'<p style="margin-top:5px;margin-bottom:5px;">'
+                            f'<a name="row{first}"></a>{text}'
+                            f'<a name="rowend{first}"></a></p></td></tr></table>')
+                row_paths.append((first, path))
+                children = nodes[run[-1]].children
+                if children:
+                    stack.append((children[0], path))
+                    stack.extend((child, path + (child,)) for child in reversed(children[1:]))
+                continue
             node = nodes[first]
             white = (node.depth - 1 + offset) % 2 == 0
             paired = node.children[0] if white and node.children else None
@@ -121,16 +164,22 @@ class GameLine(MoveText):
         self.setHtml(f'<body bgcolor="{colors["panel"]}"><div style="font-family:Segoe UI,sans-serif;font-size:14px;">'
                      + ''.join(rows) + '</div></body>')
         anchors = {}
+        ends = {}
         block = self.document().begin()
         while block.isValid():
             iterator = block.begin()
             while not iterator.atEnd():
                 fragment = iterator.fragment()
                 for name in fragment.charFormat().anchorNames():
-                    if name.startswith('row'):
+                    if name.startswith('row') and not name.startswith('rowend'):
                         cursor = QTextCursor(self.document())
                         cursor.setPosition(fragment.position())
                         anchors[int(name[3:])] = cursor
+                for name in fragment.charFormat().anchorNames():
+                    if name.startswith("rowend"):
+                        cursor = QTextCursor(self.document())
+                        cursor.setPosition(fragment.position())
+                        ends[int(name[6:])] = cursor
                 iterator += 1
             block = block.next()
         groups = {}
@@ -138,6 +187,8 @@ class GameLine(MoveText):
             if first in anchors:
                 for depth, branch in enumerate(path):
                     groups.setdefault((depth, branch), []).append(anchors[first])
+                    if first in ends:
+                        groups[(depth, branch)].append(ends[first])
         self._branch_guides = [(depth, cursors)
                                for (depth, _), cursors in groups.items()]
         self.viewport().update()
