@@ -1566,6 +1566,15 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, self._ensure_maia_gpu)
             path = self.game.node_path(self.game.current_node)[1:]
             self.maia.request(self.game.initial_fen, [self.game.nodes[n].move.uci() for n in path], rating, sweep=self.config.get("show_maia_insights", True))
+            self.maia.foreground_busy = lambda: self.engine.busy or self._closing or bool(self._review)
+            histories = []
+            moves = [self.game.nodes[n].move.uci() for n in path]
+            index = self.game.current_node
+            while self.game.nodes[index].children:
+                index = self.game.nodes[index].children[0]
+                moves = moves + [self.game.nodes[index].move.uci()]
+                histories.append(moves)
+            self.maia.prefetch(self.game.initial_fen, histories, rating)
         self._maia_changed(self.maia.policies if enabled else {})
 
     def _maia_changed(self, policies):
