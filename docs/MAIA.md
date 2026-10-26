@@ -203,3 +203,20 @@ Nested alternatives share their parent rail and receive their own indentation.
 Move numbers stay in a separate gutter; saved evaluations remain beside moves.
 The guides follow the text layout when scrolling or resizing. Bottom PGN notation
 and board navigation remain unchanged.
+
+## Maia outcome rail (0.5.7.76)
+
+The rail to the left of the insight cards shows the current position at the selected
+equal-player rating. White, grey and dark sections mean White win, draw and Black win.
+The number is White win probability; hover for all outcomes and expected score
+(White win plus half the draw probability). Missing results remain unavailable.
+
+This uses the bundled model value head in the same forward pass as its move policy.
+The official Maia implementation documents labels as side-to-move loss/draw/win:
+https://github.com/CSSLab/maia3/blob/1e13597c42d4858b7cfd7cfdae01e297263364b2/maia3/uci.py#L196
+Nocturne reverses loss/win only when White is to move, yielding White win/draw/Black win
+for both turns. Position/history/rating caches retain outcomes alongside policies;
+old policy-only entries are refreshed. This is a human outcome prediction, not centipawns.
+
+Game Line notation uses the bundled Cburnett SVG piece shapes rendered at high
+resolution for clear small icons. Stored and copied PGN remains standard SAN.
