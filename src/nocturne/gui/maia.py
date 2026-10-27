@@ -117,7 +117,7 @@ class MaiaControls(QWidget):
         self.move_limit = QSpinBox()
         self.move_limit.setRange(1, 64)
         self.move_limit.setValue(5)
-        self.move_limit.setFixedWidth(76)
+        self.move_limit.setFixedSize(64, 32)
         self.move_limit.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.move_limit.setToolTip("Number of Maia moves to list: choose 1–64")
         self.move_limit.setAccessibleName("Number of Maia moves shown")
@@ -127,27 +127,38 @@ class MaiaControls(QWidget):
         self.move_limit_row = QWidget()
         limit_layout = QHBoxLayout(self.move_limit_row)
         limit_layout.setContentsMargins(0, 0, 0, 0)
+        limit_layout.setSpacing(6)
         limit_layout.addWidget(QLabel("Maia moves shown"))
         limit_layout.addWidget(self.move_limit)
-        limit_layout.addStretch()
         self.move_limit_row.hide()
-        layout.addWidget(self.move_limit_row)
         self.range_controls = QWidget()
         ranges = QHBoxLayout(self.range_controls)
         ranges.setContentsMargins(0, 0, 0, 0)
+        ranges.setSpacing(6)
         ranges.addWidget(QLabel("Calculate ratings:"))
         self.range_min, self.range_max = QComboBox(), QComboBox()
         for control in (self.range_min, self.range_max):
+            control.setFixedSize(76, 32)
             for value in RATINGS:
                 control.addItem(str(value), value)
         self.range_max.setCurrentIndex(len(RATINGS)-1)
         ranges.addWidget(self.range_min)
-        ranges.addWidget(QLabel("to"))
+        between = QLabel("to")
+        between.setFixedWidth(20)
+        between.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ranges.addWidget(between)
         ranges.addWidget(self.range_max)
         self.range_min.currentIndexChanged.connect(lambda: self.range_changed.emit(self.range_min.currentData(), self.range_max.currentData()))
         self.range_max.currentIndexChanged.connect(lambda: self.range_changed.emit(self.range_min.currentData(), self.range_max.currentData()))
         self.range_controls.hide()
-        layout.addWidget(self.range_controls)
+        self.detail_fields_layout = QGridLayout()
+        self.detail_fields_layout.setContentsMargins(0, 0, 0, 0)
+        self.detail_fields_layout.setHorizontalSpacing(20)
+        self.detail_fields_layout.setVerticalSpacing(6)
+        self.detail_fields_layout.addWidget(self.move_limit_row, 0, 0, Qt.AlignmentFlag.AlignLeft)
+        self.detail_fields_layout.addWidget(self.range_controls, 0, 1, Qt.AlignmentFlag.AlignLeft)
+        self.detail_fields_layout.setColumnStretch(2, 1)
+        layout.addLayout(self.detail_fields_layout)
         self.table = QTableWidget(0, 3)
         self._stockfish = {}
         self._table_fen = None
@@ -189,6 +200,10 @@ class MaiaControls(QWidget):
         if narrow == self._narrow:
             return
         self._narrow = narrow
+        fields = self.detail_fields_layout
+        fields.removeWidget(self.range_controls)
+        fields.addWidget(self.range_controls, 1 if narrow else 0, 0 if narrow else 1,
+                         Qt.AlignmentFlag.AlignLeft)
         layout = self.tools_layout
         while layout.count():
             layout.takeAt(0)
