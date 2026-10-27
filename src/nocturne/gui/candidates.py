@@ -255,7 +255,7 @@ class CandidatePanel(QWidget):
         self.footers[rank] = footer
         self.expand_buttons[rank] = expand_button
         self._refresh_expander(rank)
-        QTimer.singleShot(0, lambda r=rank: self._refresh_expander(r))
+        QTimer.singleShot(0, self, lambda r=rank: self._refresh_expander(r))
         self.layout.addWidget(frame)
 
     def recolor(self, light):
@@ -320,7 +320,7 @@ class CandidatePanel(QWidget):
             self.preview_end.emit()
         if rank in self.pending:
             revision = self._revision
-            QTimer.singleShot(0, lambda: self._flush(rank, revision))
+            QTimer.singleShot(0, self, lambda: self._flush(rank, revision))
 
     def _flush(self, rank, revision):
         if revision != self._revision or self.hovered == rank or rank not in self.rows:
@@ -370,7 +370,7 @@ class CandidatePanel(QWidget):
             self.expanded_ranks.discard(rank)
             self._apply_expansion(rank)
         self._refresh_expander(rank)
-        QTimer.singleShot(0, lambda r=rank: self._refresh_expander(r))
+        QTimer.singleShot(0, self, lambda r=rank: self._refresh_expander(r))
         self.changed.emit()
 
     def set_maia(self, policy=None, rating=1800, enabled=True):
@@ -513,7 +513,7 @@ class CandidatePanel(QWidget):
         for rank, (_, header, _) in self.rows.items():
             header.setFixedHeight(self._header_row_height)
             self.footers[rank].setFixedHeight(self._footer_height(self.footers[rank]))
-            QTimer.singleShot(0, lambda r=rank: self._refresh_expander(r))
+            QTimer.singleShot(0, self, lambda r=rank: self._refresh_expander(r))
 
     def _apply_expansion(self, rank):
         if rank not in self.rows:
