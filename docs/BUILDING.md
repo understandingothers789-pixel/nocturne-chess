@@ -1053,3 +1053,13 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - Real Stockfish smoke: five requested PVs reached lengths 9/11/8/6/9, with exactly `go infinite` followed by `stop`. No restart or counter reset.
 - Local checks: 51 engine/automation/snapshot tests and nine rendering tests passed. Windows validation also covers saved PV depths/bounds and snapshot milestones.
 - Deferred window work is tied to its owning QObject; closed windows remove their application event filter, and deferred candidate layout checks tolerate destroyed widgets.
+
+## Windows build receipt · 0.5.7.95
+
+- Source: `ac20a7191f8c5d7f5d9c3101206a6d021ebd7188`
+- [Run 40596239332](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40596239332): lint, full Windows tests, packaged application/worker checks and live database checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40596239332/artifacts/12776187578): 494,330,019 bytes; SHA-256 `e303cd5cc1bcc33a5af22d1b4a1458a5329ba6e6f2f272e22f2902c357eadb37`.
+- Details controls share a compact row at normal widths, stack below 560px, and use equal-height fields and a centered range separator.
+- Stockfish candidates use Lichess brushes, with blue selected by Stockfish rank 1. Maia probabilities above 10% use rods/circles in the same ranked palette as Moves by Rating. Both light and dark palettes share one source.
+- Focused local checks: 25 rendering/Maia tests plus three guide/tooltip tests passed. Native board preview verifies the reversed symbols on the supplied position. The preview uses illustrative Maia probabilities rather than a fresh inference.
+- Rendering-test cleanup destroys its windows through Qt before Python wrapper garbage collection, preventing the Windows access violation seen during validation.
