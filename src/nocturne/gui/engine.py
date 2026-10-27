@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtCore import QObject, Signal
 
 from ..core.notation import san
 from ..snapshots import milestones
@@ -32,8 +32,8 @@ class EngineController(QObject):
         self._snapshot_nodes = 0
         self._snapshot_pending = []
         self._snapshot_required = 1
-        self._pv_recovery = None
-        self._extending_pvs = False
+        self._managed_limits = None
+        self._limit_reached = False
         self._pv_stop_sent = False
 
     @property
@@ -100,9 +100,15 @@ class EngineController(QObject):
         if searchmoves:
             valid = [self.board.parse_uci(m).uci() for m in searchmoves]
             go += " searchmoves " + " ".join(valid)
-        self._pv_recovery = (position, "go infinite" + (
-            " searchmoves " + " ".join(valid) if searchmoves else ""
-        ), desired, game.id) if ensure_pv_length and not infinite else None
+        if ensure_pv_length and not infinite:
+            # A single uninterrupted search. The GUI owns the stopping condition;
+            # passing UCI limits here would let the engine stop prematurely.
+            self._managed_limits = (limits.nodes or 0,
+                                    0 if nodes_only else limits.depth,
+                                    0 if nodes_only else limits.seconds)
+            go = "go infinite"
+            if searchmoves:
+                go += " searchmoves " + " ".join(valid)
         self._busy = True
         self.connection.request(self.generation, position, go, desired, game.id)
         return self.generation
@@ -156,7 +162,15 @@ class EngineController(QObject):
         if info.get("bound", "exact") == "exact":
             self.exact_lines[info["multipv"]] = info.copy()
         self.message.emit(generation, "info", info)
-        if self._extending_pvs and not self._pv_stop_sent and self._pvs_complete():
+        if self._managed_limits:
+            nodes, depth, seconds = self._managed_limits
+            self._limit_reached |= bool(
+                (nodes and info.get("nodes", 0) >= nodes)
+                or (depth and info.get("depth", 0) >= depth)
+                or (seconds and info.get("seconds", 0) >= seconds)
+            )
+        if (self._limit_reached and not self._pv_stop_sent
+                and info["multipv"] == self._snapshot_required and self._pvs_complete()):
             self._pv_stop_sent = True
             # Retain the active generation so bestmove completes normally.
             self.connection.send("stop")
@@ -173,17 +187,8 @@ class EngineController(QObject):
                 return False
         return True
 
-    def _continue_pvs(self, generation):
-        if generation == self.generation and self._busy and self._pv_recovery:
-            self.connection.request(generation, *self._pv_recovery)
-            self.status.emit(self.connection.name + " · extending short variations")
-
     def _result(self, generation, bestmove):
         if generation != self.generation or not self._busy:
-            return
-        if self._pv_recovery and not self._extending_pvs and not self._pvs_complete():
-            self._extending_pvs = True
-            QTimer.singleShot(0, lambda: self._continue_pvs(generation))
             return
         self._flush_snapshot()
         self._busy = False
@@ -211,8 +216,8 @@ class EngineController(QObject):
     def stop(self):
         if self._busy and self.connection.observe_nodes:
             self._flush_snapshot()
-        self._pv_recovery = None
-        self._extending_pvs = False
+        self._managed_limits = None
+        self._limit_reached = False
         self._pv_stop_sent = False
         self.generation += 1
         self._busy = False

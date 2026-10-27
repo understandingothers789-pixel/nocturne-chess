@@ -131,9 +131,28 @@ class QtIntegration(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertTrue(all(len(line["pv"]) >= 3 for line in results[0]["lines"].values()))
         log = list(controller.connection.log)
-        self.assertIn("> go nodes 100", log)
+        self.assertNotIn("> go nodes 100", log)
+        self.assertEqual(sum(x.startswith("> go ") for x in log), 1)
         self.assertEqual(log.count("> go infinite"), 1)
         self.assertIn("> stop", log)
+
+    def test_managed_limit_waits_for_complete_pvs_without_restarting(self):
+        from unittest.mock import patch
+        controller = EngineController()
+        self.addCleanup(controller.close)
+        controller.board = Game().board.copy()
+        controller._busy = True
+        controller._managed_limits = (200, 0, 0)
+        controller._snapshot_required = 1
+        with patch.object(controller.connection, "send") as send, patch.object(controller.connection, "request") as request:
+            for nodes, pv in ((100, ["e2e4", "e7e5", "g1f3"]),
+                              (200, ["e2e4", "e7e5"]),
+                              (300, ["e2e4", "e7e5", "g1f3"])):
+                controller._info(controller.generation, dict(multipv=1, nodes=nodes, pv=pv))
+                self.assertEqual(send.call_count, int(nodes == 300))
+            send.assert_called_once_with("stop")
+            request.assert_not_called()
+        controller._busy = False
 
     def test_pv_completeness_accepts_terminal_line_and_rejects_missing_rank(self):
         controller = EngineController()
@@ -145,17 +164,14 @@ class QtIntegration(unittest.TestCase):
         controller._snapshot_required = 2
         self.assertFalse(controller._pvs_complete())
 
-    def test_stop_invalidates_queued_short_pv_continuation(self):
-        from unittest.mock import patch
+    def test_stop_clears_managed_search_limits(self):
         controller = EngineController()
         self.addCleanup(controller.close)
-        controller._busy = True
-        controller._pv_recovery = ("position startpos", "go infinite", {}, "test")
-        generation = controller.generation
+        controller._managed_limits = (200_000_000, 0, 0)
+        controller._limit_reached = True
         controller.stop()
-        with patch.object(controller.connection, "request") as request:
-            controller._continue_pvs(generation)
-        request.assert_not_called()
+        self.assertIsNone(controller._managed_limits)
+        self.assertFalse(controller._limit_reached)
 
     def test_variation_text_slider_scales_only_candidates_and_persists(self):
         with self.workspace() as window:
@@ -366,7 +382,7 @@ class QtIntegration(unittest.TestCase):
             window._set_analysis_limit("bounded")
             self.wait_until(lambda: not window.engine.busy and len(window.candidates.lines) == 3)
             self.assertEqual(window.engine.connection.process.processId(), pid)
-            self.assertIn("> go depth 4 movetime 100 nodes 500", "\n".join(window.engine.connection.log))
+            self.assertIn("> go infinite", window.engine.connection.log)
             from unittest.mock import patch
             with patch("PySide6.QtWidgets.QInputDialog.getInt", return_value=(5, True)) as chooser:
                 next(a for a in window.multipv_menu.actions() if a.text() == "Custom…").trigger()
@@ -618,7 +634,7 @@ class QtIntegration(unittest.TestCase):
             window.game.navigate(0)
             window._auto_evaluate_line()
             self.wait_until(lambda: window._review is None, 8)
-            self.assertIn("> go nodes 100", window.engine.connection.log)
+            self.assertIn("> go infinite", window.engine.connection.log)
             self.assertEqual(len(window.game.nodes[0].analysis["multipv_lines"]), 3)
 
             self.assertEqual(len(window.game.nodes[1].analysis["multipv_lines"]), 3)
@@ -696,7 +712,7 @@ class QtIntegration(unittest.TestCase):
             window._apply_settings()
             window._set_node_limit("analysis_nodes", 100)
             self.wait_until(lambda: bool(window.engine.connection.log) and
-                            "> go nodes 100" in window.engine.connection.log)
+                            "> go infinite" in window.engine.connection.log)
             self.wait_until(lambda: not window.engine.busy)
             self.assertEqual(window.game.cursor, 0)
             window._set_node_limit("analysis_nodes", 0)

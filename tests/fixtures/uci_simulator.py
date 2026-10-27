@@ -48,7 +48,7 @@ def search(position, command, event):
             child.push(move)
             reply = next(iter(child.legal_moves), None)
             pv = move.uci() + (" " + reply.uci() if reply else "")
-            if reply and (mode != "short-pvs" or "infinite" in tokens):
+            if reply and (mode != "short-pvs" or depth == 4):
                 child.push(reply)
                 continuation = next(iter(child.legal_moves), None)
                 if continuation:
@@ -67,6 +67,20 @@ def search(position, command, event):
                 f"nps 20000 score {score} wdl 400 500 100 multipv {rank} pv {pv}"
             )
         time.sleep(0.015)
+    if "infinite" in tokens:
+        event.wait(0.12)  # Allow the transport to flush the completed iteration.
+    if "infinite" in tokens and not event.is_set() and mode not in ("hold", "partial-pvs", "bound-at-limit"):
+        for rank, move in enumerate(moves[:int(options.get("MultiPV", 1))], 1):
+            child = position.copy()
+            pv = [move.uci()]
+            child.push(move)
+            for _ in range(3):
+                reply = next(iter(child.legal_moves), None)
+                if reply is None:
+                    break
+                pv.append(reply.uci())
+                child.push(reply)
+            send(f"info depth 5 nodes 2000000000 score cp {35-(rank-1)*20} multipv {rank} pv {' '.join(pv)}")
     if "infinite" in tokens or mode == "hold":
         event.wait(10)
     # Deliberately emit stale information after stop; transports must discard it.
