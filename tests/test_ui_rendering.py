@@ -99,21 +99,27 @@ class RenderingTests(unittest.TestCase):
             self.assertEqual(bare.copy(left, y, width, height), labelled.copy(left, y, width, height))
             self.assertNotEqual(bare.copy(right, y, width, height), labelled.copy(right, y, width, height))
 
-    def test_blue_maia_arrow_tracks_highest_probability_not_stockfish_rank(self):
+    def test_blue_stockfish_arrow_tracks_engine_rank_and_maia_rods_match_curves(self):
         board = BoardWidget()
         self.addCleanup(board.close)
         board.resize(600, 600)
         moves = [board.board.parse_uci(uci) for uci in ("d2d4", "e2e4", "g1f3")]
         board.maia_recommendations = [(moves[0], .2, "best"), (moves[1], .7, "best"), (moves[2], .1, "best")]
-        board.set_recommendations([(moves[0], 1, "+0.2")])
+        board.set_recommendations([(moves[0], 1, "+0.2"), (moves[1], 2, "+0.1")])
         board.show()
         self.app.processEvents()
-        with patch.object(board, "_maia_arrow") as arrow:
+        with patch.object(board, "_stockfish_arrow") as arrow:
             board.grab()
         self.assertEqual(arrow.call_count, 2)
         blue = [call for call in arrow.call_args_list if call.kwargs["top"]]
         self.assertEqual(len(blue), 1)
-        self.assertEqual((blue[0].args[1], blue[0].args[2]), (moves[1].from_sq, moves[1].to_sq))
+        self.assertEqual((blue[0].args[1], blue[0].args[2]), (moves[0].from_sq, moves[0].to_sq))
+        from nocturne.gui.maia_colors import curve_colors
+        for light in (False, True):
+            board.light = light
+            rods = board._maia_rod_entries()
+            self.assertEqual([(move, rank) for move, rank, color in rods], [(moves[1], 1), (moves[0], 2)])
+            self.assertEqual([color for move, rank, color in rods], list(curve_colors(light)[:2]))
 
     def test_vertical_candidate_transition_keeps_preview_until_real_exit(self):
         panel = CandidatePanel(MoveText(auto_fit=True))

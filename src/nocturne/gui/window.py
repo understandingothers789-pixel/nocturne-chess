@@ -365,7 +365,7 @@ class MainWindow(QMainWindow):
         board_tools.addWidget(button("Copy FEN", self._copy_fen, "quiet"))
         guide = button("?", self._show_board_guide, "quiet")
         guide.setAccessibleName("Board symbols guide")
-        guide.setToolTip("Click to learn what the numbered Stockfish rods, Maia arrows and percentages mean.")
+        guide.setToolTip("Click to learn what the Stockfish arrows, numbered Maia rods and percentages mean.")
         guide.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips)
         guide.setToolTipDuration(15000)
         self.board_guide_button = guide
@@ -855,7 +855,7 @@ class MainWindow(QMainWindow):
         maia_menu = engine.addMenu("Maia-3 79M")
         self.maia_enabled_action = add(maia_menu, "Enable local Maia predictions", self._set_maia_enabled)
         self.maia_enabled_action.setCheckable(True)
-        self.maia_arrows_action = add(maia_menu, "Show Maia arrows (moves above 10%)", self._set_maia_arrows)
+        self.maia_arrows_action = add(maia_menu, "Show Maia rods (moves above 10%)", self._set_maia_arrows)
         self.maia_arrows_action.setCheckable(True)
         device_menu = maia_menu.addMenu("Inference device")
         self.maia_device_actions = {}
@@ -3044,23 +3044,22 @@ class MainWindow(QMainWindow):
 
     def _show_board_guide(self):
         QMessageBox.information(self, "Board symbols guide",
-            "Stockfish — rods and numbered circles\n"
-            "Each rod points to an engine candidate. The circle number is its Stockfish rank: 1 is the top recommendation, "
-            "2 is the second, and so on. These numbers are rankings, not probabilities.\n\n"
-            "Maia — transparent arrows\n"
-            "An arrow appears for every move Maia predicts has more than a 10% chance of being played at the selected rating. "
-            "Blue marks Maia's most likely move; gray marks the other moves above 10%. "
-            "These arrow colors indicate human likelihood, not move quality.\n\n"
+            "Stockfish — transparent arrows\n"
+            "Blue marks Stockfish's top recommendation; gray arrows show its other candidates. "
+            "These are the moves in the Stockfish analysis lines.\n\n"
+            "Maia — colored rods and numbered circles\n"
+            "A rod appears for every move Maia predicts has more than a 10% chance of being played at the selected rating. "
+            "The circle numbers are Maia likelihood rankings, not probabilities: 1 is the most likely human move. "
+            "Each rod and circle matches that move's color in Moves by Rating. These colors identify moves, not quality.\n\n"
             "When both agree\n"
-            "A Maia arrow and a Stockfish rod/circle can point to the same destination. "
-            "Stockfish ranks the move and Maia predicts that people will play it.\n\n"
+            "A Stockfish arrow and a Maia rod/circle can point to the same destination. "
+            "The arrow shows the engine candidate; the rod shows the predicted human choice.\n\n"
             "Maia percentages and the Blunder Meter\n"
             "Percentages estimate human move choices. Green, yellow and red in the Blunder Meter "
             "describe Stockfish-assessed move quality; gray there means not evaluated.\n\n"
             "How to read both models\n"
             "Stockfish evaluates objective playing strength; Maia predicts human choices at the selected rating. "
-            "A popular move is not necessarily a good move. Stockfish circle colors identify its top candidate (cyan), "
-            "other candidates (green), and candidates at least half a pawn below its best (yellow).\n\n"
+            "A popular move is not necessarily a good move. Use the evaluations and Blunder Meter to judge quality.\n\n"
             "Scores and ratings\n"
             "Stockfish scores are from White's perspective: + favors White, − favors Black. "
             "Maia percentages are probabilities of choosing moves, not winning the game. The Maia outcome rail "

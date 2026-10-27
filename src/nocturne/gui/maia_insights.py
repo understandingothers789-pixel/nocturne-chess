@@ -13,12 +13,7 @@ from ..maia.risk import assess_moves
 from .theme import palette
 from .notation import FigurineToolButton, draw as draw_notation, html as notation_html
 
-COLORS = ("#8ed5ef", "#d6b46d", "#91c6a4", "#c2a7eb", "#e3a394")
-LIGHT_COLORS = ("#197b9c", "#a16c22", "#377e56", "#7b50a8", "#b95844")
-
-
-def curve_colors():
-    return LIGHT_COLORS if QApplication.instance().property("nocturneLightAppearance") else COLORS
+from .maia_colors import COLORS, curve_colors
 
 
 class InsightCard(QFrame):

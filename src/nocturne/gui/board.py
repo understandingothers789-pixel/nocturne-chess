@@ -12,7 +12,8 @@ from PySide6.QtWidgets import QMenu, QWidget
 from ..core.board import Board, Move, PIECE_CHARS, SQUARES
 from ..pieces import DEFAULT_PIECE_SET, PIECE_SET_NAMES, piece_path as asset_path
 from .wheel import WheelSteps
-from .theme import BOARD_THEMES, CANDIDATE_MARKERS, palette
+from .maia_colors import curve_colors
+from .theme import BOARD_THEMES, palette
 
 
 class BoardWidget(QWidget):
@@ -257,7 +258,7 @@ class BoardWidget(QWidget):
         normal = QPointF(-dy, dx) * head_width
         painter.drawPolygon(QPolygonF([b, base + normal, base - normal]))
 
-    def _maia_arrow(self, painter, src, dst, unit, *, top=False):
+    def _stockfish_arrow(self, painter, src, dst, unit, *, top=False):
         """Lichess pale brushes: round shafts, SVG marker proportions, 40% opacity."""
         if src == dst:
             return
@@ -287,6 +288,47 @@ class BoardWidget(QWidget):
         painter.setBrush(QColor(0, 48, 136, 102) if top else QColor(74, 74, 74, 102))
         painter.drawPath(stroker.createStroke(shaft).united(head))
         painter.restore()
+
+    def _maia_rod_entries(self):
+        colors = curve_colors(self.light)
+        ranked = sorted(self.maia_recommendations, key=lambda entry: -entry[1])
+        return [(move, index + 1, colors[index % len(colors)])
+                for index, (move, probability, _) in enumerate(ranked) if probability > 0.10]
+
+    def _draw_maia_rods(self, painter, unit):
+        entries = self._maia_rod_entries()
+        best_rank = {}
+        for move, rank, _ in entries:
+            destination = self._destination(move)
+            best_rank[destination] = min(rank, best_rank.get(destination, rank))
+        for move, rank, marker in reversed(entries):
+            color = QColor(marker)
+            color.setAlpha(225)
+            start = self.square_rect(move.from_sq).center()
+            end = self.square_rect(self._destination(move)).center()
+            delta = end - start
+            length = math.hypot(delta.x(), delta.y())
+            if length:
+                start += delta * (unit * 0.25 / length)
+            painter.setPen(QPen(color, max(2.0, unit * 0.065), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            painter.drawLine(start, end)
+        # Keep the most likely badge visible when two moves share a target.
+        for move, rank, marker in reversed(entries):
+            if best_rank[self._destination(move)] != rank:
+                continue
+            center = self.square_rect(self._destination(move)).center()
+            diameter = max(13.0, unit * 0.245)
+            badge = QRectF(center.x() - diameter / 2, center.y() - diameter / 2, diameter, diameter)
+            color = QColor(marker)
+            color.setAlpha(250)
+            painter.setBrush(color)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(badge)
+            painter.setPen(QColor("#17251d" if color.lightnessF() > .45 else "#ffffff"))
+            font = QFont("Segoe UI")
+            font.setPixelSize(max(9, int(diameter * 0.62)))
+            painter.setFont(font)
+            painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, str(rank))
 
     @staticmethod
     def last_move_color(base):
@@ -373,57 +415,19 @@ class BoardWidget(QWidget):
             piece = self.board.cells[self._anim_move.to_sq]
             if piece:
                 self._piece(painter, piece, QRectF(pos.x(), pos.y(), unit, unit))
-        # Lichess-style Maia arrows overlay pieces; Stockfish rods and badges
-        # retain their independent layer above them.
-        if not preview and self.overlays and self.maia_arrows_enabled:
-            top_move = max(self.maia_recommendations, key=lambda entry: entry[1], default=(None, 0, ""))[0]
-            for move, probability, category in reversed(self.maia_recommendations):
-                if probability > 0.10:
-                    self._maia_arrow(painter, move.from_sq, self._destination(move), unit, top=move == top_move)
+        # Stockfish uses the familiar Lichess arrows; Maia's colored rods and
+        # likelihood ranks sit above them when both models suggest a move.
+        if not preview and self.overlays:
+            entries = self.recommendations or ([(self.best_move, 1, "")] if self.best_move else [])
+            for move, rank, _ in reversed(entries):
+                self._stockfish_arrow(painter, move.from_sq, self._destination(move), unit, top=rank == 1)
         for src, dst in () if preview else self.arrows:
             self._arrow(painter, src, dst, QColor(232, 175, 79, 200), unit)
         if not preview and self.overlays:
             for move in self.branch_moves:
                 self._arrow(painter, move.from_sq, self._destination(move), QColor(153, 137, 106, 65), unit, subtle=True)
-            entries = self.recommendations or ([(self.best_move, 1, "")] if self.best_move else [])
-            best_rank = {}
-            for move, rank, _ in entries:
-                destination = self._destination(move)
-                best_rank[destination] = min(rank, best_rank.get(destination, rank))
-            for move, rank, text in reversed(entries):
-                marker = CANDIDATE_MARKERS[0 if rank == 1 else 2 if rank in self.inferior_ranks else 1]
-                color = QColor(marker)
-                color.setAlpha(225)
-                # Stockfish is always a rod plus numbered circle. Maia supplies
-                # the broad arrowhead when both engines suggest the same move.
-                start = self.square_rect(move.from_sq).center()
-                end = self.square_rect(self._destination(move)).center()
-                delta = end - start
-                length = math.hypot(delta.x(), delta.y())
-                if length:
-                    start += delta * (unit * 0.25 / length)
-                painter.setPen(QPen(color, max(2.0, unit * 0.065), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-                painter.drawLine(start, end)
-            # Put every endpoint above every rod so crossing candidates cannot
-            # obscure the numbered circles.
-            for move, rank, text in reversed(entries):
-                if best_rank[self._destination(move)] != rank:
-                    continue
-                marker = CANDIDATE_MARKERS[0 if rank == 1 else 2 if rank in self.inferior_ranks else 1]
-                destination = self.square_rect(self._destination(move))
-                diameter = max(13.0, unit * 0.245)
-                center = destination.center()
-                badge = QRectF(center.x() - diameter / 2, center.y() - diameter / 2, diameter, diameter)
-                badge_color = QColor(marker)
-                badge_color.setAlpha(250)
-                painter.setBrush(badge_color)
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.drawEllipse(badge)
-                painter.setPen(QColor("#17251d"))
-                font = QFont("Segoe UI")
-                font.setPixelSize(max(9, int(diameter * 0.62)))
-                painter.setFont(font)
-                painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, str(rank))
+            if self.maia_arrows_enabled:
+                self._draw_maia_rods(painter, unit)
         if not preview and self._drag_pos is not None and self._pressed is not None:
             piece = self.board.cells[self._pressed]
             if piece:
