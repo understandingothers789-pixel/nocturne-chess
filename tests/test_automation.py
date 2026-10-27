@@ -82,14 +82,17 @@ class AutomationTests(unittest.TestCase):
         self.assertFalse(hasattr(window, "move_tree"))
         self.assertFalse(hasattr(window, "engine_gear"))
 
-    def test_default_limits_reach_the_engine_as_separate_node_commands(self):
+    def test_default_limits_are_managed_for_analysis_and_native_for_self_play(self):
         window = self.window
         window._analysis_enabled = True
         window._schedule_engine()
-        self.wait(lambda: "> go nodes 1000000000" in window.engine.connection.log)
+        self.wait(lambda: "> go infinite" in window.engine.connection.log)
+        self.assertEqual(window.engine._managed_limits, (1_000_000_000, 0, 0))
         window._halt_analysis()
         window._auto_evaluate_line()
-        self.wait(lambda: "> go nodes 200000000" in window.engine.connection.log)
+        self.wait(lambda: window.engine.connection.phase == "search"
+                  and window.engine._managed_limits == (200_000_000, 0, 0))
+        self.assertGreaterEqual(list(window.engine.connection.log).count("> go infinite"), 2)
         window._escape()
         window._start_auto_play()
         self.wait(lambda: "> go nodes 10000000" in window.engine.connection.log)

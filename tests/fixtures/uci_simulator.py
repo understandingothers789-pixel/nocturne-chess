@@ -69,7 +69,7 @@ def search(position, command, event):
         time.sleep(0.015)
     if "infinite" in tokens:
         event.wait(0.12)  # Allow the transport to flush the completed iteration.
-    if "infinite" in tokens and not event.is_set() and mode not in ("hold", "partial-pvs", "bound-at-limit"):
+    if "infinite" in tokens and not event.is_set() and mode not in ("hold", "partial-pvs", "bound-at-limit", "snapshot-nodes"):
         for rank, move in enumerate(moves[:int(options.get("MultiPV", 1))], 1):
             child = position.copy()
             pv = [move.uci()]
