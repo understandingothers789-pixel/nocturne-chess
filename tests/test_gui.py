@@ -851,7 +851,7 @@ class GuiTests(unittest.TestCase):
             header = self.window.candidates.rows[3][1]
             pv = self.window.candidates.rows[3][2]
             self.assertEqual(header.font().pixelSize(), 16)
-            self.assertIn("font-size:16px", pv.toHtml().replace(" ", ""))
+            self.assertIn("font-size:19px", pv.toHtml().replace(" ", ""))  # Default +20%, rounded by Qt.
             self.assertIn("No games found", self._header_document(1).toPlainText())
         self.window._set_explorer_option("explorer_enabled", False)
         self.assertFalse(explorer.isVisible())
