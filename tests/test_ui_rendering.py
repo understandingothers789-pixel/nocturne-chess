@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from PySide6.QtCore import QEvent, QPoint, QPointF, Qt, QUrl
+from PySide6.QtCore import QCoreApplication, QEvent, QPoint, QPointF, Qt, QUrl
 from PySide6.QtGui import QMouseEvent, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QScrollArea
@@ -23,6 +23,21 @@ class RenderingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        self._existing_windows = set(self.app.topLevelWidgets())
+        # Run last, after each test's close callbacks. Let Qt delete parents and
+        # children together rather than leaving Python's cyclic GC to choose
+        # an arbitrary destruction order for connected widget wrappers.
+        self.addCleanup(self._delete_test_windows)
+
+    def _delete_test_windows(self):
+        for widget in self.app.topLevelWidgets():
+            if widget not in self._existing_windows:
+                widget.close()
+                widget.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        self.app.processEvents()
 
     def test_tabs_keep_live_text_and_native_reordering_during_drag(self):
         class ObservedTabs(StudyTabBar):
