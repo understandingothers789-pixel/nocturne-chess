@@ -1034,3 +1034,12 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - [Run 40413308005](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40413308005): lint, 297 tests (5 skipped), packaged application/worker checks and live API checks passed.
 - [Unsigned Windows x64 artifact](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40413308005/artifacts/12693529587): 494,321,897 bytes; expires November 25, 2026.
 - Focused local checks cover preview transitions/exits, restricted foreground and prefetch requests, range selection/clamping, numeric controls, drag-collapse and top-Maia arrow identity/threshold.
+
+## Windows build receipt · 0.5.7.93
+
+- Source: `1b86bcfa680205b72b4c259bd4f9979bfae32d7d`
+- [Run 40442741272](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40442741272): lint, full Windows tests and packaged application/worker checks passed.
+- [Unsigned Windows x64 artifact](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40442741272/artifacts/12707293241): 494,326,001 bytes; SHA-256 `2d7bc8210e7873147ffab016e44af79a9e80047a0d66cb6336750a01c98d978e`.
+- Full local suite: 301 tests, six environment-dependent skips. Focused GUI suite: 93 passed. Rendering suite: nine passed.
+- Real Stockfish smoke: a one-node, five-PV search continued with the same process/hash, returned PV lengths 9/6/11/3/4, and stopped automatically. Tests cover terminal short lines, cancellation, scaling and pane teardown.
+- Display → Stockfish variation text size adjusts only the candidate text and piece symbols, from the previous size (0%) to twice that size (+100%), initially +20%.
