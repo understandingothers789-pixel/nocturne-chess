@@ -1043,3 +1043,13 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - Full local suite: 301 tests, six environment-dependent skips. Focused GUI suite: 93 passed. Rendering suite: nine passed.
 - Real Stockfish smoke: a one-node, five-PV search continued with the same process/hash, returned PV lengths 9/6/11/3/4, and stopped automatically. Tests cover terminal short lines, cancellation, scaling and pane teardown.
 - Display → Stockfish variation text size adjusts only the candidate text and piece symbols, from the previous size (0%) to twice that size (+100%), initially +20%.
+
+## Windows build receipt · 0.5.7.94
+
+- Source: `68345916017742a19407809b765c7916d84fc436`
+- [Run 40570617290](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40570617290): lint, full Windows suite, packaged application/worker checks and live database checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40570617290/artifacts/12763759470): 494,327,835 bytes; SHA-256 `8dde5aa6311fe239b54ff4fcca23cfa07c6b60cd27b246cf8e55511119414b6b`.
+- Ordinary analysis and auto-eval use one `go infinite` request with application-monitored limits. No second position/search request is sent to extend a short PV. Self-play retains its native node cap.
+- Real Stockfish smoke: five requested PVs reached lengths 9/11/8/6/9, with exactly `go infinite` followed by `stop`. No restart or counter reset.
+- Local checks: 51 engine/automation/snapshot tests and nine rendering tests passed. Windows validation also covers saved PV depths/bounds and snapshot milestones.
+- Deferred window work is tied to its owning QObject; closed windows remove their application event filter, and deferred candidate layout checks tolerate destroyed widgets.
