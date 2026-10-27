@@ -22,6 +22,7 @@ class MoveText(QTextBrowser):
 
     def __init__(self, parent=None, *, auto_fit=False, reserved_lines=0):
         super().__init__(parent)
+        self.font_increase = 0
         self.continuous_preview = False
         self._figurines = False
         self._auto_fit = auto_fit
@@ -145,10 +146,21 @@ class MoveText(QTextBrowser):
             decoration = "text-decoration:none;"
             tooltip = f' title="{escape(departures[index], quote=True)}"' if index in departures else ""
             gap = " " if (self.candidate_rank is not None or self.continuous_preview) and offset < len(self._items) - 1 else ""
-            tokens.append(f'<a href="move:{index}" style="{style} {decoration}"{tooltip}>{notation_html(label) if figurines else escape(label)}{gap}</a>')
+            tokens.append(f'<a href="move:{index}" style="{style} {decoration}"{tooltip}>{notation_html(label, size=17 * (1 + self.font_increase / 100) if self.candidate_rank is not None else 17) if figurines else escape(label)}{gap}</a>')
         size, spacing = (16, 155) if self._auto_fit else (14, 140)
+        if self.candidate_rank is not None:
+            size *= 1 + self.font_increase / 100
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'
                      + ("" if self.candidate_rank is not None or self.continuous_preview else " ").join(tokens) + "</div>")
+
+    def set_font_increase(self, percent):
+        if self.font_increase == percent:
+            return
+        self.font_increase = percent
+        self._reserved_measurement = None
+        self._candidate_style = None
+        self.set_moves(self._items, self._current, self._light, figurines=self._figurines)
+        self._fit_height()
 
     def _move_at(self, point):
         """Include the padding above and below each candidate anchor."""
@@ -248,7 +260,7 @@ class MoveText(QTextBrowser):
                 if not self._reserved_measurement or self._reserved_measurement[0] != key:
                     probe = QTextDocument()
                     probe.setDocumentMargin(self.document().documentMargin())
-                    probe.setHtml('<div style="font-family:Consolas,monospace; font-size:16px; line-height:155%;">'
+                    probe.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{16 * (1 + self.font_increase / 100)}px; line-height:155%;">'
                                   + '<br/>'.join(['Hg'] * self._reserved_lines) + '</div>')
                     probe.size()  # Force Qt to lay out the reserved sample lines.
                     layout = probe.begin().layout()

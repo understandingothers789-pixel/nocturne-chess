@@ -54,6 +54,7 @@ DEFAULTS = {
     "review_confirm": True,
     "analysis_snapshots": False,
     "details": False,
+    "pv_font_increase": 20,
     "show_seldepth": False,
     "smart_move": True,
     "candidate_style": "lines",
@@ -228,4 +229,6 @@ def normalize(data) -> dict:
     if type(low) is int and type(high) is int and low in MAIA_RATINGS and high in MAIA_RATINGS and low < high:
         result["maia_rating_min"], result["maia_rating_max"] = low, high
     result["maia_rating"] = max(result["maia_rating_min"], min(result["maia_rating_max"], result["maia_rating"]))
+    increase = data.get("pv_font_increase", 20)
+    result["pv_font_increase"] = increase if type(increase) is int and 0 <= increase <= 100 else 20
     return result

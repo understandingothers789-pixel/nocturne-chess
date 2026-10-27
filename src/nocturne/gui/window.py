@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSpinBox,
+    QSlider,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
@@ -769,6 +770,22 @@ class MainWindow(QMainWindow):
             action = add(display, text, lambda checked, k=key: self._set_display(k, checked))
             action.setCheckable(True)
             self.display_actions[key] = action
+        font_menu = display.addMenu("Stockfish variation text size")
+        font_action = QWidgetAction(font_menu)
+        font_widget = QWidget()
+        font_layout = QVBoxLayout(font_widget)
+        self.pv_font_label = QLabel()
+        self.pv_font_slider = QSlider(Qt.Orientation.Horizontal)
+        self.pv_font_slider.setRange(0, 100)
+        self.pv_font_slider.setSingleStep(1)
+        self.pv_font_slider.setMinimumWidth(240)
+        self.pv_font_slider.setAccessibleName("Stockfish variation font increase percent")
+        self.pv_font_slider.setToolTip("Increase Stockfish variation text by 0–100%. Default: +20%.")
+        font_layout.addWidget(self.pv_font_label)
+        font_layout.addWidget(self.pv_font_slider)
+        font_action.setDefaultWidget(font_widget)
+        font_menu.addAction(font_action)
+        self.pv_font_slider.valueChanged.connect(self._set_pv_font_increase)
         add(display, "Board appearance…", self._settings)
         display.addSeparator()
         self.arrange_panels_action = add(display, "Arrange panels", self._arrange_panels)
@@ -2350,6 +2367,7 @@ class MainWindow(QMainWindow):
                 infinite=state.get("kind") == "auto_eval" and state["nodes"] is None,
                 nodes_only=state.get("kind") == "auto_eval" or confirming,
                 kind="analysis",
+                ensure_pv_length=state.get("kind") == "auto_eval",
                 searchmoves=searchmoves,
                 arguments=profile.get("arguments", []),
                 tablebase_path=self.config.get("syzygy_path", ""),
@@ -2949,7 +2967,19 @@ class MainWindow(QMainWindow):
         self._refresh_cpu_budget_menu()
         self._save()
 
+    def _set_pv_font_increase(self, percent):
+        self.config["pv_font_increase"] = percent
+        self.pv_font_label.setText(f"Variation text: +{percent}%")
+        self.candidates.set_font_increase(percent)
+        self._save(defer=True)
+
     def _apply_settings(self):
+        percent = self.config.get("pv_font_increase", 20)
+        self.pv_font_slider.blockSignals(True)
+        self.pv_font_slider.setValue(percent)
+        self.pv_font_slider.blockSignals(False)
+        self.pv_font_label.setText(f"Variation text: +{percent}%")
+        self.candidates.set_font_increase(percent)
         self._sync_bottom_moves()
         self._sync_maia_range_controls()
         self.maia_controls.move_limit.blockSignals(True)
@@ -4215,6 +4245,7 @@ class MainWindow(QMainWindow):
                 profile["path"],
                 options=options,
                 kind=kind,
+                ensure_pv_length=kind == "analysis" and not self._auto_play_active,
                 infinite=infinite,
                 arguments=profile.get("arguments", []),
                 multipv=count,

@@ -119,6 +119,57 @@ class QtIntegration(unittest.TestCase):
         self.assertIn("> stop", log)
         self.assertIn("> isready", log)
 
+    def test_short_pvs_extend_after_limit_and_complete_all_ranks(self):
+        controller = EngineController()
+        self.addCleanup(controller.close)
+        results = []
+        controller.message.connect(lambda g, k, p: results.append(p) if k == "result" else None)
+        controller.start(Game(), AnalysisLimits(nodes=100, depth=1, seconds=1),
+                         sys.executable, arguments=[SIMULATOR, "short-pvs"],
+                         multipv=3, nodes_only=True, ensure_pv_length=True)
+        self.wait_until(lambda: bool(results))
+        self.assertEqual(len(results), 1)
+        self.assertTrue(all(len(line["pv"]) >= 3 for line in results[0]["lines"].values()))
+        log = list(controller.connection.log)
+        self.assertIn("> go nodes 100", log)
+        self.assertEqual(log.count("> go infinite"), 1)
+        self.assertIn("> stop", log)
+
+    def test_pv_completeness_accepts_terminal_line_and_rejects_missing_rank(self):
+        controller = EngineController()
+        self.addCleanup(controller.close)
+        controller.board = Game.from_pgn("1.f3 e5 2.g4 *").board.copy()
+        controller._snapshot_required = 1
+        controller.lines = {1: {"pv": ["d8h4"]}}
+        self.assertTrue(controller._pvs_complete())
+        controller._snapshot_required = 2
+        self.assertFalse(controller._pvs_complete())
+
+    def test_stop_invalidates_queued_short_pv_continuation(self):
+        from unittest.mock import patch
+        controller = EngineController()
+        self.addCleanup(controller.close)
+        controller._busy = True
+        controller._pv_recovery = ("position startpos", "go infinite", {}, "test")
+        generation = controller.generation
+        controller.stop()
+        with patch.object(controller.connection, "request") as request:
+            controller._continue_pvs(generation)
+        request.assert_not_called()
+
+    def test_variation_text_slider_scales_only_candidates_and_persists(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            window.autosave_timer.stop()
+            self.assertEqual(window.pv_font_slider.value(), 20)
+            window.candidates.reserve_slots(3)
+            window.pv_font_slider.setValue(50)
+            self.assertEqual(window.config["pv_font_increase"], 50)
+            self.assertTrue(all(row[2].font_increase == 50 for row in window.candidates.rows.values()))
+            self.assertEqual(window.analysis_history.font_increase, 0)
+            window.candidates.clear()
+            self.assertTrue(all(row[2].font_increase == 50 for row in window.candidates.rows.values()))
+
     def test_node_only_and_infinite_commands_ignore_other_caps(self):
         controller = EngineController()
         self.addCleanup(controller.close)

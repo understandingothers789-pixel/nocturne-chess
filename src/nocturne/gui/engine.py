@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, QTimer, Signal
 
 from ..core.notation import san
 from ..snapshots import milestones
@@ -32,6 +32,9 @@ class EngineController(QObject):
         self._snapshot_nodes = 0
         self._snapshot_pending = []
         self._snapshot_required = 1
+        self._pv_recovery = None
+        self._extending_pvs = False
+        self._pv_stop_sent = False
 
     @property
     def busy(self):
@@ -62,6 +65,7 @@ class EngineController(QObject):
         searchmoves=None,
         arguments=None,
         nodes_only=False,
+        ensure_pv_length=False,
     ):
         if not external:
             raise ValueError("Select your Stockfish or another UCI executable first")
@@ -72,7 +76,8 @@ class EngineController(QObject):
         self._snapshot_lines = {}
         self._snapshot_nodes = 0
         self._snapshot_pending = []
-        self._snapshot_required = min(multipv, sum(1 for _ in self.board.legal_moves()))
+        legal_count = sum(1 for _ in self.board.legal_moves())
+        self._snapshot_required = min(multipv, len(searchmoves) if searchmoves else legal_count)
         desired = dict(options or {})
         desired["MultiPV"] = multipv
         desired["UCI_AnalyseMode"] = kind == "analysis" or infinite
@@ -95,6 +100,9 @@ class EngineController(QObject):
         if searchmoves:
             valid = [self.board.parse_uci(m).uci() for m in searchmoves]
             go += " searchmoves " + " ".join(valid)
+        self._pv_recovery = (position, "go infinite" + (
+            " searchmoves " + " ".join(valid) if searchmoves else ""
+        ), desired, game.id) if ensure_pv_length and not infinite else None
         self._busy = True
         self.connection.request(self.generation, position, go, desired, game.id)
         return self.generation
@@ -139,7 +147,7 @@ class EngineController(QObject):
             })
 
     def _info(self, generation, info):
-        if generation != self.generation or not self._busy:
+        if generation != self.generation or not self._busy or self._pv_stop_sent:
             return
         info = self._validated_info(info)
         if info is None:
@@ -148,9 +156,34 @@ class EngineController(QObject):
         if info.get("bound", "exact") == "exact":
             self.exact_lines[info["multipv"]] = info.copy()
         self.message.emit(generation, "info", info)
+        if self._extending_pvs and not self._pv_stop_sent and self._pvs_complete():
+            self._pv_stop_sent = True
+            # Retain the active generation so bestmove completes normally.
+            self.connection.send("stop")
+
+    def _pvs_complete(self):
+        for rank in range(1, self._snapshot_required + 1):
+            pv = self.lines.get(rank, {}).get("pv", [])
+            if len(pv) >= 3:
+                continue
+            position = self.board.copy()
+            for text in pv:
+                position.push(position.parse_uci(text))
+            if not pv or not position.native.is_game_over(claim_draw=True):
+                return False
+        return True
+
+    def _continue_pvs(self, generation):
+        if generation == self.generation and self._busy and self._pv_recovery:
+            self.connection.request(generation, *self._pv_recovery)
+            self.status.emit(self.connection.name + " · extending short variations")
 
     def _result(self, generation, bestmove):
         if generation != self.generation or not self._busy:
+            return
+        if self._pv_recovery and not self._extending_pvs and not self._pvs_complete():
+            self._extending_pvs = True
+            QTimer.singleShot(0, lambda: self._continue_pvs(generation))
             return
         self._flush_snapshot()
         self._busy = False
@@ -178,6 +211,9 @@ class EngineController(QObject):
     def stop(self):
         if self._busy and self.connection.observe_nodes:
             self._flush_snapshot()
+        self._pv_recovery = None
+        self._extending_pvs = False
+        self._pv_stop_sent = False
         self.generation += 1
         self._busy = False
         self.lines = {}

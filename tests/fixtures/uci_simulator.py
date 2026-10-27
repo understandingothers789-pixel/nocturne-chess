@@ -48,6 +48,11 @@ def search(position, command, event):
             child.push(move)
             reply = next(iter(child.legal_moves), None)
             pv = move.uci() + (" " + reply.uci() if reply else "")
+            if reply and (mode != "short-pvs" or "infinite" in tokens):
+                child.push(reply)
+                continuation = next(iter(child.legal_moves), None)
+                if continuation:
+                    pv += " " + continuation.uci()
             score = "mate -3 upperbound" if mode == "bounds" else f"cp {35 - (rank - 1) * 20}"
             if mode == "bound-at-limit" and depth == 4 and rank == 1:
                 score += " upperbound"

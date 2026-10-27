@@ -33,6 +33,7 @@ class CandidatePanel(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
         self.layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+        self.font_increase = 20
         self.expanded = False
         self.multipv = 1
         self.default_pv_lines = self._lines_for_multipv(self.multipv)
@@ -121,6 +122,12 @@ class CandidatePanel(QWidget):
         self._clearing = False
         self.changed.emit()
 
+    def set_font_increase(self, percent):
+        self.font_increase = percent
+        for _, _, moves in self.rows.values():
+            moves.set_font_increase(percent)
+        self.changed.emit()
+
     def set_wheel_navigation(self, enabled):
         self.wheel_navigation = bool(enabled)
         self.primary.wheel_navigation = self.wheel_navigation
@@ -185,6 +192,7 @@ class CandidatePanel(QWidget):
         moves.reserve_lines(0 if self.expanded or rank in self.expanded_ranks else self.default_pv_lines)
         moves.wheel_navigation = self.wheel_navigation
         moves.candidate_rank = rank
+        moves.set_font_increase(self.font_increase)
         moves.setViewportMargins(0, 0, 0, 0)
         moves.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         pv_area = QWidget()
