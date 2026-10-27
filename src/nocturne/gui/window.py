@@ -239,9 +239,9 @@ class MainWindow(QMainWindow):
         self._start_pgn_archive_migration()
         self._restore_workspace_layout()
         if self._storage_message:
-            QTimer.singleShot(0, lambda: self._error("Library unavailable", self._storage_message))
-        QTimer.singleShot(100, self._schedule_engine)
-        QTimer.singleShot(0, self._probe_gpu_hardware)
+            QTimer.singleShot(0, self, lambda: self._error("Library unavailable", self._storage_message))
+        QTimer.singleShot(100, self, self._schedule_engine)
+        QTimer.singleShot(0, self, self._probe_gpu_hardware)
 
     def _build(self):
         root = QWidget()
@@ -1214,6 +1214,8 @@ class MainWindow(QMainWindow):
         super().keyPressEvent(event)
 
     def eventFilter(self, watched, event):
+        if self._closing:
+            return super().eventFilter(watched, event)
         if watched is getattr(self, "board_guide_button", None):
             if event.type() == QEvent.Type.Enter:
                 QToolTip.showText(watched.mapToGlobal(watched.rect().bottomLeft()), watched.toolTip(), watched)
@@ -1222,7 +1224,7 @@ class MainWindow(QMainWindow):
         if self._closing:
             return super().eventFilter(watched, event)
         if watched is getattr(self, "board_view", None) and event.type() == QEvent.Type.Resize:
-            QTimer.singleShot(0, self._fit_analysis_columns)
+            QTimer.singleShot(0, self, self._fit_analysis_columns)
         if (isinstance(watched, QWidget) and event.type() in (QEvent.Type.KeyPress, QEvent.Type.ShortcutOverride)
                 and event.key() == Qt.Key.Key_Escape):
             # Modal settings and popups consume Escape themselves. Stop the
@@ -1754,7 +1756,7 @@ class MainWindow(QMainWindow):
             self._maia_changed({})
             return
         if enabled and self.analysis_mode:
-            QTimer.singleShot(0, self._ensure_maia_gpu)
+            QTimer.singleShot(0, self, self._ensure_maia_gpu)
             path = self.game.node_path(self.game.current_node)[1:]
             self.maia.request(self.game.initial_fen, [self.game.nodes[n].move.uci() for n in path], rating, sweep=self.config.get("show_maia_insights", True))
             self.maia.foreground_busy = lambda: self.engine.busy or self._closing or bool(self._review)
@@ -2318,7 +2320,7 @@ class MainWindow(QMainWindow):
         if position.outcome():
             state["index"] += 1
             state["stage"] = "best"
-            QTimer.singleShot(0, self._review_next)
+            QTimer.singleShot(0, self, self._review_next)
             return
         if state.get("kind") == "auto_eval":
             self.game.select_node(node_id)
@@ -2459,7 +2461,7 @@ class MainWindow(QMainWindow):
             self._update_graph()
             self._save(defer=True)
             self._render_move_history()
-            QTimer.singleShot(0, self._review_next)
+            QTimer.singleShot(0, self, self._review_next)
             return True
         if state["stage"] in ("best", "confirm_best"):
             self._store_analysis(self.game, node_id, info, state["turn"], state)
@@ -2468,7 +2470,7 @@ class MainWindow(QMainWindow):
                 played = self.game.nodes[line[index + 1]].move.uci()
                 if info["pv"][0] != played:
                     state["stage"] = "confirm_played" if state["stage"] == "confirm_best" else "played"
-                    QTimer.singleShot(0, self._review_next)
+                    QTimer.singleShot(0, self, self._review_next)
                     self._save(defer=True)
                     return True
                 if self._classify_review(line[index + 1], info, info):
@@ -2484,7 +2486,7 @@ class MainWindow(QMainWindow):
         self._save()
         self._render_move_history()
         self._update_review_panel()
-        QTimer.singleShot(0, self._review_next)
+        QTimer.singleShot(0, self, self._review_next)
         return True
 
     def _classify_review(self, node_id, best, played):
@@ -2512,7 +2514,7 @@ class MainWindow(QMainWindow):
             state["message"] = f"Confirming {node.san} · {state['confirmation_nodes']:,} nodes per search"
             self.statusBar().showMessage(state["message"])
             self._update_review_panel()
-            QTimer.singleShot(0, self._review_next)
+            QTimer.singleShot(0, self, self._review_next)
             return True
         if state.get("initial_review"):
             record["context"]["confirmation"] = {
@@ -2660,7 +2662,7 @@ class MainWindow(QMainWindow):
         if saved is not None and str(saved) == str(target):
             return
         if profile is self._profile():
-            QTimer.singleShot(0, lambda p=profile, value=target: self._apply_gpu_hash_default(p, value))
+            QTimer.singleShot(0, self, lambda p=profile, value=target: self._apply_gpu_hash_default(p, value))
         else:
             profile.setdefault("values", {})["Hash"] = target
             self._save()
@@ -2862,7 +2864,7 @@ class MainWindow(QMainWindow):
             if restart:
                 self._stop_engine()
                 self._analysis_context = None
-                QTimer.singleShot(0, self._schedule_engine)
+                QTimer.singleShot(0, self, self._schedule_engine)
             if self.config.get("syzygy_path"):
                 self.tablebase_label.setText(
                     "Syzygy path sent to engine"
@@ -3123,7 +3125,7 @@ class MainWindow(QMainWindow):
             self.workspace_splitter.setSizes([800, 90])
         else:
             self.main_splitter.setSizes([720, 350])
-        QTimer.singleShot(0, self._fit_analysis_columns)
+        QTimer.singleShot(0, self, self._fit_analysis_columns)
 
     def _fit_analysis_columns(self):
         if self._closing or not self.analysis_mode:
@@ -4355,7 +4357,7 @@ class MainWindow(QMainWindow):
                 self._resume_maia_after_auto_play()
             else:
                 delay = self.config.get("watch_delay_ms", 500) if self._auto_play_active or self.config.get("mode") == "ai_ai" else 80
-                QTimer.singleShot(delay, self._schedule_engine)
+                QTimer.singleShot(delay, self, self._schedule_engine)
         self._save(defer=True)
 
     def _show_info(self, info, job, *, store=True):
@@ -4455,6 +4457,7 @@ class MainWindow(QMainWindow):
         if self.engine.busy and self.config.get("analysis_snapshots", False):
             self.engine._flush_snapshot()
         self._closing = True
+        QApplication.instance().removeEventFilter(self)
         setup = getattr(self, "_gpu_setup", None)
         if setup is not None:
             process = setup.findChild(QProcess)

@@ -35,7 +35,7 @@ jobs:
       - name: Full tests including Qt and independent oracle
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m unittest discover -s tests -v
+        run: python -X faulthandler -m unittest discover -s tests -v
       - name: Build Windows apps and run packaged smoke checks
         run: python scripts/build_windows.py --build-only --skip-tests
       - name: Upload unsigned Windows test build

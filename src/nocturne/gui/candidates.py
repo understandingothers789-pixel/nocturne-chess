@@ -3,6 +3,8 @@
 from html import escape
 import math
 
+from shiboken6 import isValid
+
 from PySide6.QtCore import QPoint, Signal, Qt, QTimer
 from PySide6.QtGui import QTextDocument, QCursor
 from PySide6.QtWidgets import (
@@ -534,12 +536,14 @@ class CandidatePanel(QWidget):
 
     def _refresh_expander(self, rank):
         button = self.expand_buttons.get(rank)
-        if button is None:
+        if button is None or not isValid(button):
             return
         if rank not in self.lines:
             button.hide()
             return
         moves = self.rows[rank][2]
+        if not isValid(moves):
+            return
         expanded = rank in self.expanded_ranks
         button.setVisible(not self.expanded and
                           (expanded or moves.wrapped_line_count() > self.default_pv_lines))
