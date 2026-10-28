@@ -1082,3 +1082,11 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - Populated native Qt preview with five candidate rows verified full chart/legend visibility and a 170px meter viewport. The preview uses illustrative data.
 - Tests cover chart/legend geometry, meter scrolling ownership, and graph position after workspace reset. Native painters end explicitly; the arrow test records primitive coordinates instead of retaining live painters.
 - The CI runner executes all test modules in isolated processes and the nine rendering cases individually, totals all executed tests/skips, and rejects failed or empty runs. This avoids shared Qt teardown state without skipping assertions.
+
+## Windows build receipt · 0.5.7.98
+
+- Source: `e2e9bd64d054f64210fd6e64101ccfe153afb26f`
+- Integration base: 0.5.7.95 at `ac20a7191f8c5d7f5d9c3101206a6d021ebd7188`, in a fresh worktree. Reapplied the 0.96 and 0.97 layout changes and validation fixes, retained project documentation, then updated the application, package and Windows resource versions to 0.5.7.98.
+- [Run 40619784631](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40619784631): lint, full Windows suite, packaged app/worker checks and live database checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40619784631/artifacts/12787250940): 494,328,094 bytes; SHA-256 `cca99c55a75fc65f4d32b82649efac98bd250a1f18da38ca0ff3bc248412e275`.
+- Fresh Windows build outputs; earlier executable bundles were not reused. Code signing and Windows reputation are not provided by this rebuild. The original 0.97 artifact remains available.
