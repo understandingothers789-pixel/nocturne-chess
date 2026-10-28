@@ -499,6 +499,7 @@ class MainWindow(QMainWindow):
         self.analysis_detail_splitter.addWidget(self.engine_scroll)
         self.explorer = OpeningExplorer(self.data_directory / "opening-cache.sqlite3")
         self.explorer.statistics_changed.connect(self._sync_candidate_database)
+        self.explorer.compact_changed.connect(self._resize_empty_explorer)
         self.explorer.client.status.connect(self._lichess_connection_status)
         self.explorer.move_selected.connect(self._explorer_move)
         self.explorer.move_hovered.connect(self._preview_explorer)
@@ -656,6 +657,8 @@ class MainWindow(QMainWindow):
         self.workspace_splitter.addWidget(self.analysis_moves_panel)
         self.workspace_splitter.setCollapsible(1, True)
         self.workspace_splitter.splitterMoved.connect(self._bottom_splitter_moved)
+        self.bottom_moves_handle = self.workspace_splitter.handle(1)
+        self.bottom_moves_handle.setToolTip("Drag down to collapse Game Moves; drag up to reopen")
         self.workspace_splitter.setStretchFactor(0, 1)
         self.workspace_splitter.setStretchFactor(1, 0)
         self.analysis_moves_panel.hide()
@@ -1216,6 +1219,12 @@ class MainWindow(QMainWindow):
     def eventFilter(self, watched, event):
         if self._closing:
             return super().eventFilter(watched, event)
+        if watched is getattr(self, "bottom_moves_handle", None):
+            if (event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton
+                    and self.config.get("bottom_moves_collapsed", False)):
+                self.analysis_moves_panel.setMaximumHeight(16777215)
+            elif event.type() == QEvent.Type.MouseButtonRelease and self.config.get("bottom_moves_collapsed", False):
+                self.analysis_moves_panel.setMaximumHeight(34)
         if watched is getattr(self, "board_guide_button", None):
             if event.type() == QEvent.Type.Enter:
                 QToolTip.showText(watched.mapToGlobal(watched.rect().bottomLeft()), watched.toolTip(), watched)
@@ -1687,6 +1696,18 @@ class MainWindow(QMainWindow):
         self._maia_changed(self.maia.policies)
         self._save()
 
+    def _resize_empty_explorer(self, empty, previous_height):
+        if self._dock_workspace is not None or not hasattr(self, "right_detail_splitter"):
+            return
+        sizes = self.right_detail_splitter.sizes()
+        if len(sizes) != 3:
+            return
+        if empty:
+            self._database_expanded_height = max(170, previous_height)
+        height = 88 if empty else getattr(self, "_database_expanded_height", 220)
+        graph = sizes[2] if self.graph.isVisible() else 0
+        self.right_detail_splitter.setSizes([max(160, sum(sizes) - height - graph), height, graph])
+
     def _bottom_splitter_moved(self, position, index):
         if self._dock_workspace is not None or not self.analysis_mode:
             return
@@ -1697,6 +1718,11 @@ class MainWindow(QMainWindow):
                 self._sync_bottom_moves()
                 self._save()
             self.workspace_splitter.setSizes([max(100, sum(sizes)-32), 32])
+        elif len(sizes) == 2 and self.config.get("bottom_moves_collapsed", False) and sizes[1] > 48:
+            self._bottom_expanded_height = max(90, sizes[1])
+            self.config["bottom_moves_collapsed"] = False
+            self._sync_bottom_moves()
+            self._save()
         elif len(sizes) == 2 and not self.config.get("bottom_moves_collapsed", False):
             self._bottom_expanded_height = sizes[1]
 

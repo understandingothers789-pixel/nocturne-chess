@@ -1,8 +1,8 @@
 """Lichess chess-notation glyph rendering shared by move views."""
 from html import escape
 
-from PySide6.QtCore import QRectF
-from PySide6.QtGui import QFontDatabase, QFont, QPainter, QPalette
+from PySide6.QtCore import QRectF, QSize
+from PySide6.QtGui import QFontDatabase, QFont, QFontMetricsF, QPainter, QPalette
 from PySide6.QtWidgets import QStyle, QStyleOptionToolButton, QStylePainter, QToolButton
 
 from pathlib import Path
@@ -25,6 +25,13 @@ def html(text, *, size=17):
     face = escape(family(), quote=True)
     return "".join(f'<span style="font-family:{face};font-size:{size}px;">{c}</span>'
                    if c in _PIECES else escape(c) for c in str(text))
+
+
+def text_width(text, font):
+    piece = QFont(font)
+    piece.setFamily(family())
+    return sum(QFontMetricsF(piece if char in _PIECES else font).horizontalAdvance(char)
+               for char in str(text))
 
 
 def draw(painter: QPainter, x: float, y: float, text: str):
@@ -50,6 +57,16 @@ class FigurineToolButton(QToolButton):
         self.setText("")
         self.setAccessibleName(self._notation)
 
+    def sizeHint(self):
+        font = QFont(self.font())
+        font.setPixelSize(14)
+        width = text_width(self._notation, font)
+        base = super().sizeHint()
+        return QSize(max(base.width(), int(width + 0.999) + 22), max(base.height(), 30))
+
+    def minimumSizeHint(self):
+        return self.sizeHint()
+
     def paintEvent(self, event):
         option = QStyleOptionToolButton()
         self.initStyleOption(option)
@@ -66,3 +83,4 @@ class FigurineToolButton(QToolButton):
         width = metrics.horizontalAdvance(self._notation)
         draw(painter, (self.width() - width) / 2, (self.height() + metrics.ascent() - metrics.descent()) / 2,
              self._notation)
+        painter.end()

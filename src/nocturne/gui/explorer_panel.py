@@ -33,6 +33,7 @@ class ResultsDelegate(QStyledItemDelegate):
 
 class OpeningExplorer(QWidget):
     statistics_changed = Signal()
+    compact_changed = Signal(bool, int)
     move_selected = Signal(object, str)
     move_hovered = Signal(object, str)
     preview_ended = Signal()
@@ -108,11 +109,13 @@ class OpeningExplorer(QWidget):
         empty = bool(empty)
         if empty == self._compact_empty:
             return
+        previous_height = self.height()
         self._compact_empty = empty
         self.table.setVisible(not empty)
         self.status_label.setVisible(not empty)
         self.setMinimumHeight(0 if empty else 170)
         self.setMaximumHeight(88 if empty else 16777215)
+        self.compact_changed.emit(empty, previous_height)
 
     def set_position(self, board, identity, enabled, source="masters", speed="all", rating=0):
         if not enabled:

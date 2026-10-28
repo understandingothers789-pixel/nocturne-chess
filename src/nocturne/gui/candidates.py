@@ -202,6 +202,8 @@ class CandidatePanel(QWidget):
         pv_layout.setContentsMargins(0, 0, 0, 0)
         pv_layout.setSpacing(0)
         pv_layout.setColumnStretch(0, 1)
+        pv_layout.setColumnMinimumWidth(1, EXPANDER_WIDTH)
+        pv_layout.setColumnMinimumWidth(2, 84)
         expand_button = QToolButton(pv_area)
         expand_button.setAutoRaise(True)
         expand_button.setFixedSize(EXPANDER_WIDTH, 22)
@@ -215,11 +217,11 @@ class CandidatePanel(QWidget):
         # button or intercepting its mouse events. It also stays put on expand.
         pv_layout.addWidget(expand_button, 0, 1, Qt.AlignmentFlag.AlignTop)
         probability = QLabel("")
-        probability.setFixedWidth(66)
+        probability.setFixedWidth(84)
         probability.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         probability.setStyleSheet("color: #b9b4df; font-family: Consolas; padding-right: 3px;")
         probability.setVisible(self.maia_enabled)
-        pv_layout.addWidget(probability, 0, 2, Qt.AlignmentFlag.AlignTop)
+        pv_layout.addWidget(probability, 0, 2, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
         self.maia_labels[rank] = probability
         layout.addWidget(pv_area)
         layout.addWidget(header)

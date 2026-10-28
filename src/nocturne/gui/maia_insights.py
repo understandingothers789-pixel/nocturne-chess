@@ -2,7 +2,7 @@
 import math
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QFrame, QGridLayout, QLabel, QScrollArea, QVBoxLayout, QWidget, QToolTip,
     QComboBox, QHBoxLayout, QApplication,
@@ -11,7 +11,7 @@ from ..core.notation import san
 from ..maia import RATINGS, percentage
 from ..maia.risk import assess_moves
 from .theme import palette
-from .notation import FigurineToolButton, draw as draw_notation, html as notation_html
+from .notation import FigurineToolButton, draw as draw_notation, html as notation_html, text_width
 
 from .maia_colors import COLORS, curve_colors
 
@@ -55,7 +55,11 @@ class RatingChart(QWidget):
         return QSize(340, 250)
 
     def plot_rect(self):
-        return QRectF(42, 14, max(1, self.width()-106), max(1, self.height()-46))
+        font = QFont(self.font())
+        font.setPixelSize(11)
+        font.setBold(True)
+        lane = max(64, max((text_width(name, font) + 20 for name in self.names.values()), default=0))
+        return QRectF(42, 14, max(1, self.width() - 42 - lane), max(1, self.height()-46))
 
     def paintEvent(self, event):
         painter = QPainter(self)
