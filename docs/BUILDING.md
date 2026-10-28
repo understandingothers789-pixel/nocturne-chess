@@ -1072,3 +1072,13 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - Middle: Stockfish/Maia analysis, Moves by Rating, Blunder Meter. Right: Game Line, database explorer. Move Map and its obsolete rendering test are removed.
 - Layout tests verify actual splitter ownership, hidden Maia tools preserving Game Line, and explorer restoration after docking/reset. Native Qt preview confirms the new column placement.
 - Existing saved arrangements migrate once to the new default; new custom arrangements remain persistent. The compact evaluation graph remains a footer.
+
+## Windows build receipt · 0.5.7.97
+
+- Source: `0c2211e68bdb6e8816575331af81475c6fccbe6b`
+- [Run 40615829278](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40615829278): lint, full isolated Windows suite, packaged app/worker checks and live database checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40615829278/artifacts/12785326902): 494,329,183 bytes; SHA-256 `abf82b4063598ca76f467787daffa2b0635521f7564a533983011f6277fcce76`.
+- Rating chart and legend receive minimum layout space before the independently scrollable meter. Blunder Meter has four horizontal categories and a maximum height of 180px. The evaluation history graph is last in the right-column splitter.
+- Populated native Qt preview with five candidate rows verified full chart/legend visibility and a 170px meter viewport. The preview uses illustrative data.
+- Tests cover chart/legend geometry, meter scrolling ownership, and graph position after workspace reset. Native painters end explicitly; the arrow test records primitive coordinates instead of retaining live painters.
+- The CI runner executes all test modules in isolated processes and the nine rendering cases individually, totals all executed tests/skips, and rejects failed or empty runs. This avoids shared Qt teardown state without skipping assertions.

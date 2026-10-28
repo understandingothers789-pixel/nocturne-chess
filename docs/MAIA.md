@@ -42,7 +42,7 @@ Toggle them in **Engine → Maia-3 79M → Show Maia rods (moves above 10%)**.
 
 The middle column contains Stockfish/Maia analysis, **Moves by Rating**, then
 **Blunder Meter**. The right column contains **Game Line** followed by the
-**database explorer**, regardless of which database source is selected.
+**database explorer**, then the evaluation history graph, regardless of which database source is selected.
 **Display → Show Maia insights** hides the chart and meter while Game Line and
 the database remain available. Hidden insights do not request full rating sweeps.
 The dividers remain adjustable, and **Display → Arrange panels** supports custom
@@ -272,3 +272,16 @@ The existing evaluation graph remains a compact footer.
 The new default is applied once to existing installs, replacing the old saved
 panel arrangement. Subsequent custom arrangements can be saved normally.
 Game Line and the database remain available when Maia tools are hidden.
+
+
+## Chart priority and compact meter (0.5.7.97)
+
+Stockfish analysis and the complete Moves by Rating chart, including its legend,
+receive space before the meter. The meter is capped at 180px and scrolls inside
+its own panel when more content needs space. Its categories are four horizontal
+columns: Best moves, OK moves, Blunders, and Not evaluated, each with its percentage.
+The selected-move inspector remains available inside that scrollable area.
+
+The evaluation history graph is now the bottom section of the right column,
+below Game Line and the database explorer. The updated default is applied once
+to saved arrangements; later custom arrangements remain persistent.
