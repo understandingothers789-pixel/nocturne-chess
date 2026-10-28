@@ -474,7 +474,7 @@ class MainWindow(QMainWindow):
         self.candidates.navigate.connect(self._insert_candidate)
         self.candidates.action.connect(self._candidate_action)
         self.candidates.changed.connect(self._sync_candidate_markers)
-        self.candidates.changed.connect(self._protect_analysis_chart)
+        self.candidates.layout_changed.connect(self._protect_analysis_chart)
         self.candidates.changed.connect(self._queue_secondary_analysis)
         self.candidate_splitter = QSplitter(Qt.Orientation.Vertical)
         self.candidate_splitter.setChildrenCollapsible(False)

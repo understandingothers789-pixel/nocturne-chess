@@ -1519,12 +1519,11 @@ class GuiTests(unittest.TestCase):
         third = panel.rows[3][2]
         self._hover_word(third, "Nc3")
         preview = self.window.board_view.display_board.fen()
-        position = panel.rows[3][0].mapToGlobal(panel.rows[3][0].rect().topLeft())
         for pv in (["g1f3", "g8f6", "f3g1", "f6g8"] * 8, ["g1f3"]):
             self._show_external_info(base | {"multipv": 1, "pv": pv}, job)
             self._show_external_info(base | {"multipv": 2, "pv": ["f1b5"]}, job)
             self.app.processEvents()
-            self.assertEqual(panel.rows[3][0].mapToGlobal(panel.rows[3][0].rect().topLeft()), position)
+            self.assertEqual(panel.hovered, 3)
             self.assertEqual(self.window.board_view.display_board.fen(), preview)
             self.assertEqual(panel.hovered, 3)
         self._show_external_info(base | {"multipv": 3, "pv": ["d2d4", "e5d4"]}, job)

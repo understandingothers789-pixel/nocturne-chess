@@ -27,6 +27,7 @@ class CandidatePanel(QWidget):
     navigate = Signal(int, int)
     action = Signal(int, str)
     changed = Signal()
+    layout_changed = Signal()
     manual_navigation = Signal()
 
     def __init__(self, primary, parent=None):
@@ -400,8 +401,13 @@ class CandidatePanel(QWidget):
         if live_count < 5 and self.slot_count < 5:
             self.reserve_slots(5)
         if desired == self.retained_lines:
+            layout_changed = False
             for rank, (frame, _, _) in self.rows.items():
-                frame.setVisible(rank <= live_count or rank in desired)
+                visible = rank <= live_count or rank in desired
+                layout_changed |= frame.isHidden() == visible
+                frame.setVisible(visible)
+            if layout_changed:
+                self.layout_changed.emit()
             return
         self._refreshing_history = True
         self.retained_lines.clear()
@@ -410,8 +416,11 @@ class CandidatePanel(QWidget):
                 self.reserve_slots(rank)
             self.retained_lines[rank] = info
             self._paint_line(rank, info, self.turn, self.light, self.show_details, historical=True)
+        layout_changed = False
         for rank, (frame, _, _) in self.rows.items():
-            frame.setVisible(rank <= live_count or rank in desired)
+            visible = rank <= live_count or rank in desired
+            layout_changed |= frame.isHidden() == visible
+            frame.setVisible(visible)
             if rank > live_count and rank not in self.retained_lines:
                 self.rows[rank][2].candidate_evaluation = ""
                 self.rows[rank][2].candidate_depth = None
@@ -420,6 +429,8 @@ class CandidatePanel(QWidget):
                 self.maia_labels[rank].clear()
                 self.expand_buttons[rank].hide()
         self._refreshing_history = False
+        if layout_changed:
+            self.layout_changed.emit()
         self.changed.emit()
 
     def _paint_line(self, rank, info, turn, light, detailed, previous=None, historical=False):
