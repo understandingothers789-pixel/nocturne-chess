@@ -97,3 +97,15 @@ class CandidateHistoryTests(unittest.TestCase):
         self.assertEqual({self.panel.display_line(rank)["pv"][0] for rank in (4, 5)},
                          {"d2d4", "g1f3"})
         self.assertEqual(set(self.panel.lines), {1, 2, 3})
+
+    def test_all_small_multipv_counts_reserve_five_and_show_depth_after_eval(self):
+        for count in (1, 2, 3, 4):
+            with self.subTest(multipv=count):
+                self.panel.set_multipv(count)
+                self.panel.clear()
+                self.panel.update_line(line("e2e4", 17), 1)
+                self.assertEqual(set(self.panel.rows), set(range(1, 6)))
+                self.panel.update_line(line("d2d4", 25), 1)
+                view = self.panel.rows[count + 1][2]
+                self.assertTrue(view.candidate_historical)
+                self.assertTrue(view.toPlainText().startswith("+0.32 · depth 17"))

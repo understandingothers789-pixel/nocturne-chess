@@ -1513,7 +1513,7 @@ class GuiTests(unittest.TestCase):
     def test_two_line_pv_slots_preserve_hover_and_apply_latest_update_after_leaving(self):
         base, job = self._three_pvs()
         panel = self.window.candidates
-        self.assertEqual(list(panel.rows), [1, 2, 3])
+        self.assertEqual(list(panel.rows), [1, 2, 3, 4, 5])
         heights = [widgets[2].height() for widgets in panel.rows.values()]
         self.assertEqual(len(set(heights)), 1)
         third = panel.rows[3][2]

@@ -394,6 +394,8 @@ class CandidatePanel(QWidget):
         history = [line for line in self.best_history if line["pv"][0] not in active_roots]
         history = history[:max(0, 5 - live_count)]
         desired = dict(enumerate(history, live_count + 1))
+        if live_count < 5 and self.slot_count < 5:
+            self.reserve_slots(5)
         if desired == self.retained_lines:
             return
         self.retained_lines.clear()
@@ -403,7 +405,12 @@ class CandidatePanel(QWidget):
             self.retained_lines[rank] = info
             self._paint_line(rank, info, self.turn, self.light, self.show_details, historical=True)
         for rank, (frame, _, _) in self.rows.items():
-            frame.setVisible(rank <= live_count or rank in self.retained_lines)
+            frame.setVisible(rank <= max(5, live_count))
+            if rank > live_count and rank not in self.retained_lines:
+                self.rows[rank][2].set_moves([])
+                self.rows[rank][1].clear()
+                self.maia_labels[rank].clear()
+                self.expand_buttons[rank].hide()
         self.changed.emit()
 
     def _paint_line(self, rank, info, turn, light, detailed, previous=None, historical=False):
