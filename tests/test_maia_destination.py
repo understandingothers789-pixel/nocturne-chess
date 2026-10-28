@@ -91,11 +91,14 @@ class MaiaDestinationTests(unittest.TestCase):
         self.click("d4")
         self.assertEqual(self.played, ["b6d4"])
 
-    def test_recorded_continuation_keeps_existing_priority(self):
+    def test_circle_uses_most_likely_maia_move_over_different_recorded_move(self):
         self.recommend()
-        self.view.set_game_move(self.view.board.parse_uci("d7f5"))
+        pawn = self.view.board.parse_uci("f7f5")
+        bishop = self.view.board.parse_uci("d7f5")
+        self.view.set_maia_recommendations([(bishop, .3, "best"), (pawn, .7, "unknown")])
+        self.view.set_game_move(bishop)
         self.click("f5")
-        self.assertEqual(self.played, ["d7f5"])
+        self.assertEqual(self.played, ["f7f5"])
 
     def test_window_publishes_clickable_maia_targets_and_commits_move(self):
         from nocturne.core.game import Game
