@@ -43,6 +43,7 @@ class MoveText(QTextBrowser):
         self.wheel_preview_ply = None
         self.candidate_rank = None
         self.candidate_turn = 1
+        self.candidate_depth = None
         self.candidate_historical = False
         self.candidate_evaluation = ""
         self._candidate_style = None
@@ -105,7 +106,7 @@ class MoveText(QTextBrowser):
 
     def set_moves(self, items, current=None, light=False, *, book_departure=None, book_departures=None, figurines=False):
         signature = (list(items), current, light, figurines)
-        candidate_style = (self.candidate_rank, self.candidate_turn, self.candidate_evaluation, self.candidate_historical)
+        candidate_style = (self.candidate_rank, self.candidate_turn, self.candidate_evaluation, self.candidate_historical, self.candidate_depth)
         departures = dict(book_departures or {})
         if book_departure is not None and book_departure not in departures:
             departures[book_departure] = "Lichess Masters: first position with no games found"
@@ -131,6 +132,8 @@ class MoveText(QTextBrowser):
             metric_color = colors["metadata"] if self.candidate_historical else colors["metric"]
             tokens.append(f'<span style="color:{metric_color};">'
                           f'{escape(self.candidate_evaluation)}</span> ')
+        if self.candidate_depth is not None:
+            tokens.append(f'<span title="Depth {self.candidate_depth}" style="color:{colors["metadata"]};">d{self.candidate_depth}</span> ')
         for offset, (text, index) in enumerate(self._items):
             if index is None:
                 tokens.append(escape(text) + (" " if self.continuous_preview else ""))

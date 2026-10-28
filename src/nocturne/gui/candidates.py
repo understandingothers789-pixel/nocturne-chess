@@ -371,12 +371,13 @@ class CandidatePanel(QWidget):
             self.reserve_slots(rank)
         self.pending.pop(rank, None)
         self.lines[rank] = info.copy()
-        if (self.multipv < 5 and previous and previous.get("pv")
-                and info.get("pv") and previous["pv"][0] != info["pv"][0]):
-            root = previous["pv"][0]
-            self.best_history = [previous.copy()] + [
-                line for line in self.best_history if line["pv"][0] != root
-            ][:15]
+        if self.multipv < 5:
+            for snapshot in (previous, info):
+                if snapshot and snapshot.get("pv") and snapshot.get("san"):
+                    saved = {**snapshot, "pv": list(snapshot["pv"]), "san": list(snapshot["san"])}
+                    root = saved["pv"][0]
+                    self.best_history = [saved] + [entry for entry in self.best_history
+                                                   if entry["pv"][0] != root][:63]
         self.retained_lines.pop(rank, None)
         self._paint_line(rank, info, turn, light, detailed, previous=previous)
         self._refresh_history()
@@ -388,6 +389,8 @@ class CandidatePanel(QWidget):
 
     def _refresh_history(self):
         live_count = max(self.multipv, max(self.lines, default=0))
+        if getattr(self, "_refreshing_history", False):
+            return
         if self.hovered in self.retained_lines:
             return  # Keep the hovered snapshot until its preview ends.
         active_roots = {line["pv"][0] for line in self.lines.values() if line.get("pv")}
@@ -398,6 +401,7 @@ class CandidatePanel(QWidget):
             self.reserve_slots(5)
         if desired == self.retained_lines:
             return
+        self._refreshing_history = True
         self.retained_lines.clear()
         for rank, info in desired.items():
             if rank not in self.rows:
@@ -407,10 +411,13 @@ class CandidatePanel(QWidget):
         for rank, (frame, _, _) in self.rows.items():
             frame.setVisible(rank <= max(5, live_count))
             if rank > live_count and rank not in self.retained_lines:
+                self.rows[rank][2].candidate_evaluation = ""
+                self.rows[rank][2].candidate_depth = None
                 self.rows[rank][2].set_moves([])
                 self.rows[rank][1].clear()
                 self.maia_labels[rank].clear()
                 self.expand_buttons[rank].hide()
+        self._refreshing_history = False
         self.changed.emit()
 
     def _paint_line(self, rank, info, turn, light, detailed, previous=None, historical=False):
@@ -425,8 +432,7 @@ class CandidatePanel(QWidget):
         moves.candidate_historical = historical
         moves.candidate_turn = turn
         moves.candidate_evaluation = score_label(info, turn)
-        if historical:
-            moves.candidate_evaluation += f" · depth {info['depth']}"
+        moves.candidate_depth = info["depth"] if historical else None
         moves.set_moves([(text, i + 1) for i, text in enumerate(info["san"])], light=light, figurines=True)
         if (previous and previous.get("pv")
                 and (not info.get("pv") or previous["pv"][0] != info["pv"][0])):

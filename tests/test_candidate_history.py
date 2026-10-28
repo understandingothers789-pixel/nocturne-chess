@@ -26,7 +26,7 @@ class CandidateHistoryTests(unittest.TestCase):
         self.assertEqual(set(self.panel.lines), {1})
         self.assertEqual(self.panel.display_line(2)["pv"], ["e2e4"])
         view = self.panel.rows[2][2]
-        self.assertIn("+0.32 · depth 16", view.toPlainText())
+        self.assertIn("+0.32 d16", view.toPlainText())
         self.assertTrue(view.candidate_historical)
         self.assertFalse(self.panel.rows[1][2].candidate_historical)
         previews = []
@@ -108,4 +108,4 @@ class CandidateHistoryTests(unittest.TestCase):
                 self.panel.update_line(line("d2d4", 25), 1)
                 view = self.panel.rows[count + 1][2]
                 self.assertTrue(view.candidate_historical)
-                self.assertTrue(view.toPlainText().startswith("+0.32 · depth 17"))
+                self.assertTrue(view.toPlainText().startswith("+0.32 d17"))
