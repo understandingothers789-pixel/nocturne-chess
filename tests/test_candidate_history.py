@@ -86,3 +86,14 @@ class CandidateHistoryTests(unittest.TestCase):
         self.assertEqual(selected, [("Threads", 15)])
         for menu in resources.menus.values():
             menu.deleteLater()
+
+    def test_three_pv_keeps_displaced_lower_ranked_moves(self):
+        self.panel.set_multipv(3)
+        for rank, root in enumerate(("e2e4", "d2d4", "g1f3"), 1):
+            self.panel.update_line(line(root, 18, rank), 1)
+        self.panel.update_line(line("c2c4", 22, 2), 1)
+        self.panel.update_line(line("b2b3", 23, 3), 1)
+        self.assertEqual(set(self.panel.retained_lines), {4, 5})
+        self.assertEqual({self.panel.display_line(rank)["pv"][0] for rank in (4, 5)},
+                         {"d2d4", "g1f3"})
+        self.assertEqual(set(self.panel.lines), {1, 2, 3})

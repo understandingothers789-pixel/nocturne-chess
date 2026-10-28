@@ -371,7 +371,7 @@ class CandidatePanel(QWidget):
             self.reserve_slots(rank)
         self.pending.pop(rank, None)
         self.lines[rank] = info.copy()
-        if (rank == 1 and self.multipv < 5 and previous and previous.get("pv")
+        if (self.multipv < 5 and previous and previous.get("pv")
                 and info.get("pv") and previous["pv"][0] != info["pv"][0]):
             root = previous["pv"][0]
             self.best_history = [previous.copy()] + [
@@ -414,7 +414,7 @@ class CandidatePanel(QWidget):
         self._render_maia(rank)
         frame, header, moves = self.rows[rank]
         frame.show()
-        frame.setToolTip("Earlier best move · not currently searched" if historical else "")
+        frame.setToolTip("Earlier candidate · not currently searched" if historical else "")
         moves.candidate_historical = historical
         moves.candidate_turn = turn
         moves.candidate_evaluation = score_label(info, turn)
