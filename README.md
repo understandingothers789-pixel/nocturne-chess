@@ -22,6 +22,18 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt capture of the main line after 13...Bd7. Stockfish 17.1 NNUE reached depth 25 and reported +0.49 after 9,528,716 nodes. Maia is disabled in this capture.*
 
 
+**[Download 0.5.7.110 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40647988211/artifacts/12797539525).** Infers unlisted moves as blunders when an assessed blunder is present.
+
+**[Download 0.5.7.109 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40647572147/artifacts/12797569245).** Reserves five candidate rows for MultiPV 1–4 and shows retained-line depths.
+
+**[Download 0.5.7.107 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40646091276/artifacts/12797971562).** Keeps previous Blunder Meter results visible while new analysis loads.
+
+**[Download 0.5.7.106 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40645754555/artifacts/12797268387).** Reclaims space when Game Moves is collapsed.
+
+**[Download 0.5.7.105 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40644476972/artifacts/12796689265).** Prioritizes board and Stockfish updates, with secondary panels updated less often.
+
+These GitHub Actions artifacts expire on November 27, 2026. GitHub may require you to sign in to download them. Builds 0.5.7.104 and 0.5.7.108 did not produce downloadable artifacts.
+
 **[Download 0.5.7.103 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40642607665/artifacts/12796491839): clickable Maia destinations and less GUI work.** Click a visible Maia circle/destination to play its move, including when Stockfish or another recorded move shares that square. Manual source selection still works. Analysis updates reuse legal moves and assessments, skip unchanged meter content and avoid redundant styling/repaints. Windows validation: 326 tests, 5 skipped; packaged app/worker and live database checks passed.
 
 **[Download 0.5.7.102 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40640944562/artifacts/12795637991): earlier best-move rows and 15 threads.** MultiPV 1–4 can fill spare rows with previous best moves, up to five displayed lines. Retained lines are gray and show their original depth after the evaluation; they support previews and copying without affecting live engine metrics. Windows validation: 318 tests, 5 skipped; packaged app/worker and live database checks passed.
