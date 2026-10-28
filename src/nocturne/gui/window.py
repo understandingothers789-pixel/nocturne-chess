@@ -1219,7 +1219,8 @@ class MainWindow(QMainWindow):
     def eventFilter(self, watched, event):
         if self._closing:
             return super().eventFilter(watched, event)
-        if watched is getattr(self, "bottom_moves_handle", None):
+        if (watched is getattr(self, "bottom_moves_handle", None)
+                or (hasattr(self, "workspace_splitter") and watched is self.workspace_splitter.handle(1))):
             if (event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton
                     and self.config.get("bottom_moves_collapsed", False)):
                 self.analysis_moves_panel.setMaximumHeight(16777215)

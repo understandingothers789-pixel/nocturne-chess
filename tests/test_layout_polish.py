@@ -78,10 +78,13 @@ class LayoutPolishTests(unittest.TestCase):
 
     def test_dragging_collapsed_bottom_handle_up_reopens_moves(self):
         w = self.w
+        w._activate_docked_workspace()
+        w._reset_workspace_layout()
+        self.app.processEvents()
         w.config["bottom_moves_collapsed"] = True
         w._sync_bottom_moves()
         self.app.processEvents()
-        handle = w.bottom_moves_handle
+        handle = w.workspace_splitter.handle(1)
         start = handle.rect().center()
         global_start = handle.mapToGlobal(start)
         QTest.mousePress(handle, Qt.MouseButton.LeftButton, pos=start)
