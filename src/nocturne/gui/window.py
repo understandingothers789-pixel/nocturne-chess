@@ -3449,6 +3449,7 @@ class MainWindow(QMainWindow):
             not outcome and not self.paused and (self.analysis_mode or not self._is_engine_turn())
         )
         self._sync_candidate_markers()
+        self._sync_blunder()  # Use cached policy and saved lines during the move refresh.
         self._sync_explorer()
         turn = "White" if self.game.board.turn == 1 else "Black"
         status = (

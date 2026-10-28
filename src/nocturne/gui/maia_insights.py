@@ -1,5 +1,6 @@
 """Native, interactive visualizations of the actual rating-conditioned policy."""
 import math
+from collections import OrderedDict
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
@@ -463,6 +464,26 @@ class MaiaInsights(QScrollArea):
         self.chart.update()
 
     def set_analysis(self, policy, board, lines):
+        # Reuse assessments only when both Maia policy and relevant engine
+        # scores match; a new depth, score or root invalidates the snapshot.
+        cache = getattr(self, "_assessment_cache", None)
+        if cache is None:
+            cache = self._assessment_cache = OrderedDict()
+        position = board.fen()
+        signature = (position, board.chess960, tuple(sorted(policy.items())),
+                     tuple((rank, tuple(info.get("pv", [])[:1]), info.get("score_type"),
+                            info.get("score_value"), info.get("bound"), info.get("depth"),
+                            info.get("nodes")) for rank, info in sorted(lines.items())))
+        cached = cache.get(signature)
+        if cached is not None:
+            cache.move_to_end(signature)
+            assessments, names = cached
+            if policy and lines:
+                self.blunder.set_data(assessments, names, position)
+                self.blunder.setToolTip("")
+            elif getattr(self.blunder, "_data_signature", None):
+                self.blunder.setToolTip("Showing the previous results while analysis loads for this position.")
+            return assessments
         # Engine scores change much more often than the position or legal SAN.
         # Retain only the currently displayed position's move names.
         key = (board.fen(), board.chess960, frozenset(policy))
@@ -483,6 +504,9 @@ class MaiaInsights(QScrollArea):
                 if uci not in listed and data["category"] == "unknown":
                     data["category"] = "blunder"
                     data["inferred"] = True
+        cache[signature] = (assessments, names.copy())
+        if len(cache) > 128:
+            cache.popitem(last=False)
         # Keep the last complete display while this position's policy or engine
         # lines are arriving. Never reuse its moves for board recommendations.
         ready = bool(policy and lines)
