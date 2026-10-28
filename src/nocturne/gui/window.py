@@ -474,6 +474,7 @@ class MainWindow(QMainWindow):
         self.candidates.navigate.connect(self._insert_candidate)
         self.candidates.action.connect(self._candidate_action)
         self.candidates.changed.connect(self._sync_candidate_markers)
+        self.candidates.changed.connect(self._protect_analysis_chart)
         self.candidates.changed.connect(self._queue_secondary_analysis)
         self.candidate_splitter = QSplitter(Qt.Orientation.Vertical)
         self.candidate_splitter.setChildrenCollapsible(False)
@@ -3175,7 +3176,7 @@ class MainWindow(QMainWindow):
         required = trends.minimumSizeHint().height() if show else 0
         trends.setMinimumHeight(required)
         required += max(self.candidates.minimumSizeHint().height(),
-                        sum(row[0].minimumSizeHint().height() for row in self.candidates.rows.values())) + 32
+                        sum(row[0].minimumSizeHint().height() for row in self.candidates.rows.values() if not row[0].isHidden())) + 32
         # Reserve the entire chart and legend ahead of the scrollable meter.
         # The meter may shrink to nothing in a short window; its own scrollbar
         # handles longer move lists rather than covering the rating chart.
