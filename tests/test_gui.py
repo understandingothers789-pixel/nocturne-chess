@@ -1529,7 +1529,7 @@ class GuiTests(unittest.TestCase):
         self._show_external_info(base | {"multipv": 3, "pv": ["d2d4", "e5d4"]}, job)
         self.assertEqual(panel.lines[3]["pv"][0], "b1c3")
         self.assertEqual(third._items[0][0], "Nc3")
-        QTest.mouseMove(third.viewport(), pos=third.viewport().rect().bottomRight() - QPointF(4, 4).toPoint())
+        QTest.mouseMove(self.window.board_view, pos=self.window.board_view.rect().center())
         QTest.qWait(200)
         self.assertEqual(panel.lines[3]["pv"][0], "d2d4")
         self.assertIsNone(self.window.board_view.preview_board)
