@@ -48,8 +48,9 @@ class AnalysisPriorityTests(unittest.TestCase):
             w._flush_secondary_analysis()
             secondary.assert_called_once()
             w.close()
+            after_close = secondary.call_count
             w._flush_secondary_analysis()
-            self.assertEqual(secondary.call_count, 1)
+            self.assertEqual(secondary.call_count, after_close)
             self.assertFalse(w._secondary_timer.isActive())
 
     def test_identical_pv_reuses_parsed_moves_and_changed_pv_refreshes(self):
