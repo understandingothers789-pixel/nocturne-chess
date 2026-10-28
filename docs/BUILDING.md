@@ -1053,3 +1053,32 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - Real Stockfish smoke: five requested PVs reached lengths 9/11/8/6/9, with exactly `go infinite` followed by `stop`. No restart or counter reset.
 - Local checks: 51 engine/automation/snapshot tests and nine rendering tests passed. Windows validation also covers saved PV depths/bounds and snapshot milestones.
 - Deferred window work is tied to its owning QObject; closed windows remove their application event filter, and deferred candidate layout checks tolerate destroyed widgets.
+
+## Windows build receipt · 0.5.7.95
+
+- Source: `ac20a7191f8c5d7f5d9c3101206a6d021ebd7188`
+- [Run 40596239332](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40596239332): lint, full Windows tests, packaged application/worker checks and live database checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40596239332/artifacts/12776187578): 494,330,019 bytes; SHA-256 `e303cd5cc1bcc33a5af22d1b4a1458a5329ba6e6f2f272e22f2902c357eadb37`.
+- Details controls share a compact row at normal widths, stack below 560px, and use equal-height fields and a centered range separator.
+- Stockfish candidates use Lichess brushes, with blue selected by Stockfish rank 1. Maia probabilities above 10% use rods/circles in the same ranked palette as Moves by Rating. Both light and dark palettes share one source.
+- Focused local checks: 25 rendering/Maia tests plus three guide/tooltip tests passed. Native board preview verifies the reversed symbols on the supplied position. The preview uses illustrative Maia probabilities rather than a fresh inference.
+- Rendering-test cleanup destroys its windows through Qt before Python wrapper garbage collection, preventing the Windows access violation seen during validation.
+
+## Windows build receipt · 0.5.7.96
+
+- Source: `76626014c19deaaf4f97f2efe9c31d508056c600`
+- [Run 40612186187](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40612186187): lint, 301 tests (5 skipped), and packaged application/worker checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40612186187/artifacts/12783329678): 494,325,518 bytes; SHA-256 `3cfd6c065cffc8df46a9994689c72f2ca43beb6d2908140c23419accc5ce8658`.
+- Middle: Stockfish/Maia analysis, Moves by Rating, Blunder Meter. Right: Game Line, database explorer. Move Map and its obsolete rendering test are removed.
+- Layout tests verify actual splitter ownership, hidden Maia tools preserving Game Line, and explorer restoration after docking/reset. Native Qt preview confirms the new column placement.
+- Existing saved arrangements migrate once to the new default; new custom arrangements remain persistent. The compact evaluation graph remains a footer.
+
+## Windows build receipt · 0.5.7.97
+
+- Source: `0c2211e68bdb6e8816575331af81475c6fccbe6b`
+- [Run 40615829278](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40615829278): lint, full isolated Windows suite, packaged app/worker checks and live database checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40615829278/artifacts/12785326902): 494,329,183 bytes; SHA-256 `abf82b4063598ca76f467787daffa2b0635521f7564a533983011f6277fcce76`.
+- Rating chart and legend receive minimum layout space before the independently scrollable meter. Blunder Meter has four horizontal categories and a maximum height of 180px. The evaluation history graph is last in the right-column splitter.
+- Populated native Qt preview with five candidate rows verified full chart/legend visibility and a 170px meter viewport. The preview uses illustrative data.
+- Tests cover chart/legend geometry, meter scrolling ownership, and graph position after workspace reset. Native painters end explicitly; the arrow test records primitive coordinates instead of retaining live painters.
+- The CI runner executes all test modules in isolated processes and the nine rendering cases individually, totals all executed tests/skips, and rejects failed or empty runs. This avoids shared Qt teardown state without skipping assertions.

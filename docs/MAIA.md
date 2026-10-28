@@ -33,36 +33,26 @@ for positions you have left cannot replace the current results. Completed
 policies for the last 128 positions, including their rating sweeps, are cached
 locally and can be reused after reopening. History is part of the cache key.
 
-Maia board arrows show every legal move with a probability strictly above 10%,
-with no Top 1/3/5 cap. Their green/yellow/red colors use the Blunder Meter
-classification; moves without an exact Stockfish comparison remain grey.
-Colors update as Stockfish results arrive. Toggle them in **Engine → Maia-3 79M
-→ Show Maia arrows (moves above 10%)**.
+Maia board rods show every legal move with a probability strictly above 10%,
+with no Top 1/3/5 cap. Their colors match the same moves in Moves by Rating.
+Numbered circles show Maia's likelihood order, with 1 being most likely.
+Toggle them in **Engine → Maia-3 79M → Show Maia rods (moves above 10%)**.
 
 ## Insights / Maia Tools
 
-The right column has exactly three primary sections. **Display → Show Maia
-insights** hides it while keeping the integrated probabilities available. Hidden
-insights do not request new full rating sweeps; reopening them requests any
-missing ratings for the current position. Maia overlays stay inside analysis
-mode and cannot leak a previous position’s predictions into ordinary play. Use
-**Display → Arrange panels** to resize, dock or detach it alongside existing
-panels. Reset layout returns to the standard arrangement. The main board remains
-square, with coordinates inside its edges and its evaluation bar on the right.
+The middle column contains Stockfish/Maia analysis, **Moves by Rating**, then
+**Blunder Meter**. The right column contains **Game Line** followed by the
+**database explorer**, then the evaluation history graph, regardless of which database source is selected.
+**Display → Show Maia insights** hides the chart and meter while Game Line and
+the database remain available. Hidden insights do not request full rating sweeps.
+The dividers remain adjustable, and **Display → Arrange panels** supports custom
+docking. Reset layout returns to this arrangement.
 
 **Moves by Rating** plots the five likeliest moves at the selected rating across
 600–3000. Each point is an actual inference at that rating, with an equally rated
 opponent. Missing samples remain gaps. Click legend buttons to hide/show curves;
 hover near a point for the exact percentage. The dashed marker is the selected
 rating. Curves are model predictions, not measured database game frequencies.
-
-**Move Map** is a scatter plot comparing human likelihood (vertical axis) with
-Stockfish loss in pawns (horizontal axis). Best moves sit on the right; costly
-choices sit on the left. Points share the meter's green/yellow/red categories.
-Hover for the exact SAN move, likelihood and loss; click a point to select it in
-the meter without playing it. Losses above three pawns sit at the `3+` edge;
-tooltips retain the actual loss. Unsearched moves are omitted from the plot
-rather than assigned an invented engine score. Promotions remain separate moves.
 
 **Blunder Meter** groups Maia's predicted choices into **Best moves** (green),
 **OK moves** (yellow) and **Blunders** (red). The stacked bar's widths sum the
@@ -87,11 +77,13 @@ No additional Stockfish searches are started merely by opening these insights.
 
 ## Board indicators
 
-Stockfish uses slim rods and numbered circles. Maia uses wider, outlined arrows
-with stronger opacity. Short arrows render above pieces so their tips remain visible. Maia colors follow the Blunder
-Meter categories; unsearched moves remain grey. Every move above 10% is shown.
-Toggle Maia arrows in **Engine → Maia-3 79M**. The scatter map has no duplicated
-board controls. Main-board previews and existing
+Stockfish uses translucent Lichess-style arrows: blue for its top recommendation,
+gray for its other candidates. Maia uses slim rods and numbered endpoint circles
+for moves with probabilities strictly above 10%. Each Maia rod and circle uses
+the same move color as Moves by Rating, including the light-appearance palette.
+Circle numbers are human-likelihood ranks, not Stockfish ranks or percentages.
+When both models suggest a move, its Stockfish arrow and Maia rod remain visible.
+Toggle Maia rods in **Engine → Maia-3 79M**. Main-board previews and existing
 candidate hover/wheel behavior remain available.
 
 ## Reproducibility
@@ -224,11 +216,11 @@ resolution for clear small icons. Stored and copied PGN remains standard SAN.
 
 ## Layout and symbol guide (0.5.7.89)
 
-The **Top N Maia moves** toggle opens the probability-ranked table. N defaults to **5** and stays fixed as you change positions. Open **Details → Maia moves shown** to choose 1–64 rows; the choice is saved. Positions with fewer legal moves show fewer rows. This only limits the table: probabilities are not renormalized, Stockfish MultiPV is independent, and board arrows retain the >10% threshold.
+The **Top N Maia moves** toggle opens the probability-ranked table. N defaults to **5** and stays fixed as you change positions. Open **Details → Maia moves shown** to choose 1–64 rows; the choice is saved. Positions with fewer legal moves show fewer rows. This only limits the table: probabilities are not renormalized, Stockfish MultiPV is independent, and Maia board rods retain the >10% threshold.
 
-**Display → Swap Moves by Rating and Game Line** puts the rating chart beneath Stockfish and Game Line at the top of the insights column. The preference is saved. When Maia insights are hidden or disabled, Game Line returns to the analysis column so it remains accessible.
+The previous **Swap Moves by Rating and Game Line** option has been retired. The standard layout now places the chart in the middle and Game Line on the right.
 
-Click **?** beside **Flip / Copy FEN** for the board-symbol guide. It explains Stockfish rods and rank circles, Maia arrows, overlapping recommendations, quality categories and previews.
+Click **?** beside **Flip / Copy FEN** for the board-symbol guide. It explains Stockfish arrows, Maia rods and likelihood circles, overlapping recommendations, quality categories and previews.
 
 **Database → Lichess access token** has an amber row whenever the session token is blank. Entering a token removes the highlight; clearing it restores the highlight. Tokens remain session-only.
 
@@ -253,3 +245,43 @@ Candidate previews stay visible while crossing the padding between Stockfish var
 The bottom Game Moves divider also supports drag-to-collapse: drag it all the way down, then use the remaining expand control near the bottom to reopen. In Details, **Maia moves shown** is a static label beside a separate number box with up/down controls; only that number is editable.
 
 Bottom Game Moves retains its hover preview when crossing spaces or line gaps within the section, and clears it on exit or navigation. Maia's highest-probability eligible move uses the Lichess pale-blue brush (#003088 at 40% opacity); other eligible moves use pale gray (#4a4a4a at 40%). Both retain the strictly-greater-than-10% threshold. Stockfish's rods and rank circles remain independent. Blue identifies human likelihood, not Stockfish rank or move quality.
+
+
+## Compact Details and board roles (0.5.7.95)
+
+Expanded Details puts **Maia moves shown** and **Calculate ratings** together on
+one row. The numeric fields share a height, and the two rating selectors have
+matching widths with a centered “to.” Narrow panels stack these groups.
+
+Stockfish now supplies the Lichess-style arrows; its first candidate is pale
+blue and its other candidates pale gray. Maia supplies rods and numbered circles
+for probabilities strictly greater than 10%. The rods and circles share the
+rating chart's move colors. Their numbers rank Maia probability; their colors
+identify moves, rather than Blunder Meter categories. The board **?** guide and
+Maia overlay menu explain this mapping. Earlier version notes describe
+the rendering used in those releases.
+
+
+## Three-column analysis layout (0.5.7.96)
+
+Move Map has been removed. The middle column is Stockfish/Maia analysis,
+Moves by Rating, and Blunder Meter, in that order. The right column is Game Line
+and the database explorer. All explorer sources use the same right-column slot.
+The existing evaluation graph remains a compact footer.
+
+The new default is applied once to existing installs, replacing the old saved
+panel arrangement. Subsequent custom arrangements can be saved normally.
+Game Line and the database remain available when Maia tools are hidden.
+
+
+## Chart priority and compact meter (0.5.7.97)
+
+Stockfish analysis and the complete Moves by Rating chart, including its legend,
+receive space before the meter. The meter is capped at 180px and scrolls inside
+its own panel when more content needs space. Its categories are four horizontal
+columns: Best moves, OK moves, Blunders, and Not evaluated, each with its percentage.
+The selected-move inspector remains available inside that scrollable area.
+
+The evaluation history graph is now the bottom section of the right column,
+below Game Line and the database explorer. The updated default is applied once
+to saved arrangements; later custom arrangements remain persistent.
