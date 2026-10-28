@@ -129,11 +129,11 @@ class MoveText(QTextBrowser):
         color = colors["history"]
         tokens = []
         if self.candidate_rank is not None and self.candidate_evaluation:
-            metric_color = colors["metadata"] if self.candidate_historical else colors["metric"]
+            metric_color = colors["historical_metric"] if self.candidate_historical else colors["metric"]
             tokens.append(f'<span style="color:{metric_color};">'
                           f'{escape(self.candidate_evaluation)}</span> ')
         if self.candidate_depth is not None:
-            tokens.append(f'<span title="Depth {self.candidate_depth}" style="color:{colors["metadata"]};">d{self.candidate_depth}</span> ')
+            tokens.append(f'<span title="Depth {self.candidate_depth}" style="color:{colors["historical_metric"] if self.candidate_historical else colors["metadata"]};">d{self.candidate_depth}</span> ')
         for offset, (text, index) in enumerate(self._items):
             if index is None:
                 tokens.append(escape(text) + (" " if self.continuous_preview else ""))
@@ -141,7 +141,7 @@ class MoveText(QTextBrowser):
             move_color = color
             if self.candidate_rank is not None:
                 side = self.candidate_turn if index % 2 else -self.candidate_turn
-                move_color = (colors["metadata"] if self.candidate_historical else
+                move_color = (colors["historical_white" if side > 0 else "historical_black"] if self.candidate_historical else
                               colors["analysis_white" if side > 0 else "analysis_black"])
             style = (f'color: {colors["selected_text"]}; background-color: {colors["selection"]};'
                      if index == current else f"color: {move_color};")

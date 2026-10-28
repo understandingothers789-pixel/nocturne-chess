@@ -54,7 +54,7 @@ def palette(light: bool = False) -> dict[str, str]:
                     pressed="#d0dfe6", selection="#d9e9ec", selected_text="#173d43",
                     primary="#237b6d", primary_text="#ffffff", primary_hover="#2e8d7c",
                     scroll="#9bacbb", analysis_white="#27394a", analysis_black="#77634f",
-                    history="#426581", metric="#176c8a", metadata="#667689",
+                    historical_metric="#476b87", historical_white="#66717c", historical_black="#806c60", history="#426581", metric="#176c8a", metadata="#667689",
                     maia="#7251a3", maia_soft="#f0eaf8", soft="#f5f8fb", card="#f8fafc",
                     maia_fill="#d8c9ed", quality_fill="#bfdfd5")
     return dict(bg="#10161e", panel="#171f2a", raised="#222e3c", text="#dce5ef",
@@ -62,7 +62,7 @@ def palette(light: bool = False) -> dict[str, str]:
                 pressed="#34495a", selection="#2b4554", selected_text="#e7f7f3",
                 primary="#8bd2c0", primary_text="#112d29", primary_hover="#a0e1d1",
                 scroll="#50667b", analysis_white="#dce5ef", analysis_black="#bba991",
-                history="#b2c6da", metric="#8ed5ef", metadata="#93a6ba",
+                historical_metric="#6896bb", historical_white="#8894a0", historical_black="#a39085", history="#b2c6da", metric="#8ed5ef", metadata="#93a6ba",
                 maia="#c2a7eb", maia_soft="#2b263e", soft="#1b2633", card="#1b2532",
                 maia_fill="#654b8b", quality_fill="#285e58")
 
