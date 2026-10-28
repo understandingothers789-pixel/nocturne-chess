@@ -176,6 +176,7 @@ class CandidatePanel(QWidget):
     def _make_row(self, rank):
         frame = QWidget()
         frame.setObjectName("candidateRow")
+        frame.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         frame.setProperty("alternate", rank % 2 == 0)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(0, 1, 0, 1)
@@ -202,6 +203,7 @@ class CandidatePanel(QWidget):
         moves.setViewportMargins(0, 0, 0, 0)
         moves.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         pv_area = QWidget()
+        pv_area.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         pv_layout = QGridLayout(pv_area)
         pv_layout.setContentsMargins(0, 0, 0, 0)
         pv_layout.setSpacing(0)

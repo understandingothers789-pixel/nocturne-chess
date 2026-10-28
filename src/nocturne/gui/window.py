@@ -448,6 +448,8 @@ class MainWindow(QMainWindow):
         self.engine_scroll.setFrameShape(QFrame.Shape.NoFrame)
         self.engine_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         engine_detail = QWidget()
+        engine_detail.setMinimumWidth(0)
+        engine_detail.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.engine_layout = QVBoxLayout(engine_detail)
         self.engine_layout.setContentsMargins(0, 0, 0, 0)
         self.engine_layout.setSpacing(0)
