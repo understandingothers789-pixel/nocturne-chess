@@ -292,7 +292,8 @@ class RenderingTests(unittest.TestCase):
                                    window.eval_label, window.candidates.maia_labels[1]):
                         left = widget.mapTo(viewport, QPoint(0, 0)).x()
                         self.assertGreaterEqual(left, 0)
-                        self.assertLessEqual(left + widget.width(), viewport.width())
+                        self.assertLessEqual(left + widget.width(), viewport.width(),
+                                             f"{type(widget).__name__}: x={left}, width={widget.width()}, viewport={viewport.width()}")
                     self.assertIn("dev-20261017-effdc3fd", window.engine_state.text())
                     status = window.maia_controls.status
                     status.setText("Ready")

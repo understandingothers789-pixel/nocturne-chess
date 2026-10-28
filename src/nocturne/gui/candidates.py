@@ -5,7 +5,7 @@ import math
 
 from shiboken6 import isValid
 
-from PySide6.QtCore import QPoint, Signal, Qt, QTimer
+from PySide6.QtCore import QPoint, Signal, Qt, QTimer, QSize
 from PySide6.QtGui import QTextDocument, QCursor
 from PySide6.QtWidgets import (
     QLabel, QMenu, QVBoxLayout, QWidget, QLayout, QSizePolicy, QGridLayout, QToolButton,
@@ -34,7 +34,8 @@ class CandidatePanel(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
-        self.layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+        self.layout.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.font_increase = 20
         self.expanded = False
         self.multipv = 1
@@ -68,6 +69,9 @@ class CandidatePanel(QWidget):
         self.pending = {}
         self._clearing = False
         self._revision = 0
+
+    def minimumSizeHint(self):
+        return QSize(0, super().minimumSizeHint().height())
 
     def clear(self):
         self._leave_timer.stop()
