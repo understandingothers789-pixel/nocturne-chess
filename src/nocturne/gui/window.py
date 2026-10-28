@@ -1592,11 +1592,11 @@ class MainWindow(QMainWindow):
         self._save()
 
     def _preview_candidate(self, rank, ply):
-        if self._candidate_identity != self._position_identity() or rank not in self.candidates.lines:
+        if self._candidate_identity != self._position_identity() or not self.candidates.display_line(rank):
             return
         board = self.game.board.copy()
         try:
-            for text in self.candidates.lines[rank]["pv"][:ply]:
+            for text in self.candidates.display_line(rank)["pv"][:ply]:
                 board.push(board.parse_uci(text))
         except ValueError:
             return
@@ -1916,9 +1916,9 @@ class MainWindow(QMainWindow):
         self.board_view.set_recommendations(entries, inferior_ranks=inferior_ranks)
 
     def _insert_candidate(self, rank, ply=None):
-        if self._candidate_identity != self._position_identity() or rank not in self.candidates.lines:
+        if self._candidate_identity != self._position_identity() or not self.candidates.display_line(rank):
             return
-        moves = self.candidates.lines[rank]["pv"][:ply]
+        moves = self.candidates.display_line(rank)["pv"][:ply]
         board = self.game.board.copy()
         try:
             parsed = []
@@ -1938,9 +1938,9 @@ class MainWindow(QMainWindow):
         self._schedule_engine()
 
     def _candidate_action(self, rank, action):
-        if self._candidate_identity != self._position_identity() or rank not in self.candidates.lines:
+        if self._candidate_identity != self._position_identity() or not self.candidates.display_line(rank):
             return
-        line = self.candidates.lines[rank]
+        line = self.candidates.display_line(rank)
         if action == "insert":
             self._insert_candidate(rank)
         elif action == "focus":

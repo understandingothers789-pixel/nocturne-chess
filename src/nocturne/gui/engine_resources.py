@@ -111,7 +111,7 @@ class EngineResources(QObject):
             matches = matches and same_engine and confirmed.get(name) == str(value)
             minimum, maximum = resource_limits(option, self.allocated_hash())
             presets = (
-                (1, 2, 3, 4, 6, 8, 12, 14, 16, 24, 32, 48, 64, 96, 128)
+                (1, 2, 3, 4, 6, 8, 12, 14, 15, 16, 24, 32, 48, 64, 96, 128)
                 if name == "Threads"
                 else (16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536)
             )

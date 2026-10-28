@@ -57,6 +57,8 @@ class CandidatePanel(QWidget):
         self.database = None
         self.details = {}
         self.lines = {}
+        self.retained_lines = {}
+        self.best_history = []
         self.pinned = set()
         self.turn = 1
         self.slot_count = 0
@@ -79,6 +81,8 @@ class CandidatePanel(QWidget):
         self._revision += 1
         self.hovered = None
         self.pending.clear()
+        self.retained_lines.clear()
+        self.best_history.clear()
         self.preview_end.emit()
         if set(self.rows) == set(range(1, self.multipv + 1)):
             # Retain browser widgets and their layout/scrollbar geometry across
@@ -294,7 +298,7 @@ class CandidatePanel(QWidget):
         )
 
     def _hover(self, rank, ply):
-        if rank not in self.lines:
+        if not self.display_line(rank):
             return
         self._leave_timer.stop()
         if self.hovered is not None and self.hovered != rank:
@@ -328,6 +332,7 @@ class CandidatePanel(QWidget):
             self.rows[rank][2].cancel_preview()
         if notify:
             self.preview_end.emit()
+        self._refresh_history()
         if rank in self.pending:
             revision = self._revision
             QTimer.singleShot(0, self, lambda: self._flush(rank, revision))
@@ -366,14 +371,55 @@ class CandidatePanel(QWidget):
             self.reserve_slots(rank)
         self.pending.pop(rank, None)
         self.lines[rank] = info.copy()
+        if (rank == 1 and self.multipv < 5 and previous and previous.get("pv")
+                and info.get("pv") and previous["pv"][0] != info["pv"][0]):
+            root = previous["pv"][0]
+            self.best_history = [previous.copy()] + [
+                line for line in self.best_history if line["pv"][0] != root
+            ][:15]
+        self.retained_lines.pop(rank, None)
+        self._paint_line(rank, info, turn, light, detailed, previous=previous)
+        self._refresh_history()
+        self.changed.emit()
+
+    def display_line(self, rank):
+        """Return the visible snapshot; retained scores never enter live analysis."""
+        return self.lines.get(rank) or self.retained_lines.get(rank)
+
+    def _refresh_history(self):
+        live_count = max(self.multipv, max(self.lines, default=0))
+        if self.hovered in self.retained_lines:
+            return  # Keep the hovered snapshot until its preview ends.
+        active_roots = {line["pv"][0] for line in self.lines.values() if line.get("pv")}
+        history = [line for line in self.best_history if line["pv"][0] not in active_roots]
+        history = history[:max(0, 5 - live_count)]
+        desired = dict(enumerate(history, live_count + 1))
+        if desired == self.retained_lines:
+            return
+        self.retained_lines.clear()
+        for rank, info in desired.items():
+            if rank not in self.rows:
+                self.reserve_slots(rank)
+            self.retained_lines[rank] = info
+            self._paint_line(rank, info, self.turn, self.light, self.show_details, historical=True)
+        for rank, (frame, _, _) in self.rows.items():
+            frame.setVisible(rank <= live_count or rank in self.retained_lines)
+        self.changed.emit()
+
+    def _paint_line(self, rank, info, turn, light, detailed, previous=None, historical=False):
         self.turn = turn
         self.recolor(light)
         self.details[rank] = detailed
         self._render_header(rank)
         self._render_maia(rank)
         frame, header, moves = self.rows[rank]
+        frame.show()
+        frame.setToolTip("Earlier best move · not currently searched" if historical else "")
+        moves.candidate_historical = historical
         moves.candidate_turn = turn
         moves.candidate_evaluation = score_label(info, turn)
+        if historical:
+            moves.candidate_evaluation += f" · depth {info['depth']}"
         moves.set_moves([(text, i + 1) for i, text in enumerate(info["san"])], light=light, figurines=True)
         if (previous and previous.get("pv")
                 and (not info.get("pv") or previous["pv"][0] != info["pv"][0])):
@@ -381,7 +427,6 @@ class CandidatePanel(QWidget):
             self._apply_expansion(rank)
         self._refresh_expander(rank)
         QTimer.singleShot(0, self, lambda r=rank: self._refresh_expander(r))
-        self.changed.emit()
 
     def set_maia(self, policy=None, rating=1800, enabled=True):
         self.maia_policy = policy or {}
@@ -394,7 +439,7 @@ class CandidatePanel(QWidget):
         label = self.maia_labels.get(rank)
         if label is None:
             return
-        pv = self.lines.get(rank, {}).get("pv", [])
+        pv = (self.display_line(rank) or {}).get("pv", [])
         probability = self.maia_policy.get(pv[0]) if pv else None
         colors = palette(self.light)
         label.setStyleSheet(f"color: {colors['maia']}; background: {colors['maia_soft']}; "
@@ -427,9 +472,9 @@ class CandidatePanel(QWidget):
             self._render_header(rank)
 
     def _render_header(self, rank):
-        if rank not in self.lines:
+        if not self.display_line(rank):
             return
-        info = self.lines[rank]
+        info = self.display_line(rank)
         colors = palette(self.light)
         def blue(value):
             return f'<span style="color:{colors["metric"]};">{escape(str(value))}</span>'
@@ -546,7 +591,7 @@ class CandidatePanel(QWidget):
         button = self.expand_buttons.get(rank)
         if button is None or not isValid(button):
             return
-        if rank not in self.lines:
+        if not self.display_line(rank):
             button.hide()
             return
         moves = self.rows[rank][2]
@@ -557,7 +602,7 @@ class CandidatePanel(QWidget):
                           (expanded or moves.wrapped_line_count() > self.default_pv_lines))
 
     def toggle_expansion(self, rank):
-        if self.expanded or rank not in self.lines:
+        if self.expanded or not self.display_line(rank):
             return
         if rank in self.expanded_ranks:
             self.expanded_ranks.remove(rank)
@@ -577,7 +622,7 @@ class CandidatePanel(QWidget):
             self.action.emit(rank, action)
 
     def _menu(self, rank, position):
-        if rank not in self.lines:
+        if not self.display_line(rank):
             return
         menu = QMenu(self)
         for title, action in (
@@ -590,6 +635,8 @@ class CandidatePanel(QWidget):
         ):
             item = menu.addAction(title)
             item.setData(action)
+            if action == "pin" and rank in self.retained_lines:
+                item.setEnabled(False)
         chosen = menu.exec(position)
         action = chosen.data() if chosen else None
         menu.deleteLater()
