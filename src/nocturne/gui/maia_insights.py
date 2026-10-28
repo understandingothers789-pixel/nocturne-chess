@@ -473,7 +473,14 @@ class MaiaInsights(QScrollArea):
             self._analysis_names = names
         names = self._analysis_names
         assessments = assess_moves({uci: p for uci, p in policy.items() if uci in names}, lines)
-        self.blunder.set_data(assessments, names, key[0])
+        # Keep the last complete display while this position's policy or engine
+        # lines are arriving. Never reuse its moves for board recommendations.
+        ready = bool(policy and lines)
+        if ready or not getattr(self.blunder, "_data_signature", None):
+            self.blunder.set_data(assessments, names, key[0])
+            self.blunder.setToolTip("")
+        else:
+            self.blunder.setToolTip("Showing the previous results while analysis loads for this position.")
         return assessments
 
     def _toggle_curve(self, uci, checked):
