@@ -2780,6 +2780,8 @@ class MainWindow(QMainWindow):
         self._cancel_review()
         self._stop_engine()
         self.config["multipv"] = count
+        self.maia_controls.move_limit.setValue(count)
+        self.maia_controls.all_moves.setText(f"Top {count} Maia moves")
         self.config.pop("searchmoves", None)
         self._analysis_context = None
         self._clear_analysis_output()
@@ -3079,7 +3081,10 @@ class MainWindow(QMainWindow):
         self.inline_history.set_notes_visible(self.config.get("show_game_line_notes", True))
         self._sync_maia_range_controls()
         self.maia_controls.move_limit.blockSignals(True)
-        self.maia_controls.move_limit.setValue(self.config.get("maia_move_limit", 5))
+        self.maia_controls.move_limit.setValue(self._effective_multipv())
+        self.maia_controls.move_limit.setEnabled(False)
+        self.maia_controls.move_limit.setToolTip("Matches the engine MultiPV setting")
+        self.maia_controls.all_moves.setText(f"Top {self._effective_multipv()} Maia moves")
         self.maia_controls.move_limit.blockSignals(False)
         self.engine.connection.cpu_budget = self.config.get("engine_cpu_budget", 100) if os.name == "nt" else 100
         self._sync_insight_layout()

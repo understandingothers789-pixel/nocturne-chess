@@ -400,6 +400,8 @@ class CandidatePanel(QWidget):
         if live_count < 5 and self.slot_count < 5:
             self.reserve_slots(5)
         if desired == self.retained_lines:
+            for rank, (frame, _, _) in self.rows.items():
+                frame.setVisible(rank <= live_count or rank in desired)
             return
         self._refreshing_history = True
         self.retained_lines.clear()
@@ -409,7 +411,7 @@ class CandidatePanel(QWidget):
             self.retained_lines[rank] = info
             self._paint_line(rank, info, self.turn, self.light, self.show_details, historical=True)
         for rank, (frame, _, _) in self.rows.items():
-            frame.setVisible(rank <= max(5, live_count))
+            frame.setVisible(rank <= live_count or rank in desired)
             if rank > live_count and rank not in self.retained_lines:
                 self.rows[rank][2].candidate_evaluation = ""
                 self.rows[rank][2].candidate_depth = None
