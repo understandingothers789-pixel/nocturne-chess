@@ -491,8 +491,6 @@ class CandidatePanel(QWidget):
             self._render_header(rank)
 
     def _render_header(self, rank):
-        if not self.show_details:
-            return
         if not self.display_line(rank):
             return
         info = self.display_line(rank)
