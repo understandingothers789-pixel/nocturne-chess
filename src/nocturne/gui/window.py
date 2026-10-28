@@ -549,6 +549,7 @@ class MainWindow(QMainWindow):
         )
         self.tabs.addTab(engine_page, "Engine")
         pgn_page = QWidget()
+        self.pgn_page = pgn_page
         pgn_layout = QVBoxLayout(pgn_page)
         pgn_layout.setContentsMargins(0, 10, 0, 0)
         pgn_layout.addWidget(label("Paste PGN or a line of SAN moves, then apply.", "muted", True))
@@ -3288,8 +3289,19 @@ class MainWindow(QMainWindow):
         if self.arena.maximumWidth() != target:
             self.arena.setMaximumWidth(target)
 
+    def _sync_pgn_editor(self):
+        """Build PGN only when the editor is displayed, preserving typed drafts."""
+        if self._pgn_game_id != self.game.id or not self.pgn_editor.document().isModified():
+            text = self.game.pgn()
+            if self.pgn_editor.toPlainText() != text:
+                self.pgn_editor.setPlainText(text)
+            self.pgn_editor.document().setModified(False)
+            self._pgn_game_id = self.game.id
+
     def _analysis_tab_changed(self, index=None):
         if hasattr(self, "tabs"):
+            if self.tabs.currentWidget() is getattr(self, "pgn_page", None):
+                self._sync_pgn_editor()
             # Inactive review pages have wide minimum hints. Let the active
             # engine page fit its viewport rather than clipping the Maia column.
             compact = self.analysis_mode and self.tabs.currentIndex() == 1
@@ -3414,12 +3426,8 @@ class MainWindow(QMainWindow):
         self._update_review_panel()
         self._sync_workspace_layout()
         self._clear_move_preview()
-        if self._pgn_game_id != self.game.id or not self.pgn_editor.document().isModified():
-            text = self.game.pgn()
-            if self.pgn_editor.toPlainText() != text:
-                self.pgn_editor.setPlainText(text)
-            self.pgn_editor.document().setModified(False)
-            self._pgn_game_id = self.game.id
+        if self.tabs.currentWidget() is self.pgn_page:
+            self._sync_pgn_editor()
         last = self.game.moves[self.game.cursor - 1] if self.game.cursor else None
         if not board_ready:
             self.board_view.set_position(self.game.board, last, animate)

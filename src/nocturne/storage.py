@@ -53,7 +53,8 @@ class Store:
             event = game.headers.get("Event", "").strip()
             if event and event != "?":
                 title = event + " · " + title
-            result = game.outcome.result if game.outcome else "*"
+            outcome = game.outcome
+            result = outcome.result if outcome else "*"
             now = datetime.now(timezone.utc).isoformat(timespec="seconds")
             with self.db:
                 self.db.execute("INSERT INTO games VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET "

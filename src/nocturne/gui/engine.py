@@ -1,6 +1,7 @@
 """Desktop external-engine controller. No custom engine is used by the GUI."""
 
 from pathlib import Path
+from collections import OrderedDict
 
 from PySide6.QtCore import QObject, Signal
 
@@ -35,6 +36,7 @@ class EngineController(QObject):
         self._managed_limits = None
         self._limit_reached = False
         self._pv_stop_sent = False
+        self._validated_pvs = OrderedDict()
 
     @property
     def busy(self):
@@ -71,6 +73,7 @@ class EngineController(QObject):
             raise ValueError("Select your Stockfish or another UCI executable first")
         self.stop()
         self.board = game.board.copy()
+        self._validated_pvs.clear()
         self.lines = {}
         self.exact_lines = {}
         self._snapshot_lines = {}
@@ -114,18 +117,28 @@ class EngineController(QObject):
         return self.generation
 
     def _validated_info(self, info):
-        position = self.board.copy()
-        pv, texts = [], []
-        for text in info["pv"][:128]:
-            try:
-                move = position.parse_uci(text)
-                texts.append(san(position, move))
-                position.push(move)
-                pv.append(text)
-            except ValueError:
-                break
-        if not pv:
-            return None
+        key = (self.board.fen(), bool(getattr(self.board, "chess960", False)), tuple(info["pv"][:128]))
+        cached = self._validated_pvs.get(key)
+        if cached is None:
+            position = self.board.copy()
+            pv, texts = [], []
+            for text in key[2]:
+                try:
+                    move = position.parse_uci(text)
+                    texts.append(san(position, move))
+                    position.push(move)
+                    pv.append(text)
+                except ValueError:
+                    break
+            if not pv:
+                return None
+            cached = (tuple(pv), tuple(texts))
+            self._validated_pvs[key] = cached
+            if len(self._validated_pvs) > 64:
+                self._validated_pvs.popitem(last=False)
+        else:
+            self._validated_pvs.move_to_end(key)
+        pv, texts = list(cached[0]), list(cached[1])
         return dict(
             info, pv=pv, san=texts, engine=self.connection.name,
             applied_options={k: v for k, v in self.connection.confirmed.items() if k != "__study"},
