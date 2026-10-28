@@ -3750,7 +3750,7 @@ class MainWindow(QMainWindow):
         menu.addAction("Copy PGN", self._copy_pgn)
         anchor = self.inline_history.anchorAt(position)
         target = int(anchor[5:]) if anchor.startswith("move:") and anchor[5:].isdigit() else self.game.current_node
-        menu.addAction("Edit PGN note…", lambda target=target: self._edit_annotation_at_node(target))
+        menu.addAction("Edit PGN note…", lambda checked=False, target=target: self._edit_annotation_at_node(target))
         if anchor.startswith("move:") and anchor[5:].isdigit():
             node_id = int(anchor[5:])
             if node_id and node_id not in mainline(self.game.nodes):
