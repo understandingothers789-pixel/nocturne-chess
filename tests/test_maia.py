@@ -155,36 +155,6 @@ class MaiaTests(unittest.TestCase):
         bar.set_outcome(None)
         self.assertIsNone(bar.white_expected_score)
 
-    def test_scatter_map_keeps_promotion_identity_and_click_inspects_without_playing(self):
-        from nocturne.core.rules import Board
-        from nocturne.gui.maia_insights import MaiaInsights
-        from PySide6.QtCore import Qt
-        from PySide6.QtTest import QTest
-        board = Board("7k/P7/8/8/8/8/8/7K w - - 0 1")
-        original = board.fen()
-        tools = MaiaInsights()
-        tools.resize(340, 950)
-        policy = {"a7a8q": .6, "a7a8n": .3, "h1h2": .1}
-        lines = {1: {"pv": ["a7a8q"], "score_type": "cp", "score_value": 400},
-                 2: {"pv": ["a7a8n"], "score_type": "cp", "score_value": 200}}
-        tools.set_analysis(policy, board, lines)
-        tools.show()
-        self.app.processEvents()
-        tools.map.grab()
-        points = {uci: point for point, uci in tools.map.points}
-        self.assertEqual(set(points), {"a7a8q", "a7a8n"})
-        self.assertGreater(points["a7a8q"].x(), points["a7a8n"].x())
-        self.assertLess(points["a7a8q"].y(), points["a7a8n"].y())
-        QTest.mouseClick(tools.map, Qt.MouseButton.LeftButton, pos=points["a7a8n"].toPoint())
-        self.assertEqual(tools.blunder.move.currentData(), "a7a8n")
-        self.assertEqual(board.fen(), original)
-        self.assertAlmostEqual(tools.blunder.strip.totals["blunder"], .3)
-        self.assertAlmostEqual(tools.blunder.strip.totals["unknown"], .1)
-        tools.set_analysis({}, Board(), {})
-        self.assertEqual(tools.map.points, [])
-        self.assertEqual(tools.blunder.move.count(), 0)
-        tools.close()
-        tools.deleteLater()
 
     def test_blunder_buckets_preserve_unknown_mass_and_exact_thresholds(self):
         from nocturne.maia.risk import assess_moves

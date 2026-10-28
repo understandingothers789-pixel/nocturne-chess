@@ -801,7 +801,6 @@ class MainWindow(QMainWindow):
             ("smart_move", "Smart Move · click recommended destinations"),
             ("branch_arrows", "Show saved continuation arrows"),
             ("show_maia_insights", "Show Maia insights"),
-            ("swap_rating_game_line", "Swap Moves by Rating and Game Line"),
             ("details", "Detailed analysis statistics"),
             ("show_seldepth", "Show selective depth (seldepth)"),
             ("wheel_game_moves", "Wheel navigates game moves"),
@@ -1109,7 +1108,7 @@ class MainWindow(QMainWindow):
                                    self.config.get("explorer_speed", "all"),
                                    self.config.get("explorer_rating", 0))
         if active and not self._explorer_active and self._dock_workspace is None:
-            self.analysis_detail_splitter.setSizes([500, 220])
+            self.right_detail_splitter.setSizes([500, 220])
         self._explorer_active = active
         self._sync_docked_visibility()
         self._sync_candidate_database()
@@ -1479,7 +1478,7 @@ class MainWindow(QMainWindow):
             "moves": ("Game moves", self.analysis_moves_panel),
             "database": ("Database explorer", self.explorer),
             "graph": ("Evaluation graph", self.graph),
-            "insights": ("Insights / Maia Tools", self.maia_insights),
+            "insights": ("Game Line", self.maia_insights),
         }, self, analysis_left=self.config.get("layout") == "analysis-left")
         self._dock_workspace = workspace
         workspace.finished.connect(lambda: self._arrange_panels(False))
@@ -1501,12 +1500,16 @@ class MainWindow(QMainWindow):
 
     def _sync_docked_visibility(self):
         if self._dock_workspace is not None:
-            self._dock_workspace.set_panel_visible("insights", self.analysis_mode and self.config.get("maia_enabled", True) and self.config.get("show_maia_insights", True))
+            self._dock_workspace.set_panel_visible("insights", self.analysis_mode)
             self._dock_workspace.set_panel_visible("moves", self.analysis_mode)
             self._dock_workspace.set_panel_visible("database", self._explorer_active)
             self._dock_workspace.set_panel_visible("graph", self.config.get("show_eval_graph", True))
 
     def _restore_workspace_layout(self):
+        if self.store and self.store.get("analysis_columns_version") != 1:
+            self.store.set("analysis_columns_version", 1)
+            self.store.set("workspace_layout", None)
+            return
         state = self.store.get("workspace_layout") if self.store else None
         if not isinstance(state, dict) or state.get("version") != 1:
             return
@@ -1532,7 +1535,7 @@ class MainWindow(QMainWindow):
             self.main_splitter.addWidget(self.maia_insights)
             self.workspace_splitter.addWidget(self.analysis_moves_panel)
             self.workspace_splitter.setCollapsible(1, True)
-            self.analysis_detail_splitter.addWidget(self.explorer)
+            self.right_detail_splitter.addWidget(self.explorer)
             self.engine_page_layout.addWidget(self.graph)
             self.graph.setMaximumHeight(85)
             self.arena.show()
@@ -1786,7 +1789,7 @@ class MainWindow(QMainWindow):
         if self._dock_workspace is not None:
             self._sync_docked_visibility()
         else:
-            self.maia_insights.setVisible(self.analysis_mode and self.config.get("maia_enabled", True) and self.config.get("show_maia_insights", True))
+            self.maia_insights.setVisible(self.analysis_mode)
 
     def _sync_blunder(self):
         if not hasattr(self, "maia"):
@@ -3025,22 +3028,34 @@ class MainWindow(QMainWindow):
     def _sync_insight_layout(self):
         if not hasattr(self, "maia_insights"):
             return
-        swap = (self.analysis_mode and self.config.get("swap_rating_game_line", False)
-                and self.config.get("maia_enabled", True) and self.config.get("show_maia_insights", True))
-        if swap == self._rating_game_line_swapped:
-            return
-        trends, line = self.maia_insights.trends_card, self.game_line_panel
-        self.maia_insights.chart.setMaximumHeight(16777215 if swap else 280)
-        trends.content.setStretch(1, 1)
-        for widget in (trends, line):
-            self.maia_insights.body_layout.removeWidget(widget)
-            widget.setParent(None)
-        self.candidate_splitter.addWidget(trends if swap else line)
-        self.maia_insights.body_layout.insertWidget(0, line if swap else trends)
-        line.setMinimumHeight(160 if swap else 0)
-        trends.show()
-        line.show()
-        self._rating_game_line_swapped = swap
+        insights = self.maia_insights
+        if not hasattr(self, "right_detail_splitter"):
+            self.right_detail_splitter = QSplitter(Qt.Orientation.Vertical)
+            self.right_detail_splitter.setChildrenCollapsible(False)
+            self.right_detail_splitter.setHandleWidth(7)
+            self.right_detail_splitter.addWidget(self.game_line_panel)
+            insights.body_layout.insertWidget(0, self.right_detail_splitter, 1)
+            self.candidate_splitter.addWidget(insights.trends_card)
+            self.analysis_detail_splitter.addWidget(insights.blunder)
+            insights.chart.setMaximumHeight(16777215)
+            insights.trends_card.content.setStretch(1, 1)
+            self.game_line_panel.setMinimumHeight(160)
+            self.candidate_splitter.setStretchFactor(0, 0)
+            self.candidate_splitter.setStretchFactor(1, 1)
+            self.analysis_detail_splitter.setStretchFactor(0, 1)
+            self.analysis_detail_splitter.setStretchFactor(1, 0)
+            self.right_detail_splitter.setStretchFactor(0, 1)
+            self.right_detail_splitter.setStretchFactor(1, 0)
+            self.candidate_splitter.setSizes([190, 300])
+            self.analysis_detail_splitter.setSizes([550, 220])
+        if self._dock_workspace is None and self.right_detail_splitter.indexOf(self.explorer) < 0:
+            self.right_detail_splitter.addWidget(self.explorer)
+        show_tools = (self.analysis_mode and self.config.get("maia_enabled", True)
+                      and self.config.get("show_maia_insights", True))
+        insights.trends_card.setVisible(show_tools)
+        insights.blunder.setVisible(show_tools)
+        self.game_line_panel.show()
+        self._rating_game_line_swapped = True
 
     def _show_board_guide(self):
         QMessageBox.information(self, "Board symbols guide",
@@ -3090,7 +3105,7 @@ class MainWindow(QMainWindow):
         ):
             widget.setVisible(not analysis)
         self.analysis_moves_panel.setVisible(analysis)
-        self.maia_insights.setVisible(analysis and self.config.get("maia_enabled", True) and self.config.get("show_maia_insights", True))
+        self.maia_insights.setVisible(analysis)
         self.tabs.setTabVisible(0, not analysis)
         self.panel_caption.setText("ENGINE ANALYSIS" if analysis else "THE GAME")
         self.panel_caption.setVisible(not analysis)

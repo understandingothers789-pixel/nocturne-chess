@@ -84,8 +84,8 @@ class DockWorkspace(QWidget):
                                      board if analysis_left else engine, Qt.Orientation.Horizontal)
         if "insights" in self.docks:
             self.surface.splitDockWidget(board if analysis_left else engine, self.docks["insights"], Qt.Orientation.Horizontal)
-        self.surface.splitDockWidget(engine, self.docks["database"], Qt.Orientation.Vertical)
-        self.surface.splitDockWidget(self.docks["database"], self.docks["graph"], Qt.Orientation.Vertical)
+        self.surface.splitDockWidget(self.docks.get("insights", engine), self.docks["database"], Qt.Orientation.Vertical)
+        self.surface.splitDockWidget(engine, self.docks["graph"], Qt.Orientation.Vertical)
         self.surface.setCorner(Qt.Corner.BottomLeftCorner, bottom)
         self.surface.setCorner(Qt.Corner.BottomRightCorner, bottom)
         self.surface.addDockWidget(bottom, self.docks["moves"])
@@ -180,8 +180,8 @@ class DockWorkspace(QWidget):
                 first, second = (engine, board) if analysis_left else (board, engine)
                 self.surface.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, first)
                 self.surface.splitDockWidget(first, second, Qt.Orientation.Horizontal)
-                self.surface.splitDockWidget(engine, self.docks["database"], Qt.Orientation.Vertical)
-                self.surface.splitDockWidget(self.docks["database"], self.docks["graph"], Qt.Orientation.Vertical)
+                self.surface.splitDockWidget(self.docks.get("insights", engine), self.docks["database"], Qt.Orientation.Vertical)
+                self.surface.splitDockWidget(engine, self.docks["graph"], Qt.Orientation.Vertical)
             if "insights" in self.docks and not state.get("maia_tools"):
                 self.surface.splitDockWidget(self.docks["analysis"], self.docks["insights"], Qt.Orientation.Horizontal)
             self.keep_floating_panels_on_screen()
