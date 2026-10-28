@@ -216,23 +216,21 @@ class GuiTests(unittest.TestCase):
         self.assertIn("Make this variation the mainline and delete the previous mainline", labels)
         menu.deleteLater()
 
-    def test_rating_chart_can_swap_with_game_line_without_losing_state(self):
+    def test_analysis_columns_put_tools_in_middle_and_game_database_on_right(self):
         window = self.window
         window.analysis_mode = True
-        window.config.update(maia_enabled=True, show_maia_insights=True)
+        window._apply_settings()
         game = window.game
-        line, chart = window.game_line_panel, window.maia_insights.trends_card
-        window._set_display("swap_rating_game_line", True)
-        self.assertTrue(window._rating_game_line_swapped)
-        self.assertGreaterEqual(window.candidate_splitter.indexOf(chart), 0)
-        self.assertEqual(window.maia_insights.body_layout.indexOf(line), 0)
+        self.assertIs(window.candidate_splitter.widget(1), window.maia_insights.trends_card)
+        self.assertIs(window.analysis_detail_splitter.widget(1), window.maia_insights.blunder)
+        self.assertIs(window.right_detail_splitter.widget(0), window.game_line_panel)
+        self.assertIs(window.right_detail_splitter.widget(1), window.explorer)
+        self.assertFalse(hasattr(window.maia_insights, "map"))
         window._set_display("show_maia_insights", False)
-        self.assertFalse(window._rating_game_line_swapped)
-        self.assertGreaterEqual(window.candidate_splitter.indexOf(line), 0)
+        self.assertTrue(window.maia_insights.trends_card.isHidden())
+        self.assertTrue(window.maia_insights.blunder.isHidden())
+        self.assertFalse(window.game_line_panel.isHidden())
         window._set_display("show_maia_insights", True)
-        self.assertTrue(window._rating_game_line_swapped)
-        window._set_display("swap_rating_game_line", False)
-        self.assertEqual(window.maia_insights.body_layout.indexOf(chart), 0)
         self.assertIs(window.game, game)
         with patch("nocturne.gui.window.QMessageBox.information") as guide:
             window._show_board_guide()
@@ -2153,7 +2151,7 @@ class GuiTests(unittest.TestCase):
         for kind in (QComboBox, QSpinBox, QToolButton):
             controls = [control for control in self.window.tabs.widget(1).findChildren(kind)
                         if control not in self.window.candidates.expand_buttons.values()]
-            expected = ([self.window.maia_controls.rating, self.window.maia_controls.range_min, self.window.maia_controls.range_max] if kind is QComboBox
+            expected = ([self.window.maia_controls.rating, self.window.maia_controls.range_min, self.window.maia_controls.range_max, self.window.maia_insights.blunder.move] if kind is QComboBox
                         else [self.window.maia_controls.move_limit] if kind is QSpinBox else [])
             self.assertEqual(controls, expected)
         self.assertTrue(self.window.maia_controls.move_limit.isHidden())
