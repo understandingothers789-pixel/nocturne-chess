@@ -379,7 +379,7 @@ class CandidatePanel(QWidget):
                     self.best_history = [saved] + [entry for entry in self.best_history
                                                    if entry["pv"][0] != root][:63]
         self.retained_lines.pop(rank, None)
-        self._paint_line(rank, info, turn, light, detailed, previous=previous, historical=rank > self.multipv)
+        self._paint_line(rank, info, turn, light, detailed, previous=previous)
         self._refresh_history()
         self.changed.emit()
 

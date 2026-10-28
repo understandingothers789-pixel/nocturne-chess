@@ -390,3 +390,11 @@ Identical Stockfish PVs reuse their parsed move list. Changed PVs, position
 changes and cleared analysis invalidate it. The board's fallback best-move marker
 requests a repaint only when the move changes. Scores and analysis records are
 still stored immediately; only secondary presentation is delayed.
+
+## Displaced candidates (0.5.7.113)
+
+Stockfish searches exactly the selected MultiPV count. For MultiPV 1–4, when a
+candidate leaves the live set its last evaluation, depth and full variation can
+occupy a spare gray row, up to five displayed rows total. A retained candidate
+returning to the live set becomes live and loses its gray duplicate. Spare rows
+may be blank. The 0.5.7.112 change forcing five searched candidates was reverted.

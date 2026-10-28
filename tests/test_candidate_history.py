@@ -109,3 +109,23 @@ class CandidateHistoryTests(unittest.TestCase):
                 view = self.panel.rows[count + 1][2]
                 self.assertTrue(view.candidate_historical)
                 self.assertTrue(view.toPlainText().startswith("+0.32 d17"))
+
+    def test_displaced_moves_return_live_without_duplicates_for_each_small_multipv(self):
+        roots = ("e2e4", "d2d4", "g1f3", "c2c4")
+        for count in range(1, 5):
+            with self.subTest(multipv=count):
+                self.panel.set_multipv(count)
+                self.panel.clear()
+                for rank, root in enumerate(roots[:count], 1):
+                    snapshot = line(root, 27, rank)
+                    snapshot["san"] = [root, "reply", "continuation"]
+                    self.panel.update_line(snapshot, 1)
+                self.panel.update_line(line("b2b3", 32, count), 1)
+                gray = self.panel.display_line(count + 1)
+                self.assertEqual(gray["pv"], [roots[count - 1]])
+                self.assertIn("continuation", self.panel.rows[count + 1][2].toPlainText())
+                self.panel.update_line(line(roots[count - 1], 35, count), 1)
+                self.assertFalse(self.panel.rows[count][2].candidate_historical)
+                self.assertEqual(self.panel.lines[count]["depth"], 35)
+                self.assertEqual(self.panel.display_line(count + 1)["pv"], ["b2b3"])
+                self.assertNotIn(roots[count - 1], [entry["pv"][0] for entry in self.panel.retained_lines.values()])
