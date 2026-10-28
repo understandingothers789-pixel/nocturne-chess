@@ -2278,7 +2278,7 @@ class MainWindow(QMainWindow):
             "generation": None,
             "depth": 128,
             "nodes": self.config.get("auto_eval_nodes") or None,
-            "multipv": self._effective_multipv(),
+            "multipv": self._analysis_multipv(),
             "job_profile": self._profile()["id"],
             "job_options": dict(self._profile().get("values", {})),
         }
@@ -2768,6 +2768,12 @@ class MainWindow(QMainWindow):
         option = profile.get("options", {}).get("MultiPV") if profile else None
         maximum = min(32, int(option["maximum"])) if option else (1 if profile and profile.get("options_detected") else 32)
         return max(1, min(maximum, self.config.get("multipv", 1)))
+
+    def _analysis_multipv(self):
+        profile = self._profile()
+        option = profile.get("options", {}).get("MultiPV") if profile else None
+        maximum = min(32, int(option["maximum"])) if option else (1 if profile and profile.get("options_detected") else 32)
+        return min(maximum, max(5, self._effective_multipv()))
 
     def _set_multipv(self, count):
         profile = self._profile()
@@ -3510,7 +3516,7 @@ class MainWindow(QMainWindow):
     def _restore_position_analysis(self):
         """Display saved engine lines without launching or rewriting a search."""
         cached = self.game.nodes[self.game.current_node].analysis
-        count = self._effective_multipv()
+        count = self._analysis_multipv()
         lines = cached.get("multipv_lines") or [cached]
         job = {"turn": self.game.board.turn, "multipv": count}
         for info in lines:
@@ -4363,7 +4369,7 @@ class MainWindow(QMainWindow):
             nodes=(self.config.get("auto_play_nodes", 10_000_000) if self._auto_play_active
                    else None if infinite else (self.config.get("analysis_nodes") or None)),
         )
-        count = self._effective_multipv() if kind == "analysis" else 1
+        count = self._analysis_multipv() if kind == "analysis" else 1
         focus = tuple(self.config.get("searchmoves", []))
         if focus:
             count = 1
@@ -4513,7 +4519,7 @@ class MainWindow(QMainWindow):
             return
         if "score_type" in info and info.get("multipv", 1) > job.get("multipv", self._effective_multipv()):
             return
-        self.candidates.set_multipv(job.get("multipv", self._effective_multipv()))
+        self.candidates.set_multipv(self._effective_multipv())
         if "score_type" in info:
             if store:
                 rank = info.get("multipv", 1)
