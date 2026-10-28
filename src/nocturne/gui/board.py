@@ -47,11 +47,13 @@ class BoardWidget(QWidget):
         self.recommendation_fen = None
         self.smart_move = False
         self.maia_recommendations = []
+        self.maia_recommendation_fen = None
         self.maia_arrows_enabled = True
         self.candidate_style = "lines"
         self.branch_moves = []
         self.selected: int | None = None
-        self.legal: list[Move] = []
+        self.legal: list[Move] = list(self.board.legal_moves())
+        self.legal_by_uci = {move.uci(): move for move in self.legal}
         self.arrows: set[tuple[int, int]] = set()
         self.marks: set[int] = set()
         self._right_from: int | None = None
@@ -130,6 +132,9 @@ class BoardWidget(QWidget):
         self.selected = self._pressed = None
         self._drag_pos = None
         self.legal = list(board.legal_moves())
+        self.legal_by_uci = {move.uci(): move for move in self.legal}
+        self.maia_recommendations = []
+        self.maia_recommendation_fen = None
         self.best_move = None
         self.game_move = None
         self.recommendations = []
@@ -142,15 +147,38 @@ class BoardWidget(QWidget):
         self.update()
 
     def set_recommendations(self, entries, *, inferior_ranks=()):
-        legal = list(self.board.legal_moves())
+        legal = self.legal
         seen = set()
-        self.recommendations = []
-        self.inferior_ranks = set(inferior_ranks)
+        recommendations = []
         for move, rank, text in sorted(entries, key=lambda entry: entry[1]):
             if move in legal and move not in seen and 1 <= rank <= 32:
-                self.recommendations.append((move, rank, text))
+                recommendations.append((move, rank, text))
                 seen.add(move)
-        self.recommendation_fen = self.board.fen()
+        inferior = set(inferior_ranks)
+        fen = self.board.fen()
+        if (recommendations == self.recommendations and inferior == self.inferior_ranks
+                and fen == self.recommendation_fen):
+            return
+        self.recommendations = recommendations
+        self.inferior_ranks = inferior
+        self.recommendation_fen = fen
+        self.update()
+
+    def set_maia_recommendations(self, entries, *, enabled=True):
+        """Use the same legal, position-bound targets for painting and clicking."""
+        seen = set()
+        recommendations = []
+        for move, probability, category in sorted(entries, key=lambda entry: -entry[1]):
+            if move in self.legal and move not in seen and 0.10 < probability <= 1:
+                recommendations.append((move, probability, category))
+                seen.add(move)
+        fen = self.board.fen()
+        if (recommendations == self.maia_recommendations and enabled == self.maia_arrows_enabled
+                and fen == self.maia_recommendation_fen):
+            return
+        self.maia_recommendations = recommendations
+        self.maia_arrows_enabled = enabled
+        self.maia_recommendation_fen = fen
         self.update()
 
     def set_game_move(self, move):
@@ -167,25 +195,32 @@ class BoardWidget(QWidget):
     def _smart_request(self, square, global_pos):
         root_fen = self.board.fen()
         revision = self._position_revision
-        if not self.smart_move or self.recommendation_fen != self.board.fen():
+        if not self.smart_move:
             return False
-        legal = list(self.board.legal_moves())
+        legal = self.legal
         if (
-            self.game_move in legal
+            self.recommendation_fen == root_fen
+            and self.game_move in legal
             and self._destination(self.game_move) == square
         ):
             move = self.game_move
             if self.interactive and self.preview_board is None:
                 self.move_requested.emit(move)
             return True
+        # A visible Maia circle is the target the user clicked. Give it
+        # priority over a different Stockfish move ending on that square.
+        maia = ([move for move, _, _ in sorted(self.maia_recommendations, key=lambda entry: -entry[1])
+                 if move in legal and self._destination(move) == square]
+                if self.overlays and self.maia_arrows_enabled and self.maia_recommendation_fen == root_fen
+                else [])
         choices = [
             (m, r, t)
             for m, r, t in self.recommendations
-            if m in legal and self._destination(m) == square
+            if self.recommendation_fen == root_fen and m in legal and self._destination(m) == square
         ]
-        if not choices:
+        if not maia and not choices:
             return False
-        move = min(choices, key=lambda item: item[1])[0]
+        move = maia[0] if maia else min(choices, key=lambda item: item[1])[0]
         if (
             self.board.fen() != root_fen
             or self._position_revision != revision

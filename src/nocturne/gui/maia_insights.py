@@ -287,6 +287,13 @@ class BlunderMeter(InsightCard):
         self.move.currentIndexChanged.connect(self.refresh_selection)
 
     def set_data(self, assessments, names, position_key):
+        signature = (position_key, tuple(sorted(names.items())),
+                     tuple((uci, data["probability"], data["loss"], data["category"])
+                           for uci, data in sorted(assessments.items())),
+                     bool(QApplication.instance().property("nocturneLightAppearance")))
+        if signature == getattr(self, "_data_signature", None):
+            return
+        self._data_signature = signature
         self.assessments, self.names = assessments, names
         totals = {category: sum(d["probability"] for d in assessments.values() if d["category"] == category)
                   for category in CATEGORIES}
@@ -296,8 +303,10 @@ class BlunderMeter(InsightCard):
         self.strip.update()
         for category, (name, value) in self.category_labels.items():
             style = f"color: {category_text_color(category)}; font-weight: 600;"
-            name.setStyleSheet(style)
-            value.setStyleSheet(style)
+            if name.styleSheet() != style:
+                name.setStyleSheet(style)
+            if value.styleSheet() != style:
+                value.setStyleSheet(style)
             value.setText(percentage(totals[category]) if assessments else "—")
             if category in self.move_labels:
                 moves = [f"{notation_html(names[uci], size=14)} {percentage(data['probability'])}" for uci, data in
@@ -464,7 +473,8 @@ class MaiaInsights(QScrollArea):
             self._analysis_names = names
         names = self._analysis_names
         assessments = assess_moves({uci: p for uci, p in policy.items() if uci in names}, lines)
-        self.blunder.set_data(assessments, names, board.fen())
+        self.blunder.set_data(assessments, names, key[0])
+        return assessments
 
     def _toggle_curve(self, uci, checked):
         if checked:

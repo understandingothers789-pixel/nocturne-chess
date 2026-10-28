@@ -1861,19 +1861,16 @@ class MainWindow(QMainWindow):
         policy = (self.maia.policies.get(str(self.config.get("maia_rating", 1800)), {})
                   if self.analysis_mode and self.config.get("maia_enabled", True) else {})
         lines = self.candidates.lines if self._candidate_identity == self._position_identity() else {}
-        self.maia_insights.set_analysis(policy, self.game.board, lines)
+        assessments = self.maia_insights.set_analysis(policy, self.game.board, lines)
         self.maia_controls.set_stockfish(lines, self.game.board.turn)
-        self.board_view.maia_recommendations = []
-        for uci, result in sorted(assess_moves(policy, lines).items(), key=lambda item: -item[1]["probability"]):
+        recommendations = []
+        for uci, result in assessments.items():
             if result["probability"] <= 0.10:
                 continue
-            try:
-                move = self.game.board.parse_uci(uci)
-            except ValueError:
-                continue
-            self.board_view.maia_recommendations.append((move, result["probability"], result["category"]))
-        self.board_view.maia_arrows_enabled = self.config.get("maia_arrows", True)
-        self.board_view.update()
+            move = self.board_view.legal_by_uci.get(uci)
+            if move is not None:
+                recommendations.append((move, result["probability"], result["category"]))
+        self.board_view.set_maia_recommendations(recommendations, enabled=self.config.get("maia_arrows", True))
 
     def _preview_maia_line(self, pv, ply, name):
         position = self.game.board.copy()
@@ -1909,7 +1906,8 @@ class MainWindow(QMainWindow):
             if best is not None and line.get("score") is not None and best - line["score"] >= 50:
                 inferior_ranks.add(rank)
             try:
-                entries.append((self.game.board.parse_uci(line["pv"][0]), rank,
+                entries.append((self.board_view.legal_by_uci.get(line["pv"][0]) or
+                                self.game.board.parse_uci(line["pv"][0]), rank,
                                 score_label(line, self.game.board.turn)))
             except (ValueError, IndexError):
                 continue
@@ -3179,6 +3177,10 @@ class MainWindow(QMainWindow):
             "How to read both models\n"
             "Stockfish evaluates objective playing strength; Maia predicts human choices at the selected rating. "
             "A popular move is not necessarily a good move. Use the evaluations and Blunder Meter to judge quality.\n\n"
+            "Play a marked move\n"
+            "With destination-click moves enabled, click a Maia circle or Stockfish arrow destination to play it. "
+            "When different moves share a square, the Maia circle selects the most likely Maia move. "
+            "An existing recorded game continuation keeps its usual priority. Select a piece first to choose a move manually.\n\n"
             "Scores and ratings\n"
             "Stockfish scores are from White's perspective: + favors White, − favors Black. "
             "Maia percentages are probabilities of choosing moves, not winning the game. The Maia outcome rail "

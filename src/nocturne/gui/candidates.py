@@ -442,9 +442,11 @@ class CandidatePanel(QWidget):
         pv = (self.display_line(rank) or {}).get("pv", [])
         probability = self.maia_policy.get(pv[0]) if pv else None
         colors = palette(self.light)
-        label.setStyleSheet(f"color: {colors['maia']}; background: {colors['maia_soft']}; "
-                           "border-radius: 4px; font-family: Consolas; font-size: 12px; "
-                           "font-weight: 600; padding: 3px 5px;")
+        style = (f"color: {colors['maia']}; background: {colors['maia_soft']}; "
+                 "border-radius: 4px; font-family: Consolas; font-size: 12px; "
+                 "font-weight: 600; padding: 3px 5px;")
+        if label.styleSheet() != style:
+            label.setStyleSheet(style)
         label.setVisible(self.maia_enabled)
         label.setText(percentage(probability) if pv else "")
         label.setToolTip(f"Maia-3 79M · {self.maia_rating} vs {self.maia_rating} Lichess blitz\n"
