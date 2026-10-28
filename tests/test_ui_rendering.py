@@ -218,6 +218,7 @@ class RenderingTests(unittest.TestCase):
             finally:
                 window.close()
                 window.deleteLater()
+                QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
                 self.app.processEvents()
             reopened = MainWindow(Path(directory))
             try:
@@ -225,6 +226,7 @@ class RenderingTests(unittest.TestCase):
             finally:
                 reopened.close()
                 reopened.deleteLater()
+                QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
                 self.app.processEvents()
 
     def test_wheel_keeps_score_visible_and_switching_candidates_resets_progress(self):

@@ -42,9 +42,9 @@ def main():
         total += int(counts[-1]) if counts else 0
         skips = re.findall(r"OK \(skipped=(\d+)\)", output)
         skipped += int(skips[-1]) if skips else 0
-        if result.returncode or not counts:
+        if result.returncode or not counts or int(counts[-1]) == 0:
             failures += 1
-    print(f"Isolated suite: {total} tests, {skipped} skipped; {failures} failed modules", flush=True)
+    print(f"Isolated suite: {total} tests, {skipped} skipped; {failures} failed processes", flush=True)
     return int(failures != 0)
 
 
