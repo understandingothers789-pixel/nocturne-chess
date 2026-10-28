@@ -40,28 +40,19 @@ Toggle them in **Engine → Maia-3 79M → Show Maia rods (moves above 10%)**.
 
 ## Insights / Maia Tools
 
-The right column has exactly three primary sections. **Display → Show Maia
-insights** hides it while keeping the integrated probabilities available. Hidden
-insights do not request new full rating sweeps; reopening them requests any
-missing ratings for the current position. Maia overlays stay inside analysis
-mode and cannot leak a previous position’s predictions into ordinary play. Use
-**Display → Arrange panels** to resize, dock or detach it alongside existing
-panels. Reset layout returns to the standard arrangement. The main board remains
-square, with coordinates inside its edges and its evaluation bar on the right.
+The middle column contains Stockfish/Maia analysis, **Moves by Rating**, then
+**Blunder Meter**. The right column contains **Game Line** followed by the
+**database explorer**, regardless of which database source is selected.
+**Display → Show Maia insights** hides the chart and meter while Game Line and
+the database remain available. Hidden insights do not request full rating sweeps.
+The dividers remain adjustable, and **Display → Arrange panels** supports custom
+docking. Reset layout returns to this arrangement.
 
 **Moves by Rating** plots the five likeliest moves at the selected rating across
 600–3000. Each point is an actual inference at that rating, with an equally rated
 opponent. Missing samples remain gaps. Click legend buttons to hide/show curves;
 hover near a point for the exact percentage. The dashed marker is the selected
 rating. Curves are model predictions, not measured database game frequencies.
-
-**Move Map** is a scatter plot comparing human likelihood (vertical axis) with
-Stockfish loss in pawns (horizontal axis). Best moves sit on the right; costly
-choices sit on the left. Points share the meter's green/yellow/red categories.
-Hover for the exact SAN move, likelihood and loss; click a point to select it in
-the meter without playing it. Losses above three pawns sit at the `3+` edge;
-tooltips retain the actual loss. Unsearched moves are omitted from the plot
-rather than assigned an invented engine score. Promotions remain separate moves.
 
 **Blunder Meter** groups Maia's predicted choices into **Best moves** (green),
 **OK moves** (yellow) and **Blunders** (red). The stacked bar's widths sum the
@@ -227,7 +218,7 @@ resolution for clear small icons. Stored and copied PGN remains standard SAN.
 
 The **Top N Maia moves** toggle opens the probability-ranked table. N defaults to **5** and stays fixed as you change positions. Open **Details → Maia moves shown** to choose 1–64 rows; the choice is saved. Positions with fewer legal moves show fewer rows. This only limits the table: probabilities are not renormalized, Stockfish MultiPV is independent, and Maia board rods retain the >10% threshold.
 
-**Display → Swap Moves by Rating and Game Line** puts the rating chart beneath Stockfish and Game Line at the top of the insights column. The preference is saved. When Maia insights are hidden or disabled, Game Line returns to the analysis column so it remains accessible.
+The previous **Swap Moves by Rating and Game Line** option has been retired. The standard layout now places the chart in the middle and Game Line on the right.
 
 Click **?** beside **Flip / Copy FEN** for the board-symbol guide. It explains Stockfish arrows, Maia rods and likelihood circles, overlapping recommendations, quality categories and previews.
 
@@ -269,3 +260,15 @@ rating chart's move colors. Their numbers rank Maia probability; their colors
 identify moves, rather than Blunder Meter categories. The board **?** guide and
 Maia overlay menu explain this mapping. Earlier version notes describe
 the rendering used in those releases.
+
+
+## Three-column analysis layout (0.5.7.96)
+
+Move Map has been removed. The middle column is Stockfish/Maia analysis,
+Moves by Rating, and Blunder Meter, in that order. The right column is Game Line
+and the database explorer. All explorer sources use the same right-column slot.
+The existing evaluation graph remains a compact footer.
+
+The new default is applied once to existing installs, replacing the old saved
+panel arrangement. Subsequent custom arrangements can be saved normally.
+Game Line and the database remain available when Maia tools are hidden.

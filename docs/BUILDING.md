@@ -1063,3 +1063,12 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - Stockfish candidates use Lichess brushes, with blue selected by Stockfish rank 1. Maia probabilities above 10% use rods/circles in the same ranked palette as Moves by Rating. Both light and dark palettes share one source.
 - Focused local checks: 25 rendering/Maia tests plus three guide/tooltip tests passed. Native board preview verifies the reversed symbols on the supplied position. The preview uses illustrative Maia probabilities rather than a fresh inference.
 - Rendering-test cleanup destroys its windows through Qt before Python wrapper garbage collection, preventing the Windows access violation seen during validation.
+
+## Windows build receipt · 0.5.7.96
+
+- Source: `76626014c19deaaf4f97f2efe9c31d508056c600`
+- [Run 40612186187](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40612186187): lint, 301 tests (5 skipped), and packaged application/worker checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40612186187/artifacts/12783329678): 494,325,518 bytes; SHA-256 `3cfd6c065cffc8df46a9994689c72f2ca43beb6d2908140c23419accc5ce8658`.
+- Middle: Stockfish/Maia analysis, Moves by Rating, Blunder Meter. Right: Game Line, database explorer. Move Map and its obsolete rendering test are removed.
+- Layout tests verify actual splitter ownership, hidden Maia tools preserving Game Line, and explorer restoration after docking/reset. Native Qt preview confirms the new column placement.
+- Existing saved arrangements migrate once to the new default; new custom arrangements remain persistent. The compact evaluation graph remains a footer.
