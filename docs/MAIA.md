@@ -331,3 +331,16 @@ clicking opens the strip, and clicking the open strip does not collapse it.
 **Display → Show Game Line notes** is a saved display preference. It hides or shows
 all note prose, including imported root and variation comments. The notes remain
 stored and are included in PGN exports regardless of this setting.
+
+## Earlier best-move rows (0.5.7.102)
+
+With Stockfish MultiPV set to 1–4, spare candidate rows can show earlier best
+moves from the same position. Each best-move change retains the preceding line,
+up to five total displayed rows. Retained lines are muted and show their original
+depth immediately after the evaluation. They are snapshots, not extra searches;
+only live MultiPV lines feed Stockfish board arrows and the Blunder Meter.
+
+Repeated root moves are deduplicated, and roots currently present in live analysis
+are excluded. Hover, scroll preview, insertion and copying work for retained lines.
+Position changes clear this history. Five or more live MultiPV lines do not add
+historical rows. Engine → Threads now also offers 15 when the engine supports it.

@@ -1120,3 +1120,14 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - Collapsed Game Moves hides its navigation buttons and makes the title area transparent to pointer events, allowing clicks across the header to reopen it. Regression checks resolve the actual child hit target instead of forcing a click on the parent frame.
 - Display → Show Game Line notes is persisted and included in render signatures. Hiding notes leaves PGN export unchanged.
 - Focused local checks: 34 passed. Windows validation includes the shared footer row, notes toggle/export preservation, collapsed-header hit target and narrow layouts.
+
+## Windows build receipt · 0.5.7.102
+
+- Source: `1660a41574e968d36adcda72629aae4a8a840609`
+- With MultiPV 1–4, earlier best moves fill spare candidate rows up to five total. Retained rows use muted notation and show their original depth directly after the evaluation. Roots currently searched live are excluded and earlier roots are deduplicated.
+- Retained snapshots stay separate from live candidate scores, board recommendations, Blunder Meter and saved engine analysis. Hover/scroll previews, line insertion and copying accept either kind of visible line. Position changes clear history; hovered retained snapshots remain stable until the pointer leaves.
+- Engine → Threads includes 15 within the engine's advertised range.
+- Six focused tests cover depth/color role, live/history separation, deduplication and row limits, clearing, MultiPV ≥5, hover stability and selecting 15 threads. Local isolated suite: 318 tests, 6 skipped, zero failed processes.
+
+- [Run 40640944562](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40640944562): lint, 318 Windows tests (5 skipped), packaged app/worker checks and live database checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40640944562/artifacts/12795637991): 494,346,259 bytes; SHA-256 `cd3e5cb6cf35599dd40b37e2bc006b872ddad7ae6116cd672127bbd2b224f069`.
