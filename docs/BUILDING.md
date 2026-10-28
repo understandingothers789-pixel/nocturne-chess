@@ -1142,3 +1142,10 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 
 - [Run 40642607665](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40642607665): lint, 326 Windows tests (5 skipped), packaged app/worker checks and live database checks passed.
 - [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40642607665/artifacts/12796491839): 494,352,122 bytes; SHA-256 `280ed81bd598ebd72408b1268de7731b0a8b82f820eee30833c9ca6bf08272bb`.
+
+## Windows build receipt · 0.5.7.113
+
+- Source: `132ed23dac69355c01146ddfc4b385ee28b28b08`.
+- [Download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40651905535/artifacts/12799569176): 494,358,730 bytes; SHA-256 `47f084a7b143eea40e2572722c97ab09a442d56d7b7bbdba9fe7b8736025e537`.
+- Windows suite: 333 tests, 5 skipped, zero failed processes. Packaged app/worker and live database checks passed.
+- Stockfish searches the selected MultiPV count; displaced candidates retain full variations in gray and are removed from gray rows when they return live.
