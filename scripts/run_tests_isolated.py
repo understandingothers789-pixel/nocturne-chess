@@ -1,5 +1,6 @@
 """Run every test module in a fresh process to isolate native Qt lifetimes."""
 import argparse
+import ast
 import os
 from pathlib import Path
 import re
@@ -17,11 +18,22 @@ def main():
         parser.error("No test modules matched")
     total = skipped = failures = 0
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen", PYTHONIOENCODING="utf-8")
+    cases = []
     for module in modules:
-        print(f"Running {module.name} in an isolated process", flush=True)
+        if module.name == "test_ui_rendering.py":
+            tree = ast.parse(module.read_text(encoding="utf-8"))
+            for cls in tree.body:
+                if isinstance(cls, ast.ClassDef):
+                    cases.extend((module, f"{cls.name}.{method.name}") for method in cls.body
+                                 if isinstance(method, ast.FunctionDef) and method.name.startswith("test_"))
+        else:
+            cases.append((module, None))
+    for module, test_filter in cases:
+        print(f"Running {module.name} {test_filter or ''} in an isolated process", flush=True)
         result = subprocess.run(
             [sys.executable, "-X", "faulthandler", "-m", "unittest", "discover",
-             "-s", "tests", "-p", module.name, "-v"],
+             "-s", "tests", "-p", module.name, "-v"]
+            + (["-k", test_filter] if test_filter else []),
             cwd=root, env=env, capture_output=True, encoding="utf-8", errors="replace",
         )
         output = result.stdout + result.stderr
