@@ -1789,10 +1789,11 @@ class MainWindow(QMainWindow):
         self.bottom_moves_toggle.setVisible(collapsed)
         self.bottom_moves_toggle.setToolTip("Expand Game Moves" if collapsed else "Collapse Game Moves")
         self.bottom_moves_toggle.setAccessibleName(self.bottom_moves_toggle.toolTip())
-        if not collapsed and self._dock_workspace is None:
-            total = sum(self.workspace_splitter.sizes())
-            height = getattr(self, "_bottom_expanded_height", 100)
-            self.workspace_splitter.setSizes([max(100, total-height), height])
+        if self._dock_workspace is None:
+            total = max(sum(self.workspace_splitter.sizes()),
+                        self.workspace_splitter.height() - self.workspace_splitter.handleWidth())
+            height = 33 if collapsed else getattr(self, "_bottom_expanded_height", 100)
+            self.workspace_splitter.setSizes([max(100, total - height), height])
 
     def _set_maia_rating(self, rating):
         self.config["maia_rating"] = max(self.config.get("maia_rating_min", 600), min(self.config.get("maia_rating_max", 3000), rating))
