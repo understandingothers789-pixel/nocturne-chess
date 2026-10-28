@@ -1110,3 +1110,13 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - Existing PGN comment editing is exposed from each Game Line move. Notes participate in render-cache invalidation and are HTML escaped; structured clock/eval tags stay hidden from prose. Bottom move tokens omit comments, while stored/copied/exported PGNs preserve them.
 - Idle status space and the analysis bottom margin are reclaimed. Active status messages use a compact line. Candidate rows and scroll content can shrink to narrow viewports without clipping the Maia percentage column.
 - Regression checks cover selector alignment, click reopening/non-collapsing, editing the clicked move, note visibility/export round trips, and reclaimed status space. Windows narrow-view tests passed as well.
+
+## Windows build receipt · 0.5.7.101
+
+- Source: `c1a79eee44f6bcda2f4ccdb631b09b4476d15b18`
+- [Run 40639680327](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40639680327): lint, full Windows suite, packaged app/worker checks and live database checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40639680327/artifacts/12795201799): 494,342,370 bytes; SHA-256 `a3a01726988b6a304f13a88f4496bf0a040534724bdd1cfb3b5b1b7528106ef3`.
+- Coverage and selected-move probability/loss share a compact footer row, with tighter meter margins and shorter coverage text. A native preview of the supplied values placed the detail at y=143–164 in a 170px viewport, aligned with coverage.
+- Collapsed Game Moves hides its navigation buttons and makes the title area transparent to pointer events, allowing clicks across the header to reopen it. Regression checks resolve the actual child hit target instead of forcing a click on the parent frame.
+- Display → Show Game Line notes is persisted and included in render signatures. Hiding notes leaves PGN export unchanged.
+- Focused local checks: 34 passed. Windows validation includes the shared footer row, notes toggle/export preservation, collapsed-header hit target and narrow layouts.

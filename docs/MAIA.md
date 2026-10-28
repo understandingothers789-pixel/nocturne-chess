@@ -315,3 +315,19 @@ without scrolling to the meter's footer. Clicking a collapsed Game Moves strip
 opens it; clicking the open strip leaves it open. Drag down to collapse, or drag
 up to reopen. The idle status strip and analysis bottom margin no longer reserve
 unused space; active status messages use a compact line.
+
+
+## Visible meter detail and note display toggle (0.5.7.101)
+
+The selected move's Maia probability/loss detail shares the compact coverage row,
+rather than sitting beneath it. Coverage is shortened to “81.8% evaluated”; its
+tooltip retains the longer explanation. The meter uses tighter internal spacing.
+The supplied 68.4% / 0.14-pawn example fits without scrolling at the default meter height.
+
+A collapsed Game Moves strip hides its navigation buttons so they cannot expand
+across and intercept clicks on the header. The title area is a click target;
+clicking opens the strip, and clicking the open strip does not collapse it.
+
+**Display → Show Game Line notes** is a saved display preference. It hides or shows
+all note prose, including imported root and variation comments. The notes remain
+stored and are included in PGN exports regardless of this setting.
