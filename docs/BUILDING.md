@@ -1100,3 +1100,13 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - Empty explorer results move its upper edge downward, increasing Game Line's height. Expanded height is restored for populated results.
 - Pressing the collapsed bottom divider releases its height cap so dragging upward can reopen Game Moves. The active divider is resolved after workspace reset as well.
 - Four regression tests cover badge alignment, castling width, actual empty-explorer geometry and drag reopening after a dock/reset cycle. All four and the focused Maia checks passed locally.
+
+## Windows build receipt · 0.5.7.100
+
+- Source: `2bd6dd5e2e08c98df8a5b761f1c52ec25eca4549`
+- [Run 40636821534](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40636821534): lint, full Windows suite, packaged app/worker checks and live database checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40636821534/artifacts/12794380955): 494,340,690 bytes; SHA-256 `d36d8bf9e6597f26428bdc8d98b6a3e5bb6ff3f65ce6b051eb86375bb14c4f1e`.
+- Meter selector shares the probability-strip row. A collapsed Game Moves strip opens on click or upward drag; open-strip clicks leave it open. The expanded strip hides its collapse button; downward dragging remains available.
+- Existing PGN comment editing is exposed from each Game Line move. Notes participate in render-cache invalidation and are HTML escaped; structured clock/eval tags stay hidden from prose. Bottom move tokens omit comments, while stored/copied/exported PGNs preserve them.
+- Idle status space and the analysis bottom margin are reclaimed. Active status messages use a compact line. Candidate rows and scroll content can shrink to narrow viewports without clipping the Maia percentage column.
+- Regression checks cover selector alignment, click reopening/non-collapsing, editing the clicked move, note visibility/export round trips, and reclaimed status space. Windows narrow-view tests passed as well.

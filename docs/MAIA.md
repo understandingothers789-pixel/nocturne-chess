@@ -300,3 +300,18 @@ previous expanded height. This applies to Masters and the other explorer sources
 Drag the collapsed Game Moves divider upward to reopen it. The expand button
 remains available. Drag reopening also works after Arrange/Reset Layout has
 recreated the splitter handle.
+
+
+## PGN notes and bottom controls (0.5.7.100)
+
+Right-click a move in **Game Line → Edit PGN note…**, or select a move and press
+**Ctrl+M**, to write or edit its note. Notes appear in Game Line, including side
+variations, and are saved as standard PGN comments. They stay hidden from the
+bottom Game Moves strip but remain included in copied/exported PGNs. Structured
+clock/evaluation tags are kept in PGN data without appearing as note prose.
+
+The selected Blunder Meter move is beside its probability strip, so it is visible
+without scrolling to the meter's footer. Clicking a collapsed Game Moves strip
+opens it; clicking the open strip leaves it open. Drag down to collapse, or drag
+up to reopen. The idle status strip and analysis bottom margin no longer reserve
+unused space; active status messages use a compact line.
