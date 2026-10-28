@@ -108,12 +108,18 @@ class RenderingTests(unittest.TestCase):
         board.set_recommendations([(moves[0], 1, "+0.2"), (moves[1], 2, "+0.1")])
         board.show()
         self.app.processEvents()
-        with patch.object(board, "_stockfish_arrow") as arrow:
+        arrows = []
+
+        def record_arrow(painter, src, dst, unit, *, top=False):
+            # Never retain QPainter in mock call history beyond paintEvent.
+            arrows.append((src, dst, top))
+
+        with patch.object(board, "_stockfish_arrow", new=record_arrow):
             board.grab()
-        self.assertEqual(arrow.call_count, 2)
-        blue = [call for call in arrow.call_args_list if call.kwargs["top"]]
+        self.assertEqual(len(arrows), 2)
+        blue = [entry for entry in arrows if entry[2]]
         self.assertEqual(len(blue), 1)
-        self.assertEqual((blue[0].args[1], blue[0].args[2]), (moves[0].from_sq, moves[0].to_sq))
+        self.assertEqual(blue[0][:2], (moves[0].from_sq, moves[0].to_sq))
         from nocturne.gui.maia_colors import curve_colors
         for light in (False, True):
             board.light = light

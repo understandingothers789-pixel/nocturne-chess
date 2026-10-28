@@ -482,6 +482,8 @@ class BoardWidget(QWidget):
                     painter.drawText(label_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop,
                                      str((rank_square >> 4) + 1))
 
+        painter.end()
+
     def _request(self, src: int, dst: int, global_pos) -> bool:
         root_fen = self.board.fen()
         revision = self._position_revision
