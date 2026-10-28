@@ -20,6 +20,21 @@ class CandidateHistoryTests(unittest.TestCase):
         self.panel = CandidatePanel(MoveText(auto_fit=True))
         self.addCleanup(self.panel.deleteLater)
 
+    def test_five_row_option_tracks_history_and_survives_clear(self):
+        self.panel.set_multipv(3)
+        self.panel.update_line(line("e2e4"), 1)
+        self.assertTrue(self.panel.rows[4][0].isHidden())
+        self.panel.set_reserve_five_rows(True)
+        self.assertFalse(self.panel.rows[4][0].isHidden())
+        self.assertFalse(self.panel.rows[5][0].isHidden())
+        self.panel.update_line(line("d2d4"), 1)
+        self.assertEqual(self.panel.display_line(4)["pv"], ["e2e4"])
+        self.panel.clear()
+        self.assertEqual(len(self.panel.rows), 5)
+        self.assertFalse(self.panel.rows[5][0].isHidden())
+        self.panel.set_reserve_five_rows(False)
+        self.assertTrue(self.panel.rows[4][0].isHidden())
+
     def test_previous_best_keeps_depth_and_is_not_live(self):
         self.panel.update_line(line("e2e4", 16), 1)
         self.panel.update_line(line("d2d4", 25), 1)

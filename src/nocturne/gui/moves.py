@@ -5,7 +5,7 @@ import math
 
 from PySide6.QtCore import QEvent, QPoint, Signal, Qt, QUrl
 from PySide6.QtGui import QTextDocument, QTextCursor, QTextOption
-from PySide6.QtWidgets import QTextBrowser
+from PySide6.QtWidgets import QTextBrowser, QToolTip
 from .theme import palette
 from .notation import html as notation_html
 from .wheel import WheelSteps
@@ -100,6 +100,17 @@ class MoveText(QTextBrowser):
         super().hideEvent(event)
 
     def viewportEvent(self, event):
+        if event.type() == QEvent.Type.ToolTip and self.candidate_depth is not None:
+            cursor = self.document().find(f"d{self.candidate_depth}")
+            if not cursor.isNull():
+                start = QTextCursor(cursor)
+                start.setPosition(cursor.selectionStart())
+                end = QTextCursor(cursor)
+                end.setPosition(cursor.selectionEnd())
+                rect = self.cursorRect(start).united(self.cursorRect(end)).adjusted(-2, -2, 2, 2)
+                if rect.contains(event.pos()):
+                    QToolTip.showText(event.globalPos(), f"Depth {self.candidate_depth}", self.viewport(), rect)
+                    return True
         if event.type() == QEvent.Type.Leave:
             self.cancel_preview(pointer=True)
         return super().viewportEvent(event)

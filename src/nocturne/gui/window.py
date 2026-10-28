@@ -830,6 +830,7 @@ class MainWindow(QMainWindow):
             ("branch_arrows", "Show saved continuation arrows"),
             ("show_maia_insights", "Show Maia insights"),
             ("show_game_line_notes", "Show Game Line notes"),
+            ("reserve_five_candidate_rows", "Always show five Stockfish rows"),
             ("details", "Detailed analysis statistics"),
             ("show_seldepth", "Show selective depth (seldepth)"),
             ("wheel_game_moves", "Wheel navigates game moves"),
@@ -3078,6 +3079,7 @@ class MainWindow(QMainWindow):
         self.pv_font_slider.blockSignals(False)
         self.pv_font_label.setText(f"Variation text: +{percent}%")
         self.candidates.set_font_increase(percent)
+        self.candidates.set_reserve_five_rows(self.config.get("reserve_five_candidate_rows", False))
         self._sync_bottom_moves()
         self.inline_history.set_notes_visible(self.config.get("show_game_line_notes", True))
         self._sync_maia_range_controls()
@@ -3274,7 +3276,7 @@ class MainWindow(QMainWindow):
             # Compact analysis/database column: roughly twelve SAN moves on
             # one line at the default window size. The divider stays movable.
             self.main_splitter.setSizes([560, 900, 340] if left else [900, 560, 340])
-            self.workspace_splitter.setSizes([800, 90])
+            self.workspace_splitter.setSizes([800, 33 if self.config.get("bottom_moves_collapsed", False) else 90])
         else:
             self.main_splitter.setSizes([720, 350])
         QTimer.singleShot(0, self, self._fit_analysis_columns)
@@ -3283,6 +3285,10 @@ class MainWindow(QMainWindow):
         if self._closing or not self.analysis_mode:
             return
         self._protect_analysis_chart()
+        if self._dock_workspace is None and self.config.get("bottom_moves_collapsed", False):
+            total = self.workspace_splitter.height() - self.workspace_splitter.handleWidth()
+            if total > 33:
+                self.workspace_splitter.setSizes([total - 33, 33])
         if getattr(self, "_telemetry_reserved_width", self.telemetry.width()) != self.telemetry.width():
             self.telemetry.setMinimumHeight(0)
             self._telemetry_reserved_width = self.telemetry.width()

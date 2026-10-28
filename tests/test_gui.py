@@ -17,7 +17,7 @@ from nocturne.core.notation import san
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 try:
     from PySide6.QtCore import QEvent, QPoint, QPointF, QTimer, Qt
-    from PySide6.QtGui import QMouseEvent, QTextCursor, QTextDocument, QWheelEvent, QColor, QFontMetricsF
+    from PySide6.QtGui import QHelpEvent, QMouseEvent, QTextCursor, QTextDocument, QWheelEvent, QColor, QFontMetricsF
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QMenu, QScrollArea, QWidget
     from nocturne.gui.window import MainWindow
@@ -293,6 +293,43 @@ class GuiTests(unittest.TestCase):
         self.assertFalse(w.analysis_history.isHidden())
         self.assertGreater(w.workspace_splitter.sizes()[1], 0)
         self.assertEqual(w.maia_controls.move_limit.prefix(), "")
+
+    def test_collapsed_moves_relayout_fills_startup_space(self):
+        w = self.window
+        w.analysis_mode = True
+        w.config["mode"] = "analysis"
+        w.config["bottom_moves_collapsed"] = True
+        w._sync_bottom_moves()
+        w._analysis_layout_active = None
+        w._refresh()
+        self.app.processEvents()
+        w._fit_analysis_columns()
+        self.app.processEvents()
+        bottom = w.analysis_moves_panel.mapToGlobal(w.analysis_moves_panel.rect().bottomLeft()).y()
+        splitter_bottom = w.workspace_splitter.mapToGlobal(w.workspace_splitter.rect().bottomLeft()).y()
+        self.assertLessEqual(abs(splitter_bottom - bottom), 1)
+        self.assertLessEqual(w.analysis_moves_panel.height(), 34)
+
+    def test_retained_depth_has_tooltip(self):
+        from unittest.mock import patch
+        panel = self.window.candidates
+        panel.set_multipv(1)
+        panel.update_line(dict(pv=["e2e4"], san=["e4"], depth=15,
+                               score_type="cp", score_value=20), 1)
+        panel.update_line(dict(pv=["d2d4"], san=["d4"], depth=20,
+                               score_type="cp", score_value=20), 1)
+        view = panel.rows[2][2]
+        view.resize(500, 40)
+        view.show()
+        self.app.processEvents()
+        cursor = view.document().find("d15")
+        self.assertFalse(cursor.isNull())
+        cursor.setPosition(cursor.selectionStart())
+        point = view.cursorRect(cursor).center()
+        event = QHelpEvent(QEvent.Type.ToolTip, point, view.viewport().mapToGlobal(point))
+        with patch("nocturne.gui.moves.QToolTip.showText") as tooltip:
+            self.assertTrue(view.viewportEvent(event))
+        self.assertEqual(tooltip.call_args.args[1], "Depth 15")
 
     def test_bottom_moves_can_collapse_and_reopen(self):
         w = self.window

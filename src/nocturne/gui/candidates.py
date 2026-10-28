@@ -59,6 +59,7 @@ class CandidatePanel(QWidget):
         self.details = {}
         self.lines = {}
         self.retained_lines = {}
+        self.reserve_five_rows = False
         self.best_history = []
         self.pinned = set()
         self.turn = 1
@@ -127,9 +128,10 @@ class CandidatePanel(QWidget):
         self.primary.set_moves([])
         # Keep the compact analysis slots present on unanalysed positions so
         # the game line below cannot jump away from the scrolling cursor.
-        for rank in range(1, self.multipv + 1):
+        count = max(5, self.multipv) if self.reserve_five_rows else self.multipv
+        for rank in range(1, count + 1):
             self._make_row(rank)
-        self.slot_count = self.multipv
+        self.slot_count = count
         self._clearing = False
         self.changed.emit()
 
@@ -153,6 +155,15 @@ class CandidatePanel(QWidget):
     @staticmethod
     def _lines_for_multipv(count):
         return DEFAULT_PV_LINES
+
+    def set_reserve_five_rows(self, enabled):
+        enabled = bool(enabled)
+        if enabled == self.reserve_five_rows:
+            return
+        self.reserve_five_rows = enabled
+        if enabled and self.slot_count < 5:
+            self.reserve_slots(5)
+        self._refresh_history()
 
     def set_multipv(self, count):
         """Keep compact candidate rows sized for the selected MultiPV count."""
@@ -403,7 +414,7 @@ class CandidatePanel(QWidget):
         if desired == self.retained_lines:
             layout_changed = False
             for rank, (frame, _, _) in self.rows.items():
-                visible = rank <= live_count or rank in desired
+                visible = rank <= live_count or rank in desired or (self.reserve_five_rows and rank <= 5)
                 layout_changed |= frame.isHidden() == visible
                 frame.setVisible(visible)
             if layout_changed:
@@ -418,7 +429,7 @@ class CandidatePanel(QWidget):
             self._paint_line(rank, info, self.turn, self.light, self.show_details, historical=True)
         layout_changed = False
         for rank, (frame, _, _) in self.rows.items():
-            visible = rank <= live_count or rank in desired
+            visible = rank <= live_count or rank in desired or (self.reserve_five_rows and rank <= 5)
             layout_changed |= frame.isHidden() == visible
             frame.setVisible(visible)
             if rank > live_count and rank not in self.retained_lines:
