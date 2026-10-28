@@ -198,14 +198,18 @@ class BoardWidget(QWidget):
         if not self.smart_move:
             return False
         legal = self.legal
-        # A visible Maia circle is the target the user clicked. Give it
-        # priority over a different Stockfish move ending on that square.
+        # Stockfish wins shared destinations; Maia supplies additional targets.
         maia = ([move for move, _, _ in sorted(self.maia_recommendations, key=lambda entry: -entry[1])
                  if move in legal and self._destination(move) == square]
                 if self.overlays and self.maia_arrows_enabled and self.maia_recommendation_fen == root_fen
                 else [])
+        choices = [
+            (m, r, t) for m, r, t in self.recommendations
+            if self.recommendation_fen == root_fen and m in legal and self._destination(m) == square
+        ]
         if (
-            not maia
+            not choices
+            and not maia
             and self.recommendation_fen == root_fen
             and self.game_move in legal
             and self._destination(self.game_move) == square
@@ -214,14 +218,9 @@ class BoardWidget(QWidget):
             if self.interactive and self.preview_board is None:
                 self.move_requested.emit(move)
             return True
-        choices = [
-            (m, r, t)
-            for m, r, t in self.recommendations
-            if self.recommendation_fen == root_fen and m in legal and self._destination(m) == square
-        ]
         if not maia and not choices:
             return False
-        move = maia[0] if maia else min(choices, key=lambda item: item[1])[0]
+        move = min(choices, key=lambda item: item[1])[0] if choices else maia[0]
         if (
             self.board.fen() != root_fen
             or self._position_revision != revision

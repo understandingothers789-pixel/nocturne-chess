@@ -47,11 +47,11 @@ class MaiaDestinationTests(unittest.TestCase):
         self.click("d4")
         self.assertEqual(self.played, ["f7f5", "b6d4"])
 
-    def test_shared_destination_uses_visible_maia_circle(self):
+    def test_shared_destination_prioritizes_stockfish(self):
         self.recommend()
         self.view.set_recommendations([(self.view.board.parse_uci("d7f5"), 1, "+0.1")])
         self.click("f5")
-        self.assertEqual(self.played, ["f7f5"])
+        self.assertEqual(self.played, ["d7f5"])
         # Choosing a piece first remains an explicit way to play another move.
         self.click("d7")
         self.click("f5")
@@ -155,3 +155,23 @@ class MaiaDestinationTests(unittest.TestCase):
             repaint.assert_not_called()
             self.view.set_maia_recommendations(self.view.maia_recommendations, enabled=False)
             self.assertEqual(repaint.call_count, 1)
+
+    def test_blank_header_click_collapses_and_reopens_game_moves(self):
+        from PySide6.QtCore import QPoint
+        with tempfile.TemporaryDirectory() as folder:
+            window = MainWindow(Path(folder))
+            try:
+                window.analysis_mode = True
+                window.config["bottom_moves_collapsed"] = False
+                window._sync_bottom_moves()
+                panel = window.analysis_moves_panel
+                window.show()
+                self.app.processEvents()
+                point = QPoint(100, window.bottom_moves_title.geometry().center().y())
+                QTest.mouseClick(panel, Qt.MouseButton.LeftButton, pos=point)
+                self.assertTrue(window.config["bottom_moves_collapsed"])
+                QTest.mouseClick(panel, Qt.MouseButton.LeftButton, pos=point)
+                self.assertFalse(window.config["bottom_moves_collapsed"])
+            finally:
+                window.close()
+                window.deleteLater()

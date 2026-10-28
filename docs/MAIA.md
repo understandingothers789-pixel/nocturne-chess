@@ -367,3 +367,11 @@ A local offscreen cProfile sample of 150 marker/metric updates for one position
 with fixed scores and increasing node counts took 0.485 seconds before and 0.116
 seconds after these changes, about 76% less time in that path. This is a focused
 GUI microbenchmark, not a whole-application speed claim or a Windows latency test.
+
+## Destination priority and Game Moves header (0.5.7.104)
+
+Stockfish now takes priority when a Stockfish recommendation and Maia move end
+on the same square. Maia circles remain clickable on other destinations. Manual
+piece selection still takes precedence. Clicking blank space in the top Game
+Moves header collapses the panel; clicking the collapsed header reopens it.
+Navigation buttons and the move text retain their own behavior.

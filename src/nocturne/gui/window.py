@@ -1249,12 +1249,14 @@ class MainWindow(QMainWindow):
                       or watched is self.workspace_splitter.handle(1)))
         if in_bottom and not isinstance(watched, QAbstractButton):
             if (event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton
-                    and self.config.get("bottom_moves_collapsed", False)):
+                    and (self.config.get("bottom_moves_collapsed", False)
+                         or (watched is self.analysis_moves_panel and
+                             event.position().y() <= self.bottom_moves_title.geometry().bottom()))):
                 self._bottom_click_origin = event.globalPosition().toPoint()
             elif event.type() == QEvent.Type.MouseButtonRelease:
                 origin = getattr(self, "_bottom_click_origin", None)
                 self._bottom_click_origin = None
-                if (origin is not None and self.config.get("bottom_moves_collapsed", False)
+                if (origin is not None
                         and (event.globalPosition().toPoint() - origin).manhattanLength() < 6):
                     self._toggle_bottom_moves()
         if watched is getattr(self, "board_guide_button", None):
@@ -3179,8 +3181,8 @@ class MainWindow(QMainWindow):
             "A popular move is not necessarily a good move. Use the evaluations and Blunder Meter to judge quality.\n\n"
             "Play a marked move\n"
             "With destination-click moves enabled, click a Maia circle or Stockfish arrow destination to play it. "
-            "When different moves share a square, the Maia circle selects the most likely Maia move. "
-            "Otherwise, recorded game continuations keep priority over Stockfish recommendations. "
+            "When different moves share a square, Stockfish takes priority; otherwise the most likely Maia move is selected. "
+            "Recorded continuations remain available where neither engine marks the destination. "
             "Select a piece first to choose a move manually.\n\n"
             "Scores and ratings\n"
             "Stockfish scores are from White's perspective: + favors White, − favors Black. "
