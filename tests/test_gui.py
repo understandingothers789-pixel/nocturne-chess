@@ -216,13 +216,38 @@ class GuiTests(unittest.TestCase):
         self.assertIn("Make this variation the mainline and delete the previous mainline", labels)
         menu.deleteLater()
 
+    def test_full_rating_chart_precedes_compact_scrollable_meter(self):
+        w = self.window
+        w.analysis_mode = True
+        w.config.update(mode="analysis", multipv=5)
+        w._apply_settings()
+        w._sync_workspace_layout()
+        w.resize(1900, 1050)
+        w.show()
+        policy = {"e2e4": .4, "d2d4": .3, "g1f3": .15, "c2c4": .1, "b1c3": .05}
+        w.maia_insights.set_data({str(r): policy for r in range(600, 3001, 200)}, w.game.board, 1800)
+        self.app.processEvents()
+        w._protect_analysis_chart()
+        self.app.processEvents()
+        chart = w.maia_insights.trends_card
+        self.assertGreaterEqual(chart.height(), chart.minimumSizeHint().height())
+        viewport = w.engine_scroll.viewport()
+        last_button = list(w.maia_insights.legend_buttons.values())[-1]
+        self.assertLessEqual(last_button.mapToGlobal(last_button.rect().bottomRight()).y(),
+                             viewport.mapToGlobal(viewport.rect().bottomRight()).y())
+        self.assertLessEqual(w.blunder_scroll.height(), 180)
+        self.assertIs(w.blunder_scroll.widget(), w.maia_insights.blunder)
+        self.assertIs(w.right_detail_splitter.widget(2), w.graph)
+
     def test_analysis_columns_put_tools_in_middle_and_game_database_on_right(self):
         window = self.window
         window.analysis_mode = True
         window._apply_settings()
         game = window.game
         self.assertIs(window.candidate_splitter.widget(1), window.maia_insights.trends_card)
-        self.assertIs(window.analysis_detail_splitter.widget(1), window.maia_insights.blunder)
+        self.assertIs(window.analysis_detail_splitter.widget(1), window.blunder_scroll)
+        self.assertIs(window.blunder_scroll.widget(), window.maia_insights.blunder)
+        self.assertIs(window.right_detail_splitter.widget(2), window.graph)
         self.assertIs(window.right_detail_splitter.widget(0), window.game_line_panel)
         self.assertIs(window.right_detail_splitter.widget(1), window.explorer)
         self.assertFalse(hasattr(window.maia_insights, "map"))

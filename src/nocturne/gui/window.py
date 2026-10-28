@@ -466,6 +466,7 @@ class MainWindow(QMainWindow):
         self.candidates.navigate.connect(self._insert_candidate)
         self.candidates.action.connect(self._candidate_action)
         self.candidates.changed.connect(self._sync_candidate_markers)
+        self.candidates.changed.connect(self._protect_analysis_chart)
         self.candidate_splitter = QSplitter(Qt.Orientation.Vertical)
         self.candidate_splitter.setChildrenCollapsible(False)
         self.candidate_splitter.setHandleWidth(7)
@@ -1108,7 +1109,7 @@ class MainWindow(QMainWindow):
                                    self.config.get("explorer_speed", "all"),
                                    self.config.get("explorer_rating", 0))
         if active and not self._explorer_active and self._dock_workspace is None:
-            self.right_detail_splitter.setSizes([500, 220])
+            self.right_detail_splitter.setSizes([500, 220, 70])
         self._explorer_active = active
         self._sync_docked_visibility()
         self._sync_candidate_database()
@@ -1506,8 +1507,8 @@ class MainWindow(QMainWindow):
             self._dock_workspace.set_panel_visible("graph", self.config.get("show_eval_graph", True))
 
     def _restore_workspace_layout(self):
-        if self.store and self.store.get("analysis_columns_version") != 1:
-            self.store.set("analysis_columns_version", 1)
+        if self.store and self.store.get("analysis_columns_version") != 2:
+            self.store.set("analysis_columns_version", 2)
             self.store.set("workspace_layout", None)
             return
         state = self.store.get("workspace_layout") if self.store else None
@@ -1536,7 +1537,7 @@ class MainWindow(QMainWindow):
             self.workspace_splitter.addWidget(self.analysis_moves_panel)
             self.workspace_splitter.setCollapsible(1, True)
             self.right_detail_splitter.addWidget(self.explorer)
-            self.engine_page_layout.addWidget(self.graph)
+            self.right_detail_splitter.addWidget(self.graph)
             self.graph.setMaximumHeight(85)
             self.arena.show()
             self.panel.show()
@@ -1786,6 +1787,7 @@ class MainWindow(QMainWindow):
         self.maia_insights.outcome_bar.set_outcome(self.maia.outcomes.get(str(rating)) if self.analysis_mode and self.config.get("maia_enabled", True) else None)
         self.maia_insights.set_data(policies, self.game.board, rating, self._appearance_config())
         self._sync_blunder()
+        self._protect_analysis_chart()
         if self._dock_workspace is not None:
             self._sync_docked_visibility()
         else:
@@ -3036,7 +3038,14 @@ class MainWindow(QMainWindow):
             self.right_detail_splitter.addWidget(self.game_line_panel)
             insights.body_layout.insertWidget(0, self.right_detail_splitter, 1)
             self.candidate_splitter.addWidget(insights.trends_card)
-            self.analysis_detail_splitter.addWidget(insights.blunder)
+            self.blunder_scroll = QScrollArea()
+            self.blunder_scroll.setWidgetResizable(True)
+            self.blunder_scroll.setFrameShape(QFrame.Shape.NoFrame)
+            self.blunder_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.blunder_scroll.setMinimumHeight(0)
+            self.blunder_scroll.setMaximumHeight(180)
+            self.blunder_scroll.setWidget(insights.blunder)
+            self.analysis_detail_splitter.addWidget(self.blunder_scroll)
             insights.chart.setMaximumHeight(16777215)
             insights.trends_card.content.setStretch(1, 1)
             self.game_line_panel.setMinimumHeight(160)
@@ -3047,15 +3056,43 @@ class MainWindow(QMainWindow):
             self.right_detail_splitter.setStretchFactor(0, 1)
             self.right_detail_splitter.setStretchFactor(1, 0)
             self.candidate_splitter.setSizes([190, 300])
-            self.analysis_detail_splitter.setSizes([550, 220])
+            self.analysis_detail_splitter.setSizes([650, 170])
         if self._dock_workspace is None and self.right_detail_splitter.indexOf(self.explorer) < 0:
             self.right_detail_splitter.addWidget(self.explorer)
         show_tools = (self.analysis_mode and self.config.get("maia_enabled", True)
                       and self.config.get("show_maia_insights", True))
         insights.trends_card.setVisible(show_tools)
         insights.blunder.setVisible(show_tools)
+        self.blunder_scroll.setVisible(show_tools)
+        if self._dock_workspace is None:
+            self.right_detail_splitter.addWidget(self.graph)
+            self.graph.setMaximumHeight(85)
+            self.graph.setVisible(self.config.get("show_eval_graph", True))
+        self._protect_analysis_chart()
         self.game_line_panel.show()
         self._rating_game_line_swapped = True
+
+    def _protect_analysis_chart(self):
+        if not hasattr(self, "blunder_scroll"):
+            return
+        trends = self.maia_insights.trends_card
+        show = not trends.isHidden()
+        trends.layout().activate()
+        required = trends.minimumSizeHint().height() if show else 0
+        trends.setMinimumHeight(required)
+        required += max(self.candidates.minimumSizeHint().height(),
+                        sum(row[0].minimumSizeHint().height() for row in self.candidates.rows.values())) + 32
+        # Reserve the entire chart and legend ahead of the scrollable meter.
+        # The meter may shrink to nothing in a short window; its own scrollbar
+        # handles longer move lists rather than covering the rating chart.
+        self.engine_scroll.setMinimumHeight(min(max(100, required),
+                                               max(360, self.screen().availableGeometry().height() - 260)))
+        self.analysis_detail_splitter.setCollapsible(1, True)
+        if (show and self.isVisible() and self.analysis_detail_splitter.height() > 200
+                and not getattr(self, "_analysis_meter_sized", False)):
+            self._analysis_meter_sized = True
+            total = self.analysis_detail_splitter.height()
+            self.analysis_detail_splitter.setSizes([max(100, total - 177), 170])
 
     def _show_board_guide(self):
         QMessageBox.information(self, "Board symbols guide",
@@ -3144,6 +3181,7 @@ class MainWindow(QMainWindow):
     def _fit_analysis_columns(self):
         if self._closing or not self.analysis_mode:
             return
+        self._protect_analysis_chart()
         if getattr(self, "_telemetry_reserved_width", self.telemetry.width()) != self.telemetry.width():
             self.telemetry.setMinimumHeight(0)
             self._telemetry_reserved_width = self.telemetry.width()

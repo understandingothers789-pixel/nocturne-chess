@@ -121,7 +121,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIs(window.main_splitter.widget(1), window.panel)
         self.assertIs(window.workspace_splitter.widget(1), window.analysis_moves_panel)
         self.assertIs(window.right_detail_splitter.widget(1), window.explorer)
-        self.assertGreaterEqual(window.engine_page_layout.indexOf(window.graph), 0)
+        self.assertEqual(window.right_detail_splitter.indexOf(window.graph), 2)
         self.assertEqual(window.graph.maximumHeight(), 85)
         self.assertEqual(window.game.board.fen(), fen)
         self.assertIsNone(window.store.get("workspace_layout"))
