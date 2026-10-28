@@ -65,7 +65,7 @@ class LayoutPolishTests(unittest.TestCase):
         self.app.processEvents()
         self.assertLessEqual(abs(meter.move.geometry().center().y() - meter.strip.geometry().center().y()), 3)
 
-    def test_collapsed_moves_click_opens_and_open_click_does_not_collapse(self):
+    def test_collapsed_moves_click_opens_and_blank_open_header_collapses(self):
         w = self.w
         w.config["bottom_moves_collapsed"] = True
         w._sync_bottom_moves()
@@ -78,7 +78,7 @@ class LayoutPolishTests(unittest.TestCase):
         self.assertFalse(w.config["bottom_moves_collapsed"])
         self.assertFalse(w.analysis_history.isHidden())
         QTest.mouseClick(w.analysis_moves_panel, Qt.MouseButton.LeftButton, pos=QPoint(100, 12))
-        self.assertFalse(w.config["bottom_moves_collapsed"])
+        self.assertTrue(w.config["bottom_moves_collapsed"])
 
     def test_pgn_note_editor_updates_game_line_and_export_but_not_bottom_moves(self):
         from nocturne.core.game import Game
