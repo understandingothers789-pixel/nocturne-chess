@@ -142,3 +142,20 @@ class PrefetchTests(unittest.TestCase):
             self.assertEqual(c._buffer, b'')
             self.assertIsNone(c._prefetch_active)
             c.stop()
+
+    def test_foreground_completion_defers_disk_write_and_flushes_on_stop(self):
+        with tempfile.TemporaryDirectory() as folder:
+            c = MaiaController(folder)
+            c.request('root', [], 1800)
+            c._active, c._queued = c._queued, None
+            c._busy = True
+            message = {'id': c._serial, 'complete': True,
+                       'policies': {'1800': {'e2e4': 1.0}}, 'outcomes': {'1800': [.4, .2, .4]}}
+            with patch.object(c.process, 'readAllStandardOutput', return_value=QByteArray((json.dumps(message)+'\n').encode())), patch.object(c, '_save_cache', wraps=c._save_cache) as save:
+                c._read()
+                save.assert_not_called()
+                self.assertTrue(c.cache_timer.isActive())
+                self.assertEqual(c.policies['1800']['e2e4'], 1.0)
+                c.stop()
+                save.assert_called_once()
+                self.assertTrue(c.cache_path.exists())

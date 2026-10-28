@@ -231,7 +231,9 @@ class MaiaController(QObject):
                 self.changed.emit(self.policies)
                 if message.get("complete"):
                     self.status.emit(f"Maia-3 79M · {self.device_label}")
-                    self._save_cache()
+                    self._trim_cache()
+                    if not self.cache_timer.isActive():
+                        self.cache_timer.start()
             if message.get("complete"):
                 self._busy = False
                 if self._queued:
