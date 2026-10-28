@@ -22,6 +22,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt capture of the main line after 13...Bd7. Stockfish 17.1 NNUE reached depth 25 and reported +0.49 after 9,528,716 nodes. Maia is disabled in this capture.*
 
 
+**[Download 0.5.7.111 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40649544805/artifacts/12799532618).** Retains full candidate variations for MultiPV 1–4 and shows compact depth labels with tooltips.
+
 **[Download 0.5.7.110 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40647988211/artifacts/12797539525).** Infers unlisted moves as blunders when an assessed blunder is present.
 
 **[Download 0.5.7.109 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40647572147/artifacts/12797569245).** Reserves five candidate rows for MultiPV 1–4 and shows retained-line depths.
