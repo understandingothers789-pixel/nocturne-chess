@@ -208,6 +208,11 @@ class MainWindow(QMainWindow):
         self._pv_moves = []
         self._pv_identity = None
         self._preview_source = None
+        self._secondary_identity = None
+        self._secondary_timer = QTimer(self)
+        self._secondary_timer.setSingleShot(True)
+        self._secondary_timer.setInterval(250)
+        self._secondary_timer.timeout.connect(self._flush_secondary_analysis)
         self._build()
         self.hover_preview = HoverPreview(self)
         self.candidates.pointer_moved.connect(self._move_cursor_preview)
@@ -469,7 +474,7 @@ class MainWindow(QMainWindow):
         self.candidates.navigate.connect(self._insert_candidate)
         self.candidates.action.connect(self._candidate_action)
         self.candidates.changed.connect(self._sync_candidate_markers)
-        self.candidates.changed.connect(self._protect_analysis_chart)
+        self.candidates.changed.connect(self._queue_secondary_analysis)
         self.candidate_splitter = QSplitter(Qt.Orientation.Vertical)
         self.candidate_splitter.setChildrenCollapsible(False)
         self.candidate_splitter.setHandleWidth(7)
@@ -1897,8 +1902,23 @@ class MainWindow(QMainWindow):
             return
         self._human_move(move)
 
-    def _sync_candidate_markers(self):
+    def _queue_secondary_analysis(self):
+        if self._closing:
+            return
+        self._secondary_identity = self._position_identity()
+        if not self._secondary_timer.isActive():
+            self._secondary_timer.start()
+
+    def _flush_secondary_analysis(self):
+        if self._closing or self._secondary_identity != self._position_identity():
+            return
         self._sync_blunder()
+        self._update_graph()
+        self.inline_history.refresh_evaluation(self.game)
+        self._protect_analysis_chart()
+
+    def _sync_candidate_markers(self):
+        self._queue_secondary_analysis()
         if self._candidate_identity != self._position_identity():
             return
         entries = []
@@ -1979,7 +1999,7 @@ class MainWindow(QMainWindow):
         previous_value = node.evaluation
         node.evaluation = value
         if node_id and game is self.game and previous_value != value:
-            self.inline_history.refresh_evaluation(game)
+            self._queue_secondary_analysis()
         from datetime import datetime, timezone
 
         node.analysis = {
@@ -4512,7 +4532,7 @@ class MainWindow(QMainWindow):
         self._last_info_turn = job["turn"]
         if store and "score_type" in info:
             self._store_analysis(self.game, self.game.current_node, info, job["turn"], job)
-            self._update_graph()
+            self._queue_secondary_analysis()
         white_score = info["score"] * job["turn"]
         self.eval_label.setText(
             score_label(info, job["turn"]) if "score_type" in info else score_text(white_score)
@@ -4521,22 +4541,25 @@ class MainWindow(QMainWindow):
         evaluation = (score_label(info, job["turn"]) if "score_type" in info
                       else score_text(white_score))
         self._render_telemetry(info, job["turn"], evaluation)
-        position = self.game.board.copy()
-        self._pv_root = self.game.board.copy(history=False)
-        self._pv_identity = self._position_identity()
-        self._pv_moves = []
-        first = None
-        for text in info.get("pv", [])[:128]:
-            try:
-                move = position.parse_uci(text)
-                if first is None:
-                    first = move
-                self._pv_moves.append(move)
-                position.push(move)
-            except ValueError:
-                break
-        self.board_view.best_move = first
-        self.board_view.update()
+        identity = self._position_identity()
+        texts = tuple(info.get("pv", [])[:128])
+        if identity != self._pv_identity or texts != getattr(self, "_pv_texts", None):
+            position = self.game.board.copy()
+            self._pv_root = self.game.board.copy(history=False)
+            self._pv_identity = identity
+            self._pv_texts = texts
+            self._pv_moves = []
+            for text in texts:
+                try:
+                    move = position.parse_uci(text)
+                    self._pv_moves.append(move)
+                    position.push(move)
+                except ValueError:
+                    break
+        first = self._pv_moves[0] if self._pv_moves else None
+        if self.board_view.best_move != first:
+            self.board_view.best_move = first
+            self.board_view.update()
 
     def _render_telemetry(self, info, turn=1, evaluation=None):
         colors = palette(self._appearance_config().get("light", False))
@@ -4584,6 +4607,7 @@ class MainWindow(QMainWindow):
         if self.engine.busy and self.config.get("analysis_snapshots", False):
             self.engine._flush_snapshot()
         self._closing = True
+        self._secondary_timer.stop()
         QApplication.instance().removeEventFilter(self)
         setup = getattr(self, "_gpu_setup", None)
         if setup is not None:

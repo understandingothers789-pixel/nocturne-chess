@@ -375,3 +375,18 @@ on the same square. Maia circles remain clickable on other destinations. Manual
 piece selection still takes precedence. Clicking blank space in the top Game
 Moves header collapses the panel; clicking the collapsed header reopens it.
 Navigation buttons and the move text retain their own behavior.
+
+## Foreground analysis priority (0.5.7.105)
+
+Stockfish PV text, current evaluation and board destination targets remain
+immediate. Stockfish-driven Blunder Meter, history graph, Game Line evaluation
+refreshes and chart layout work coalesce on a 250ms single-shot timer. Continuous
+engine messages do not restart that timer, so secondary panels keep advancing
+rather than waiting for analysis to stop. The callback reads the latest state,
+skips old positions and stops when the window closes. Explicit navigation and
+Maia policy changes retain their direct refresh paths.
+
+Identical Stockfish PVs reuse their parsed move list. Changed PVs, position
+changes and cleared analysis invalidate it. The board's fallback best-move marker
+requests a repaint only when the move changes. Scores and analysis records are
+still stored immediately; only secondary presentation is delayed.
