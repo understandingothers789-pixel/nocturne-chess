@@ -1090,3 +1090,13 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 - [Run 40619784631](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40619784631): lint, full Windows suite, packaged app/worker checks and live database checks passed.
 - [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40619784631/artifacts/12787250940): 494,328,094 bytes; SHA-256 `cca99c55a75fc65f4d32b82649efac98bd250a1f18da38ca0ff3bc248412e275`.
 - Fresh Windows build outputs; earlier executable bundles were not reused. Code signing and Windows reputation are not provided by this rebuild. The original 0.97 artifact remains available.
+
+## Windows build receipt · 0.5.7.99
+
+- Source: `628849904cc399eb4c8b401d3fbedaba4f6d39b2`
+- [Run 40624618214](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40624618214): lint, full Windows suite and packaged app/worker checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40624618214/artifacts/12788723740): 494,335,656 bytes; SHA-256 `ead4e26e5be1b83ce6104c93f69eae2e6d5dcaa71e4ab3655cb46aeed017617b`.
+- Maia badges use an 84px column with a reserved expander lane. Move buttons and graph labels measure the actual notation text and piece fonts.
+- Empty explorer results move its upper edge downward, increasing Game Line's height. Expanded height is restored for populated results.
+- Pressing the collapsed bottom divider releases its height cap so dragging upward can reopen Game Moves. The active divider is resolved after workspace reset as well.
+- Four regression tests cover badge alignment, castling width, actual empty-explorer geometry and drag reopening after a dock/reset cycle. All four and the focused Maia checks passed locally.

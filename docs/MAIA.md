@@ -285,3 +285,18 @@ The selected-move inspector remains available inside that scrollable area.
 The evaluation history graph is now the bottom section of the right column,
 below Game Line and the database explorer. The updated default is applied once
 to saved arrangements; later custom arrangements remain persistent.
+
+
+## Alignment and panel reopening (0.5.7.99)
+
+Maia percentages in the Stockfish rows use a shared fixed-width column, including
+rows with hidden variation expanders. Rating-chart buttons measure their full
+move text and piece glyphs; the graph's label lane also grows for longer names.
+
+Empty database results shrink the explorer downward toward the evaluation graph,
+assigning the freed height to Game Line. Populated results restore the explorer's
+previous expanded height. This applies to Masters and the other explorer sources.
+
+Drag the collapsed Game Moves divider upward to reopen it. The expand button
+remains available. Drag reopening also works after Arrange/Reset Layout has
+recreated the splitter handle.
