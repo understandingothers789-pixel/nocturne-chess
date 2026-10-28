@@ -1,5 +1,6 @@
 """Scrollable move pairs with branch rows and saved, White-perspective scores."""
 from html import escape
+import re
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QPainter, QPen, QTextCursor
@@ -49,7 +50,7 @@ class GameLine(MoveText):
         nodes = game.nodes
         current = game.current_node
         signature = (game.id, current, light, tuple(sorted(departures.items())),
-                     tuple((node.parent, tuple(node.children), node.san, node.evaluation, tuple(node.nags))
+                     tuple((node.parent, tuple(node.children), node.san, node.evaluation, tuple(node.nags), node.comment, node.starting_comment)
                            for node in nodes), tuple(sorted(move_risks.items())))
         if signature == self._game_signature:
             return
@@ -69,6 +70,15 @@ class GameLine(MoveText):
 
         def figurine(san):
             return notation_html(san)
+
+        def note_html(index):
+            node = nodes[index]
+            text = "\n".join(part for part in (node.starting_comment, node.comment) if part)
+            text = re.sub(r"\[%[^\]]*\]", "", text).strip()
+            if not text:
+                return ""
+            safe = escape(text).replace("\n", "<br/>")
+            return f'<span style="font-size:12px;color:{colors["metadata"]};"> {safe} </span>'
 
         def cell(index, indent):
             if index is None:
@@ -91,7 +101,7 @@ class GameLine(MoveText):
                     f'<td><a href="move:{index}" title="{escape(title, quote=True)}" '
                     f'style="color:{fg};text-decoration:none;">{text}</a></td>'
                     f'<td align="right"><span style="font-size:11px;color:{colors["muted"]};">'
-                    f'{escape(value)}</span></td></tr></table></td>')
+                    f'{escape(value)}</span></td></tr></table>{note_html(index)}</td>')
 
         def variation_move(index, first=False):
             node = nodes[index]
@@ -109,7 +119,7 @@ class GameLine(MoveText):
                 title = f"{title} · {value}" if title else value
             return (f'<a name="node{index}"></a><a href="move:{index}" '
                     f'title="{escape(title, quote=True)}" style="color:{fg};{bg}'
-                    f'text-decoration:none;">{prefix}{"&nbsp;" if prefix else ""}{san}</a>')
+                    f'text-decoration:none;">{prefix}{"&nbsp;" if prefix else ""}{san}</a>{note_html(index)}')
 
         # Iterative traversal keeps nested variations safe even in large PGNs.
         stack = [(nodes[0].children[0], ())] if nodes[0].children else []
@@ -168,7 +178,7 @@ class GameLine(MoveText):
                 stack.append((nodes[last].children[0], path))
             stack.extend((child, path + (child,)) for child in reversed(branches))
         self.setHtml(f'<body bgcolor="{colors["panel"]}"><div style="font-family:Segoe UI,sans-serif;font-size:14px;">'
-                     + ''.join(rows) + '</div></body>')
+                     + note_html(0) + ''.join(rows) + '</div></body>')
         anchors = {}
         ends = {}
         block = self.document().begin()

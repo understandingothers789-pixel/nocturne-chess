@@ -5,10 +5,10 @@ import tempfile
 import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from PySide6.QtCore import QCoreApplication, QEvent, QPoint, QPointF, Qt
+from PySide6.QtCore import QCoreApplication, QEvent, QPoint, QPointF, Qt, QTimer
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QDialog, QPlainTextEdit
 from nocturne.gui.window import MainWindow
 from nocturne.gui.notation import FigurineToolButton
 
@@ -36,6 +36,57 @@ class LayoutPolishTests(unittest.TestCase):
         self.w.deleteLater()
         QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         self.tmp.cleanup()
+
+    def test_meter_selector_shares_percentage_strip_row(self):
+        meter = self.w.maia_insights.blunder
+        self.app.processEvents()
+        self.assertLessEqual(abs(meter.move.geometry().center().y() - meter.strip.geometry().center().y()), 3)
+
+    def test_collapsed_moves_click_opens_and_open_click_does_not_collapse(self):
+        w = self.w
+        w.config["bottom_moves_collapsed"] = True
+        w._sync_bottom_moves()
+        self.app.processEvents()
+        QTest.mouseClick(w.analysis_moves_panel, Qt.MouseButton.LeftButton, pos=QPoint(100, 12))
+        self.assertFalse(w.config["bottom_moves_collapsed"])
+        self.assertFalse(w.analysis_history.isHidden())
+        QTest.mouseClick(w.analysis_moves_panel, Qt.MouseButton.LeftButton, pos=QPoint(100, 12))
+        self.assertFalse(w.config["bottom_moves_collapsed"])
+
+    def test_pgn_note_editor_updates_game_line_and_export_but_not_bottom_moves(self):
+        from nocturne.core.game import Game
+        w = self.w
+        w.game = Game.from_pgn("1.e4 e5 (1...c5) *")
+        w._refresh()
+        note = "Keep the center.\nDo not rush <this>."
+
+        def accept_note():
+            dialog = QApplication.activeModalWidget()
+            self.assertIsInstance(dialog, QDialog)
+            dialog.findChild(QPlainTextEdit).setPlainText(note)
+            dialog.accept()
+
+        QTimer.singleShot(0, accept_note)
+        w._edit_annotation_at_node(1)
+        self.assertEqual(w.game.nodes[1].comment, note)
+        self.assertIn("Keep the center.", w.inline_history.toPlainText())
+        self.assertIn("Do not rush <this>.", w.inline_history.toPlainText())
+        self.assertNotIn("Keep the center.", w.analysis_history.toPlainText())
+        restored = Game.from_pgn(w.game.pgn())
+        self.assertEqual(restored.nodes[1].comment, note)
+        w.game.nodes[1].comment = "A revised plan."
+        w._render_move_history()
+        self.assertIn("A revised plan.", w.inline_history.toPlainText())
+        self.assertNotIn("Keep the center.", w.inline_history.toPlainText())
+
+    def test_idle_status_space_is_reclaimed(self):
+        w = self.w
+        w._sync_status_space("Ready · offline")
+        self.assertTrue(w.statusBar().isHidden())
+        w._sync_status_space("Analyzing next move")
+        self.assertFalse(w.statusBar().isHidden())
+        self.assertLessEqual(w.statusBar().maximumHeight(), 16)
+        self.assertEqual(w.content_layout.contentsMargins().bottom(), 0)
 
     def test_probability_badges_align_with_mixed_expanders_and_lengths(self):
         panel = self.w.candidates

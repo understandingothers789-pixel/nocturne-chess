@@ -13,6 +13,7 @@ from PySide6.QtCore import QByteArray, QEvent, QProcess, QStandardPaths, Qt, QTi
 from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QAbstractButton,
     QApplication,
     QButtonGroup,
     QComboBox,
@@ -664,7 +665,16 @@ class MainWindow(QMainWindow):
         self.analysis_moves_panel.hide()
         content.addWidget(self.workspace_splitter, 1)
         layout.addLayout(content, 1)
+        self.statusBar().setSizeGripEnabled(False)
+        self.statusBar().messageChanged.connect(self._sync_status_space)
         self.statusBar().showMessage("Ready · Nocturne Chess · Offline by design")
+
+    def _sync_status_space(self, message=None):
+        message = self.statusBar().currentMessage() if message is None else message
+        analysis = self.analysis_mode
+        self.statusBar().setStyleSheet("QStatusBar {font-size:11px; padding:0; margin:0;} QStatusBar::item {border:0;}" if analysis else "")
+        self.statusBar().setMaximumHeight(16 if analysis else 16777215)
+        self.statusBar().setVisible(not analysis or bool(message and not message.startswith("Ready")))
 
     def _player_card(self):
         frame = QFrame()
@@ -1226,6 +1236,19 @@ class MainWindow(QMainWindow):
                 self.analysis_moves_panel.setMaximumHeight(16777215)
             elif event.type() == QEvent.Type.MouseButtonRelease and self.config.get("bottom_moves_collapsed", False):
                 self.analysis_moves_panel.setMaximumHeight(34)
+        in_bottom = (hasattr(self, "analysis_moves_panel") and isinstance(watched, QWidget) and
+                     (watched is self.analysis_moves_panel or self.analysis_moves_panel.isAncestorOf(watched)
+                      or watched is self.workspace_splitter.handle(1)))
+        if in_bottom and not isinstance(watched, QAbstractButton):
+            if (event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton
+                    and self.config.get("bottom_moves_collapsed", False)):
+                self._bottom_click_origin = event.globalPosition().toPoint()
+            elif event.type() == QEvent.Type.MouseButtonRelease:
+                origin = getattr(self, "_bottom_click_origin", None)
+                self._bottom_click_origin = None
+                if (origin is not None and self.config.get("bottom_moves_collapsed", False)
+                        and (event.globalPosition().toPoint() - origin).manhattanLength() < 6):
+                    self._toggle_bottom_moves()
         if watched is getattr(self, "board_guide_button", None):
             if event.type() == QEvent.Type.Enter:
                 QToolTip.showText(watched.mapToGlobal(watched.rect().bottomLeft()), watched.toolTip(), watched)
@@ -1745,6 +1768,7 @@ class MainWindow(QMainWindow):
         self.analysis_moves_panel.setMinimumHeight(32 if collapsed else 90)
         self.analysis_moves_panel.setMaximumHeight(34 if collapsed else 16777215)
         self.bottom_moves_toggle.setText("▴" if collapsed else "▾")
+        self.bottom_moves_toggle.setVisible(collapsed)
         self.bottom_moves_toggle.setToolTip("Expand Game Moves" if collapsed else "Collapse Game Moves")
         self.bottom_moves_toggle.setAccessibleName(self.bottom_moves_toggle.toolTip())
         if not collapsed and self._dock_workspace is None:
@@ -2084,12 +2108,16 @@ class MainWindow(QMainWindow):
         self._clear_analysis_output()
 
     def _edit_annotation(self):
+        self._edit_annotation_at_node(self.game.current_node)
+
+    def _edit_annotation_at_node(self, node_id):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Move comment and annotations")
+        dialog.setWindowTitle("PGN note and move annotations")
         dialog.resize(580, 380)
         layout = QVBoxLayout(dialog)
-        node = self.game.nodes[self.game.current_node]
+        node = self.game.nodes[node_id]
         comment = QPlainTextEdit(node.comment)
+        comment.setPlaceholderText("Write your PGN note here. Shown in Game Line and included in PGN exports.")
         layout.addWidget(comment, 1)
         symbols = QComboBox()
         for title, value in [
@@ -3177,8 +3205,9 @@ class MainWindow(QMainWindow):
         self.save_label.setVisible(not analysis)
         self.mode_label.setVisible(not analysis)
         self.status_label.setVisible(not analysis)
-        self.content_layout.setContentsMargins(*( (12, 6, 12, 6) if analysis else (25, 22, 25, 12) ))
+        self.content_layout.setContentsMargins(*( (12, 6, 12, 0) if analysis else (25, 22, 25, 12) ))
         self.content_layout.setSpacing(6 if analysis else 15)
+        self._sync_status_space()
         self.panel_body.layout().setContentsMargins(*( (8, 4, 8, 4) if analysis else (20, 16, 20, 12) ))
         self.panel_body.layout().setSpacing(2 if analysis else 10)
         self.panel.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff if analysis else Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -3720,6 +3749,8 @@ class MainWindow(QMainWindow):
         menu = QMenu(self.inline_history)
         menu.addAction("Copy PGN", self._copy_pgn)
         anchor = self.inline_history.anchorAt(position)
+        target = int(anchor[5:]) if anchor.startswith("move:") and anchor[5:].isdigit() else self.game.current_node
+        menu.addAction("Edit PGN note…", lambda target=target: self._edit_annotation_at_node(target))
         if anchor.startswith("move:") and anchor[5:].isdigit():
             node_id = int(anchor[5:])
             if node_id and node_id not in mainline(self.game.nodes):
