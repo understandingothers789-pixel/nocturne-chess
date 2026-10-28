@@ -22,6 +22,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt capture of the main line after 13...Bd7. Stockfish 17.1 NNUE reached depth 25 and reported +0.49 after 9,528,716 nodes. Maia is disabled in this capture.*
 
 
+**[Download 0.5.7.115 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40755827078/artifacts/12845014018).** Applies the selected muted colors to retained Stockfish analysis: light blue for evaluations/depth, gray for White moves, and warm gray for Black moves. Windows validation passed; artifact SHA-256: `8659a618a1d423330fdf5dc5676a4acb6f5c476669794b7f258270403c7db618`.
+
 **[Download 0.5.7.114 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40724102551/artifacts/12832323296).** Optimizes repeated Stockfish variation validation and GUI updates, loads PGN editor text on demand, caches Blunder Meter results, and defers Maia cache writes. Windows validation: 337 tests, 5 skipped; packaged app and worker checks passed.
 
 **[Download 0.5.7.113 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40651905535/artifacts/12799569176).** Searches your selected MultiPV count and retains displaced candidates in gray with their full variations and compact depth labels. Returning candidates become live without duplicates. Windows suite: 333 tests, 5 skipped; packaged app/worker and live database checks passed.
