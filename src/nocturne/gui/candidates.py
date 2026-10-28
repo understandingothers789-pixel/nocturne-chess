@@ -434,13 +434,16 @@ class CandidatePanel(QWidget):
         moves.candidate_turn = turn
         moves.candidate_evaluation = score_label(info, turn)
         moves.candidate_depth = info["depth"] if historical else None
+        old_content = (moves._items, moves._candidate_style)
         moves.set_moves([(text, i + 1) for i, text in enumerate(info["san"])], light=light, figurines=True)
+        content_changed = old_content != (moves._items, moves._candidate_style)
         if (previous and previous.get("pv")
                 and (not info.get("pv") or previous["pv"][0] != info["pv"][0])):
             self.expanded_ranks.discard(rank)
             self._apply_expansion(rank)
-        self._refresh_expander(rank)
-        QTimer.singleShot(0, self, lambda r=rank: self._refresh_expander(r))
+        if content_changed:
+            self._refresh_expander(rank)
+            QTimer.singleShot(0, self, lambda r=rank: self._refresh_expander(r))
 
     def set_maia(self, policy=None, rating=1800, enabled=True):
         self.maia_policy = policy or {}
@@ -488,6 +491,8 @@ class CandidatePanel(QWidget):
             self._render_header(rank)
 
     def _render_header(self, rank):
+        if not self.show_details:
+            return
         if not self.display_line(rank):
             return
         info = self.display_line(rank)
