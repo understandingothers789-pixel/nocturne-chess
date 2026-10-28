@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtCore import QCoreApplication, QEvent, QPoint, QPointF, Qt, QTimer
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QDialog, QPlainTextEdit
+from PySide6.QtWidgets import QApplication, QDialog, QPlainTextEdit, QAbstractButton
 from nocturne.gui.window import MainWindow
 from nocturne.gui.notation import FigurineToolButton
 
@@ -37,6 +37,29 @@ class LayoutPolishTests(unittest.TestCase):
         QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         self.tmp.cleanup()
 
+    def test_selected_move_detail_shares_coverage_row(self):
+        meter = self.w.maia_insights.blunder
+        meter.set_data({"e2e4": {"probability": .684, "category": "best", "loss": 14}}, {"e2e4": "e4"}, "test")
+        self.app.processEvents()
+        self.assertEqual(meter.coverage.y(), meter.detail.y())
+        viewport = self.w.blunder_scroll.viewport()
+        self.assertLessEqual(meter.detail.mapTo(viewport, QPoint()).y() + meter.detail.height(), viewport.height())
+
+    def test_note_display_toggle_preserves_notes_and_export(self):
+        from nocturne.core.game import Game
+        w = self.w
+        w.game = Game.from_pgn("1.e4 {An inferred position note.} e5 *")
+        w._refresh()
+        before = w.game.pgn()
+        self.assertIn("An inferred position note.", w.inline_history.toPlainText())
+        w.display_actions["show_game_line_notes"].trigger()
+        self.assertNotIn("An inferred position note.", w.inline_history.toPlainText())
+        self.assertEqual(w.game.pgn(), before)
+        w.display_actions["show_game_line_notes"].trigger()
+        self.assertIn("An inferred position note.", w.inline_history.toPlainText())
+        from nocturne.settings import normalize
+        self.assertFalse(normalize({"show_game_line_notes": False})["show_game_line_notes"])
+
     def test_meter_selector_shares_percentage_strip_row(self):
         meter = self.w.maia_insights.blunder
         self.app.processEvents()
@@ -47,7 +70,11 @@ class LayoutPolishTests(unittest.TestCase):
         w.config["bottom_moves_collapsed"] = True
         w._sync_bottom_moves()
         self.app.processEvents()
-        QTest.mouseClick(w.analysis_moves_panel, Qt.MouseButton.LeftButton, pos=QPoint(100, 12))
+        point = w.analysis_moves_panel.mapToGlobal(QPoint(w.analysis_moves_panel.width() // 2, 12))
+        target = w.analysis_moves_panel.childAt(w.analysis_moves_panel.mapFromGlobal(point)) or w.analysis_moves_panel
+        self.assertNotIsInstance(target, QAbstractButton)
+        self.assertTrue(all(control.isHidden() for control in w.bottom_navigation_controls))
+        QTest.mouseClick(target, Qt.MouseButton.LeftButton, pos=target.mapFromGlobal(point))
         self.assertFalse(w.config["bottom_moves_collapsed"])
         self.assertFalse(w.analysis_history.isHidden())
         QTest.mouseClick(w.analysis_moves_panel, Qt.MouseButton.LeftButton, pos=QPoint(100, 12))

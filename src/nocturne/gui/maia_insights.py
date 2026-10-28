@@ -240,6 +240,7 @@ class BlunderMeter(InsightCard):
 
     def __init__(self, parent=None):
         super().__init__("02", "Blunder Meter", parent)
+        self.content.setContentsMargins(10, 5, 10, 5)
         self.assessments, self.names = {}, {}
         self.strip = ProbabilityStrip()
         summary = QHBoxLayout()
@@ -254,7 +255,7 @@ class BlunderMeter(InsightCard):
         self.move_labels = {}
         columns = QGridLayout()
         columns.setHorizontalSpacing(12)
-        columns.setVerticalSpacing(3)
+        columns.setVerticalSpacing(2)
         for index, category in enumerate(CATEGORIES):
             name = QLabel(CATEGORY_NAMES[category])
             name.setWordWrap(True)
@@ -273,12 +274,15 @@ class BlunderMeter(InsightCard):
         self.coverage = QLabel("Waiting for Maia and Stockfish")
         self.coverage.setObjectName("sectionNote")
         self.coverage.setWordWrap(True)
-        self.content.addWidget(self.coverage)
+        footer = QHBoxLayout()
+        footer.setSpacing(8)
+        footer.addWidget(self.coverage, 1)
         self.detail = QLabel()
         self.detail.setWordWrap(True)
         self.detail.setObjectName("sectionNote")
-        self.content.addWidget(self.detail)
-        self.content.setSpacing(4)
+        footer.addWidget(self.detail, 1)
+        self.content.addLayout(footer)
+        self.content.setSpacing(3)
         self.setToolTip(METHOD_NOTE)
         self.move.currentIndexChanged.connect(self.refresh_selection)
 
@@ -302,9 +306,9 @@ class BlunderMeter(InsightCard):
                 self.move_labels[category].setText(" · ".join(moves[:3]) or "—")
                 self.move_labels[category].setToolTip("\n".join(moves))
         coverage = sum(totals[c] for c in CATEGORIES if c != "unknown")
-        self.coverage.setText((f"{coverage:.1%} of Maia choices evaluated · increase MultiPV for more coverage"
-                               if totals["unknown"] > .00001 else "All Maia choices evaluated") if assessments
-                              else "Waiting for Maia predictions")
+        self.coverage.setText((f"{coverage:.1%} evaluated" if totals["unknown"] > .00001
+                               else "All choices evaluated") if assessments else "Waiting for Maia predictions")
+        self.coverage.setToolTip(f"{coverage:.1%} of Maia choices evaluated. Increase Stockfish MultiPV for more coverage.")
         selected = self.move.currentData() if getattr(self, "_position_key", None) == position_key else None
         self._position_key = position_key
         choices = sorted(assessments, key=lambda uci: -assessments[uci]["probability"])

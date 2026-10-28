@@ -17,6 +17,7 @@ class GameLine(MoveText):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAccessibleName("Game line: move pairs, variations and evaluations")
+        self.show_notes = True
         self._branch_guides = []
         self._game_signature = None
         self._pending_game = None
@@ -25,6 +26,13 @@ class GameLine(MoveText):
         self._eval_refresh.setInterval(500)
         self._eval_refresh.timeout.connect(self._refresh_saved_values)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+    def set_notes_visible(self, visible):
+        if self.show_notes == bool(visible):
+            return
+        self.show_notes = bool(visible)
+        if hasattr(self, "_shown_game"):
+            self.set_game(self._shown_game, self._light, self._book_departures, self._shown_risks)
 
     def refresh_evaluation(self, game):
         self._pending_game = game
@@ -44,6 +52,8 @@ class GameLine(MoveText):
         event.accept()
 
     def set_game(self, game, light=False, book_departures=None, move_risks=None):
+        self._shown_game = game
+        self._shown_risks = dict(move_risks or {})
         departures = dict(book_departures or {})
         move_risks = dict(move_risks or {})
         self._book_departures = departures
@@ -51,7 +61,7 @@ class GameLine(MoveText):
         current = game.current_node
         signature = (game.id, current, light, tuple(sorted(departures.items())),
                      tuple((node.parent, tuple(node.children), node.san, node.evaluation, tuple(node.nags), node.comment, node.starting_comment)
-                           for node in nodes), tuple(sorted(move_risks.items())))
+                           for node in nodes), tuple(sorted(move_risks.items())), self.show_notes)
         if signature == self._game_signature:
             return
         previous_current = self._current
@@ -72,6 +82,8 @@ class GameLine(MoveText):
             return notation_html(san)
 
         def note_html(index):
+            if not self.show_notes:
+                return ""
             node = nodes[index]
             text = "\n".join(part for part in (node.starting_comment, node.comment) if part)
             text = re.sub(r"\[%[^\]]*\]", "", text).strip()

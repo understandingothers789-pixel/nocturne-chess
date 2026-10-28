@@ -626,12 +626,16 @@ class MainWindow(QMainWindow):
         history_layout.setContentsMargins(10, 5, 10, 5)
         history_layout.setSpacing(2)
         history_tools = QHBoxLayout()
-        history_tools.addWidget(label("GAME MOVES", "eyebrow"))
+        self.bottom_moves_title = label("GAME MOVES", "eyebrow")
+        self.bottom_moves_title.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.bottom_moves_title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        history_tools.addWidget(self.bottom_moves_title)
         self.opening_coverage_label = label("", "muted")
         self.opening_coverage_label.setTextFormat(Qt.TextFormat.RichText)
         self.opening_coverage_label.linkActivated.connect(lambda node: self._navigate_node(int(node)))
         self.opening_coverage_label.setWordWrap(True)
         history_tools.addWidget(self.opening_coverage_label, 1)
+        self.bottom_navigation_controls = []
         for text, callback in (
             ("|‹", lambda: self._navigate(0)),
             ("‹", self._undo),
@@ -642,6 +646,7 @@ class MainWindow(QMainWindow):
             control.setFixedHeight(22)
             control.setStyleSheet("padding: 1px 8px;")
             history_tools.addWidget(control)
+            self.bottom_navigation_controls.append(control)
         self.bottom_moves_toggle = button("▾", self._toggle_bottom_moves, "quiet")
         self.bottom_moves_toggle.setFixedSize(26, 22)
         history_tools.addWidget(self.bottom_moves_toggle)
@@ -817,6 +822,7 @@ class MainWindow(QMainWindow):
             ("smart_move", "Smart Move · click recommended destinations"),
             ("branch_arrows", "Show saved continuation arrows"),
             ("show_maia_insights", "Show Maia insights"),
+            ("show_game_line_notes", "Show Game Line notes"),
             ("details", "Detailed analysis statistics"),
             ("show_seldepth", "Show selective depth (seldepth)"),
             ("wheel_game_moves", "Wheel navigates game moves"),
@@ -1765,6 +1771,9 @@ class MainWindow(QMainWindow):
         self._bottom_collapsed_state = collapsed
         if collapsed and self.analysis_moves_panel.isVisible() and not self.analysis_history.isHidden() and self.analysis_moves_panel.height() >= 90:
             self._bottom_expanded_height = self.analysis_moves_panel.height()
+        for control in self.bottom_navigation_controls:
+            control.setVisible(not collapsed)
+        self.analysis_moves_panel.setCursor(Qt.CursorShape.PointingHandCursor if collapsed else Qt.CursorShape.ArrowCursor)
         self.analysis_history.setVisible(not collapsed)
         self.opening_coverage_label.setVisible(not collapsed)
         self.analysis_moves_panel.setMinimumHeight(32 if collapsed else 90)
@@ -3045,6 +3054,7 @@ class MainWindow(QMainWindow):
         self.pv_font_label.setText(f"Variation text: +{percent}%")
         self.candidates.set_font_increase(percent)
         self._sync_bottom_moves()
+        self.inline_history.set_notes_visible(self.config.get("show_game_line_notes", True))
         self._sync_maia_range_controls()
         self.maia_controls.move_limit.blockSignals(True)
         self.maia_controls.move_limit.setValue(self.config.get("maia_move_limit", 5))
