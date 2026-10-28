@@ -317,7 +317,10 @@ class BlunderMeter(InsightCard):
         coverage = sum(totals[c] for c in CATEGORIES if c != "unknown")
         self.coverage.setText((f"{coverage:.1%} evaluated" if totals["unknown"] > .00001
                                else "All choices evaluated") if assessments else "Waiting for Maia predictions")
-        self.coverage.setToolTip(f"{coverage:.1%} of Maia choices evaluated. Increase Stockfish MultiPV for more coverage.")
+        inferred = sum(d["probability"] for d in assessments.values() if d.get("inferred"))
+        if inferred:
+            self.coverage.setText(f"{coverage - inferred:.1%} evaluated · {inferred:.1%} inferred")
+        self.coverage.setToolTip(f"{coverage - inferred:.1%} evaluated; {inferred:.1%} inferred as blunders because an assessed blunder is present.")
         selected = self.move.currentData() if getattr(self, "_position_key", None) == position_key else None
         self._position_key = position_key
         choices = sorted(assessments, key=lambda uci: -assessments[uci]["probability"])
@@ -344,7 +347,8 @@ class BlunderMeter(InsightCard):
         if data is None:
             self.detail.setText("Best ≤50 cp · OK ≤150 cp · Blunder >150 cp")
         else:
-            loss = f"{data['loss']/100:.2f} pawns loss" if data["loss"] is not None else "Stockfish loss unknown"
+            loss = ("Inferred blunder · not evaluated by Stockfish" if data.get("inferred") else
+                    f"{data['loss']/100:.2f} pawns loss" if data["loss"] is not None else "Stockfish loss unknown")
             self.detail.setText(f"{percentage(data['probability'])} Maia · {loss}")
         self.selection_changed.emit(uci or "")
 
@@ -473,6 +477,12 @@ class MaiaInsights(QScrollArea):
             self._analysis_names = names
         names = self._analysis_names
         assessments = assess_moves({uci: p for uci, p in policy.items() if uci in names}, lines)
+        listed = {entry["pv"][0] for entry in lines.values() if entry.get("pv")}
+        if any(data["category"] == "blunder" for data in assessments.values()):
+            for uci, data in assessments.items():
+                if uci not in listed and data["category"] == "unknown":
+                    data["category"] = "blunder"
+                    data["inferred"] = True
         # Keep the last complete display while this position's policy or engine
         # lines are arriving. Never reuse its moves for board recommendations.
         ready = bool(policy and lines)
