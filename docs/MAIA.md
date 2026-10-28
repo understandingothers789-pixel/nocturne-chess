@@ -344,3 +344,26 @@ Repeated root moves are deduplicated, and roots currently present in live analys
 are excluded. Hover, scroll preview, insertion and copying work for retained lines.
 Position changes clear this history. Five or more live MultiPV lines do not add
 historical rows. Engine → Threads now also offers 15 when the engine supports it.
+
+## Play Maia moves from the board (0.5.7.103)
+
+With destination-click moves enabled, clicking the destination square of a visible
+Maia rod/circle plays that Maia move. The same >10% threshold controls drawing and
+click targets. When several Maia moves share a destination, the most likely one
+wins. A visible Maia circle takes priority over a different Stockfish or recorded
+move ending on that square. Selecting a piece first still chooses a move manually.
+Where no Maia circle is present, recorded continuations and Stockfish destination
+clicks keep their existing behavior. Hidden overlays, disabled Maia rods, previews,
+non-interactive boards and disabled destination clicks do not play Maia targets.
+Position changes clear the targets immediately.
+
+Analysis updates now reuse the board's current legal-move lookup, share the
+Blunder Meter assessment with board markers, and skip unchanged marker repaints,
+meter content and badge styles. Meter rendering still invalidates on changed
+probabilities, losses, categories, names, position or appearance; selection changes
+still refresh the selected-move detail.
+
+A local offscreen cProfile sample of 150 marker/metric updates for one position
+with fixed scores and increasing node counts took 0.485 seconds before and 0.116
+seconds after these changes, about 76% less time in that path. This is a focused
+GUI microbenchmark, not a whole-application speed claim or a Windows latency test.

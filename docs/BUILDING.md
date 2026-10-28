@@ -1131,3 +1131,14 @@ Extract the artifact and run `Nocturne/Nocturne.exe`. The package is unsigned.
 
 - [Run 40640944562](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40640944562): lint, 318 Windows tests (5 skipped), packaged app/worker checks and live database checks passed.
 - [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40640944562/artifacts/12795637991): 494,346,259 bytes; SHA-256 `cd3e5cb6cf35599dd40b37e2bc006b872ddad7ae6116cd672127bbd2b224f069`.
+
+## Windows build receipt · 0.5.7.103
+
+- Source: `bf381163ed2533c8608d4f9b8c030f6573f1b355`
+- Visible Maia rods/circles now supply destination-click moves using the same >10% threshold. A shared destination selects the highest-probability Maia move, ahead of Stockfish or a different recorded continuation. Explicit piece selection retains manual control. Disabled/hidden targets, previews and non-interactive boards are guarded, and position changes clear the targets.
+- GUI updates reuse a position's legal-move lookup and a single assessment for the meter and board. Unchanged meter data, badge styles and board recommendation repaints are skipped; changing values, positions, names or appearance still refreshes the corresponding UI.
+- Eight focused regressions cover Maia-only destinations, overlaps and probability ordering, explicit source selection, hidden/disabled/preview states, flipped boards and stale target clearing, full-window move commitment, meter invalidation and unchanged recommendation repaints. Local isolated suite: 326 tests, 6 skipped, zero failed processes.
+- Local offscreen cProfile sample: 150 marker/metric updates with fixed scores and increasing node counts took 0.485 seconds before and 0.116 seconds after (about 76% less time in that path). This measurement excludes engine inference and does not claim the same whole-application improvement on Windows.
+
+- [Run 40642607665](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40642607665): lint, 326 Windows tests (5 skipped), packaged app/worker checks and live database checks passed.
+- [Unsigned Windows x64 download](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40642607665/artifacts/12796491839): 494,352,122 bytes; SHA-256 `280ed81bd598ebd72408b1268de7731b0a8b82f820eee30833c9ca6bf08272bb`.
