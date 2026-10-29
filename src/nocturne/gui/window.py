@@ -213,6 +213,11 @@ class MainWindow(QMainWindow):
         self._secondary_timer.setSingleShot(True)
         self._secondary_timer.setInterval(250)
         self._secondary_timer.timeout.connect(self._flush_secondary_analysis)
+        self._navigation_refresh_identity = None
+        self._navigation_refresh_timer = QTimer(self)
+        self._navigation_refresh_timer.setSingleShot(True)
+        self._navigation_refresh_timer.setInterval(150)
+        self._navigation_refresh_timer.timeout.connect(self._flush_navigation_refresh)
         self._build()
         self.hover_preview = HoverPreview(self)
         self.candidates.pointer_moved.connect(self._move_cursor_preview)
@@ -1849,6 +1854,8 @@ class MainWindow(QMainWindow):
         self._maia_changed(self.maia.policies if enabled else {})
 
     def _maia_changed(self, policies):
+        if self._navigation_refresh_timer.isActive():
+            return
         self._sync_insight_layout()
         if self._auto_play_active:
             policies = {}
@@ -1914,7 +1921,8 @@ class MainWindow(QMainWindow):
             self._secondary_timer.start()
 
     def _flush_secondary_analysis(self):
-        if self._closing or self._secondary_identity != self._position_identity():
+        if (self._closing or self._navigation_refresh_timer.isActive()
+                or self._secondary_identity != self._position_identity()):
             return
         self._sync_blunder()
         self._update_graph()
@@ -1957,9 +1965,9 @@ class MainWindow(QMainWindow):
         self._stop_engine()
         for move in parsed:
             self.game.play(move)
-        self._refresh(animate=len(parsed) == 1)
+        self._refresh(animate=len(parsed) == 1, defer_secondary=self.analysis_mode)
         self._save(defer=True)
-        self._schedule_engine()
+        self._schedule_engine(preserve_position_analysis=True)
 
     def _candidate_action(self, rank, action):
         if self._candidate_identity != self._position_identity() or not self.candidates.display_line(rank):
@@ -3439,17 +3447,28 @@ class MainWindow(QMainWindow):
         # repaint() paints this widget only; it does not process queued input.
         self.board_view.set_position(self.game.board, move, animate=False)
         self.board_view.repaint()
-        self._refresh(board_ready=True)
+        self._refresh(board_ready=True, defer_secondary=self.analysis_mode)
         self._save(defer=True)
-        self._schedule_engine()
+        self._schedule_engine(preserve_position_analysis=True)
 
-    def _refresh(self, animate=False, board_ready=False):
+    def _flush_navigation_refresh(self):
+        if not self._closing and self._navigation_refresh_identity == self._position_identity():
+            self._refresh(board_ready=True)
+
+    def _refresh(self, animate=False, board_ready=False, defer_secondary=False):
+        if defer_secondary:
+            self._navigation_refresh_identity = self._position_identity()
+            self._navigation_refresh_timer.start()
+        else:
+            self._navigation_refresh_timer.stop()
+            self._navigation_refresh_identity = None
         self.delete_line_action.setEnabled(self.analysis_mode and self.game.current_node != 0)
-        self._register_study()
-        self._update_review_panel()
-        self._sync_workspace_layout()
+        if not defer_secondary:
+            self._register_study()
+            self._update_review_panel()
+            self._sync_workspace_layout()
         self._clear_move_preview()
-        if self.tabs.currentWidget() is self.pgn_page:
+        if not defer_secondary and self.tabs.currentWidget() is self.pgn_page:
             self._sync_pgn_editor()
         last = self.game.moves[self.game.cursor - 1] if self.game.cursor else None
         if not board_ready:
@@ -3460,10 +3479,15 @@ class MainWindow(QMainWindow):
             else None
         )
         self.board_view.set_game_move(next_game_move)
-        self._render_move_history()
+        if not defer_secondary:
+            self._render_move_history()
         self._request_maia()
         if self._pv_identity != self._position_identity():
             self._clear_analysis_output()
+            if defer_secondary:
+                rating = self.config.get("maia_rating", 1800)
+                self.candidates.set_maia(self.maia.policies.get(str(rating), {}), rating,
+                                         self.config.get("maia_enabled", True))
             self.analysis_scope = ""
             self.config["searchmoves"] = []
             self.tablebase_label.setText(
@@ -3480,8 +3504,9 @@ class MainWindow(QMainWindow):
             not outcome and not self.paused and (self.analysis_mode or not self._is_engine_turn())
         )
         self._sync_candidate_markers()
-        self._sync_blunder()  # Use cached policy and saved lines during the move refresh.
-        self._sync_explorer()
+        if not defer_secondary:
+            self._sync_blunder()
+            self._sync_explorer()
         turn = "White" if self.game.board.turn == 1 else "Black"
         status = (
             f"{outcome.result} · {outcome.reason}"
@@ -3504,6 +3529,9 @@ class MainWindow(QMainWindow):
         )
         if self.paused and not outcome:
             self.status_label.setText("Paused · Continue when you're ready")
+        if defer_secondary:
+            self.board_view.repaint()
+            return
         self._update_graph()
         if not self.engine.busy:
             self.eval_bar.set_score(self.game.evaluations.get(self.game.cursor))
@@ -4014,9 +4042,10 @@ class MainWindow(QMainWindow):
     def _save(self, *, force=False, defer=False):
         if not self.store:
             return
-        now = time.monotonic()
-        if defer and not force and self._last_save_at is not None and now - self._last_save_at < 60000:
+        if defer and not force:
             self.save_label.setText("CHANGES PENDING · SAVED WITHIN 1 MINUTE")
+            if hasattr(self, "autosave_timer") and not self.autosave_timer.isActive():
+                self.autosave_timer.start(60000)
             return
         saved_job = checkpoint_job(self._review)
         if saved_job:
@@ -4363,7 +4392,7 @@ class MainWindow(QMainWindow):
         self._clear_move_preview()
         self.board_view.clear_annotations()
 
-    def _schedule_engine(self):
+    def _schedule_engine(self, *, preserve_position_analysis=False):
         if (
             self._closing
             or not hasattr(self, "engine")
@@ -4421,7 +4450,8 @@ class MainWindow(QMainWindow):
             limits.nodes,
         )
         if context != self._analysis_context:
-            self._clear_analysis_output()
+            if not preserve_position_analysis or self._candidate_identity != self._position_identity():
+                self._clear_analysis_output()
             self._analysis_context = context
         self.candidates.set_multipv(count)
         self.candidates.reserve_slots(count)
@@ -4646,6 +4676,7 @@ class MainWindow(QMainWindow):
             self.engine._flush_snapshot()
         self._closing = True
         self._secondary_timer.stop()
+        self._navigation_refresh_timer.stop()
         QApplication.instance().removeEventFilter(self)
         setup = getattr(self, "_gpu_setup", None)
         if setup is not None:
