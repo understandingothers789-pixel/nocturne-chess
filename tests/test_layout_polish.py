@@ -45,6 +45,27 @@ class LayoutPolishTests(unittest.TestCase):
         viewport = self.w.blunder_scroll.viewport()
         self.assertLessEqual(meter.detail.mapTo(viewport, QPoint()).y() + meter.detail.height(), viewport.height())
 
+    def test_four_pv_toggle_transfers_only_the_reserved_row_to_chart(self):
+        from test_candidate_history import line
+        w = self.w
+        w.config["multipv"] = 4
+        panel = w.candidates
+        panel.set_multipv(4)
+        panel.clear()
+        for rank, root in enumerate(("e2e4", "d2d4", "g1f3", "c2c4"), 1):
+            panel.update_line(line(root, rank=rank), 1)
+        w._set_display("reserve_five_candidate_rows", True)
+        self.app.processEvents()
+        fixed_height = panel.height()
+        fixed_chart = w.maia_insights.trends_card.height()
+        w._set_display("reserve_five_candidate_rows", False)
+        self.app.processEvents()
+        self.assertLess(panel.height(), fixed_height)
+        self.assertGreater(w.maia_insights.trends_card.height(), fixed_chart)
+        heights = [row[0].height() for row in panel.rows.values() if not row[0].isHidden()]
+        self.assertEqual(len(heights), 4)
+        self.assertLessEqual(max(heights) - min(heights), 1)
+
     def test_note_display_toggle_preserves_notes_and_export(self):
         from nocturne.core.game import Game
         w = self.w

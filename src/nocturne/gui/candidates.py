@@ -35,6 +35,7 @@ class CandidatePanel(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
+        self.layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.layout.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.font_increase = 20
@@ -86,7 +87,8 @@ class CandidatePanel(QWidget):
         self.retained_lines.clear()
         self.best_history.clear()
         self.preview_end.emit()
-        if set(self.rows) == set(range(1, self.multipv + 1)):
+        count = max(5, self.multipv) if self.reserve_five_rows else self.multipv
+        if set(self.rows) == set(range(1, count + 1)):
             # Retain browser widgets and their layout/scrollbar geometry across
             # position changes, rather than tearing down every PV row.
             self.lines.clear()
@@ -97,9 +99,13 @@ class CandidatePanel(QWidget):
                 moves.cancel_preview()
                 moves.setViewportMargins(0, 0, 0, 0)
                 moves.reserve_lines(0 if self.expanded else self.default_pv_lines)
+                moves.candidate_evaluation = ""
+                moves.candidate_depth = None
+                moves.candidate_historical = False
                 moves.set_moves([])
                 header.clear()
                 self.maia_labels[rank].clear()
+                self.maia_labels[rank].hide()
                 self.footers[rank].clear()
                 self.footers[rank].hide()
                 self._refresh_expander(rank)
@@ -183,13 +189,13 @@ class CandidatePanel(QWidget):
 
     def reserve_slots(self, count):
         count = max(self.multipv, max(1, min(32, count)))
-        if count < self.slot_count:
-            self.clear()
         for rank in range(self.slot_count + 1, count + 1):
             self._make_row(rank)
-        self.slot_count = count
+        self.slot_count = max(self.slot_count, count)
 
     def _make_row(self, rank):
+        if rank in self.rows:
+            return
         frame = QWidget()
         frame.setObjectName("candidateRow")
         frame.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
@@ -215,6 +221,10 @@ class CandidatePanel(QWidget):
         moves.reserve_lines(0 if self.expanded or rank in self.expanded_ranks else self.default_pv_lines)
         moves.wheel_navigation = self.wheel_navigation
         moves.candidate_rank = rank
+        moves.candidate_evaluation = ""
+        moves.candidate_depth = None
+        moves.candidate_historical = False
+        moves.set_moves([])
         moves.set_font_increase(self.font_increase)
         moves.setViewportMargins(0, 0, 0, 0)
         moves.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
@@ -242,7 +252,7 @@ class CandidatePanel(QWidget):
         probability.setFixedWidth(84)
         probability.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         probability.setStyleSheet("color: #b9b4df; font-family: Consolas; padding-right: 3px;")
-        probability.setVisible(self.maia_enabled)
+        probability.hide()
         pv_layout.addWidget(probability, 0, 2, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
         self.maia_labels[rank] = probability
         layout.addWidget(pv_area)
@@ -488,7 +498,7 @@ class CandidatePanel(QWidget):
                  "font-weight: 600; padding: 3px 5px;")
         if label.styleSheet() != style:
             label.setStyleSheet(style)
-        label.setVisible(self.maia_enabled)
+        label.setVisible(self.maia_enabled and bool(pv))
         label.setText(percentage(probability) if pv else "")
         label.setToolTip(f"Maia-3 79M · {self.maia_rating} vs {self.maia_rating} Lichess blitz\n"
                          + (f"{pv[0]}: {probability * 100:.8g}% predicted likelihood" if probability is not None

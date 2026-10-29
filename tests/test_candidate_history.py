@@ -49,6 +49,27 @@ class CandidateHistoryTests(unittest.TestCase):
         self.panel._hover(2, 1)
         self.assertEqual(previews, [(2, 1)])
 
+    def test_four_live_rows_respect_five_row_toggle_without_duplicate_widgets(self):
+        panel = self.panel
+        panel.set_multipv(4)
+        panel.set_maia({"e2e4": .5}, 2200, True)
+        for fixed in (False, True, False, True):
+            panel.set_reserve_five_rows(fixed)
+            panel.clear()
+            panel.reserve_slots(4)
+            for rank, root in enumerate(("e2e4", "d2d4", "g1f3", "c2c4"), 1):
+                panel.update_line(line(root, rank=rank), 1)
+            panel._make_row(4)  # Repeated reservation must not orphan another widget.
+            self.assertEqual(panel.layout.count(), len(panel.rows))
+            self.assertEqual([rank for rank, row in panel.rows.items() if not row[0].isHidden()],
+                             list(range(1, 6 if fixed else 5)))
+            self.assertTrue(panel.maia_labels[5].isHidden())
+            panel.update_line(line("b2b3", rank=2), 1)
+            self.assertFalse(panel.rows[5][0].isHidden())
+            self.assertEqual(panel.display_line(5)["pv"], ["d2d4"])
+            panel.clear()
+            self.assertTrue(all(not view.candidate_evaluation for _, _, view in panel.rows.values()))
+
     def test_history_is_unique_and_fills_only_five_minus_live_count(self):
         self.panel.set_multipv(2)
         self.panel.update_line(line("a2a3", rank=2), 1)

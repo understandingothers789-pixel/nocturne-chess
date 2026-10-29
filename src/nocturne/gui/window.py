@@ -474,7 +474,7 @@ class MainWindow(QMainWindow):
         self.candidates.navigate.connect(self._insert_candidate)
         self.candidates.action.connect(self._candidate_action)
         self.candidates.changed.connect(self._sync_candidate_markers)
-        self.candidates.layout_changed.connect(self._protect_analysis_chart)
+        self.candidates.layout_changed.connect(self._candidate_rows_changed)
         self.candidates.changed.connect(self._queue_secondary_analysis)
         self.candidate_splitter = QSplitter(Qt.Orientation.Vertical)
         self.candidate_splitter.setChildrenCollapsible(False)
@@ -3168,6 +3168,17 @@ class MainWindow(QMainWindow):
         self._protect_analysis_chart()
         self.game_line_panel.show()
         self._rating_game_line_swapped = True
+
+    def _candidate_rows_changed(self):
+        self._protect_analysis_chart()
+        if not hasattr(self, "blunder_scroll") or self.maia_insights.trends_card.isHidden():
+            return
+        self.candidates.layout.activate()
+        height = sum(row[0].sizeHint().height() for row in self.candidates.rows.values()
+                     if not row[0].isHidden())
+        total = self.candidate_splitter.height() - self.candidate_splitter.handleWidth()
+        if total > height:
+            self.candidate_splitter.setSizes([height, total - height])
 
     def _protect_analysis_chart(self):
         if not hasattr(self, "blunder_scroll"):
