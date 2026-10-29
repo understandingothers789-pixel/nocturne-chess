@@ -42,6 +42,19 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(self.coverage.departure, self.game.current_node)
         self.assertIn("previous position: 23 games", self.coverage.message)
 
+    def test_preparation_follows_selected_branch_in_one_walk(self):
+        game = Game.from_pgn("1.e4 e5 (1...c5 2.Nf3 d6) 2.Nf3 Nc6 *")
+        branch = next(i for i, node in enumerate(game.nodes) if node.san == "d6")
+        game.select_node(branch)
+        expected = [(node, ExplorerQuery(game.position_at_node(node).fen()).fen) for node in game._line_nodes]
+        original = game.board.fen()
+        with patch.object(game, "position_at_node", side_effect=AssertionError("Repeated root replay")):
+            with patch.object(self.coverage, "_next"):
+                self.coverage.start(game, force=True)
+        self.assertEqual([(node, query.fen) for node, query in self.coverage.items], expected)
+        self.assertEqual(game.board.fen(), original)
+        self.assertEqual(game.current_node, branch)
+
     def test_failure_and_cancellation_never_mean_zero_games(self):
         self.coverage.start(self.game)
         key = self.coverage.items[0][1].key

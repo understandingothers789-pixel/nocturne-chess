@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import random
 import statistics
 import tempfile
 import time
@@ -10,8 +11,10 @@ import time
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 from nocturne.core.rules import Board
+from nocturne.core.game import Game
 from nocturne.core.notation import san
 from nocturne.gui.window import MainWindow
+from nocturne.gui.opening_coverage import OpeningCoverage
 
 
 def measure(operation, count):
@@ -78,6 +81,19 @@ def main():
             point = view.cursorRect(cursor).center()
             results["pv_hit_test_ms"] = measure(lambda: view._move_at(point), 1000)
             results["paused_tick_ms"] = measure(window._tick, 1000)
+            game = Game()
+            rng = random.Random(23)
+            for _ in range(60):
+                if game.outcome:
+                    break
+                game.play(rng.choice(list(game.board.legal_moves())))
+            coverage = OpeningCoverage(Path(directory) / "benchmark-coverage.db")
+            coverage._next = lambda: None  # Measure preparation, without HTTP or cache hits.
+            try:
+                results["database_scan_plies"] = game.cursor
+                results["database_scan_prepare_ms"] = measure(lambda: coverage.start(game, force=True), 3)
+            finally:
+                coverage.close()
         finally:
             window.close()
             window.deleteLater()

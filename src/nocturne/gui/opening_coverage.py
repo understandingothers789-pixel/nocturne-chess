@@ -4,6 +4,7 @@ import time
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
+from ..core.rules import Board
 from ..explorer import CACHE_AGE, RATINGS, SPEEDS, ExplorerCache, ExplorerQuery
 from .explorer_client import ExplorerClient
 
@@ -87,8 +88,10 @@ class OpeningCoverage(QObject):
         self.context = self.signature(game, source, speed, rating)
         self.game = game
         self.items = []
+        board = Board(game.initial_fen)
         for node_id in game._line_nodes:
-            board = game.position_at_node(node_id)
+            if node_id:
+                board.push(game.nodes[node_id].move)
             if board.chess960:
                 self.message = "Opening coverage is available for standard chess."
                 self.changed.emit()
