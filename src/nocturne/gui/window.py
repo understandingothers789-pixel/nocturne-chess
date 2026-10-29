@@ -3601,10 +3601,15 @@ class MainWindow(QMainWindow):
         return f"{minutes:02d}:{int(seconds) % 60:02d}" if seconds >= 10 else f"0:{seconds:04.1f}"
 
     def _tick(self):
-        if self.game.running and self.game.tick():
+        # Static player details are refreshed by navigation/settings already.
+        # Analysis and paused games have no ticking clocks to redraw.
+        if not self.game.running:
+            return
+        if self.game.tick():
             self._stop_engine()
             self._refresh()
             self._save()
+            return
         self._update_players()
 
     def _new_game(self):

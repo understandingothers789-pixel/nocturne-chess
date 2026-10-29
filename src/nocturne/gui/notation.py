@@ -30,7 +30,8 @@ def html(text, *, size=17):
 def text_width(text, font):
     piece = QFont(font)
     piece.setFamily(family())
-    return sum(QFontMetricsF(piece if char in _PIECES else font).horizontalAdvance(char)
+    regular_metrics, piece_metrics = QFontMetricsF(font), QFontMetricsF(piece)
+    return sum((piece_metrics if char in _PIECES else regular_metrics).horizontalAdvance(char)
                for char in str(text))
 
 

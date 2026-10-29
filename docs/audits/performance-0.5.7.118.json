@@ -1,0 +1,18 @@
+{
+  "baseline": "ca9bc6b",
+  "backend": "Qt offscreen on Linux",
+  "milliseconds_per_call": {
+    "before": {
+      "board_copy_ms": 0.08275,
+      "stockfish_update_ms": 1.64447,
+      "pv_hit_test_ms": 0.04421,
+      "paused_tick_ms": 0.01313
+    },
+    "after": {
+      "board_copy_ms": 0.01491,
+      "stockfish_update_ms": 0.94948,
+      "pv_hit_test_ms": 0.0028,
+      "paused_tick_ms": 5e-05
+    }
+  }
+}

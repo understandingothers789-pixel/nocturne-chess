@@ -15,6 +15,60 @@ class PerformancePathsTests(unittest.TestCase):
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
 
+    def test_board_copies_preserve_state_and_do_not_share_mutable_data(self):
+        board = Board()
+        for text in ("e2e4", "a7a6", "e4e5", "d7d5"):
+            board.play_uci(text)
+        for history in (True, False):
+            copy = board.copy(history=history)
+            self.assertEqual(copy.fen(), board.fen())
+            self.assertEqual(copy.cells, board.cells)
+            self.assertEqual(copy.key, copy.compute_key())
+            self.assertEqual(list(copy.legal_moves()), list(board.legal_moves()))
+            copy.play_uci("e5d6")  # En passant affects two cells and the position key.
+            copy.pop()
+            self.assertEqual(copy.fen(), board.fen())
+            copy.cells[0] = 0
+            copy.key_history.append(0)
+            self.assertNotEqual(copy.cells, board.cells)
+            self.assertNotEqual(copy.key_history, board.key_history)
+            if history:
+                copy.pop()
+                self.assertEqual(len(copy.native.move_stack), len(board.native.move_stack) - 1)
+            else:
+                self.assertFalse(copy.native.move_stack)
+
+    def test_metric_updates_preserve_move_anchors_and_hover(self):
+        from nocturne.gui.moves import MoveText
+        from PySide6.QtGui import QTextCursor
+        view = MoveText(auto_fit=True)
+        try:
+            view.candidate_rank = 2
+            view.candidate_historical = True
+            view.candidate_evaluation = "+0.30"
+            view.candidate_depth = 15
+            moves = [("Nf3", 1), ("Nc6", 2)]
+            view.set_moves(moves, figurines=True)
+            view._hovered = 2
+            original_format = view.document().find("Nf3").charFormat()
+            with patch.object(view, "setHtml", wraps=view.setHtml) as rebuild:
+                for evaluation, depth in (("-0.05", 16), ("+10.50", 37), ("≤ +0.20", 38)):
+                    view.candidate_evaluation, view.candidate_depth = evaluation, depth
+                    view.set_moves(moves, figurines=True)
+                    self.assertEqual(view.toPlainText(), f"{evaluation} d{depth} Nf3 Nc6")
+                    self.assertEqual(view._hovered, 2)
+                    cursor = view.document().find("Nf3")
+                    self.assertEqual(cursor.charFormat().anchorHref(), "move:1")
+                    self.assertEqual(cursor.charFormat().foreground(), original_format.foreground())
+                    start = QTextCursor(view.document())
+                    start.setPosition(1)
+                    self.assertEqual(start.charFormat().font().pixelSize(), original_format.font().pixelSize())
+                rebuild.assert_not_called()
+                view.set_moves([("e4", 1)], figurines=True)
+                self.assertEqual(rebuild.call_count, 1)
+        finally:
+            view.deleteLater()
+
     def test_validation_cache_handles_changed_pvs_positions_and_caller_mutation(self):
         controller = EngineController()
         controller.board = Board()

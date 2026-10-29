@@ -57,7 +57,11 @@ class Board:
     def copy(self, history=True):
         other = object.__new__(Board)
         other.native = self.native.copy(stack=history)
-        other._sync()
+        # This is the same position: copy the synchronized drawing/rule state
+        # instead of rebuilding piece maps, FEN and the position hash.
+        other.cells = self.cells.copy()
+        for name in ("turn", "chess960", "castling", "ep", "halfmove", "fullmove", "kings", "key"):
+            setattr(other, name, getattr(self, name))
         other.key_history = self.key_history.copy() if history else [other.key]
         return other
 

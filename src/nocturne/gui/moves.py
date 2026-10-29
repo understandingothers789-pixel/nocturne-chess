@@ -125,6 +125,27 @@ class MoveText(QTextBrowser):
                 and candidate_style == self._candidate_style and book_departure == self._book_departure
                 and departures == self._book_departures):
             return
+        # A score/depth update does not change any move anchors. Editing only
+        # the prefix avoids reparsing and laying out the whole PV document.
+        old = self._candidate_style
+        if (self.candidate_rank is not None and old is not None and old[2] and self.candidate_evaluation
+                and signature == (self._items, self._current, self._light, self._figurines)
+                and (old[0], old[1], old[3]) == (candidate_style[0], candidate_style[1], candidate_style[3])
+                and book_departure == self._book_departure and departures == self._book_departures):
+            prefix = old[2] + " " + (f"d{old[4]} " if old[4] is not None else "")
+            cursor = QTextCursor(self.document())
+            cursor.setPosition(len(prefix), QTextCursor.MoveMode.KeepAnchor)
+            if cursor.selectedText() == prefix:
+                colors = palette(light)
+                metric = colors["historical_metric"] if self.candidate_historical else colors["metric"]
+                text = f'<span style="color:{metric};">{escape(self.candidate_evaluation)}</span> '
+                if self.candidate_depth is not None:
+                    depth_color = colors["historical_metric"] if self.candidate_historical else colors["metadata"]
+                    text += f'<span style="color:{depth_color};">d{self.candidate_depth}</span> '
+                size = (16 if self._auto_fit else 14) * (1 + self.font_increase / 100)
+                cursor.insertHtml(f'<span style="font-family:Consolas,monospace;font-size:{size}px;">{text}</span>')
+                self._candidate_style = candidate_style
+                return
         self.preview_ended.emit()
         self._hovered = None
         self._last_pointer_hovered = None
@@ -181,6 +202,9 @@ class MoveText(QTextBrowser):
 
     def _move_at(self, point):
         """Include the padding above and below each candidate anchor."""
+        anchor = self.anchorAt(point)
+        if anchor.startswith("move:"):
+            return QUrl(anchor)
         block = self.document().begin()
         while block.isValid():
             iterator = block.begin()
