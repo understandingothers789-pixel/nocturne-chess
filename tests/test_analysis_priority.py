@@ -81,6 +81,29 @@ class AnalysisPriorityTests(unittest.TestCase):
             w._flush_secondary_analysis()
             secondary.assert_called_once()
 
+    def test_first_engine_recommendations_bypass_batch_timer(self):
+        connection = self.window.engine.connection
+        connection._flush.stop()
+        connection.phase = "search"
+        connection.running = (1, "position startpos", "go infinite", {}, "study")
+        received = []
+        connection.information.connect(lambda generation, info: received.append((generation, info)))
+        connection._line("info depth 1 multipv 1 score cp 20 nodes 1 pv e2e4")
+        self.assertEqual(len(received), 1)
+        connection._line("info depth 2 multipv 1 score cp 30 nodes 10 pv e2e4 e7e5")
+        self.assertEqual(len(received), 1)
+        connection._emit_info()
+        self.assertEqual(len(received), 2)
+        self.assertEqual(received[-1][1]["depth"], 2)
+        connection._line("info depth 1 multipv 2 score cp 10 nodes 10 pv d2d4")
+        self.assertEqual(len(received), 3)
+        connection.stop()
+        connection.phase = "search"
+        connection.running = (2, "position startpos moves e2e4", "go infinite", {}, "study")
+        connection._line("info depth 1 multipv 1 score cp 10 nodes 1 pv e7e5")
+        self.assertEqual(received[-1][0], 2)
+        self.assertEqual(received[-1][1]["pv"], ["e7e5"])
+
     def test_old_position_and_closed_window_callbacks_do_no_work(self):
         w = self.window
         w._queue_secondary_analysis()

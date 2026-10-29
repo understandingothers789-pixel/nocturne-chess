@@ -47,6 +47,7 @@ class UciConnection(QObject):
         self._prepared = None
         self._quitting = False
         self._last_info = {}
+        self._announced_ranks = set()
         self.observe_nodes = False
         self._last_exact_info = {}
         self._flush = QTimer(self)
@@ -99,6 +100,7 @@ class UciConnection(QObject):
 
     def request(self, generation, position, go, options, study_id=""):
         self.pending = (generation, position, go, dict(options), study_id)
+        self._announced_ranks.clear()
         self._last_info.clear()
         self._last_exact_info.clear()
         if self.phase == "search":
@@ -110,6 +112,7 @@ class UciConnection(QObject):
             self._prepare()
 
     def stop(self):
+        self._announced_ranks.clear()
         self.pending = None
         self.running = None
         self._last_info.clear()
@@ -226,6 +229,10 @@ class UciConnection(QObject):
                 self._last_info[info["multipv"]] = (self.running[0], info)
                 if info.get("bound", "exact") == "exact":
                     self._last_exact_info[info["multipv"]] = (self.running[0], info)
+                first = (self.running[0], info["multipv"])
+                if first not in self._announced_ranks:
+                    self._announced_ranks.add(first)
+                    self._emit_info()
 
     def _safe_prepare(self):
         try:
