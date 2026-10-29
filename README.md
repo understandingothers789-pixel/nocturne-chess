@@ -22,6 +22,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt capture of the main line after 13...Bd7. Stockfish 17.1 NNUE reached depth 25 and reported +0.49 after 9,528,716 nodes. Maia is disabled in this capture.*
 
 
+**[Download 0.5.7.118 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40792075856/artifacts/12861973938).** Speeds up score/depth updates, board copying, move-link hit detection, and opening-database scan preparation, and removes stopped-clock UI refreshes. Includes a [performance review and reproducible measurements](docs/audits/performance-0.5.7.118.md). Windows tests and packaged app/worker checks passed; artifact SHA-256: `7822c230db2f5ff59296d6a3e8a8c82253b12d7193cf82907c2bcc5498bb4535`.
+
 **[Download 0.5.7.117 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40787302696/artifacts/12860531292).** Fixes the collapsed Game Moves startup layout, adds depth tooltips, and offers an option to keep five Stockfish rows visible. Windows validation and packaged app/worker checks passed; artifact SHA-256: `d8299cc677443fca2d3061fa8f26dd3baf5a7527598357bca073e6067eeed100`.
 
 **[Download 0.5.7.116 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/40775848838/artifacts/12854588788).** Matches the Maia move count to MultiPV and gives Moves by Rating space when unused candidate rows are hidden. Candidate layout updates no longer disturb active hover previews. Windows validation and packaged app/worker checks passed; artifact SHA-256: `83c8fba60f95a9688ec690ee62aa1bea7434e35c0032af9a66a2910403f07088`.
