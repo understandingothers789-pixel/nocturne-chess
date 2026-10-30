@@ -20,6 +20,7 @@ class PieceSet:
 PIECE_SETS = {
     "Nibbler": PieceSet(ASSET_ROOT / "nibbler" / "source", uppercase_codes=True),
     "Lichess": PieceSet(ASSET_ROOT),
+    "Neo": PieceSet(ASSET_ROOT / "neo"),
 }
 PIECE_SET_NAMES = tuple(PIECE_SETS)
 DEFAULT_PIECE_SET = "Nibbler"

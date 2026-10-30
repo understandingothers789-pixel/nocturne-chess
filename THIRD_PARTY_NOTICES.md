@@ -77,6 +77,11 @@ Method and upstream references: docs/REVIEW.md.
 The Lichess piece style uses the Cburnett artwork below and retains its separate
 license and attribution.
 
+The Neo piece style uses Chess.com artwork from the Neo set, retrieved from
+https://github.com/GiorgioMegrelli/chess.com-boards-and-pieces/tree/v2.x/pieces/ejgfv.
+The 150-pixel source images were resampled to 600 pixels and embedded in SVG
+wrappers. The user has stated that permission to use this artwork is granted.
+
 All twelve SVG pieces are the exact Cburnett set by Colin M. L. Burnett, licensed
 GPL-2.0-or-later. Source files are unchanged; filenames are normalized to lowercase.
 Pinned upstream source:

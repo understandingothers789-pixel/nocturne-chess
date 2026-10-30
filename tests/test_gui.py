@@ -535,7 +535,7 @@ class GuiTests(unittest.TestCase):
         dialog = SettingsDialog(self.window.config, self.window)
         try:
             self.assertEqual([dialog.pieces.itemText(i) for i in range(dialog.pieces.count())],
-                             ["Nibbler", "Lichess"])
+                             ["Nibbler", "Lichess", "Neo"])
             self.assertEqual(dialog.pieces.itemText(0), "Nibbler")
             self.assertEqual(dialog.preview.piece_set, "Nibbler")
             dialog.pieces.setCurrentText("Lichess")
@@ -558,7 +558,8 @@ class GuiTests(unittest.TestCase):
             for piece, renderer in board._renderers.items():
                 self.assertTrue(renderer.isValid(), (style, piece))
                 self.assertTrue(board.piece_path(piece).is_file(), (style, piece))
-                self.assertNotIn("<image", board.piece_path(piece).read_text(), (style, piece))
+                if style != "Neo":
+                    self.assertNotIn("<image", board.piece_path(piece).read_text(), (style, piece))
                 for scale in (1, 2, 3):
                     image = QImage(256 * scale, 256 * scale, QImage.Format.Format_ARGB32)
                     image.setDevicePixelRatio(scale)
