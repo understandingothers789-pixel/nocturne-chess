@@ -152,8 +152,27 @@ class MaiaTests(unittest.TestCase):
         bar.set_outcome((0.15, 0.70, 0.15))
         self.assertAlmostEqual(bar.white_expected_score, 0.5)
         self.assertIn("White expected score: 50.0%", bar.toolTip())
+        self.assertIn("Maia evaluation", bar.toolTip())
+        bar.set_label_visible(False)
+        self.assertFalse(bar.label_visible)
+        self.assertAlmostEqual(bar.white_expected_score, 0.5)
+        bar.set_label_visible(True)
+        self.assertTrue(bar.label_visible)
         bar.set_outcome(None)
         self.assertIsNone(bar.white_expected_score)
+
+    def test_maia_outcome_bar_can_hide_without_losing_label_preference(self):
+        from nocturne.gui.maia_insights import MaiaInsights
+        tools = MaiaInsights()
+        tools.outcome_bar.set_label_visible(False)
+        tools.set_outcome_bar_visible(False)
+        self.assertTrue(tools.outcome_bar.isHidden())
+        self.assertEqual(tools.viewportMargins().left(), 0)
+        tools.set_outcome_bar_visible(True)
+        self.assertFalse(tools.outcome_bar.isHidden())
+        self.assertEqual(tools.viewportMargins().left(), 42)
+        self.assertFalse(tools.outcome_bar.label_visible)
+        tools.deleteLater()
 
 
     def test_blunder_buckets_preserve_unknown_mass_and_exact_thresholds(self):

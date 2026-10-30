@@ -360,21 +360,26 @@ class MaiaOutcomeBar(QWidget):
         super().__init__(parent)
         self.values = None
         self.white_expected_score = None
+        self.label_visible = True
         self.setAccessibleName("Maia outcome prediction from White's perspective")
+        self.set_outcome(None)
+
+    def set_label_visible(self, visible):
+        if self.label_visible != bool(visible):
+            self.label_visible = bool(visible)
+            self.update()
 
     def set_outcome(self, values):
         self.values = values
         self.white_expected_score = values[0] + values[1] / 2 if values else None
-        self.setToolTip((f"Maia · White win {values[0]:.1%} · Draw {values[1]:.1%} · Black win {values[2]:.1%}"
+        self.setToolTip((f"Maia evaluation · White win {values[0]:.1%} · Draw {values[1]:.1%} · Black win {values[2]:.1%}"
                          f"\nWhite expected score: {self.white_expected_score:.1%} (win + half draws)")
-                        if values else "Maia outcome prediction unavailable / loading")
+                        if values else "Maia evaluation: predicted outcome unavailable or loading")
         self.update()
 
     def paintEvent(self, event):
         p = QPainter(self)
-        p.setPen(QColor("#9fc7cc"))
-        p.drawText(QRectF(0, 0, self.width(), 22), Qt.AlignmentFlag.AlignCenter, "M3")
-        bar = QRectF(12, 28, 16, max(0, self.height()-62))
+        bar = QRectF(12, 4, 16, max(0, self.height()-38))
         if self.values:
             y = bar.top()
             for value, color in zip(reversed(self.values), ("#252a32", "#789097", "#edf0e8")):
@@ -385,6 +390,23 @@ class MaiaOutcomeBar(QWidget):
         else:
             p.fillRect(bar, QColor("#46535d"))
             score = "—"
+        if self.label_visible and bar.height() >= 64:
+            p.save()
+            font = QFont(p.font())
+            font.setBold(True)
+            font.setPixelSize(min(11, max(7, int(bar.height() / 10))))
+            p.setFont(font)
+            step = min(15.0, bar.height() / 9)
+            for index, letter in enumerate("MAIAEVAL"):
+                top = bar.top() + 2 + index * step
+                if self.values:
+                    fraction = (top + step / 2 - bar.top()) / bar.height()
+                    light = fraction >= self.values[2] + self.values[1] * 0.5
+                else:
+                    light = False
+                p.setPen(QColor("#15232c" if light else "#e6f0ef"))
+                p.drawText(QRectF(bar.left(), top, bar.width(), step), Qt.AlignmentFlag.AlignCenter, letter)
+            p.restore()
         p.setPen(QColor("#9fc7cc"))
         p.drawText(QRectF(0, self.height()-28, self.width(), 22), Qt.AlignmentFlag.AlignCenter, score)
         p.end()
@@ -429,6 +451,10 @@ class MaiaInsights(QScrollArea):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.outcome_bar.setGeometry(0, 0, 40, self.height())
+
+    def set_outcome_bar_visible(self, visible):
+        self.outcome_bar.setVisible(bool(visible))
+        self.setViewportMargins(42 if visible else 0, 0, 0, 0)
 
     def set_data(self, policies, board, rating, appearance=None):
         policies = {str(r): policies[str(r)] for r in self.chart.ratings if str(r) in policies}

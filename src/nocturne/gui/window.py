@@ -835,6 +835,8 @@ class MainWindow(QMainWindow):
             ("branch_arrows", "Show saved continuation arrows"),
             ("show_maia_insights", "Show Maia insights"),
             ("show_game_line_notes", "Show Game Line notes"),
+            ("show_maia_eval_label", "Show Maia evaluation bar label"),
+            ("show_maia_eval_bar", "Show Maia evaluation bar"),
             ("reserve_five_candidate_rows", "Always show five Stockfish rows"),
             ("details", "Detailed analysis statistics"),
             ("show_seldepth", "Show selective depth (seldepth)"),
@@ -3101,6 +3103,8 @@ class MainWindow(QMainWindow):
         self._sync_insight_layout()
         self._apply_appearance(self._appearance_config())
         self.candidates.set_show_seldepth(self.config.get("show_seldepth", False))
+        self.maia_insights.outcome_bar.set_label_visible(self.config.get("show_maia_eval_label", True))
+        self.maia_insights.set_outcome_bar_visible(self.config.get("show_maia_eval_bar", True))
         self.candidates.set_detailed(self.config.get("details", False))
         if self._last_info:
             self._render_telemetry(self._last_info, self._last_info_turn)
