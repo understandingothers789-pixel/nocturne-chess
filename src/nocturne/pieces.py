@@ -19,8 +19,7 @@ class PieceSet:
 
 PIECE_SETS = {
     "Nibbler": PieceSet(ASSET_ROOT / "nibbler" / "source", uppercase_codes=True),
-    "Cburnett": PieceSet(ASSET_ROOT),
-    "Original": PieceSet(ASSET_ROOT / "original"),
+    "Lichess": PieceSet(ASSET_ROOT),
 }
 PIECE_SET_NAMES = tuple(PIECE_SETS)
 DEFAULT_PIECE_SET = "Nibbler"
@@ -28,6 +27,9 @@ DEFAULT_PIECE_SET = "Nibbler"
 
 def piece_path(style: str, piece: int, piece_chars: str) -> Path:
     """Resolve a registered vector using its canonical color/type filename."""
+    # Keep old saved studies and appearance previews readable after the style
+    # picker was simplified to Lichess and Nibbler.
+    style = {"Cburnett": "Lichess", "Original": DEFAULT_PIECE_SET}.get(style, style)
     descriptor = PIECE_SETS.get(style, PIECE_SETS[DEFAULT_PIECE_SET])
     kind = piece_chars[abs(piece)].lower()
     if descriptor.uppercase_codes:

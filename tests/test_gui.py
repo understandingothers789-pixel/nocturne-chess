@@ -534,10 +534,12 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(board.piece_path(-2).name, "bN.svg")
         dialog = SettingsDialog(self.window.config, self.window)
         try:
+            self.assertEqual([dialog.pieces.itemText(i) for i in range(dialog.pieces.count())],
+                             ["Nibbler", "Lichess"])
             self.assertEqual(dialog.pieces.itemText(0), "Nibbler")
             self.assertEqual(dialog.preview.piece_set, "Nibbler")
-            dialog.pieces.setCurrentText("Cburnett")
-            self.assertEqual(dialog.preview.piece_set, "Cburnett")
+            dialog.pieces.setCurrentText("Lichess")
+            self.assertEqual(dialog.preview.piece_set, "Lichess")
             dialog.pieces.setCurrentText("Nibbler")
             self.assertEqual(dialog.preview.piece_set, "Nibbler")
             self.assertTrue(dialog.preview._renderers[2].isValid())
@@ -581,13 +583,13 @@ class GuiTests(unittest.TestCase):
 
         def cancel(dialog):
             dialog.theme.setCurrentText("Grey")
-            dialog.pieces.setCurrentText("Original")
+            dialog.pieces.setCurrentText("Lichess")
             dialog.checks["light"].setChecked(True)
             dialog.checks["coordinates"].setChecked(False)
             dialog.checks["overlays"].setChecked(False)
             self.assertEqual(window.board_view.theme, "Grey")
             self.assertEqual(dialog.preview.theme, "Grey")
-            self.assertEqual(window.board_view.piece_set, "Original")
+            self.assertEqual(window.board_view.piece_set, "Lichess")
             self.assertTrue(all(r.isValid() for r in window.board_view._renderers.values()))
             self.assertTrue(window.board_view.light)
             self.assertFalse(window.board_view.coordinates)
@@ -607,12 +609,12 @@ class GuiTests(unittest.TestCase):
 
         def save(dialog):
             dialog.theme.setCurrentText("Grey")
-            dialog.pieces.setCurrentText("Original")
+            dialog.pieces.setCurrentText("Lichess")
             return dialog.DialogCode.Accepted
 
         with patch.object(SettingsDialog, "exec", new=save):
             window._settings()
-        self.assertEqual(window.store.get("settings")["piece_set"], "Original")
+        self.assertEqual(window.store.get("settings")["piece_set"], "Lichess")
         self.assertEqual(window.store.get("settings")["theme"], "Grey")
         self.assertEqual(window.game.board.fen(), state[0])
 
@@ -1223,7 +1225,7 @@ class GuiTests(unittest.TestCase):
         window = self.window
         window._set_cursor_preview(True)
         window._set_display("theme", "Slate")
-        window._set_display("piece_set", "Original")
+        window._set_display("piece_set", "Lichess")
         window.board_view.flipped = True
         fen, node = window.game.board.fen(), window.game.current_node
         self._hover_word(window.analysis_history, "e4")
@@ -1231,7 +1233,7 @@ class GuiTests(unittest.TestCase):
         self.assertTrue(popup.isVisible())
         self.assertEqual(popup.board.display_board.fen(), window.game.position_at_node(1).fen())
         self.assertEqual(popup.board.theme, "Slate")
-        self.assertEqual(popup.board.piece_set, "Original")
+        self.assertEqual(popup.board.piece_set, "Lichess")
         self.assertTrue(popup.board.flipped)
         self.assertEqual(window.board_view.display_board.fen(), fen)
         self.assertEqual(window.game.current_node, node)

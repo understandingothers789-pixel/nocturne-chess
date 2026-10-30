@@ -74,9 +74,8 @@ Method and upstream references: docs/REVIEW.md.
 
 ### Cburnett chess pieces from Lichess
 
-The optional Original piece style in `assets/pieces/original` restores Nocturne's
-own MIT SVG artwork from source commit b00711c9f41c67362d1afab3f176e9a6f81dad1e.
-The default Cburnett pieces below retain their separate license and attribution.
+The Lichess piece style uses the Cburnett artwork below and retains its separate
+license and attribution.
 
 All twelve SVG pieces are the exact Cburnett set by Colin M. L. Burnett, licensed
 GPL-2.0-or-later. Source files are unchanged; filenames are normalized to lowercase.

@@ -50,17 +50,20 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(normalize(custom_profile)["analysis_kind"], "bounded")
         self.assertEqual(normalize(dict(DEFAULTS, analysis_nodes=0))["analysis_kind"], "infinite")
 
-    def test_nibbler_piece_default_upgrades_once_then_keeps_user_choice(self):
+    def test_piece_style_migration_keeps_lichess_and_retires_original(self):
         self.assertEqual(normalize({})["piece_set"], "Nibbler")
-        for old in ("Cburnett", "Original"):
-            upgraded = normalize({"piece_set": old, "theme": "Slate", "multipv": 5,
-                                  "analysis_menu_version": 1})
-            self.assertEqual(upgraded["piece_set"], "Nibbler")
-            self.assertEqual(upgraded["piece_set_version"], 1)
-            self.assertEqual(upgraded["theme"], "Slate")
-            self.assertEqual(upgraded["multipv"], 5)
-            upgraded["piece_set"] = old
-            self.assertEqual(normalize(upgraded)["piece_set"], old)
+        lichess = normalize({"piece_set": "Cburnett", "piece_set_version": 1})
+        self.assertEqual(lichess["piece_set"], "Lichess")
+        self.assertEqual(lichess["piece_set_version"], 2)
+        retired = normalize({"piece_set": "Original", "piece_set_version": 1,
+                             "theme": "Slate", "multipv": 5,
+                             "analysis_menu_version": 1})
+        self.assertEqual(retired["piece_set"], "Nibbler")
+        self.assertEqual(retired["piece_set_version"], 2)
+        self.assertEqual(retired["theme"], "Slate")
+        self.assertEqual(retired["multipv"], 5)
+        retired["piece_set"] = "Lichess"
+        self.assertEqual(normalize(retired)["piece_set"], "Lichess")
 
     def test_reference_markers_upgrade_once_then_keep_explicit_arrow_choice(self):
         self.assertEqual(normalize({"candidate_style": "arrows"})["candidate_style"], "lines")
@@ -98,7 +101,7 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(normalize({"wheel_game_moves": "false"})["wheel_game_moves"])
         self.assertFalse(normalize({"wheel_game_moves": False})["wheel_game_moves"])
         self.assertFalse(normalize({"wheel_analysis_moves": False})["wheel_analysis_moves"])
-        self.assertEqual(normalize({"piece_set": "Original", "piece_set_version": 1})["piece_set"], "Original")
+        self.assertEqual(normalize({"piece_set": "Original", "piece_set_version": 1})["piece_set"], "Nibbler")
         self.assertEqual(normalize({"piece_set": "missing"})["piece_set"], "Nibbler")
 
     def test_selective_depth_visibility_defaults_off_and_validates_boolean(self):

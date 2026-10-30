@@ -23,7 +23,7 @@ DEFAULTS = {
     "black_engine": "external",
     "theme": "Classic",
     "piece_set": DEFAULT_PIECE_SET,
-    "piece_set_version": 1,
+    "piece_set_version": 2,
     "appearance_version": 1,
     "light": False,
     "coordinates": True,
@@ -114,8 +114,15 @@ def normalize(data) -> dict:
     # Upgrade the old default once; later explicit palette choices are retained.
     if data.get("appearance_version") != 1 and data.get("theme", "Forest") == "Forest":
         result["theme"] = "Classic"
-    if data.get("piece_set_version") != 1:
+    # Preserve existing Cburnett selections under the new Lichess name. The
+    # retired Original style falls back to the default Nibbler pieces.
+    if data.get("piece_set") == "Cburnett":
+        result["piece_set"] = "Lichess"
+    elif data.get("piece_set") == "Original":
         result["piece_set"] = DEFAULT_PIECE_SET
+    elif data.get("piece_set_version") != 2:
+        result["piece_set"] = DEFAULT_PIECE_SET
+    result["piece_set_version"] = 2
     if data.get("candidate_marker_version") != 1:
         result["candidate_style"] = "lines"
     # A saved source from the older UI remains selected even if its panel was
