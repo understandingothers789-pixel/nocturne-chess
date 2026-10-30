@@ -56,6 +56,7 @@ class BoardWidget(QWidget):
         self.candidate_loss_arrows = False
         self.candidate_arrow_green_cp = 20
         self.candidate_arrow_yellow_cp = 50
+        self._candidate_arrow_color = None
         self.inferior_ranks = set()
         self.recommendation_fen = None
         self.smart_move = False
@@ -349,6 +350,7 @@ class BoardWidget(QWidget):
         painter.rotate(math.degrees(math.atan2(delta.y(), delta.x())))
         # Fill one silhouette so shaft/head overlap cannot darken the arrow.
         painter.setPen(Qt.PenStyle.NoPen)
+        color = color or self._candidate_arrow_color
         painter.setBrush(color or (QColor(0, 48, 136, 102) if top else QColor(74, 74, 74, 102)))
         painter.drawPath(stroker.createStroke(shaft).united(head))
         painter.restore()
@@ -488,8 +490,9 @@ class BoardWidget(QWidget):
                 color = (candidate_loss_color(loss, self.candidate_arrow_green_cp,
                                               self.candidate_arrow_yellow_cp)
                          if self.candidate_loss_arrows and loss is not None else None)
-                self._stockfish_arrow(painter, move.from_sq, self._destination(move), unit,
-                                      top=rank == 1, color=color)
+                self._candidate_arrow_color = color
+                self._stockfish_arrow(painter, move.from_sq, self._destination(move), unit, top=rank == 1)
+            self._candidate_arrow_color = None
         for src, dst in () if preview else self.arrows:
             self._arrow(painter, src, dst, QColor(232, 175, 79, 200), unit)
         if not preview and self.overlays:
