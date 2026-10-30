@@ -803,14 +803,15 @@ class MainWindow(QMainWindow):
             action = add(display, text, lambda checked, k=key: self._set_display(k, checked))
             action.setCheckable(True)
             self.display_actions[key] = action
-        self.stockfish_arrow_menu = display.addMenu("Stockfish arrow color thresholds…")
-        self.stockfish_arrow_action = QAction("Stockfish arrows by eval loss", self)
+        self.stockfish_arrow_menu = display.addMenu("Stockfish arrows by eval loss")
+        self.stockfish_arrow_display_menu = display
+        self.stockfish_arrow_action = self.stockfish_arrow_menu.menuAction()
         self.stockfish_arrow_action.setCheckable(True)
         self.stockfish_arrow_action.setToolTip(
             "Green is within the first threshold, yellow within the second, and red is beyond it."
         )
         self.stockfish_arrow_action.toggled.connect(self._set_candidate_loss_arrows)
-        display.insertAction(self.stockfish_arrow_menu.menuAction(), self.stockfish_arrow_action)
+        display.installEventFilter(self)
         arrow_threshold_action = QWidgetAction(self.stockfish_arrow_menu)
         arrow_threshold_widget = QWidget()
         arrow_threshold_layout = QFormLayout(arrow_threshold_widget)
@@ -1298,6 +1299,16 @@ class MainWindow(QMainWindow):
         super().keyPressEvent(event)
 
     def eventFilter(self, watched, event):
+        if (watched is getattr(self, "stockfish_arrow_display_menu", None)
+                and event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease)
+                and event.button() == Qt.MouseButton.LeftButton):
+            action = self.stockfish_arrow_action
+            rect = watched.actionGeometry(action)
+            point = event.position().toPoint()
+            if rect.contains(point) and point.x() < rect.right() - 28:
+                if event.type() == QEvent.Type.MouseButtonRelease:
+                    action.setChecked(not action.isChecked())
+                return True
         if self._closing:
             return super().eventFilter(watched, event)
         if (watched is getattr(self, "bottom_moves_handle", None)
