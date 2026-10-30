@@ -22,6 +22,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt capture of the main line after 13...Bd7. Stockfish 17.1 NNUE reached depth 25 and reported +0.49 after 9,528,716 nodes. Maia is disabled in this capture.*
 
 
+**[Download 0.5.7.122 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41134803588/artifacts/13017027521).** Adds a vertical Maia evaluation label and independent Display toggles for the label and bar. Hover the bar for outcome details. Windows tests, packaged app and worker checks, and live database checks passed.
+
 **[Download 0.5.7.121 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41083572355/artifacts/12991186647).** Adds the Neo piece style alongside Nibbler and Lichess. Neo artwork is resampled from 150-pixel source images. Windows tests, packaged app and worker checks, and live database checks passed.
 
 **[Download 0.5.7.120 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41016423509/artifacts/12960400536).** The piece-style picker now offers only Nibbler and Lichess. Existing Cburnett preferences migrate to Lichess, and the retired Original style switches to Nibbler. Windows lint, full tests, packaged app/worker checks and live database checks passed; artifact SHA-256: `36e4e16624fad03332660dbfadbcec88a161e7d3eb500769e5b921016a8bceff`.
