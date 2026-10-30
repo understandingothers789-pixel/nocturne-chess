@@ -16,6 +16,15 @@ from .maia_colors import curve_colors
 from .theme import BOARD_THEMES, palette
 
 
+def candidate_loss_color(loss_cp: int, green_cp: int, yellow_cp: int) -> QColor:
+    """Return the subdued translucent category color for candidate loss."""
+    if loss_cp <= green_cp:
+        return QColor(71, 176, 117, 158)
+    if loss_cp <= yellow_cp:
+        return QColor(218, 171, 74, 158)
+    return QColor(211, 91, 89, 158)
+
+
 class BoardWidget(QWidget):
     move_requested = Signal(object)
     wheel_navigated = Signal(int)
@@ -43,6 +52,10 @@ class BoardWidget(QWidget):
         self.game_move: Move | None = None
         self._position_revision = 0
         self.recommendations = []
+        self.recommendation_losses = {}
+        self.candidate_loss_arrows = False
+        self.candidate_arrow_green_cp = 20
+        self.candidate_arrow_yellow_cp = 50
         self.inferior_ranks = set()
         self.recommendation_fen = None
         self.smart_move = False
@@ -138,6 +151,7 @@ class BoardWidget(QWidget):
         self.best_move = None
         self.game_move = None
         self.recommendations = []
+        self.recommendation_losses = {}
         self.inferior_ranks = set()
         self.recommendation_fen = None
         self.branch_moves = []
@@ -150,18 +164,33 @@ class BoardWidget(QWidget):
         legal = self.legal
         seen = set()
         recommendations = []
-        for move, rank, text in sorted(entries, key=lambda entry: entry[1]):
+        losses = {}
+        for entry in sorted(entries, key=lambda entry: entry[1]):
+            move, rank, text = entry[:3]
             if move in legal and move not in seen and 1 <= rank <= 32:
                 recommendations.append((move, rank, text))
+                if len(entry) > 3 and isinstance(entry[3], int):
+                    losses[move] = max(0, entry[3])
                 seen.add(move)
         inferior = set(inferior_ranks)
         fen = self.board.fen()
         if (recommendations == self.recommendations and inferior == self.inferior_ranks
-                and fen == self.recommendation_fen):
+                and fen == self.recommendation_fen and losses == self.recommendation_losses):
             return
         self.recommendations = recommendations
+        self.recommendation_losses = losses
         self.inferior_ranks = inferior
         self.recommendation_fen = fen
+        self.update()
+
+    def set_candidate_loss_arrows(self, enabled, green_cp=20, yellow_cp=50):
+        green_cp, yellow_cp = max(1, int(green_cp)), max(int(green_cp), int(yellow_cp))
+        values = (bool(enabled), green_cp, yellow_cp)
+        if values == (self.candidate_loss_arrows, self.candidate_arrow_green_cp,
+                      self.candidate_arrow_yellow_cp):
+            return
+        (self.candidate_loss_arrows, self.candidate_arrow_green_cp,
+         self.candidate_arrow_yellow_cp) = values
         self.update()
 
     def set_maia_recommendations(self, entries, *, enabled=True):
@@ -293,7 +322,7 @@ class BoardWidget(QWidget):
         normal = QPointF(-dy, dx) * head_width
         painter.drawPolygon(QPolygonF([b, base + normal, base - normal]))
 
-    def _stockfish_arrow(self, painter, src, dst, unit, *, top=False):
+    def _stockfish_arrow(self, painter, src, dst, unit, *, top=False, color=None):
         """Lichess pale brushes: round shafts, SVG marker proportions, 40% opacity."""
         if src == dst:
             return
@@ -320,7 +349,7 @@ class BoardWidget(QWidget):
         painter.rotate(math.degrees(math.atan2(delta.y(), delta.x())))
         # Fill one silhouette so shaft/head overlap cannot darken the arrow.
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(0, 48, 136, 102) if top else QColor(74, 74, 74, 102))
+        painter.setBrush(color or (QColor(0, 48, 136, 102) if top else QColor(74, 74, 74, 102)))
         painter.drawPath(stroker.createStroke(shaft).united(head))
         painter.restore()
 
@@ -455,7 +484,12 @@ class BoardWidget(QWidget):
         if not preview and self.overlays:
             entries = self.recommendations or ([(self.best_move, 1, "")] if self.best_move else [])
             for move, rank, _ in reversed(entries):
-                self._stockfish_arrow(painter, move.from_sq, self._destination(move), unit, top=rank == 1)
+                loss = self.recommendation_losses.get(move)
+                color = (candidate_loss_color(loss, self.candidate_arrow_green_cp,
+                                              self.candidate_arrow_yellow_cp)
+                         if self.candidate_loss_arrows and loss is not None else None)
+                self._stockfish_arrow(painter, move.from_sq, self._destination(move), unit,
+                                      top=rank == 1, color=color)
         for src, dst in () if preview else self.arrows:
             self._arrow(painter, src, dst, QColor(232, 175, 79, 200), unit)
         if not preview and self.overlays:

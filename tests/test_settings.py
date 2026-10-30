@@ -4,6 +4,19 @@ from nocturne.settings import DEFAULTS, normalize
 
 
 class SettingsTests(unittest.TestCase):
+    def test_candidate_arrow_loss_preferences_default_and_normalize(self):
+        self.assertFalse(DEFAULTS["candidate_loss_arrows"])
+        self.assertEqual((DEFAULTS["candidate_arrow_green_cp"],
+                          DEFAULTS["candidate_arrow_yellow_cp"]), (20, 50))
+        settings = normalize({"candidate_loss_arrows": True,
+                              "candidate_arrow_green_cp": 35,
+                              "candidate_arrow_yellow_cp": 25})
+        self.assertTrue(settings["candidate_loss_arrows"])
+        self.assertEqual(settings["candidate_arrow_green_cp"], 35)
+        self.assertEqual(settings["candidate_arrow_yellow_cp"], 35)
+        self.assertEqual(normalize({"candidate_arrow_green_cp": "20"})[
+            "candidate_arrow_green_cp"], 20)
+
     def test_auto_evaluation_and_navigation_preferences(self):
         self.assertEqual(DEFAULTS["auto_eval_nodes"], 200_000_000)
         self.assertEqual(DEFAULTS["analysis_nodes"], 1_000_000_000)

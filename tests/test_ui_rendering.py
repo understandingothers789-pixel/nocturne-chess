@@ -12,7 +12,7 @@ from PySide6.QtGui import QMouseEvent, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QScrollArea
 
-from nocturne.gui.board import BoardWidget
+from nocturne.gui.board import BoardWidget, candidate_loss_color
 from nocturne.gui.candidates import CandidatePanel
 from nocturne.gui.moves import MoveText
 from nocturne.gui.study_tabs import StudyTabBar
@@ -23,6 +23,15 @@ class RenderingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
+
+    def test_candidate_arrow_colors_follow_adjustable_loss_thresholds(self):
+        green = candidate_loss_color(20, 20, 50)
+        yellow = candidate_loss_color(21, 20, 50)
+        red = candidate_loss_color(51, 20, 50)
+        self.assertNotEqual(green, yellow)
+        self.assertNotEqual(yellow, red)
+        self.assertEqual(green.alpha(), 158)
+        self.assertEqual(candidate_loss_color(40, 35, 45), yellow)
 
     def setUp(self):
         self._existing_windows = set(self.app.topLevelWidgets())

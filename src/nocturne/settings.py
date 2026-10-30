@@ -62,6 +62,9 @@ DEFAULTS = {
     "show_maia_eval_bar": True,
     "smart_move": True,
     "candidate_style": "lines",
+    "candidate_loss_arrows": False,
+    "candidate_arrow_green_cp": 20,
+    "candidate_arrow_yellow_cp": 50,
     "candidate_marker_version": 1,
     "branch_arrows": True,
     "layout": "classic",
@@ -153,6 +156,7 @@ def normalize(data) -> dict:
         "takebacks",
         "smart_move",
         "branch_arrows",
+        "candidate_loss_arrows",
         "details",
         "show_seldepth",
         "show_game_line_notes",
@@ -246,4 +250,9 @@ def normalize(data) -> dict:
     result["maia_rating"] = max(result["maia_rating_min"], min(result["maia_rating_max"], result["maia_rating"]))
     increase = data.get("pv_font_increase", 20)
     result["pv_font_increase"] = increase if type(increase) is int and 0 <= increase <= 100 else 20
+    for key, default in (("candidate_arrow_green_cp", 20), ("candidate_arrow_yellow_cp", 50)):
+        value = data.get(key)
+        result[key] = value if type(value) is int and 1 <= value <= 2000 else default
+    if result["candidate_arrow_yellow_cp"] < result["candidate_arrow_green_cp"]:
+        result["candidate_arrow_yellow_cp"] = result["candidate_arrow_green_cp"]
     return result

@@ -803,6 +803,40 @@ class MainWindow(QMainWindow):
             action = add(display, text, lambda checked, k=key: self._set_display(k, checked))
             action.setCheckable(True)
             self.display_actions[key] = action
+        self.stockfish_arrow_menu = display.addMenu("Stockfish arrows by eval loss")
+        self.stockfish_arrow_action = QAction("Color arrows by loss from best move", self)
+        self.stockfish_arrow_action.setCheckable(True)
+        self.stockfish_arrow_action.setToolTip(
+            "Green is within the first threshold, yellow within the second, and red is beyond it."
+        )
+        self.stockfish_arrow_action.toggled.connect(self._set_candidate_loss_arrows)
+        self.stockfish_arrow_menu.addAction(self.stockfish_arrow_action)
+        arrow_threshold_action = QWidgetAction(self.stockfish_arrow_menu)
+        arrow_threshold_widget = QWidget()
+        arrow_threshold_layout = QFormLayout(arrow_threshold_widget)
+        arrow_threshold_layout.setContentsMargins(10, 6, 10, 6)
+        self.arrow_green_spin = QDoubleSpinBox()
+        self.arrow_green_spin.setRange(0.01, 20.0)
+        self.arrow_green_spin.setSingleStep(0.05)
+        self.arrow_green_spin.setDecimals(2)
+        self.arrow_green_spin.setSuffix(" pawns")
+        self.arrow_green_spin.setToolTip("Moves within this loss from the best move are green.")
+        self.arrow_yellow_spin = QDoubleSpinBox()
+        self.arrow_yellow_spin.setRange(0.01, 20.0)
+        self.arrow_yellow_spin.setSingleStep(0.05)
+        self.arrow_yellow_spin.setDecimals(2)
+        self.arrow_yellow_spin.setSuffix(" pawns")
+        self.arrow_yellow_spin.setToolTip("Moves within this loss are yellow; larger losses are red.")
+        arrow_threshold_layout.addRow("Green through", self.arrow_green_spin)
+        arrow_threshold_layout.addRow("Yellow through", self.arrow_yellow_spin)
+        arrow_threshold_action.setDefaultWidget(arrow_threshold_widget)
+        self.stockfish_arrow_menu.addAction(arrow_threshold_action)
+        self.arrow_green_spin.valueChanged.connect(
+            lambda value: self._set_candidate_arrow_threshold("candidate_arrow_green_cp", value)
+        )
+        self.arrow_yellow_spin.valueChanged.connect(
+            lambda value: self._set_candidate_arrow_threshold("candidate_arrow_yellow_cp", value)
+        )
         font_menu = display.addMenu("Stockfish variation text size")
         font_action = QWidgetAction(font_menu)
         font_widget = QWidget()
@@ -1038,6 +1072,20 @@ class MainWindow(QMainWindow):
         if key == "show_maia_insights":
             self._request_maia()
         self._save()
+
+    def _set_candidate_loss_arrows(self, enabled):
+        self.config["candidate_loss_arrows"] = bool(enabled)
+        self._apply_settings()
+        self._save()
+
+    def _set_candidate_arrow_threshold(self, key, pawns):
+        self.config[key] = round(float(pawns) * 100)
+        if key == "candidate_arrow_green_cp" and self.config["candidate_arrow_yellow_cp"] < self.config[key]:
+            self.config["candidate_arrow_yellow_cp"] = self.config[key]
+        elif key == "candidate_arrow_yellow_cp" and self.config[key] < self.config["candidate_arrow_green_cp"]:
+            self.config["candidate_arrow_green_cp"] = self.config[key]
+        self._apply_settings()
+        self._save(defer=True)
 
     def _choose_explorer(self, source):
         self.config["explorer_source"] = source
@@ -1942,9 +1990,10 @@ class MainWindow(QMainWindow):
             if best is not None and line.get("score") is not None and best - line["score"] >= 50:
                 inferior_ranks.add(rank)
             try:
+                loss = max(0, best - line["score"]) if best is not None and line.get("score") is not None else None
                 entries.append((self.board_view.legal_by_uci.get(line["pv"][0]) or
                                 self.game.board.parse_uci(line["pv"][0]), rank,
-                                score_label(line, self.game.board.turn)))
+                                score_label(line, self.game.board.turn), loss))
             except (ValueError, IndexError):
                 continue
         self.board_view.set_recommendations(entries, inferior_ranks=inferior_ranks)
@@ -3089,6 +3138,19 @@ class MainWindow(QMainWindow):
         self.pv_font_slider.blockSignals(False)
         self.pv_font_label.setText(f"Variation text: +{percent}%")
         self.candidates.set_font_increase(percent)
+        for spin, key in ((self.arrow_green_spin, "candidate_arrow_green_cp"),
+                          (self.arrow_yellow_spin, "candidate_arrow_yellow_cp")):
+            spin.blockSignals(True)
+            spin.setValue(self.config.get(key, DEFAULTS[key]) / 100)
+            spin.blockSignals(False)
+        self.stockfish_arrow_action.blockSignals(True)
+        self.stockfish_arrow_action.setChecked(self.config.get("candidate_loss_arrows", False))
+        self.stockfish_arrow_action.blockSignals(False)
+        self.board_view.set_candidate_loss_arrows(
+            self.config.get("candidate_loss_arrows", False),
+            self.config.get("candidate_arrow_green_cp", 20),
+            self.config.get("candidate_arrow_yellow_cp", 50),
+        )
         self.candidates.set_reserve_five_rows(self.config.get("reserve_five_candidate_rows", False))
         self._sync_bottom_moves()
         self.inline_history.set_notes_visible(self.config.get("show_game_line_notes", True))
