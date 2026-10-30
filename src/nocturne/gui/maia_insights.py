@@ -397,7 +397,7 @@ class MaiaOutcomeBar(QWidget):
             font.setPixelSize(min(11, max(7, int(bar.height() / 10))))
             p.setFont(font)
             step = min(15.0, bar.height() / 9)
-            for index, letter in enumerate("MAIAEVAL"):
+            for index, letter in enumerate("MAIA·EVAL"):
                 top = bar.top() + 2 + index * step
                 if self.values:
                     fraction = (top + step / 2 - bar.top()) / bar.height()
