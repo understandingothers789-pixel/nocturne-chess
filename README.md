@@ -22,6 +22,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt capture of the main line after 13...Bd7. Stockfish 17.1 NNUE reached depth 25 and reported +0.49 after 9,528,716 nodes. Maia is disabled in this capture.*
 
 
+**[Download 0.5.7.124 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41144258473/artifacts/13019119123).** Adds optional Stockfish arrow colors based on eval loss from the best move. Green and yellow loss thresholds are adjustable under Display → Stockfish arrows by eval loss; defaults are 0.20 and 0.50 pawns. Windows tests, packaged startup and live database checks passed.
+
 **[Download 0.5.7.123 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41137715519/artifacts/13017721130).** Adds spacing to the vertical Maia eval label. Windows build and packaged startup check passed.
 
 **[Download 0.5.7.122 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41134803588/artifacts/13017027521).** Adds a vertical Maia evaluation label and independent Display toggles for the label and bar. Hover the bar for outcome details. Windows tests, packaged app and worker checks, and live database checks passed.
