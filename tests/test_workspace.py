@@ -7,7 +7,8 @@ import unittest
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDockWidget, QPushButton
 
 from nocturne.gui.window import MainWindow
@@ -37,6 +38,56 @@ class WorkspaceTests(unittest.TestCase):
         self.window.arrange_panels_action.trigger()
         self.app.processEvents()
         return self.window._dock_workspace
+
+    def test_collapsed_bottom_dock_reopens_compactly_and_can_collapse_after_restore(self):
+        from nocturne.gui.leela import LeelaPanel
+
+        with patch.object(LeelaPanel, 'request'), patch.object(LeelaPanel, 'setup'):
+            w = self.window
+            w.analysis_mode = True
+            w.config.update(mode='analysis', maia_enabled=False, leela_enabled=True,
+                            bottom_moves_collapsed=True)
+            w._sync_bottom_moves()
+            w.resize(1600, 900)
+            host = self.arrange()
+            host.set_editable(False)
+            w.arrange_panels_action.setChecked(False)
+            w._sync_docked_bottom_moves()
+            for _ in range(4):
+                self.app.processEvents()
+            dock = host.docks['moves']
+            self.assertLessEqual(dock.height(), 85)
+            self.assertGreater(dock.widget().geometry().top(), 4)
+            point = QPoint(80, 5)
+            QTest.mouseClick(dock, Qt.MouseButton.LeftButton, pos=point)
+            for _ in range(4):
+                self.app.processEvents()
+            self.assertFalse(w.config['bottom_moves_collapsed'])
+            QTest.qWait(350)
+            self.assertLess(dock.height(), 350)
+            QTest.mouseClick(dock, Qt.MouseButton.LeftButton, pos=point)
+            for _ in range(4):
+                self.app.processEvents()
+            self.assertTrue(w.config['bottom_moves_collapsed'])
+            self.assertLessEqual(dock.height(), 85)
+            w._save(force=True)
+            w.close()
+            w.deleteLater()
+            self.app.processEvents()
+            self.window = MainWindow(Path(self.directory.name))
+            self.window.timer.stop()
+            self.window.autosave_timer.stop()
+            self.window.show()
+            for _ in range(4):
+                self.app.processEvents()
+            restored = self.window._dock_workspace
+            self.assertIsNotNone(restored)
+            self.assertTrue(self.window.config['bottom_moves_collapsed'])
+            self.assertLessEqual(restored.docks['moves'].height(), 85)
+            QTest.mouseClick(restored.docks['moves'], Qt.MouseButton.LeftButton, pos=point)
+            self.app.processEvents()
+            self.assertFalse(self.window.config['bottom_moves_collapsed'])
+            self.assertLess(restored.docks['moves'].height(), 350)
 
     def test_arrange_and_done_preserve_widgets_and_lock_the_live_layout(self):
         window = self.window

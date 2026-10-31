@@ -152,6 +152,28 @@ class DockWorkspace(QWidget):
         if dock.isHidden() == visible:
             dock.setVisible(visible)
 
+    def set_moves_collapsed(self, collapsed, expanded_height=100):
+        """Keep the bottom dock's outer frame in sync with its content."""
+        dock = self.docks['moves']
+        if (dock.isFloating() or self.surface.tabifiedDockWidgets(dock)
+                or self.surface.dockWidgetArea(dock) != Qt.DockWidgetArea.BottomDockWidgetArea):
+            dock.setMaximumHeight(16777215)
+            return
+        title_height = max(0, dock.height() - dock.widget().height())
+        if collapsed:
+            dock.setMaximumHeight(34 + title_height)
+            height = 34 + title_height
+        else:
+            safe_height = max(120, int(self.surface.height() * 0.25))
+            height = min(max(90, expanded_height), safe_height) + title_height
+            # QMainWindow may otherwise assign half the screen to a newly
+            # expanded bottom dock. The window releases this cap when the
+            # user grabs the divider to resize it.
+            dock.setMaximumHeight(height)
+        self.surface.resizeDocks([self.docks['board'], dock],
+                                 [max(100, self.surface.height() - height), height],
+                                 Qt.Orientation.Vertical)
+
     def state(self):
         return {"version": 1, "maia_tools": 1, "docks": bytes(self.surface.saveState(1).toBase64()).decode("ascii")}
 

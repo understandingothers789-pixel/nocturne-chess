@@ -9,7 +9,7 @@ import os
 import sys
 import time
 
-from PySide6.QtCore import QByteArray, QEvent, QProcess, QStandardPaths, Qt, QTimer, QUrl
+from PySide6.QtCore import QByteArray, QEvent, QPoint, QProcess, QStandardPaths, Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -1346,6 +1346,29 @@ class MainWindow(QMainWindow):
                     return True
         if self._closing:
             return super().eventFilter(watched, event)
+        dock = self._dock_workspace.docks['moves'] if self._dock_workspace is not None else None
+        if (dock is not None and isinstance(watched, QWidget)
+                and (watched is self._dock_workspace.surface or self._dock_workspace.surface.isAncestorOf(watched))
+                and event.type() == QEvent.Type.MouseButtonPress
+                and event.button() == Qt.MouseButton.LeftButton
+                and not self.config.get('bottom_moves_collapsed', False)
+                and not dock.isFloating()):
+            position = event.globalPosition().toPoint()
+            origin = dock.mapToGlobal(QPoint(0, 0))
+            if origin.x() <= position.x() < origin.x() + dock.width() and abs(position.y() - origin.y()) <= 8:
+                dock.setMaximumHeight(16777215)
+        if (watched is dock and dock is not None and not self.arrange_panels_action.isChecked()
+                and event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease)
+                and event.button() == Qt.MouseButton.LeftButton
+                and event.position().y() < dock.widget().geometry().top()):
+            if event.type() == QEvent.Type.MouseButtonPress:
+                self._dock_moves_click_origin = event.globalPosition().toPoint()
+            else:
+                origin = getattr(self, '_dock_moves_click_origin', None)
+                self._dock_moves_click_origin = None
+                if origin is not None and (event.globalPosition().toPoint() - origin).manhattanLength() < 6:
+                    self._toggle_bottom_moves()
+            return True
         if (watched is getattr(self, "bottom_moves_handle", None)
                 or (hasattr(self, "workspace_splitter") and watched is self.workspace_splitter.handle(1))):
             if (event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton
@@ -1634,6 +1657,8 @@ class MainWindow(QMainWindow):
             "insights": ("Game Line", self.maia_insights),
         }, self, analysis_left=self.config.get("layout") == "analysis-left")
         self._dock_workspace = workspace
+        workspace.set_moves_collapsed(self.config.get('bottom_moves_collapsed', False),
+                                      getattr(self, '_bottom_expanded_height', 100))
         workspace.finished.connect(lambda: self._arrange_panels(False))
         workspace.reset_requested.connect(self._reset_workspace_layout)
         workspace.panel_closed.connect(self._docked_panel_closed)
@@ -1676,6 +1701,7 @@ class MainWindow(QMainWindow):
         self._dock_workspace.keep_floating_panels_on_screen()
         self._dock_workspace.set_editable(False)
         self._sync_docked_visibility()
+        QTimer.singleShot(0, self._sync_docked_bottom_moves)
 
     def _reset_workspace_layout(self, checked=False, *, preset="classic"):
         self.config["layout"] = preset
@@ -1944,6 +1970,11 @@ class MainWindow(QMainWindow):
         self._sync_bottom_moves()
         self._save()
 
+    def _sync_docked_bottom_moves(self):
+        if self._dock_workspace is not None:
+            self._dock_workspace.set_moves_collapsed(self.config.get('bottom_moves_collapsed', False),
+                                                     getattr(self, '_bottom_expanded_height', 100))
+
     def _sync_bottom_moves(self):
         collapsed = self.config.get("bottom_moves_collapsed", False)
         if collapsed == getattr(self, "_bottom_collapsed_state", None):
@@ -1967,6 +1998,8 @@ class MainWindow(QMainWindow):
                         self.workspace_splitter.height() - self.workspace_splitter.handleWidth())
             height = 33 if collapsed else getattr(self, "_bottom_expanded_height", 100)
             self.workspace_splitter.setSizes([max(100, total - height), height])
+        else:
+            self._sync_docked_bottom_moves()
 
     def _set_maia_rating(self, rating):
         self.config["maia_rating"] = max(self.config.get("maia_rating_min", 600), min(self.config.get("maia_rating_max", 3000), rating))
