@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
     QComboBox,
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
@@ -1842,11 +1843,13 @@ class MainWindow(QMainWindow):
     def _leela_results(self, lines):
         if not self.config.get('leela_enabled'):
             return
-        self.board_view.leela_recommendations = [
+        recommendations = [
             (self.board_view.legal_by_uci[info['pv'][0]], rank)
             for rank, info in sorted(lines.items()) if info.get('pv')
             and info['pv'][0] in self.board_view.legal_by_uci]
-        self.board_view.update()
+        if recommendations != self.board_view.leela_recommendations:
+            self.board_view.leela_recommendations = recommendations
+            self.board_view.update()
         by_move = {info['pv'][0]: info for info in lines.values() if info.get('pv')}
         self.maia_column_title.setText('LC0 · W/D/L')
         self.maia_column_title.show()
@@ -3027,7 +3030,8 @@ class MainWindow(QMainWindow):
 
     def _populate_node_limit_menu(self, menu, key, label, values, allow_unlimited=True):
         current = self.config.get(key, 0)
-        if key == "analysis_nodes" and self.config.get("analysis_kind") in ("infinite", "explore"):
+        if key == "analysis_nodes" and (self.config.get("analysis_kind") in ("infinite", "explore")
+                or (self.config.get("analysis_kind") == "bounded" and not self.config.get("analysis_nodes_enabled", True))):
             current = 0
         current_label = "Unlimited" if current == 0 else f"{current:,}"
         menu.setTitle(f"{label} · {current_label}")
@@ -3057,18 +3061,36 @@ class MainWindow(QMainWindow):
         seconds.setDecimals(2)
         seconds.setValue(self.config["analysis_seconds"])
         seconds.setSuffix(" seconds")
-        nodes.setRange(0, 2_000_000_000)
-        nodes.setSpecialValueText("No node cap")
-        nodes.setValue(self.config["analysis_nodes"])
-        form.addRow("Depth", depth)
-        form.addRow("Time", seconds)
-        form.addRow("Nodes", nodes)
+        nodes.setRange(1, 2_000_000_000)
+        nodes.setGroupSeparatorShown(True)
+        nodes.setValue(self.config["analysis_nodes"] or 1_000_000)
+        time_enabled = QCheckBox('Enabled')
+        time_enabled.setChecked(self.config.get('analysis_time_enabled', True))
+        node_enabled = QCheckBox('Enabled')
+        node_enabled.setChecked(self.config.get('analysis_nodes_enabled', True) and self.config['analysis_nodes'] > 0)
+        seconds.setEnabled(time_enabled.isChecked())
+        nodes.setEnabled(node_enabled.isChecked())
+        time_enabled.toggled.connect(seconds.setEnabled)
+        node_enabled.toggled.connect(nodes.setEnabled)
+        time_row, node_row = QHBoxLayout(), QHBoxLayout()
+        time_row.addWidget(seconds, 1)
+        time_row.addWidget(time_enabled)
+        node_row.addWidget(nodes, 1)
+        node_row.addWidget(node_enabled)
+        form.addRow('Maximum depth', depth)
+        form.addRow('Maximum time', time_row)
+        form.addRow('Maximum nodes', node_row)
+        note = QLabel('The first enabled limit reached stops analysis. A short variation may extend the search. Depth is always enabled in this mode.')
+        note.setWordWrap(True)
+        form.addRow(note)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
         form.addRow(buttons)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.config.update(analysis_depth=depth.value(), analysis_seconds=seconds.value(), analysis_nodes=nodes.value())
+            self.config.update(analysis_depth=depth.value(), analysis_seconds=seconds.value(), analysis_nodes=nodes.value(),
+                               analysis_time_enabled=time_enabled.isChecked(),
+                               analysis_nodes_enabled=node_enabled.isChecked() and nodes.value() > 0)
             self._set_analysis_limit("bounded")
 
     def _refresh_engine_menus(self):
@@ -4617,11 +4639,14 @@ class MainWindow(QMainWindow):
             )
             return
         infinite = kind == "analysis" and self.config.get("analysis_kind") in ("infinite", "explore")
+        bounded = kind == 'analysis' and self.config.get('analysis_kind') == 'bounded'
+        time_enabled = not bounded or self.config.get('analysis_time_enabled', True)
+        nodes_enabled = not bounded or self.config.get('analysis_nodes_enabled', True)
         limits = SearchLimits(
             depth=128 if self._auto_play_active else self.config.get("analysis_depth", 128),
             seconds=600 if self._auto_play_active else self.config.get("analysis_seconds", 600),
             nodes=(self.config.get("auto_play_nodes", 10_000_000) if self._auto_play_active
-                   else None if infinite else (self.config.get("analysis_nodes") or None)),
+                   else None if infinite or not nodes_enabled else (self.config.get("analysis_nodes") or None)),
         )
         count = self._effective_multipv() if kind == "analysis" else 1
         focus = tuple(self.config.get("searchmoves", []))
@@ -4642,6 +4667,7 @@ class MainWindow(QMainWindow):
             limits.depth,
             limits.seconds,
             limits.nodes,
+            time_enabled,
         )
         if context != self._analysis_context:
             if not preserve_position_analysis or self._candidate_identity != self._position_identity():
@@ -4663,6 +4689,7 @@ class MainWindow(QMainWindow):
                 searchmoves=self.config.get("searchmoves", []),
                 tablebase_path=self.config.get("syzygy_path", ""),
                 nodes_only=self._auto_play_active or (kind == "analysis" and self.config.get("analysis_kind") == "nodes"),
+                time_enabled=time_enabled,
             )
         except (OSError, RuntimeError, ValueError) as exc:
             self._error("Cannot start engine", str(exc))

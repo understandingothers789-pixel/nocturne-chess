@@ -123,6 +123,7 @@ class LeelaPanel(QWidget):
         self.adapters = []
         self.gpu_error = ""
         self._launched_device = None
+        self._launched_batch = None
         self.engine = EngineController(self)
         self.engine.connection.timeout_ms = 120000
         self.engine.message.connect(self._message)
@@ -164,11 +165,10 @@ class LeelaPanel(QWidget):
         self.seconds = QSpinBox()
         self.seconds.setRange(1, 120)
         self.seconds.setValue(config['leela_seconds'])
-        self.limit_mode = QComboBox()
-        self.limit_mode.addItem('Time', 'time')
-        self.limit_mode.addItem('Nodes', 'nodes')
-        self.limit_mode.addItem('Unlimited', 'infinite')
-        self.limit_mode.setCurrentIndex(self.limit_mode.findData(config['leela_limit']))
+        self.time_enabled = QCheckBox('Enabled')
+        self.nodes_enabled = QCheckBox('Enabled')
+        self.time_enabled.setChecked(config['leela_limit'] in ('time', 'both'))
+        self.nodes_enabled.setChecked(config['leela_limit'] in ('nodes', 'both'))
         self.nodes = QSpinBox()
         self.nodes.setRange(1, 2000000000)
         self.nodes.setGroupSeparatorShown(True)
@@ -180,9 +180,22 @@ class LeelaPanel(QWidget):
         self.device = QSpinBox()
         self.device.setRange(0, 31)
         self.device.setValue(config['leela_device'])
-        form.addRow('Search limit', self.limit_mode)
-        form.addRow('Seconds per position', self.seconds)
-        form.addRow('Nodes per position', self.nodes)
+        time_row = QHBoxLayout()
+        time_row.addWidget(self.seconds, 1)
+        time_row.addWidget(self.time_enabled)
+        node_row = QHBoxLayout()
+        node_row.addWidget(self.nodes, 1)
+        node_row.addWidget(self.nodes_enabled)
+        form.addRow('Maximum seconds', time_row)
+        form.addRow('Maximum nodes', node_row)
+        limit_note = QLabel('When both are enabled, the first limit reached stops the search. Disable both for unlimited analysis.')
+        limit_note.setWordWrap(True)
+        form.addRow(limit_note)
+        self.batch = QSpinBox()
+        self.batch.setRange(1, 512)
+        self.batch.setValue(config['leela_batch_size'])
+        self.batch.setToolTip('Larger batches may improve GPU throughput but use more VRAM and can affect search efficiency. Default: 16.')
+        form.addRow('GPU batch size', self.batch)
         form.addRow(self.auto_gpu)
         form.addRow('GPU backend / adapter', self.gpu_info)
         form.addRow('DirectML GPU index', self.device)
@@ -195,7 +208,9 @@ class LeelaPanel(QWidget):
         self.opponent.valueChanged.connect(lambda: self._settings(opponent=True))
         self.seconds.valueChanged.connect(self._settings)
         self.device.valueChanged.connect(self._settings)
-        self.limit_mode.currentIndexChanged.connect(self._settings)
+        self.time_enabled.toggled.connect(self._settings)
+        self.nodes_enabled.toggled.connect(self._settings)
+        self.batch.valueChanged.connect(self._settings)
         self.nodes.valueChanged.connect(self._settings)
         self.auto_gpu.toggled.connect(self._settings)
         self._sync_limit_controls()
@@ -227,8 +242,8 @@ class LeelaPanel(QWidget):
         self.lines = {}
 
     def _sync_limit_controls(self):
-        self.seconds.setEnabled(self.limit_mode.currentData() == 'time')
-        self.nodes.setEnabled(self.limit_mode.currentData() == 'nodes')
+        self.seconds.setEnabled(self.time_enabled.isChecked())
+        self.nodes.setEnabled(self.nodes_enabled.isChecked())
         self.device.setEnabled(not self.auto_gpu.isChecked())
 
     def _sync_gpu(self, active=False):
@@ -238,7 +253,9 @@ class LeelaPanel(QWidget):
         else:
             name = 'Adapter name unavailable' + (': ' + self.gpu_error if self.gpu_error else '')
         prefix = 'Active' if active else 'Configured'
-        self.gpu_info.setText(f'{prefix}: ONNX DirectML GPU · index {self.device.value()}\n{name}')
+        text = f'{prefix}: ONNX DirectML GPU · index {self.device.value()}\n{name}'
+        if self.gpu_info.text() != text:
+            self.gpu_info.setText(text)
         self.gpu_info.setToolTip('DXGI adapter indices match the DirectML device setting. No CPU backend fallback is configured.')
 
     def _settings(self, *args, opponent=False):
@@ -251,6 +268,12 @@ class LeelaPanel(QWidget):
             self.opponent.blockSignals(True)
             self.opponent.setValue(self.rating.value() - self.gap.value())
             self.opponent.blockSignals(False)
+        self.gap.blockSignals(True)
+        self.gap.setRange(max(-2000, self.rating.value() - 3500), min(2000, self.rating.value() - 400))
+        self.gap.blockSignals(False)
+        self.opponent.blockSignals(True)
+        self.opponent.setValue(self.rating.value() - self.gap.value())
+        self.opponent.blockSignals(False)
         if self.auto_gpu.isChecked():
             selected = preferred_adapter(self.adapters)
             if selected:
@@ -259,7 +282,9 @@ class LeelaPanel(QWidget):
                 self.device.blockSignals(False)
         self._sync_limit_controls()
         self._sync_gpu()
-        self.config.update(leela_limit=self.limit_mode.currentData(), leela_nodes=self.nodes.value(),
+        mode = ('both' if self.time_enabled.isChecked() and self.nodes_enabled.isChecked() else
+                'time' if self.time_enabled.isChecked() else 'nodes' if self.nodes_enabled.isChecked() else 'infinite')
+        self.config.update(leela_limit=mode, leela_nodes=self.nodes.value(), leela_batch_size=self.batch.value(),
                            leela_gpu_auto=self.auto_gpu.isChecked(), leela_side=self.side.currentText().lower(), leela_rating=self.rating.value(),
                            leela_gap=self.gap.value(), leela_seconds=self.seconds.value(),
                            leela_device=self.device.value())
@@ -301,7 +326,8 @@ class LeelaPanel(QWidget):
         key = (game.board.fen(), tuple(m.uci() for m in game.moves[:game.cursor]),
                self.config['leela_side'], self.config['leela_rating'], self.config['leela_gap'],
                self.config['leela_seconds'], self.config['leela_device'],
-               self.config['leela_limit'], self.config['leela_nodes'], self.config['leela_gpu_auto'])
+               self.config['leela_limit'], self.config['leela_nodes'], self.config['leela_gpu_auto'],
+               self.config['leela_batch_size'])
         if key == self.identity and not force:
             return
         self._sync_gpu()
@@ -339,9 +365,10 @@ class LeelaPanel(QWidget):
             self._status('The selected adapter is a software renderer. Choose a hardware GPU.')
             return
         self._sync_gpu()
-        if self._launched_device != cfg['leela_device']:
+        if (self._launched_device, self._launched_batch) != (cfg['leela_device'], cfg['leela_batch_size']):
             self.engine.close()
             self._launched_device = cfg['leela_device']
+            self._launched_batch = cfg['leela_batch_size']
         options = {'Backend': 'onnx-dml', 'WeightsFile': self.weights,
                    'BackendOptions': f'gpu={cfg["leela_device"]}', 'UCI_ShowWDL': True,
                    'ScoreType': 'centipawn',
@@ -353,18 +380,20 @@ class LeelaPanel(QWidget):
                    'Threads': 2, 'NNCacheSize': 200000}
         try:
             self.engine.start(self.game, AnalysisLimits(depth=128, seconds=cfg['leela_seconds'],
-                                                         nodes=cfg['leela_nodes'] if cfg['leela_limit'] == 'nodes' else None),
+                                                         nodes=cfg['leela_nodes'] if cfg['leela_limit'] in ('nodes', 'both') else None),
                               external=self.exe, kind='analysis', multipv=5, options=options,
                               infinite=cfg['leela_limit'] == 'infinite',
                               nodes_only=cfg['leela_limit'] == 'nodes',
+                              time_nodes_only=True,
                               arguments=['--backend=onnx-dml', f'--backend-opts=gpu={cfg["leela_device"]}',
-                                         '--minibatch-size=16', '--weights=' + self.weights])
+                                         f'--minibatch-size={cfg["leela_batch_size"]}', '--weights=' + self.weights])
             self._status('Leela · DirectML GPU analysis')
         except (ValueError, OSError) as exc:
             self._status('Leela: ' + str(exc))
 
     def _message(self, generation, kind, info):
-        if not self.active:
+        if (not self.active or not self.identity or not self.game
+                or self.game.board.fen() != self.identity[0]):
             return
         if kind == 'info':
             self._sync_gpu(active=True)
@@ -415,7 +444,10 @@ class LeelaPanel(QWidget):
                 self.rows[rank] = (moves, badge, frame)
             moves, badge, frame = self.rows[rank]
             frame.show()
-            frame.setStyleSheet('background: ' + colors['soft'] + ';' if rank % 2 == 0 else '')
+            frame_style = 'background: ' + colors['soft'] + ';' if rank % 2 == 0 else ''
+            if frame.styleSheet() != frame_style:
+                frame.setStyleSheet(frame_style)
+            moves.set_font_increase(self.config.get('pv_font_increase', 20))
             moves.candidate_turn = self.game.board.turn
             moves.candidate_evaluation = score_label(info, self.game.board.turn)
             moves.candidate_depth = info.get('depth') or None
@@ -424,7 +456,9 @@ class LeelaPanel(QWidget):
             badge.setText(' / '.join(f'{n/10:.1f}' for n in wdl) if wdl else '— / — / —')
             badge.setToolTip('Win / draw / loss percentages for ' + self.config['leela_side'] +
                              '. Evaluation uses Lc0’s centipawn conversion, in White’s perspective.')
-            badge.setStyleSheet(f"color: {colors['maia']}; background: {colors['maia_soft']}; padding: 3px;")
+            badge_style = f"color: {colors['maia']}; background: {colors['maia_soft']}; padding: 3px;"
+            if badge.styleSheet() != badge_style:
+                badge.setStyleSheet(badge_style)
             if rank == 1 and wdl:
                 self.outcome.setText(f'{self.config["leela_side"].title()}: Win {wdl[0]/10:.1f}%   Draw {wdl[1]/10:.1f}%   Loss {wdl[2]/10:.1f}%')
         if self.lines:

@@ -68,6 +68,8 @@ class EngineController(QObject):
         arguments=None,
         nodes_only=False,
         ensure_pv_length=False,
+        time_enabled=True,
+        time_nodes_only=False,
     ):
         if not external:
             raise ValueError("Select your Stockfish or another UCI executable first")
@@ -97,7 +99,9 @@ class EngineController(QObject):
         elif nodes_only and limits.nodes:
             go = f"go nodes {limits.nodes}"
         else:
-            go = f"go depth {limits.depth} movetime {max(1, int(limits.seconds * 1000))}"
+            go = "go" if time_nodes_only else f"go depth {limits.depth}"
+            if time_enabled:
+                go += f" movetime {max(1, int(limits.seconds * 1000))}"
         if limits.nodes and not nodes_only and not infinite:
             go += " nodes " + str(limits.nodes)
         if searchmoves:
@@ -108,7 +112,7 @@ class EngineController(QObject):
             # passing UCI limits here would let the engine stop prematurely.
             self._managed_limits = (limits.nodes or 0,
                                     0 if nodes_only else limits.depth,
-                                    0 if nodes_only else limits.seconds)
+                                    0 if nodes_only or not time_enabled else limits.seconds)
             go = "go infinite"
             if searchmoves:
                 go += " searchmoves " + " ".join(valid)

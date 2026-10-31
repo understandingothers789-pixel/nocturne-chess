@@ -64,3 +64,19 @@ Nodes defaults to 100,000 and sends only `go nodes N`, with no time/depth cap.
 Unlimited sends `go infinite` and stops on navigation or disabling Leela.
 Only completed searches satisfy cached bounded requests; cancelled partial
 searches cannot silently satisfy a later node budget.
+
+## Search limits and throughput (0.5.7.131)
+
+The maximum seconds and maximum nodes each have an Enabled checkbox. If both
+are enabled, the first reached stops the search; neither takes priority. If both
+are disabled, Leela runs until interrupted. The defaults preserve your previous
+Time, Nodes, or Unlimited selection. Stockfish's separate Set limits dialog
+also has independent time/node checkboxes; its depth limit remains enabled and
+its search may continue beyond a limit briefly to complete short variations.
+
+The GPU batch size defaults to 16 as before. Larger values can improve GPU
+throughput on some cards, but consume more VRAM and can affect search efficiency;
+compare the same position and settings before deciding. Nodes per second varies
+with the model, position, backend, MultiPV and batch size. BT4-it332 is a very
+large network; 2–3K nodes/s is plausible, but no matching RX 9070 XT/DirectML
+benchmark has been verified here. Advanced shows the chosen GPU and backend.

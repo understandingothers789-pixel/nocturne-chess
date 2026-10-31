@@ -65,6 +65,7 @@ class LeelaLineTests(unittest.TestCase):
                 panel.exe = str(Path(folder) / 'lc0.exe')
                 panel.weights = 'network.pb.gz'
                 panel._launched_device = 1
+                panel._launched_batch = 16
                 panel.engine.connection.path = panel.exe
                 panel.engine.connection.request = Mock()
                 with patch.object(UciConnection, 'alive', new_callable=PropertyMock, return_value=True):
@@ -73,6 +74,12 @@ class LeelaLineTests(unittest.TestCase):
                     self.assertEqual(sent[2], 'go nodes 125000')
                     self.assertEqual(sent[3]['Backend'], 'onnx-dml')
                     self.assertEqual(sent[3]['BackendOptions'], 'gpu=1')
+                    config['leela_limit'] = 'time'
+                    panel._start()
+                    self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go movetime 10000')
+                    config['leela_limit'] = 'both'
+                    panel._start()
+                    self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go movetime 10000 nodes 125000')
                     config['leela_limit'] = 'infinite'
                     panel._start()
                     self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go infinite')
@@ -94,3 +101,50 @@ class LeelaLineTests(unittest.TestCase):
         for device in devices:
             self.assertIsInstance(device['name'], str)
             self.assertGreaterEqual(device['memory_mb'], 0)
+
+    def test_stockfish_managed_limits_can_disable_time_without_disabling_nodes(self):
+        from unittest.mock import Mock, PropertyMock, patch
+        from nocturne.engine.uci_types import AnalysisLimits
+        from nocturne.gui.engine import EngineController
+        from nocturne.gui.uci_connection import UciConnection
+        app = QApplication.instance() or QApplication([])
+        engine = EngineController()
+        try:
+            engine.connection.path = str(Path('stockfish').absolute())
+            engine.connection.request = Mock()
+            with patch.object(UciConnection, 'alive', new_callable=PropertyMock, return_value=True):
+                engine.start(Game(), AnalysisLimits(depth=80, seconds=7, nodes=500000),
+                             external=engine.connection.path, kind='analysis',
+                             ensure_pv_length=True, time_enabled=False)
+                self.assertEqual(engine._managed_limits, (500000, 80, 0))
+                self.assertEqual(engine.connection.request.call_args.args[2], 'go infinite')
+                engine.start(Game(), AnalysisLimits(depth=80, seconds=7, nodes=500000),
+                             external=engine.connection.path, kind='analysis',
+                             ensure_pv_length=True, time_enabled=True)
+                self.assertEqual(engine._managed_limits, (500000, 80, 7))
+        finally:
+            engine.close()
+            app.processEvents()
+
+    def test_limit_checkboxes_keep_modes_and_fields_in_sync(self):
+        from nocturne.settings import normalize
+        app = QApplication.instance() or QApplication([])
+        config = normalize(dict(DEFAULTS, leela_limit='nodes'))
+        with tempfile.TemporaryDirectory() as folder:
+            panel = LeelaPanel(Path(folder), config)
+            try:
+                self.assertFalse(panel.seconds.isEnabled())
+                self.assertTrue(panel.nodes.isEnabled())
+                panel.time_enabled.setChecked(True)
+                self.assertEqual(config['leela_limit'], 'both')
+                self.assertTrue(panel.seconds.isEnabled())
+                panel.nodes_enabled.setChecked(False)
+                self.assertEqual(config['leela_limit'], 'time')
+                self.assertFalse(panel.nodes.isEnabled())
+                panel.time_enabled.setChecked(False)
+                self.assertEqual(config['leela_limit'], 'infinite')
+            finally:
+                panel.shutdown()
+                panel.close()
+                panel.deleteLater()
+                app.processEvents()
