@@ -61,6 +61,7 @@ class BoardWidget(QWidget):
         self.recommendation_fen = None
         self.smart_move = False
         self.maia_recommendations = []
+        self.leela_recommendations = []
         self.maia_recommendation_fen = None
         self.maia_arrows_enabled = True
         self.candidate_style = "lines"
@@ -148,6 +149,7 @@ class BoardWidget(QWidget):
         self.legal = list(board.legal_moves())
         self.legal_by_uci = {move.uci(): move for move in self.legal}
         self.maia_recommendations = []
+        self.leela_recommendations = []
         self.maia_recommendation_fen = None
         self.best_move = None
         self.game_move = None
@@ -248,6 +250,9 @@ class BoardWidget(QWidget):
             if self.interactive and self.preview_board is None:
                 self.move_requested.emit(move)
             return True
+        if not choices:
+            maia.extend(move for move, rank in self.leela_recommendations
+                        if move in legal and self._destination(move) == square)
         if not maia and not choices:
             return False
         move = min(choices, key=lambda item: item[1])[0] if choices else maia[0]
@@ -357,6 +362,9 @@ class BoardWidget(QWidget):
 
     def _maia_rod_entries(self):
         colors = curve_colors(self.light)
+        if self.leela_recommendations:
+            return [(move, rank, colors[(rank - 1) % len(colors)])
+                    for move, rank in self.leela_recommendations]
         ranked = sorted(self.maia_recommendations, key=lambda entry: -entry[1])
         return [(move, index + 1, colors[index % len(colors)])
                 for index, (move, probability, _) in enumerate(ranked) if probability > 0.10]
@@ -498,7 +506,7 @@ class BoardWidget(QWidget):
         if not preview and self.overlays:
             for move in self.branch_moves:
                 self._arrow(painter, move.from_sq, self._destination(move), QColor(153, 137, 106, 65), unit, subtle=True)
-            if self.maia_arrows_enabled:
+            if self.maia_arrows_enabled or self.leela_recommendations:
                 self._draw_maia_rods(painter, unit)
         if not preview and self._drag_pos is not None and self._pressed is not None:
             piece = self.board.cells[self._pressed]

@@ -87,6 +87,7 @@ class MaiaControls(QWidget):
         settings.clicked.connect(self.settings_requested)
         self.settings_button = settings
         top.addWidget(settings, 0, 0)
+        self.leela = QCheckBox("Leela WDL")
         self.enabled = QCheckBox("Maia-3 79M")
         self.enabled.setChecked(True)
         self.enabled.toggled.connect(self.enabled_changed)
@@ -212,6 +213,7 @@ class MaiaControls(QWidget):
         if narrow:
             layout.addWidget(self.enabled, 0, 0)
             layout.addWidget(self.rating, 0, 1)
+            layout.addWidget(self.leela, 0, 2)
             layout.addWidget(self.settings_button, 1, 0, 1, 2, Qt.AlignmentFlag.AlignLeft)
             layout.setColumnStretch(1, 1)
             layout.addWidget(self.all_moves, 2, 0)
@@ -220,7 +222,8 @@ class MaiaControls(QWidget):
             layout.addWidget(self.settings_button, 0, 0)
             layout.addWidget(self.enabled, 0, 1)
             layout.addWidget(self.rating, 0, 2)
-            layout.setColumnStretch(3, 1)
+            layout.addWidget(self.leela, 0, 3)
+            layout.setColumnStretch(3, 0)
             layout.addWidget(self.all_moves, 0, 4)
             layout.addWidget(self.details, 0, 5)
 

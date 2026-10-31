@@ -53,6 +53,7 @@ from .. import __version__
 from ..maia import RATINGS as MAIA_RATINGS
 from ..maia.controller import MaiaController
 from .maia import MaiaControls
+from .leela import LeelaPanel
 from .maia_insights import MaiaInsights
 from ..maia.risk import assess_moves
 from ..core.board import Move, SQUARES
@@ -231,6 +232,11 @@ class MainWindow(QMainWindow):
         self.maia.device_mode = self.config.get("maia_device", "auto")
         self.maia.changed.connect(self._maia_changed)
         self.maia.status.connect(self.maia_controls.status.setText)
+        self.leela_panel = LeelaPanel(self.data_directory, self.config, self)
+        self.leela_panel.move_selected.connect(self._maia_move)
+        self.leela_panel.settings_changed.connect(lambda: self._save(defer=True))
+        self.leela_panel.results_changed.connect(self._leela_results)
+        self.maia_controls.leela.toggled.connect(self._set_leela_enabled)
         self._shortcuts()
         QApplication.instance().installEventFilter(self)
         self._apply_settings()
@@ -1791,7 +1797,42 @@ class MainWindow(QMainWindow):
                             "Python 3.12 x64 is required; CPU inference stays available.")
         process.start("py", ["-3.12", str(script), str(self.data_directory / "maia-gpu"), str(source), str(checkpoint)])
 
+    def _set_leela_enabled(self, enabled):
+        self.config['leela_enabled'] = bool(enabled)
+        if enabled:
+            self.config['maia_enabled'] = False
+            self.maia.stop()
+        else:
+            self.leela_panel.stop()
+            self.board_view.leela_recommendations = []
+        self._request_maia()
+        self._sync_insight_layout()
+        self._save()
+
+    def _leela_results(self, lines):
+        if not self.config.get('leela_enabled'):
+            return
+        self.board_view.leela_recommendations = [
+            (self.board_view.legal_by_uci[info['pv'][0]], rank)
+            for rank, info in sorted(lines.items()) if info.get('pv')
+            and info['pv'][0] in self.board_view.legal_by_uci]
+        self.board_view.update()
+        by_move = {info['pv'][0]: info for info in lines.values() if info.get('pv')}
+        self.maia_column_title.setText('LC0 · W/D/L')
+        self.maia_column_title.show()
+        for rank, badge in self.candidates.maia_labels.items():
+            line = self.candidates.display_line(rank)
+            info = by_move.get(line['pv'][0]) if line and line.get('pv') else None
+            wdl = self.leela_panel._wdl(info) if info else None
+            badge.setVisible(bool(line and line.get('pv')))
+            badge.setText('/'.join(f'{n/10:.0f}' for n in wdl) if wdl else '—')
+            badge.setToolTip('Leela win / draw / loss percentages for the selected side')
+
     def _set_maia_enabled(self, enabled):
+        if enabled:
+            self.config['leela_enabled'] = False
+            self.leela_panel.stop()
+            self.board_view.leela_recommendations = []
         self.config["maia_enabled"] = bool(enabled)
         if not enabled:
             self.maia.stop()
@@ -1896,6 +1937,15 @@ class MainWindow(QMainWindow):
     def _request_maia(self):
         if not hasattr(self, "maia"):
             return
+        leela = self.config.get('leela_enabled', False) and self.analysis_mode and not self._auto_play_active
+        self.maia_controls.leela.blockSignals(True)
+        self.maia_controls.leela.setChecked(self.config.get('leela_enabled', False))
+        self.maia_controls.leela.blockSignals(False)
+        self.leela_panel.active = leela
+        if leela:
+            self.leela_panel.request(self.game)
+        else:
+            self.leela_panel.stop()
         self.maia.set_rating_range(self.config.get("maia_rating_min", 600), self.config.get("maia_rating_max", 3000))
         self._sync_maia_range_controls()
         enabled = self.config.get("maia_enabled", True)
@@ -1951,6 +2001,8 @@ class MainWindow(QMainWindow):
         self.maia_controls.set_policy(policy, self.game.board)
         self.maia_insights.outcome_bar.set_outcome(self.maia.outcomes.get(str(rating)) if self.analysis_mode and self.config.get("maia_enabled", True) else None)
         self.maia_insights.set_data(policies, self.game.board, rating, self._appearance_config())
+        if self.config.get('leela_enabled'):
+            self._leela_results(self.leela_panel.lines)
         self._sync_blunder()
         self._protect_analysis_chart()
         if self._dock_workspace is not None:
@@ -2032,6 +2084,8 @@ class MainWindow(QMainWindow):
             except (ValueError, IndexError):
                 continue
         self.board_view.set_recommendations(entries, inferior_ranks=inferior_ranks)
+        if self.config.get('leela_enabled'):
+            self._leela_results(self.leela_panel.lines)
 
     def _insert_candidate(self, rank, ply=None):
         if self._candidate_identity != self._position_identity() or not self.candidates.display_line(rank):
@@ -3270,6 +3324,10 @@ class MainWindow(QMainWindow):
         insights.trends_card.setVisible(show_tools)
         insights.blunder.setVisible(show_tools)
         self.blunder_scroll.setVisible(show_tools)
+        if hasattr(self, 'leela_panel'):
+            if self.candidate_splitter.indexOf(self.leela_panel) < 0:
+                self.candidate_splitter.addWidget(self.leela_panel)
+            self.leela_panel.setVisible(self.analysis_mode and self.config.get('leela_enabled', False))
         if self._dock_workspace is None:
             self.right_detail_splitter.addWidget(self.graph)
             self.graph.setMaximumHeight(85)
@@ -4797,6 +4855,7 @@ class MainWindow(QMainWindow):
         self.explorer.close_client()
         self.opening_coverage.close()
         self.engine.close()
+        self.leela_panel.shutdown()
         self.maia.stop()
         self.game.pause_clock()
         self._save(force=True)
