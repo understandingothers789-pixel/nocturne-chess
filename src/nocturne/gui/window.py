@@ -1809,7 +1809,9 @@ class MainWindow(QMainWindow):
             self.maia.stop()
         else:
             self.leela_panel.stop()
-            self.board_view.leela_recommendations = []
+            if self.board_view.leela_recommendations:
+                self.board_view.leela_recommendations = []
+                self.board_view.update()
         self._request_maia()
         self._sync_insight_layout()
         self._save()
@@ -1867,7 +1869,9 @@ class MainWindow(QMainWindow):
         if enabled:
             self.config['leela_enabled'] = False
             self.leela_panel.stop()
-            self.board_view.leela_recommendations = []
+            if self.board_view.leela_recommendations:
+                self.board_view.leela_recommendations = []
+                self.board_view.update()
         self.config["maia_enabled"] = bool(enabled)
         if not enabled:
             self.maia.stop()
