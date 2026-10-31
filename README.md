@@ -22,7 +22,7 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
 
-**[Download 0.5.7.132 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41246179300/artifacts/13059389528).** Adds a combined Maia and Leela analysis view with an option to restore exclusive engine selection. Windows validation and packaged startup checks passed. See the [Leela guide](docs/LEELA.md).
+**[Download 0.5.7.133 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41248111096/artifacts/13060061977).** Adds a combined Maia and Leela analysis view, optional exclusive engine selection in Details, and keeps Maia probabilities in the Stockfish candidate column. Windows validation and packaged startup checks passed. See the [Leela guide](docs/LEELA.md).
 
 **[Download 0.5.7.130 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41176494213/artifacts/13033093018).** Adds automatic discrete Radeon selection and DirectML adapter name/index/VRAM in Leela Advanced, plus Time, Nodes and Unlimited search modes. Node searches have no hidden time/depth cap. Local limit/selection checks, Windows suite and packaged startup checks passed. See the [Leela guide](docs/LEELA.md).
 
