@@ -418,7 +418,8 @@ class LeelaPanel(QWidget):
         return values
 
     def _render(self):
-        if not self.active or self.identity is None:
+        if (not self.active or not self.identity or not self.game
+                or self.game.board.fen() != self.identity[0]):
             return
         light = bool(QApplication.instance().property('nocturneLightAppearance'))
         colors = palette(light)

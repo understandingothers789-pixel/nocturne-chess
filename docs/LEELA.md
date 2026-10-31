@@ -59,9 +59,10 @@ Selection is passed at process startup and through UCI BackendOptions, and
 changing GPUs restarts the Leela process. No CPU backend fallback is configured.
 Adapter enumeration runs in the setup worker, not on the GUI thread.
 
-Choose Time, Nodes or Unlimited in Advanced. Time remains the existing default.
-Nodes defaults to 100,000 and sends only `go nodes N`, with no time/depth cap.
-Unlimited sends `go infinite` and stops on navigation or disabling Leela.
+In Advanced, enable time, nodes, both, or neither. The first enabled limit to
+be reached stops analysis. With time disabled, nodes defaults to 100,000 and
+sends `go nodes N` without a hidden time/depth cap. With both disabled, Leela
+sends `go infinite` and stops on navigation or disabling Leela.
 Only completed searches satisfy cached bounded requests; cancelled partial
 searches cannot silently satisfy a later node budget.
 

@@ -1843,6 +1843,8 @@ class MainWindow(QMainWindow):
     def _leela_results(self, lines):
         if not self.config.get('leela_enabled'):
             return
+        if not self.leela_panel.identity or self.leela_panel.identity[0] != self.game.board.fen():
+            lines = {}
         recommendations = [
             (self.board_view.legal_by_uci[info['pv'][0]], rank)
             for rank, info in sorted(lines.items()) if info.get('pv')

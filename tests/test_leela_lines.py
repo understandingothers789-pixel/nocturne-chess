@@ -19,7 +19,7 @@ class LeelaLineTests(unittest.TestCase):
             try:
                 panel.active = True
                 panel.game = Game()
-                panel.identity = ('fixture',)
+                panel.identity = (panel.game.board.fen(),)
                 panel.lines = {1: dict(multipv=1, score_type='cp', score_value=25,
                                       depth=12, seldepth=19, nodes=12345, nps=2000,
                                       pv=['e2e4', 'e7e5'], san=['e4', 'e5'],
@@ -143,6 +143,28 @@ class LeelaLineTests(unittest.TestCase):
                 self.assertFalse(panel.nodes.isEnabled())
                 panel.time_enabled.setChecked(False)
                 self.assertEqual(config['leela_limit'], 'infinite')
+            finally:
+                panel.shutdown()
+                panel.close()
+                panel.deleteLater()
+                app.processEvents()
+
+    def test_late_update_and_redraw_are_ignored_after_position_changes(self):
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as folder:
+            panel = LeelaPanel(Path(folder), dict(DEFAULTS))
+            try:
+                panel.active = True
+                panel.game = Game()
+                panel.identity = (panel.game.board.fen(),)
+                panel.lines = {1: dict(multipv=1, score_type='cp', score_value=25,
+                                      depth=12, seldepth=19, nodes=12345, nps=2000,
+                                      pv=['e2e4'], san=['e4'], wdl=(600, 300, 100))}
+                panel.game.play(panel.game.board.parse_uci('d2d4'))
+                panel._message(0, 'info', dict(multipv=2))
+                self.assertNotIn(2, panel.lines)
+                panel._render()
+                self.assertFalse(panel.rows)
             finally:
                 panel.shutdown()
                 panel.close()
