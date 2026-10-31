@@ -1298,17 +1298,21 @@ class MainWindow(QMainWindow):
         super().keyPressEvent(event)
 
     def _is_top_menu(self, menu):
-        pending = [action.menu() for action in self.menuBar().actions() if action.menu()]
+        pending = [menu]
         seen = set()
         while pending:
             current = pending.pop()
-            if current is menu:
+            if current is self.menuBar():
                 return True
             if current in seen:
                 continue
             seen.add(current)
             try:
-                pending.extend(action.menu() for action in current.actions() if action.menu())
+                parent = current.parent()
+                if parent is not None:
+                    pending.append(parent)
+                if isinstance(current, QMenu):
+                    pending.extend(current.menuAction().associatedObjects())
             except RuntimeError:
                 continue
         return False
