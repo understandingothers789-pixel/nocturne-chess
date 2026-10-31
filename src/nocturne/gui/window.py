@@ -1325,7 +1325,8 @@ class MainWindow(QMainWindow):
             action = watched.actionAt(point)
             if action and action.isCheckable() and action.isEnabled():
                 rect = watched.actionGeometry(action)
-                if point.x() < rect.left() + 24:
+                # Leave a submenu's arrow available for opening its settings.
+                if action.menu() is None or point.x() < rect.right() - 24:
                     if event.type() == QEvent.Type.MouseButtonRelease:
                         if action is self.stockfish_arrow_action:
                             action.setChecked(not action.isChecked())
