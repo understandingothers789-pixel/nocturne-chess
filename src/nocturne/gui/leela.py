@@ -9,11 +9,12 @@ import zipfile
 
 from PySide6.QtCore import QThread, QTimer, Signal, QPoint
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QHBoxLayout, QLabel,
-                              QSpinBox, QComboBox, QPushButton)
+                              QSpinBox, QComboBox, QPushButton, QCheckBox)
 from .engine import EngineController
 from ..engine.uci_types import AnalysisLimits, score_label
 from .moves import MoveText
 from .theme import palette
+from .leela_gpu import directml_adapters, preferred_adapter
 from PySide6.QtWidgets import QApplication
 
 NETWORK = 'https://storage.lczero.org/files/networks-contrib/BT4-1024x15x32h-swa-6147500-policytune-332.pb.gz'
@@ -21,7 +22,7 @@ NETWORK = 'https://storage.lczero.org/files/networks-contrib/BT4-1024x15x32h-swa
 
 class LeelaInstaller(QThread):
     status = Signal(str)
-    ready = Signal(str, str)
+    ready = Signal(str, str, object)
     failed = Signal(str)
 
     def __init__(self, root, parent=None):
@@ -54,6 +55,11 @@ class LeelaInstaller(QThread):
         try:
             if os.name != 'nt':
                 raise RuntimeError('Automatic Leela DirectML setup requires Windows x64.')
+            self.status.emit('Detecting DirectML GPU adapters…')
+            try:
+                gpu_info = dict(adapters=directml_adapters(), error='')
+            except (OSError, ValueError, AttributeError) as exc:
+                gpu_info = dict(adapters=[], error=str(exc))
             self.root.mkdir(parents=True, exist_ok=True)
             manifest = self.root / 'installed.json'
             if not manifest.exists():
@@ -90,7 +96,7 @@ class LeelaInstaller(QThread):
             if not weights.exists() or not (self.root / 'DirectML.dll').exists():
                 manifest.unlink(missing_ok=True)
                 raise RuntimeError('Incomplete setup. Click Retry setup to repair it.')
-            self.ready.emit(str(exe), str(weights))
+            self.ready.emit(str(exe), str(weights), gpu_info)
         except Exception as exc:
             self.failed.emit(str(exc))
 
@@ -113,6 +119,10 @@ class LeelaPanel(QWidget):
         self.active = False
         self.exe = self.weights = ''
         self.cache = OrderedDict()
+        self.completed_cache = set()
+        self.adapters = []
+        self.gpu_error = ""
+        self._launched_device = None
         self.engine = EngineController(self)
         self.engine.connection.timeout_ms = 120000
         self.engine.message.connect(self._message)
@@ -132,7 +142,7 @@ class LeelaPanel(QWidget):
         self.status = QLabel('Enable Leela to set up GPU analysis')
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
-        details = QPushButton('Details · rating assumptions')
+        details = QPushButton('Advanced · ratings, GPU and search limits')
         details.setCheckable(True)
         layout.addWidget(details)
         settings = QWidget()
@@ -154,10 +164,27 @@ class LeelaPanel(QWidget):
         self.seconds = QSpinBox()
         self.seconds.setRange(1, 120)
         self.seconds.setValue(config['leela_seconds'])
+        self.limit_mode = QComboBox()
+        self.limit_mode.addItem('Time', 'time')
+        self.limit_mode.addItem('Nodes', 'nodes')
+        self.limit_mode.addItem('Unlimited', 'infinite')
+        self.limit_mode.setCurrentIndex(self.limit_mode.findData(config['leela_limit']))
+        self.nodes = QSpinBox()
+        self.nodes.setRange(1, 2000000000)
+        self.nodes.setGroupSeparatorShown(True)
+        self.nodes.setValue(config['leela_nodes'])
+        self.auto_gpu = QCheckBox('Automatically select discrete GPU (prefer Radeon)')
+        self.auto_gpu.setChecked(config['leela_gpu_auto'])
+        self.gpu_info = QLabel('Backend: ONNX DirectML GPU · adapter detected when Leela starts')
+        self.gpu_info.setWordWrap(True)
         self.device = QSpinBox()
-        self.device.setRange(0, 16)
+        self.device.setRange(0, 31)
         self.device.setValue(config['leela_device'])
+        form.addRow('Search limit', self.limit_mode)
         form.addRow('Seconds per position', self.seconds)
+        form.addRow('Nodes per position', self.nodes)
+        form.addRow(self.auto_gpu)
+        form.addRow('GPU backend / adapter', self.gpu_info)
         form.addRow('DirectML GPU index', self.device)
         layout.addWidget(settings)
         settings.hide()
@@ -168,6 +195,10 @@ class LeelaPanel(QWidget):
         self.opponent.valueChanged.connect(lambda: self._settings(opponent=True))
         self.seconds.valueChanged.connect(self._settings)
         self.device.valueChanged.connect(self._settings)
+        self.limit_mode.currentIndexChanged.connect(self._settings)
+        self.nodes.valueChanged.connect(self._settings)
+        self.auto_gpu.toggled.connect(self._settings)
+        self._sync_limit_controls()
         self.outcome = QLabel('Win —    Draw —    Loss —')
         self.outcome.setWordWrap(True)
         layout.addWidget(self.outcome)
@@ -195,6 +226,21 @@ class LeelaPanel(QWidget):
         layout.addLayout(row)
         self.lines = {}
 
+    def _sync_limit_controls(self):
+        self.seconds.setEnabled(self.limit_mode.currentData() == 'time')
+        self.nodes.setEnabled(self.limit_mode.currentData() == 'nodes')
+        self.device.setEnabled(not self.auto_gpu.isChecked())
+
+    def _sync_gpu(self, active=False):
+        selected = next((item for item in self.adapters if item['index'] == self.device.value()), None)
+        if selected:
+            name = f"{selected['name']} · {selected['memory_mb']:,} MB dedicated VRAM"
+        else:
+            name = 'Adapter name unavailable' + (': ' + self.gpu_error if self.gpu_error else '')
+        prefix = 'Active' if active else 'Configured'
+        self.gpu_info.setText(f'{prefix}: ONNX DirectML GPU · index {self.device.value()}\n{name}')
+        self.gpu_info.setToolTip('DXGI adapter indices match the DirectML device setting. No CPU backend fallback is configured.')
+
     def _settings(self, *args, opponent=False):
         if opponent:
             gap = self.rating.value() - self.opponent.value()
@@ -205,7 +251,16 @@ class LeelaPanel(QWidget):
             self.opponent.blockSignals(True)
             self.opponent.setValue(self.rating.value() - self.gap.value())
             self.opponent.blockSignals(False)
-        self.config.update(leela_side=self.side.currentText().lower(), leela_rating=self.rating.value(),
+        if self.auto_gpu.isChecked():
+            selected = preferred_adapter(self.adapters)
+            if selected:
+                self.device.blockSignals(True)
+                self.device.setValue(selected['index'])
+                self.device.blockSignals(False)
+        self._sync_limit_controls()
+        self._sync_gpu()
+        self.config.update(leela_limit=self.limit_mode.currentData(), leela_nodes=self.nodes.value(),
+                           leela_gpu_auto=self.auto_gpu.isChecked(), leela_side=self.side.currentText().lower(), leela_rating=self.rating.value(),
                            leela_gap=self.gap.value(), leela_seconds=self.seconds.value(),
                            leela_device=self.device.value())
         self.identity = None
@@ -232,10 +287,12 @@ class LeelaPanel(QWidget):
         self.installer.ready.connect(self._ready)
         self.installer.start()
 
-    def _ready(self, exe, weights):
+    def _ready(self, exe, weights, gpu_info=None):
         self.exe, self.weights = exe, weights
-        if self.active:
-            self.timer.start()
+        gpu_info = gpu_info or {}
+        self.adapters = gpu_info.get('adapters', [])
+        self.gpu_error = gpu_info.get('error', '')
+        self._settings()
 
     def request(self, game, force=False):
         if not self.active:
@@ -243,9 +300,11 @@ class LeelaPanel(QWidget):
         self.game = game
         key = (game.board.fen(), tuple(m.uci() for m in game.moves[:game.cursor]),
                self.config['leela_side'], self.config['leela_rating'], self.config['leela_gap'],
-               self.config['leela_seconds'], self.config['leela_device'])
+               self.config['leela_seconds'], self.config['leela_device'],
+               self.config['leela_limit'], self.config['leela_nodes'], self.config['leela_gpu_auto'])
         if key == self.identity and not force:
             return
+        self._sync_gpu()
         self.engine.stop()
         self.render_timer.stop()
         self.identity = key
@@ -256,11 +315,12 @@ class LeelaPanel(QWidget):
         self.telemetry.setText("Depth — · Nodes —")
         self.outcome.setText('Win —    Draw —    Loss —')
         self.results_changed.emit({})
-        if key in self.cache and not force:
+        if key in self.cache and key in self.completed_cache and not force and self.config['leela_limit'] != 'infinite':
             self.lines = dict(self.cache[key])
             self._render()
             self._status('Leela · cached WDL analysis')
             return
+        self.completed_cache.discard(key)
         self._status('Leela · waiting to analyze…')
         self.timer.start()
 
@@ -271,6 +331,17 @@ class LeelaPanel(QWidget):
             self.setup()
             return
         cfg = self.config
+        if cfg['leela_gpu_auto'] and preferred_adapter(self.adapters) is None:
+            self._status('GPU detection failed. In Advanced, disable automatic selection and choose an adapter index manually.')
+            return
+        selected = next((item for item in self.adapters if item['index'] == cfg['leela_device']), None)
+        if selected and selected.get('software'):
+            self._status('The selected adapter is a software renderer. Choose a hardware GPU.')
+            return
+        self._sync_gpu()
+        if self._launched_device != cfg['leela_device']:
+            self.engine.close()
+            self._launched_device = cfg['leela_device']
         options = {'Backend': 'onnx-dml', 'WeightsFile': self.weights,
                    'BackendOptions': f'gpu={cfg["leela_device"]}', 'UCI_ShowWDL': True,
                    'ScoreType': 'centipawn',
@@ -281,9 +352,13 @@ class LeelaPanel(QWidget):
                    'WDLDrawRateReference': '0.62', 'MovesLeftThreshold': '0.95',
                    'Threads': 2, 'NNCacheSize': 200000}
         try:
-            self.engine.start(self.game, AnalysisLimits(depth=128, seconds=cfg['leela_seconds']),
+            self.engine.start(self.game, AnalysisLimits(depth=128, seconds=cfg['leela_seconds'],
+                                                         nodes=cfg['leela_nodes'] if cfg['leela_limit'] == 'nodes' else None),
                               external=self.exe, kind='analysis', multipv=5, options=options,
-                              arguments=['--backend=onnx-dml', '--minibatch-size=16', '--weights=' + self.weights])
+                              infinite=cfg['leela_limit'] == 'infinite',
+                              nodes_only=cfg['leela_limit'] == 'nodes',
+                              arguments=['--backend=onnx-dml', f'--backend-opts=gpu={cfg["leela_device"]}',
+                                         '--minibatch-size=16', '--weights=' + self.weights])
             self._status('Leela · DirectML GPU analysis')
         except (ValueError, OSError) as exc:
             self._status('Leela: ' + str(exc))
@@ -292,17 +367,20 @@ class LeelaPanel(QWidget):
         if not self.active:
             return
         if kind == 'info':
+            self._sync_gpu(active=True)
             self.lines[info['multipv']] = info
             if not self.render_timer.isActive():
                 self.render_timer.start()
         elif kind == 'error':
             self._status('Leela: ' + info.get('message', 'Engine error'))
         elif kind == 'result':
+            self._sync_gpu()
+            self.completed_cache.add(self.identity)
             self.render_timer.stop()
             self._render()
             nodes = max((line.get('nodes', 0) for line in self.lines.values()), default=0)
             self._status('Leela · analysis complete' if nodes >= 10000 else
-                         'Leela · short search: increase seconds for more reliable contempt results')
+                         'Leela · short search: increase the search limit for more reliable contempt results')
 
     def _wdl(self, info):
         values = info.get('wdl')
@@ -359,7 +437,8 @@ class LeelaPanel(QWidget):
         self.cache[self.identity] = dict(self.lines)
         self.cache.move_to_end(self.identity)
         while len(self.cache) > 128:
-            self.cache.popitem(last=False)
+            old_key, _ = self.cache.popitem(last=False)
+            self.completed_cache.discard(old_key)
         self.results_changed.emit(self.lines)
 
     def _hover(self, rank, ply):

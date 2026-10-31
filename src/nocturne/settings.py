@@ -34,6 +34,9 @@ DEFAULTS = {
     "leela_rating": 2700,
     "leela_gap": 250,
     "leela_seconds": 10,
+    "leela_limit": "time",
+    "leela_nodes": 100000,
+    "leela_gpu_auto": True,
     "leela_device": 0,
     "maia_rating": 1800,
     "maia_device": "auto",
@@ -148,6 +151,7 @@ def normalize(data) -> dict:
         "show_raw_pgn",
         "maia_enabled",
         "leela_enabled",
+        "leela_gpu_auto",
         "maia_arrows",
         "show_maia_insights",
         "swap_rating_game_line",
@@ -262,9 +266,10 @@ def normalize(data) -> dict:
         result[key] = value if type(value) is int and 1 <= value <= 2000 else default
     if result["candidate_arrow_yellow_cp"] < result["candidate_arrow_green_cp"]:
         result["candidate_arrow_yellow_cp"] = result["candidate_arrow_green_cp"]
+    result['leela_limit'] = data.get('leela_limit') if data.get('leela_limit') in ('time', 'nodes', 'infinite') else 'time'
     result['leela_side'] = 'white' if data.get('leela_side') == 'white' else 'black'
     for key, low, high in (('leela_rating', 800, 3500), ('leela_gap', -2000, 2000),
-                           ('leela_seconds', 1, 120), ('leela_device', 0, 16)):
+                           ('leela_seconds', 1, 120), ('leela_device', 0, 31), ('leela_nodes', 1, 2000000000)):
         value = data.get(key)
         if type(value) is int:
             result[key] = max(low, min(high, value))
