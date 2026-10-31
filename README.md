@@ -17,7 +17,7 @@ available. Database and graph visibility still follow their existing settings.
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
-![Nocturne Chess 0.5.7.131 analyzing a game with Stockfish, Maia, and the Moves by Rating and Blunder Meter panels](docs/nocturne-131.png)
+![Nocturne Chess 0.5.7.131 analyzing a game with Stockfish, Maia, and the Moves by Rating and Blunder Meter panels](docs/nocturne-131-latest.png)
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
