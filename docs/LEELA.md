@@ -39,3 +39,13 @@ Sources:
 - https://lczero.org/play/networks/bestnets/
 - https://lczero.org/play/configuration/flags/
 - https://lczero.org/blog/2024/03/gm-matthew-sadler-on-wdl-contempt/
+
+## Candidate lines
+
+Leela uses the same move-text renderer as Stockfish, with figurine notation,
+White/Black move colors, and hover-board previews. Clicking a move inserts the
+variation through that move. Numeric evaluations use Lc0 ScoreType=centipawn,
+with White-positive display; they remain Leela estimates rather than Stockfish
+scores. W/D/L stays in the selected matchup side’s perspective. The telemetry
+shows reported depth, selective depth, nodes and nodes/second. Lc0 depth is not
+directly comparable to Stockfish depth.
