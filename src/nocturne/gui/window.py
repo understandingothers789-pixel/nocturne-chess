@@ -1307,13 +1307,16 @@ class MainWindow(QMainWindow):
             if current in seen:
                 continue
             seen.add(current)
-            pending.extend(action.menu() for action in current.actions() if action.menu())
+            try:
+                pending.extend(action.menu() for action in current.actions() if action.menu())
+            except RuntimeError:
+                continue
         return False
 
     def eventFilter(self, watched, event):
-        if (isinstance(watched, QMenu) and self._is_top_menu(watched)
-                and event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease)
-                and event.button() == Qt.MouseButton.LeftButton):
+        if (event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease)
+                and isinstance(watched, QMenu) and event.button() == Qt.MouseButton.LeftButton
+                and self._is_top_menu(watched)):
             point = event.position().toPoint()
             action = watched.actionAt(point)
             if action and action.isCheckable() and action.isEnabled():
