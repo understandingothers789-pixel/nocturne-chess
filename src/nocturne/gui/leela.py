@@ -7,7 +7,7 @@ from pathlib import Path
 import urllib.request
 import zipfile
 
-from PySide6.QtCore import QThread, QTimer, Signal
+from PySide6.QtCore import QThread, QTimer, Signal, QPoint
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QHBoxLayout, QLabel,
                               QSpinBox, QComboBox, QPushButton)
 from .engine import EngineController
@@ -101,7 +101,7 @@ class LeelaPanel(QWidget):
     results_changed = Signal(object)
     preview = Signal(object, int)
     preview_end = Signal()
-    pointer_moved = Signal(object)
+    pointer_moved = Signal(QPoint)
     line_selected = Signal(object)
 
     def __init__(self, root, config, parent=None):
