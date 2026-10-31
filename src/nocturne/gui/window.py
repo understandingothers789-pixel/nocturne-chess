@@ -3259,7 +3259,8 @@ class MainWindow(QMainWindow):
         self._apply_appearance(self._appearance_config())
         self.candidates.set_show_seldepth(self.config.get("show_seldepth", False))
         self.maia_insights.outcome_bar.set_label_visible(self.config.get("show_maia_eval_label", True))
-        self.maia_insights.set_outcome_bar_visible(self.config.get("show_maia_eval_bar", True))
+        self.maia_insights.set_outcome_bar_visible(self.config.get("show_maia_eval_bar", True)
+                                                 and not self.config.get("leela_enabled", False))
         self.candidates.set_detailed(self.config.get("details", False))
         if self._last_info:
             self._render_telemetry(self._last_info, self._last_info_turn)
