@@ -1302,13 +1302,17 @@ class MainWindow(QMainWindow):
         if (watched is getattr(self, "stockfish_arrow_display_menu", None)
                 and event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease)
                 and event.button() == Qt.MouseButton.LeftButton):
-            action = self.stockfish_arrow_action
-            rect = watched.actionGeometry(action)
             point = event.position().toPoint()
-            if rect.contains(point) and point.x() < rect.right() - 28:
-                if event.type() == QEvent.Type.MouseButtonRelease:
-                    action.setChecked(not action.isChecked())
-                return True
+            action = watched.actionAt(point)
+            if action and action.isCheckable() and action.isEnabled():
+                rect = watched.actionGeometry(action)
+                if point.x() < rect.left() + 24:
+                    if event.type() == QEvent.Type.MouseButtonRelease:
+                        if action is self.stockfish_arrow_action:
+                            action.setChecked(not action.isChecked())
+                        else:
+                            action.trigger()
+                    return True
         if self._closing:
             return super().eventFilter(watched, event)
         if (watched is getattr(self, "bottom_moves_handle", None)
