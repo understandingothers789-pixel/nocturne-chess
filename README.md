@@ -22,6 +22,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt capture of the main line after 13...Bd7. Stockfish 17.1 NNUE reached depth 25 and reported +0.49 after 9,528,716 nodes. Maia is disabled in this capture.*
 
 
+**[Download 0.5.7.128 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41166910840/artifacts/13029776159).** Adds optional Leela WDL contempt analysis beside Maia, with automatic Windows DirectML setup, adjustable matchup ratings, a White/Black perspective switch, WDL candidates and board rods. Enable Leela WDL to download the latest stable Lc0 and BT4 network on first use. See the [Leela setup and controls guide](docs/LEELA.md). Windows tests, packaged startup and live database checks passed; actual Radeon GPU execution has not been tested on the build runner. Version 0.5.7.127 below remains the pre-Leela build.
+
 **[Download 0.5.7.127 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41162777220/artifacts/13027483585).** Keeps top menus open when clicking checkable settings. Windows tests and packaged startup checks passed.
 
 **[Download 0.5.7.126 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41158981263/artifacts/13026163252).** Clicking the checkmark area of a top-menu setting toggles it while keeping the menu open. Windows tests and packaged startup checks passed.
