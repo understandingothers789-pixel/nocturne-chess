@@ -234,6 +234,10 @@ class MainWindow(QMainWindow):
         self.maia.status.connect(self.maia_controls.status.setText)
         self.leela_panel = LeelaPanel(self.data_directory, self.config, self)
         self.leela_panel.move_selected.connect(self._maia_move)
+        self.leela_panel.preview.connect(self._preview_leela)
+        self.leela_panel.preview_end.connect(lambda: self._end_preview('leela'))
+        self.leela_panel.pointer_moved.connect(self._move_cursor_preview)
+        self.leela_panel.line_selected.connect(self._insert_leela)
         self.leela_panel.settings_changed.connect(lambda: self._save(defer=True))
         self.leela_panel.results_changed.connect(self._leela_results)
         self.maia_controls.leela.toggled.connect(self._set_leela_enabled)
@@ -1808,6 +1812,32 @@ class MainWindow(QMainWindow):
         self._request_maia()
         self._sync_insight_layout()
         self._save()
+
+    def _preview_leela(self, pv, ply):
+        if not self.config.get('leela_enabled'):
+            return
+        board = self.game.board.copy()
+        try:
+            for text in pv[:ply]:
+                board.push(board.parse_uci(text))
+        except ValueError:
+            return
+        self._show_move_preview('leela', board, caption=f'Leela preview · ply {ply}')
+
+    def _insert_leela(self, pv):
+        board = self.game.board.copy()
+        parsed = []
+        try:
+            for text in pv:
+                move = board.parse_uci(text)
+                parsed.append(move)
+                board.push(move)
+        except ValueError:
+            return
+        self._stop_engine()
+        for move in parsed:
+            self.game.play(move)
+        self._refresh(animate=len(parsed) == 1, defer_secondary=self.analysis_mode)
 
     def _leela_results(self, lines):
         if not self.config.get('leela_enabled'):

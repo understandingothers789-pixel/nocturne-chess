@@ -7,12 +7,14 @@ from pathlib import Path
 import urllib.request
 import zipfile
 
-from PySide6.QtCore import QThread, QTimer, Signal, Qt
+from PySide6.QtCore import QThread, QTimer, Signal
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QHBoxLayout, QLabel,
-                              QSpinBox, QComboBox, QPushButton, QTableWidget,
-                              QTableWidgetItem, QHeaderView)
+                              QSpinBox, QComboBox, QPushButton)
 from .engine import EngineController
-from ..engine.uci_types import AnalysisLimits
+from ..engine.uci_types import AnalysisLimits, score_label
+from .moves import MoveText
+from .theme import palette
+from PySide6.QtWidgets import QApplication
 
 NETWORK = 'https://storage.lczero.org/files/networks-contrib/BT4-1024x15x32h-swa-6147500-policytune-332.pb.gz'
 
@@ -97,6 +99,10 @@ class LeelaPanel(QWidget):
     settings_changed = Signal()
     move_selected = Signal(str)
     results_changed = Signal(object)
+    preview = Signal(object, int)
+    preview_end = Signal()
+    pointer_moved = Signal(object)
+    line_selected = Signal(object)
 
     def __init__(self, root, config, parent=None):
         super().__init__(parent)
@@ -168,12 +174,17 @@ class LeelaPanel(QWidget):
         note = QLabel('Model estimates for the selected side and matchup; not human move probabilities.')
         note.setWordWrap(True)
         layout.addWidget(note)
-        self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels(['Move', 'W / D / L', 'Variation'])
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.table.cellClicked.connect(self._clicked)
-        layout.addWidget(self.table, 1)
+        self.telemetry = QLabel('Depth — · Nodes —')
+        layout.addWidget(self.telemetry)
+        self.variations = QVBoxLayout()
+        self.variations.setSpacing(0)
+        self.rows = {}
+        layout.addLayout(self.variations)
+        layout.addStretch(1)
+        self.leave_timer = QTimer(self)
+        self.leave_timer.setSingleShot(True)
+        self.leave_timer.setInterval(140)
+        self.leave_timer.timeout.connect(self.preview_end)
         row = QHBoxLayout()
         retry = QPushButton('Retry setup')
         retry.clicked.connect(self.setup)
@@ -239,7 +250,10 @@ class LeelaPanel(QWidget):
         self.render_timer.stop()
         self.identity = key
         self.lines = {}
-        self.table.setRowCount(0)
+        self.preview_end.emit()
+        for moves, badge, frame in self.rows.values():
+            frame.hide()
+        self.telemetry.setText("Depth — · Nodes —")
         self.outcome.setText('Win —    Draw —    Loss —')
         self.results_changed.emit({})
         if key in self.cache and not force:
@@ -259,6 +273,7 @@ class LeelaPanel(QWidget):
         cfg = self.config
         options = {'Backend': 'onnx-dml', 'WeightsFile': self.weights,
                    'BackendOptions': f'gpu={cfg["leela_device"]}', 'UCI_ShowWDL': True,
+                   'ScoreType': 'centipawn',
                    'ContemptMode': cfg['leela_side'] + '_side_analysis',
                    'WDLCalibrationElo': str(cfg['leela_rating']), 'Contempt': str(cfg['leela_gap']),
                    'ContemptMaxValue': '2000.0',
@@ -298,32 +313,66 @@ class LeelaPanel(QWidget):
     def _render(self):
         if not self.active or self.identity is None:
             return
-        self.table.setRowCount(len(self.lines))
-        for row, rank in enumerate(sorted(self.lines)):
+        light = bool(QApplication.instance().property('nocturneLightAppearance'))
+        colors = palette(light)
+        for rank in sorted(self.lines):
             info = self.lines[rank]
+            if rank not in self.rows:
+                frame = QWidget()
+                row = QHBoxLayout(frame)
+                row.setContentsMargins(0, 2, 0, 2)
+                moves = MoveText(auto_fit=True, reserved_lines=1)
+                moves.candidate_rank = rank
+                moves.font_increase = self.config.get('pv_font_increase', 20)
+                badge = QLabel()
+                badge.setFixedWidth(140)
+                row.addWidget(moves, 1)
+                row.addWidget(badge)
+                moves.move_hovered.connect(lambda ply, r=rank: self._hover(r, ply))
+                moves.move_clicked.connect(lambda ply, r=rank: self.line_selected.emit(self.lines[r]['pv'][:ply]))
+                moves.pointer_moved.connect(self.pointer_moved)
+                moves.preview_ended.connect(self.leave_timer.start)
+                moves.preview_gap_ended.connect(self.leave_timer.start)
+                self.variations.addWidget(frame)
+                self.rows[rank] = (moves, badge, frame)
+            moves, badge, frame = self.rows[rank]
+            frame.show()
+            frame.setStyleSheet('background: ' + colors['soft'] + ';' if rank % 2 == 0 else '')
+            moves.candidate_turn = self.game.board.turn
+            moves.candidate_evaluation = score_label(info, self.game.board.turn)
+            moves.candidate_depth = info.get('depth') or None
+            moves.set_moves([(text, i + 1) for i, text in enumerate(info['san'])], light=light, figurines=True)
             wdl = self._wdl(info)
-            text = ' / '.join(f'{n / 10:.1f}%' for n in wdl) if wdl else 'Awaiting WDL'
-            for column, value in enumerate([info['san'][0], text, ' '.join(info['san'])]):
-                item = QTableWidgetItem(value)
-                item.setData(Qt.ItemDataRole.UserRole, info['pv'][0])
-                self.table.setItem(row, column, item)
+            badge.setText(' / '.join(f'{n/10:.1f}' for n in wdl) if wdl else '— / — / —')
+            badge.setToolTip('Win / draw / loss percentages for ' + self.config['leela_side'] +
+                             '. Evaluation uses Lc0’s centipawn conversion, in White’s perspective.')
+            badge.setStyleSheet(f"color: {colors['maia']}; background: {colors['maia_soft']}; padding: 3px;")
             if rank == 1 and wdl:
                 self.outcome.setText(f'{self.config["leela_side"].title()}: Win {wdl[0]/10:.1f}%   Draw {wdl[1]/10:.1f}%   Loss {wdl[2]/10:.1f}%')
+        if self.lines:
+            depth = max(info.get('depth', 0) for info in self.lines.values())
+            seldepth = max(info.get('seldepth', 0) for info in self.lines.values())
+            nodes = max(info.get('nodes', 0) for info in self.lines.values())
+            nps = max(info.get('nps', 0) for info in self.lines.values())
+            self.telemetry.setText(f'Depth {depth} · Selective depth {seldepth} · Nodes {nodes:,} · Nodes/second {nps:,}')
+            self.telemetry.setToolTip('Lc0 reports search depth and selective depth. These describe its tree search and are not directly comparable to Stockfish depth.')
         self.cache[self.identity] = dict(self.lines)
         self.cache.move_to_end(self.identity)
         while len(self.cache) > 128:
             self.cache.popitem(last=False)
         self.results_changed.emit(self.lines)
 
-    def _clicked(self, row, column):
-        item = self.table.item(row, column)
-        if item:
-            self.move_selected.emit(item.data(Qt.ItemDataRole.UserRole))
+    def _hover(self, rank, ply):
+        self.leave_timer.stop()
+        if rank in self.lines:
+            self.preview.emit(self.lines[rank]['pv'], ply)
 
     def stop(self):
         self.active = False
         self.identity = None
         self.timer.stop()
+        self.leave_timer.stop()
+        self.preview_end.emit()
         self.render_timer.stop()
         self.engine.stop()
 
