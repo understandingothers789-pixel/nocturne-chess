@@ -253,6 +253,7 @@ class LeelaPanel(QWidget):
                    'BackendOptions': f'gpu={cfg["leela_device"]}', 'UCI_ShowWDL': True,
                    'ContemptMode': cfg['leela_side'] + '_side_analysis',
                    'WDLCalibrationElo': str(cfg['leela_rating']), 'Contempt': str(cfg['leela_gap']),
+                   'ContemptMaxValue': '2000.0',
                    'WDLEvalObjectivity': '0.0', 'WDLContemptAttenuation': '1.0',
                    'WDLDrawRateReference': '0.62', 'MovesLeftThreshold': '0.95',
                    'Threads': 2, 'NNCacheSize': 200000}
@@ -276,7 +277,9 @@ class LeelaPanel(QWidget):
         elif kind == 'result':
             self.render_timer.stop()
             self._render()
-            self._status('Leela · analysis complete')
+            nodes = max((line.get('nodes', 0) for line in self.lines.values()), default=0)
+            self._status('Leela · analysis complete' if nodes >= 10000 else
+                         'Leela · short search: increase seconds for more reliable contempt results')
 
     def _wdl(self, info):
         values = info.get('wdl')
