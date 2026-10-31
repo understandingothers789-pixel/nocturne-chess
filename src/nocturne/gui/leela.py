@@ -377,7 +377,8 @@ class LeelaPanel(QWidget):
                    'ContemptMaxValue': '2000.0',
                    'WDLEvalObjectivity': '0.0', 'WDLContemptAttenuation': '1.0',
                    'WDLDrawRateReference': '0.62', 'MovesLeftThreshold': '0.95',
-                   'Threads': 2, 'NNCacheSize': 200000}
+                   'Threads': 2, 'NNCacheSize': 200000,
+                   'MinibatchSize': cfg['leela_batch_size']}
         try:
             self.engine.start(self.game, AnalysisLimits(depth=128, seconds=cfg['leela_seconds'],
                                                          nodes=cfg['leela_nodes'] if cfg['leela_limit'] in ('nodes', 'both') else None),

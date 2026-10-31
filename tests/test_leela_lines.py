@@ -74,6 +74,7 @@ class LeelaLineTests(unittest.TestCase):
                     self.assertEqual(sent[2], 'go nodes 125000')
                     self.assertEqual(sent[3]['Backend'], 'onnx-dml')
                     self.assertEqual(sent[3]['BackendOptions'], 'gpu=1')
+                    self.assertEqual(sent[3]['MinibatchSize'], 16)
                     config['leela_limit'] = 'time'
                     panel._start()
                     self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go movetime 10000')
