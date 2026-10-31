@@ -1942,6 +1942,10 @@ class MainWindow(QMainWindow):
         self.maia_controls.leela.setChecked(self.config.get('leela_enabled', False))
         self.maia_controls.leela.blockSignals(False)
         self.leela_panel.active = leela
+        self.maia_controls.rating.setVisible(not leela)
+        self.maia_controls.all_moves.setVisible(not leela)
+        self.maia_insights.set_outcome_bar_visible(
+            self.config.get('show_maia_eval_bar', True) and not leela)
         if leela:
             self.leela_panel.request(self.game)
         else:

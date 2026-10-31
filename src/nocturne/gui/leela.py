@@ -115,6 +115,7 @@ class LeelaPanel(QWidget):
         self.render_timer.setInterval(200)
         self.render_timer.timeout.connect(self._render)
         self.engine.status.connect(self._status)
+        self.engine.discovered.connect(self._verify_engine)
         self.installer = None
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
@@ -200,6 +201,13 @@ class LeelaPanel(QWidget):
         self.settings_changed.emit()
         if self.game and self.active:
             self.request(self.game)
+
+    def _verify_engine(self, profile):
+        required = {'ContemptMode', 'Contempt', 'WDLCalibrationElo', 'UCI_ShowWDL'}
+        missing = required.difference(profile.get('options', {}))
+        if missing:
+            self.engine.stop()
+            self._status('Lc0 is missing required WDL options: ' + ', '.join(sorted(missing)))
 
     def _status(self, text):
         self.status.setText(text)
