@@ -811,7 +811,6 @@ class MainWindow(QMainWindow):
             "Green is within the first threshold, yellow within the second, and red is beyond it."
         )
         self.stockfish_arrow_action.toggled.connect(self._set_candidate_loss_arrows)
-        display.installEventFilter(self)
         arrow_threshold_action = QWidgetAction(self.stockfish_arrow_menu)
         arrow_threshold_widget = QWidget()
         arrow_threshold_layout = QFormLayout(arrow_threshold_widget)
@@ -1298,8 +1297,21 @@ class MainWindow(QMainWindow):
             return
         super().keyPressEvent(event)
 
+    def _is_top_menu(self, menu):
+        pending = [action.menu() for action in self.menuBar().actions() if action.menu()]
+        seen = set()
+        while pending:
+            current = pending.pop()
+            if current is menu:
+                return True
+            if current in seen:
+                continue
+            seen.add(current)
+            pending.extend(action.menu() for action in current.actions() if action.menu())
+        return False
+
     def eventFilter(self, watched, event):
-        if (watched is getattr(self, "stockfish_arrow_display_menu", None)
+        if (isinstance(watched, QMenu) and self._is_top_menu(watched)
                 and event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease)
                 and event.button() == Qt.MouseButton.LeftButton):
             point = event.position().toPoint()
