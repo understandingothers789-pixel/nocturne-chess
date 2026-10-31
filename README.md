@@ -17,9 +17,9 @@ available. Database and graph visibility still follow their existing settings.
 The 0.5 direction replaces the earlier custom-engine product. Historical engine
 source/tests remain for reproducibility; they are excluded from the desktop bundle.
 
-![Nocturne analyzing the Ruy Lopez Chigorin main line after 13...Bd7 with Stockfish 17.1 at depth 25](docs/studio-ui.png)
+![Nocturne Chess 0.5.7.131 analyzing a game with Stockfish, Maia, and the Moves by Rating and Blunder Meter panels](docs/nocturne-131.png)
 
-*Native Qt capture of the main line after 13...Bd7. Stockfish 17.1 NNUE reached depth 25 and reported +0.49 after 9,528,716 nodes. Maia is disabled in this capture.*
+*Native application capture of Nocturne Chess 0.5.7.131.*
 
 
 **[Download 0.5.7.131 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41242278692/artifacts/13058351593).** Adds independently enabled time and node limits for Leela and Stockfish, a tunable Leela GPU batch size, and fixes stale Leela results, unnecessary redraws, and Game Moves collapsing in saved docked layouts. Windows tests and packaged startup checks passed. See the [Leela guide](docs/LEELA.md).
