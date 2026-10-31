@@ -799,6 +799,12 @@ class MainWindow(QMainWindow):
         add(analysis, "Engine diagnostics…", self._diagnostics)
 
         display = self.menuBar().addMenu("&Display")
+        self.maia_right_action = add(display, "Maia panels on the right", self._set_maia_right)
+        self.exclusive_models_action = add(display, "Use only one of Maia or Leela", self._set_exclusive_models)
+        self.exclusive_models_action.setCheckable(True)
+        self.exclusive_models_action.setChecked(self.config.get("exclusive_analysis_models", False))
+        self.maia_right_action.setCheckable(True)
+        self.maia_right_action.setChecked(self.config.get("maia_panels_right", False))
         add(display, "Flip board", self._flip, "F")
         add(display, "Clear arrows and marks", self._escape, "Escape").setToolTip(
             "Clear board annotations and stop active automation")
@@ -1198,7 +1204,8 @@ class MainWindow(QMainWindow):
                 menu.setEnabled(self.config.get("explorer_source") == "lichess")
         if self._explorer_active and not active:
             self.explorer._end_preview()
-        self.explorer.setVisible(active)
+        self.explorer.setVisible(active and not (self.config.get("maia_panels_right", False) or
+                                (self.config.get("maia_enabled", True) and self.config.get("leela_enabled", False))))
         self.explorer.set_position(self.game.board, self._position_identity(), lookup,
                                    self.config.get("explorer_source", "masters"),
                                    self.config.get("explorer_speed", "all"),
@@ -1829,11 +1836,11 @@ class MainWindow(QMainWindow):
         process.start("py", ["-3.12", str(script), str(self.data_directory / "maia-gpu"), str(source), str(checkpoint)])
 
     def _set_leela_enabled(self, enabled):
-        self.config['leela_enabled'] = bool(enabled)
-        if enabled:
+        if enabled and self.config.get('exclusive_analysis_models', False):
             self.config['maia_enabled'] = False
             self.maia.stop()
-        else:
+        self.config['leela_enabled'] = bool(enabled)
+        if not enabled:
             self.leela_panel.stop()
             if self.board_view.leela_recommendations:
                 self.board_view.leela_recommendations = []
@@ -1892,17 +1899,17 @@ class MainWindow(QMainWindow):
             badge.setToolTip('Leela win / draw / loss percentages for the selected side')
 
     def _set_maia_enabled(self, enabled):
-        if enabled:
+        if enabled and self.config.get('exclusive_analysis_models', False):
             self.config['leela_enabled'] = False
             self.leela_panel.stop()
-            if self.board_view.leela_recommendations:
-                self.board_view.leela_recommendations = []
-                self.board_view.update()
+            self.board_view.leela_recommendations = []
+            self.board_view.update()
         self.config["maia_enabled"] = bool(enabled)
         if not enabled:
             self.maia.stop()
             self.maia_controls.status.setText("Maia disabled")
         self._request_maia()
+        self._sync_insight_layout()
         self._save()
 
     def _set_maia_range(self, low, high):
@@ -2014,8 +2021,8 @@ class MainWindow(QMainWindow):
         self.maia_controls.leela.setChecked(self.config.get('leela_enabled', False))
         self.maia_controls.leela.blockSignals(False)
         self.leela_panel.active = leela
-        self.maia_controls.rating.setVisible(not leela)
-        self.maia_controls.all_moves.setVisible(not leela)
+        self.maia_controls.rating.setVisible(not leela or self.config.get("maia_enabled", True))
+        self.maia_controls.all_moves.setVisible(not leela or self.config.get("maia_enabled", True))
         self.maia_insights.set_outcome_bar_visible(
             self.config.get('show_maia_eval_bar', True) and not leela)
         if leela:
@@ -3383,6 +3390,20 @@ class MainWindow(QMainWindow):
         self.engine.set_snapshot_capture(self.config.get("analysis_snapshots", False))
         self.confirm_review_action.setChecked(self.config.get("review_confirm", True))
 
+    def _set_exclusive_models(self, enabled):
+        self.config["exclusive_analysis_models"] = bool(enabled)
+        if enabled and self.config.get("leela_enabled", False):
+            self._set_leela_enabled(True)
+        else:
+            self._request_maia()
+            self._sync_insight_layout()
+            self._save()
+
+    def _set_maia_right(self, enabled):
+        self.config['maia_panels_right'] = bool(enabled)
+        self._sync_insight_layout()
+        self._save()
+
     def _sync_insight_layout(self):
         if not hasattr(self, "maia_insights"):
             return
@@ -3415,6 +3436,15 @@ class MainWindow(QMainWindow):
             self.analysis_detail_splitter.setSizes([650, 170])
         if self._dock_workspace is None and self.right_detail_splitter.indexOf(self.explorer) < 0:
             self.right_detail_splitter.addWidget(self.explorer)
+        right = self.config.get('maia_panels_right', False) or (
+            self.config.get('maia_enabled', True) and self.config.get('leela_enabled', False))
+        destination = self.right_detail_splitter if right else self.candidate_splitter
+        if destination.indexOf(insights.trends_card) < 0:
+            destination.addWidget(insights.trends_card)
+        destination = self.right_detail_splitter if right else self.analysis_detail_splitter
+        if destination.indexOf(self.blunder_scroll) < 0:
+            destination.addWidget(self.blunder_scroll)
+        self.explorer.setVisible(not right and self.config.get('explorer_enabled', False))
         show_tools = (self.analysis_mode and self.config.get("maia_enabled", True)
                       and self.config.get("show_maia_insights", True))
         insights.trends_card.setVisible(show_tools)
@@ -3429,7 +3459,7 @@ class MainWindow(QMainWindow):
             self.graph.setMaximumHeight(85)
             self.graph.setVisible(self.config.get("show_eval_graph", True))
         self._protect_analysis_chart()
-        self.game_line_panel.show()
+        self.game_line_panel.setVisible(not right)
         self._rating_game_line_swapped = True
 
     def _candidate_rows_changed(self):
