@@ -1889,16 +1889,6 @@ class MainWindow(QMainWindow):
         if recommendations != self.board_view.leela_recommendations:
             self.board_view.leela_recommendations = recommendations
             self.board_view.update()
-        by_move = {info['pv'][0]: info for info in lines.values() if info.get('pv')}
-        self.maia_column_title.setText('LC0 · W/D/L')
-        self.maia_column_title.show()
-        for rank, badge in self.candidates.maia_labels.items():
-            line = self.candidates.display_line(rank)
-            info = by_move.get(line['pv'][0]) if line and line.get('pv') else None
-            wdl = self.leela_panel._wdl(info) if info else None
-            badge.setVisible(bool(line and line.get('pv')))
-            badge.setText('/'.join(f'{n/10:.0f}' for n in wdl) if wdl else '—')
-            badge.setToolTip('Leela win / draw / loss percentages for the selected side')
 
     def _set_maia_enabled(self, enabled):
         if enabled and self.config.get('exclusive_analysis_models', False):
