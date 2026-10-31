@@ -537,6 +537,8 @@ class MainWindow(QMainWindow):
         self.opening_coverage.changed.connect(self._update_opening_coverage)
         self.opening_coverage.client.status.connect(self._lichess_connection_status)
         self.maia_controls = MaiaControls()
+        self.maia_controls.exclusive_models.setChecked(self.config.get("exclusive_analysis_models", False))
+        self.maia_controls.exclusive_models.toggled.connect(self._set_exclusive_models)
         self.maia_controls.move_limit_changed.connect(self._set_maia_move_limit)
         self.maia_controls.range_changed.connect(self._set_maia_range)
         self.engine_state.hide()
@@ -3392,6 +3394,12 @@ class MainWindow(QMainWindow):
 
     def _set_exclusive_models(self, enabled):
         self.config["exclusive_analysis_models"] = bool(enabled)
+        self.maia_controls.exclusive_models.blockSignals(True)
+        self.maia_controls.exclusive_models.setChecked(bool(enabled))
+        self.maia_controls.exclusive_models.blockSignals(False)
+        self.exclusive_models_action.blockSignals(True)
+        self.exclusive_models_action.setChecked(bool(enabled))
+        self.exclusive_models_action.blockSignals(False)
         if enabled and self.config.get("leela_enabled", False):
             self._set_leela_enabled(True)
         else:

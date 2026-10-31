@@ -159,6 +159,10 @@ class MaiaControls(QWidget):
         self.detail_fields_layout.setVerticalSpacing(6)
         self.detail_fields_layout.addWidget(self.move_limit_row, 0, 0, Qt.AlignmentFlag.AlignLeft)
         self.detail_fields_layout.addWidget(self.range_controls, 0, 1, Qt.AlignmentFlag.AlignLeft)
+        self.exclusive_models = QCheckBox("One engine at a time")
+        self.exclusive_models.setToolTip("When enabled, selecting Maia or Leela turns the other off. Turn this off to show both.")
+        self.exclusive_models.hide()
+        self.detail_fields_layout.addWidget(self.exclusive_models, 0, 2, Qt.AlignmentFlag.AlignLeft)
         self.detail_fields_layout.setColumnStretch(2, 1)
         layout.addLayout(self.detail_fields_layout)
         self.table = QTableWidget(0, 3)
@@ -206,6 +210,9 @@ class MaiaControls(QWidget):
         fields.removeWidget(self.range_controls)
         fields.addWidget(self.range_controls, 1 if narrow else 0, 0 if narrow else 1,
                          Qt.AlignmentFlag.AlignLeft)
+        fields.removeWidget(self.exclusive_models)
+        fields.addWidget(self.exclusive_models, 2 if narrow else 0, 0 if narrow else 2,
+                         Qt.AlignmentFlag.AlignLeft)
         layout = self.tools_layout
         while layout.count():
             layout.takeAt(0)
@@ -233,6 +240,7 @@ class MaiaControls(QWidget):
         self.move_limit.setVisible(expanded)
         self.move_limit_row.setVisible(expanded)
         self.range_controls.setVisible(expanded)
+        self.exclusive_models.setVisible(expanded)
         self.details.setText("▾ Details" if expanded else "▸ Details")
 
     def _select(self, row, column):
