@@ -22,6 +22,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 *Native Qt capture of the main line after 13...Bd7. Stockfish 17.1 NNUE reached depth 25 and reported +0.49 after 9,528,716 nodes. Maia is disabled in this capture.*
 
 
+**[Download 0.5.7.131 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41241055569/artifacts/13057637006).** Adds independently enabled time and node limits for Leela and Stockfish, a tunable Leela GPU batch size, and fixes stale Leela results and unnecessary redraws. Windows tests, packaged startup and live database checks passed. See the [Leela guide](docs/LEELA.md).
+
 **[Download 0.5.7.130 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41176494213/artifacts/13033093018).** Adds automatic discrete Radeon selection and DirectML adapter name/index/VRAM in Leela Advanced, plus Time, Nodes and Unlimited search modes. Node searches have no hidden time/depth cap. Local limit/selection checks, Windows suite and packaged startup checks passed. See the [Leela guide](docs/LEELA.md).
 
 **[Download 0.5.7.129 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41175084710/artifacts/13032711182).** Fresh 0.5.7.127-based Leela integration with Stockfish-style candidate lines, figurines, hover-board previews, clickable variations, numerical Leela evaluations alongside WDL, and reported depth, selective depth, nodes and nodes/second. Windows suite, Leela renderer test, packaged startup and live database checks passed. This build is unsigned; rebuilding does not guarantee Smart App Control approval. See the [Leela guide](docs/LEELA.md).
