@@ -77,10 +77,10 @@ class LeelaLineTests(unittest.TestCase):
                     self.assertEqual(sent[3]['MinibatchSize'], 16)
                     config['leela_limit'] = 'time'
                     panel._start()
-                    self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go movetime 10000')
+                    self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go movetime 20000')
                     config['leela_limit'] = 'both'
                     panel._start()
-                    self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go movetime 10000 nodes 125000')
+                    self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go movetime 20000 nodes 125000')
                     config['leela_limit'] = 'infinite'
                     panel._start()
                     self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go infinite')
