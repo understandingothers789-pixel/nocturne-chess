@@ -21,7 +21,7 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
-**[0.5.7.134 Windows build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41340547295)** is running. Its download will appear under Artifacts after the build succeeds.
+**[0.5.7.134 Windows build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41343139913)** is running. Its download will appear under Artifacts after the build succeeds.
 
 **[Download 0.5.7.133 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41248111096/artifacts/13060061977).** Adds a combined Maia and Leela analysis view, optional exclusive engine selection in Details, and keeps Maia probabilities in the Stockfish candidate column. Windows validation and packaged startup checks passed. See the [Leela guide](docs/LEELA.md).
 
