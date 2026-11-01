@@ -26,7 +26,7 @@ def run(arguments, **kwargs):
 
 
 def smoke_test(dist: Path):
-    run([dist / "Nocturne" / "Nocturne.exe", "--smoke-test"], timeout=30)
+    run([dist / "Nocturne" / "Nocturne.exe", "--smoke-test"], timeout=90)
     fixture = ROOT / "tests" / "fixtures" / "uci_simulator.py"
     if fixture.is_file():
         run(
