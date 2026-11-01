@@ -534,11 +534,19 @@ class MainWindow(QMainWindow):
         self.explorer.hide()
         self._explorer_active = False
         self.opening_coverage = OpeningCoverage(self.data_directory / "opening-cache.sqlite3", self)
+        token_path = self.data_directory / "lichess-token"
+        if token_path.exists():
+            try:
+                token = token_path.read_text(encoding="utf-8").strip()
+                self.explorer.client.set_lichess_token(token)
+                self.opening_coverage.client.set_lichess_token(token)
+            except (OSError, ValueError):
+                pass
         self.opening_coverage.changed.connect(self._update_opening_coverage)
         self.opening_coverage.client.status.connect(self._lichess_connection_status)
         self.maia_controls = MaiaControls()
-        self.maia_controls.exclusive_models.setChecked(self.config.get("exclusive_analysis_models", False))
-        self.maia_controls.exclusive_models.toggled.connect(self._set_exclusive_models)
+        self.maia_controls.exclusive_models.setChecked(not self.config.get("exclusive_analysis_models", False))
+        self.maia_controls.exclusive_models.toggled.connect(lambda checked: self._set_exclusive_models(not checked))
         self.maia_controls.move_limit_changed.connect(self._set_maia_move_limit)
         self.maia_controls.range_changed.connect(self._set_maia_range)
         self.engine_state.hide()
@@ -995,7 +1003,7 @@ class MainWindow(QMainWindow):
         self._set_lichess_token_warning(True)
         add(database, "Create a Lichess access token…", lambda: QDesktopServices.openUrl(
             QUrl("https://lichess.org/account/oauth/token/create?description=Nocturne%20database%20explorer")))
-        self.clear_lichess_token_action = add(database, "Clear session access token", self._clear_lichess_token)
+        self.clear_lichess_token_action = add(database, "Clear saved access token", self._clear_lichess_token)
         add(database, "Refresh database results", self.explorer.refresh)
         self.opening_scan_action = add(database, "Find where this line leaves the database", self._scan_opening_coverage)
         self.opening_cancel_action = add(database, "Cancel database coverage scan", lambda: self.opening_coverage.cancel(False))
@@ -1117,7 +1125,7 @@ class MainWindow(QMainWindow):
     def _lichess_token_dialog(self):
         token, accepted = QInputDialog.getText(
             self, "Lichess access token", "Paste a personal access token with no extra permissions.\n"
-            "It stays in memory until you close Nocturne; it is never saved in games or settings.",
+            "It is saved locally so you do not have to enter it again.",
             QLineEdit.EchoMode.Password)
         if accepted:
             try:
@@ -1126,6 +1134,15 @@ class MainWindow(QMainWindow):
                 self._error("Invalid access token", str(exc))
                 return
             self.opening_coverage.client.set_lichess_token(token)
+            token_path = self.data_directory / "lichess-token"
+            try:
+                if token.strip():
+                    token_path.write_text(token.strip(), encoding="utf-8")
+                    token_path.chmod(0o600)
+                else:
+                    token_path.unlink(missing_ok=True)
+            except OSError as exc:
+                self._error("Could not save access token", str(exc))
             self._set_lichess_token_warning(False)
             if not self.explorer.client.has_lichess_token:
                 self.config["explorer_source"] = "chessdb"
@@ -1139,6 +1156,11 @@ class MainWindow(QMainWindow):
             self._save()
 
     def _clear_lichess_token(self):
+        try:
+            (self.data_directory / "lichess-token").unlink(missing_ok=True)
+        except OSError as exc:
+            self._error("Could not remove access token", str(exc))
+            return
         self.explorer.client.set_lichess_token("")
         self.opening_coverage.cancel()
         self.opening_coverage.client.set_lichess_token("")
@@ -1849,6 +1871,8 @@ class MainWindow(QMainWindow):
                 self.board_view.update()
         self._request_maia()
         self._sync_insight_layout()
+        if enabled:
+            QTimer.singleShot(0, self._candidate_rows_changed)
         self._save()
 
     def _preview_leela(self, pv, ply):
@@ -3385,7 +3409,7 @@ class MainWindow(QMainWindow):
     def _set_exclusive_models(self, enabled):
         self.config["exclusive_analysis_models"] = bool(enabled)
         self.maia_controls.exclusive_models.blockSignals(True)
-        self.maia_controls.exclusive_models.setChecked(bool(enabled))
+        self.maia_controls.exclusive_models.setChecked(not bool(enabled))
         self.maia_controls.exclusive_models.blockSignals(False)
         self.exclusive_models_action.blockSignals(True)
         self.exclusive_models_action.setChecked(bool(enabled))
@@ -3462,7 +3486,7 @@ class MainWindow(QMainWindow):
 
     def _candidate_rows_changed(self):
         self._protect_analysis_chart()
-        if not hasattr(self, "blunder_scroll") or self.maia_insights.trends_card.isHidden():
+        if not hasattr(self, "blunder_scroll") or (self.maia_insights.trends_card.isHidden() and not self.config.get("leela_enabled", False)):
             return
         self.candidates.layout.activate()
         height = sum(row[0].sizeHint().height() for row in self.candidates.rows.values()

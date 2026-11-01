@@ -33,7 +33,7 @@ DEFAULTS = {
     "leela_side": "black",
     "leela_rating": 2700,
     "leela_gap": 250,
-    "leela_seconds": 10,
+    "leela_seconds": 20,
     "leela_limit": "time",
     "leela_nodes": 100000,
     "leela_batch_size": 16,
