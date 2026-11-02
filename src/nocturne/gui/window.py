@@ -130,9 +130,8 @@ class MainWindow(QMainWindow):
         except (StorageError, OSError) as exc:
             self._storage_message = str(exc)
         self.config = normalize(self.store.get("settings", {}) if self.store else {})
-        # Access tokens are session-only. Start with the public database even
-        # when a previous session saved a Lichess source.
-        self.config["explorer_source"] = "chessdb"
+        # Keep the database source saved by the user. A first token entry
+        # selects Masters below; later explicit source choices persist.
         self.profiles = self.store.get("engine_profiles", []) if self.store else []
         if not isinstance(self.profiles, list):
             self.profiles = []
@@ -540,6 +539,8 @@ class MainWindow(QMainWindow):
                 token = token_path.read_text(encoding="utf-8").strip()
                 self.explorer.client.set_lichess_token(token)
                 self.opening_coverage.client.set_lichess_token(token)
+                if token and not self.config.get("explorer_source_user_set", False):
+                    self.config["explorer_source"] = "masters"
             except (OSError, ValueError):
                 pass
         self.opening_coverage.changed.connect(self._update_opening_coverage)
@@ -1125,6 +1126,7 @@ class MainWindow(QMainWindow):
 
     def _choose_explorer(self, source):
         self.config["explorer_source"] = source
+        self.config["explorer_source_user_set"] = True
         self.config["explorer_statistics"] = True
         self._workspace(True)
         self.tabs.setCurrentIndex(1)

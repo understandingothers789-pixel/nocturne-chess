@@ -87,6 +87,7 @@ DEFAULTS = {
     "explorer_enabled_version": 1,
     "explorer_statistics": False,
     "explorer_source": "chessdb",
+    "explorer_source_user_set": False,
     "explorer_speed": "all",
     "explorer_rating": 0,
     "engine_id": "",
