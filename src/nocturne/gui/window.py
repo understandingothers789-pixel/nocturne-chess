@@ -766,6 +766,7 @@ class MainWindow(QMainWindow):
         add(file, "Enter FEN / PGN…", self._import_menu)
         file.addSeparator()
         add(file, "Save this game as PGN…", self._export, "Ctrl+E")
+        add(file, "Save to Special Positions…", self._save_special_position)
         add(file, "Write PGN to clipboard", self._copy_pgn, "Ctrl+Shift+P", "copy_pgn")
         add(file, "Write FEN to clipboard", self._copy_fen, "Ctrl+Shift+C")
         add(file, "Save to library", self._save, "Ctrl+S")
@@ -4336,6 +4337,29 @@ class MainWindow(QMainWindow):
         self._refresh()
         self._save(force=True)
         return True
+
+    def _save_special_position(self):
+        if not self.store:
+            return
+        name, accepted = QInputDialog.getText(self, "Save to Special Positions", "Name for this game:")
+        if not accepted:
+            return
+        name = name.strip()
+        if not name or name in ('.', '..') or any(c in name for c in '<>:"/\\|?*') or name.endswith('.'):
+            self._error("Invalid name", "Enter a valid file name without folder separators or special characters.")
+            return
+        if not name.lower().endswith('.pgn'):
+            name += '.pgn'
+        folder = self.store.pgn_directory / 'Special Positions'
+        path = folder / name
+        if path.exists() and QMessageBox.question(self, "Replace existing file?", f"Replace {name}?") != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+            path.write_text(self.game.pgn(), encoding='utf-8')
+            self.statusBar().showMessage(f"Saved to Special Positions: {name}", 5000)
+        except OSError as exc:
+            self._error("Save failed", str(exc))
 
     def _export(self):
         path, _ = QFileDialog.getSaveFileName(self, "Export PGN", "nocturne-game.pgn", "PGN games (*.pgn)")
