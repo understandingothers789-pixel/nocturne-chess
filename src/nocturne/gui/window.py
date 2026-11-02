@@ -756,22 +756,24 @@ class MainWindow(QMainWindow):
 
         file = self.menuBar().addMenu("&File")
         add(file, "New game…", self._new_game, "Ctrl+N")
-        add(file, "Open PGN…", self._open_pgn, "Ctrl+O")
         add(file, "New study tab", self._new_study, "Ctrl+T")
         add(file, "Rename study…", self._rename_study)
         add(file, "Set up position…", self._setup_position)
         add(file, "New Chess960 position…", self._new_chess960)
+        file.addSeparator()
+        add(file, "Open PGN…", self._open_pgn, "Ctrl+O")
         add(file, "Load FEN / PGN from clipboard", self._load_clipboard, "Ctrl+Shift+V", "load_clipboard")
         add(file, "Edit / paste PGN…", self._show_pgn, "Ctrl+I")
         add(file, "Enter FEN / PGN…", self._import_menu)
         file.addSeparator()
+        add(file, "Save to library", self._save, "Ctrl+S")
         add(file, "Save this game as PGN…", self._export, "Ctrl+E")
         add(file, "Save to Special Positions…", self._save_special_position)
-        add(file, "Write PGN to clipboard", self._copy_pgn, "Ctrl+Shift+P", "copy_pgn")
-        add(file, "Write FEN to clipboard", self._copy_fen, "Ctrl+Shift+C")
-        add(file, "Save to library", self._save, "Ctrl+S")
         add(file, "Saved PGNs / game library…", self._library, name="Game library…")
         add(file, "Open saved PGN folder", self._open_pgn_folder)
+        file.addSeparator()
+        add(file, "Write PGN to clipboard", self._copy_pgn, "Ctrl+Shift+P", "copy_pgn")
+        add(file, "Write FEN to clipboard", self._copy_fen, "Ctrl+Shift+C")
         file.addSeparator()
         add(file, "Quit", self.close, "Ctrl+Q")
 
@@ -791,22 +793,24 @@ class MainWindow(QMainWindow):
         add(tree, "Promote variation to main line", self._promote_line)
         self.delete_line_action = add(tree, "Delete current line", self._delete_line, "Backspace")
         self.delete_line_action.setAutoRepeat(False)
+        tree.addSeparator()
         add(tree, "Edit comment / annotations…", self._edit_annotation, "Ctrl+M")
         add(tree, "Bookmark this position…", self._edit_bookmark, "Ctrl+B")
         self.bookmarks_menu = tree.addMenu("Position bookmarks")
         self.bookmarks_menu.aboutToShow.connect(self._populate_bookmarks)
 
         analysis = self.menuBar().addMenu("&Analysis")
-        add(analysis, "Game Review…", self._show_review)
-        analysis.addSeparator()
         add(analysis, "Go", self._start_analysis, "Ctrl+G")
         add(analysis, "Halt", self._halt_analysis, "Ctrl+H")
+        add(analysis, "Analyze all legal moves again", self._clear_focus)
+        analysis.addSeparator()
         add(analysis, "Analyze entire line…", self._analyze_game)
         add(analysis, "Pause / resume game analysis", self._pause_review)
         add(analysis, "Cancel game analysis", self._cancel_review)
         self.confirm_review_action = add(analysis, "Confirm mistakes with deeper analysis", self._set_review_confirmation)
         self.confirm_review_action.setCheckable(True)
-        add(analysis, "Analyze all legal moves again", self._clear_focus)
+        add(analysis, "Game Review…", self._show_review)
+        analysis.addSeparator()
         add(analysis, "Engine diagnostics…", self._diagnostics)
 
         display = self.menuBar().addMenu("&Display")
@@ -974,6 +978,7 @@ class MainWindow(QMainWindow):
         self.explorer_enabled_action.setCheckable(True)
         self.explorer_statistics_action = add(database, "Enable database statistics", lambda checked: self._set_explorer_option("explorer_statistics", checked))
         self.explorer_statistics_action.setCheckable(True)
+        database.addSeparator()
         self.explorer_actions = {}
         for source, title in (("masters", "Lichess Masters database (Recommended)"), ("lichess", "Lichess players (Amateurs)"),
                               ("chessdb", "ChessDB · cloud analysis")):
@@ -1005,18 +1010,21 @@ class MainWindow(QMainWindow):
         add(database, "Create a Lichess access token…", lambda: QDesktopServices.openUrl(
             QUrl("https://lichess.org/account/oauth/token/create?description=Nocturne%20database%20explorer")))
         self.clear_lichess_token_action = add(database, "Clear saved access token", self._clear_lichess_token)
+        database.addSeparator()
         add(database, "Refresh database results", self.explorer.refresh)
         self.opening_scan_action = add(database, "Find where this line leaves the database", self._scan_opening_coverage)
         self.opening_cancel_action = add(database, "Cancel database coverage scan", lambda: self.opening_coverage.cancel(False))
         play = self.menuBar().addMenu("&Play")
         add(play, "New game…", self._new_game)
         add(play, "Pause / continue", self._pause, "Space")
+        play.addSeparator()
         add(play, "Offer / claim draw…", self._draw)
         add(play, "Resign…", self._resign)
         dev = self.menuBar().addMenu("&Dev")
         self.snapshot_capture_action = add(dev, "Save analysis snapshots at node milestones", self._set_snapshot_capture)
         self.snapshot_capture_action.setCheckable(True)
         add(dev, "Compare saved analysis snapshots…", self._compare_snapshots)
+        dev.addSeparator()
         self.raw_pgn_action = add(dev, "Show raw PGN data", self._set_raw_pgn)
         self.raw_pgn_action.setCheckable(True)
         self.reanalyze_navigation_action = add(
@@ -4423,6 +4431,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(label("Saved PGNs & games", "title"))
         layout.addWidget(label("Games and studies are saved automatically on this device.", "muted", True))
         layout.addWidget(button("Open PGN folder", self._open_pgn_folder))
+        special_actions = QHBoxLayout()
+        special_actions.addWidget(button("Save to Special Positions…", self._save_special_position))
+        special_actions.addWidget(button("Open Special Positions folder", self._open_special_positions_folder))
+        layout.addLayout(special_actions)
         try:
             games = self.store.list_games()
         except StorageError as exc:
@@ -4571,6 +4583,18 @@ class MainWindow(QMainWindow):
                 self._error("Cannot open PGN folder", str(directory))
         except OSError as exc:
             self._error("Cannot open PGN folder", str(exc))
+
+    def _open_special_positions_folder(self):
+        if not self.store:
+            self._error("Special Positions unavailable", self._storage_message)
+            return
+        try:
+            directory = self.store.pgn_directory / "Special Positions"
+            directory.mkdir(parents=True, exist_ok=True)
+            if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(directory.absolute()))):
+                self._error("Cannot open Special Positions folder", str(directory))
+        except OSError as exc:
+            self._error("Cannot open Special Positions folder", str(exc))
 
     def _settings(self):
         dialog = SettingsDialog(self.config, self)
