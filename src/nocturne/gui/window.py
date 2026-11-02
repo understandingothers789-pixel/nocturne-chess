@@ -543,6 +543,8 @@ class MainWindow(QMainWindow):
                     self.config["explorer_source"] = "masters"
             except (OSError, ValueError):
                 pass
+        if not self.explorer.client.has_lichess_token and self.config.get("explorer_source") == "lichess":
+            self.config["explorer_source"] = "chessdb"
         self.opening_coverage.changed.connect(self._update_opening_coverage)
         self.opening_coverage.client.status.connect(self._lichess_connection_status)
         self.maia_controls = MaiaControls()
