@@ -21,7 +21,7 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
-**[0.5.7.137 Windows build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41386731450)** is running. It remembers the selected opening database and defaults to Lichess Masters when a token is present and no source was explicitly selected.
+**[Download Nocturne 0.5.7.137 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41403412255/artifacts/13122732228).** Remembers the selected opening database, defaults to Lichess Masters when a token is present and no source was explicitly selected, and falls back to ChessDB when no token is available.
 
 **[0.5.7.136 Windows build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41384085708)** is running. It groups the top-level menus and adds Special Positions actions to the saved-games window.
 
