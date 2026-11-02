@@ -21,7 +21,7 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
-**[0.5.7.135 Windows build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41381710296)** is running. Its artifact will be available after a successful build.
+**[Download Nocturne 0.5.7.135 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41381710296/artifacts/13112879166).** Adds named PGN saves to the Special Positions folder. Windows validation and packaged startup checks passed.
 
 **[Download Nocturne 0.5.7.134 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41343139913/artifacts/13098347219).** Adds the combined Maia and Leela display, Maia-only WDL probabilities in the Stockfish column, saved Lichess token support, and a 20-second default Leela time limit. Windows validation and packaged startup checks passed.
 
