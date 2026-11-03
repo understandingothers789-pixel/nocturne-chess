@@ -4791,7 +4791,7 @@ class MainWindow(QMainWindow):
             nodes=(self.config.get("auto_play_nodes", 10_000_000) if self._auto_play_active
                    else None if infinite or not nodes_enabled else (self.config.get("analysis_nodes") or None)),
         )
-        count = self._effective_multipv() if kind == "analysis" else 1
+        count = self._effective_multipv() if kind == "analysis" or self._auto_play_active else 1
         focus = tuple(self.config.get("searchmoves", []))
         if focus:
             count = 1
@@ -4919,6 +4919,17 @@ class MainWindow(QMainWindow):
             self._store_analysis(self.game, self.game.current_node, info, job["turn"], job)
         self._update_graph()
         if job["kind"] == "play" and not self.paused:
+            continuation = None
+            move_uci = payload.get("move")
+            if self._auto_play_active and move_uci:
+                for line in job.get("lines", {}).values():
+                    if line.get("pv", [])[:1] == [move_uci] and len(line.get("pv", [])) > 1:
+                        continuation = dict(line, pv=line["pv"][1:], san=line.get("san", [])[1:], multipv=1)
+                        continuation["score"] = -line["score"]
+                        continuation["score_value"] = -line["score_value"]
+                        if line.get("wdl"):
+                            continuation["wdl"] = line["wdl"][::-1]
+                        break
             try:
                 if payload.get("claim_draw"):
                     self.game.claim_draw()
@@ -4930,13 +4941,16 @@ class MainWindow(QMainWindow):
                 self.pause_button.setText("Continue")
                 self.statusBar().showMessage(f"Move was not applied: {exc}")
             self._refresh(animate=True)
+            if continuation and not self.game.outcome and continuation["san"]:
+                self._show_info(continuation, {"turn": self.game.board.turn, "multipv": self._effective_multipv()}, store=False)
+                self.engine_state.setText(self._active_engine_name() + " · previous continuation")
             if self.game.outcome:
                 self._auto_play_active = False
                 self.quick_analysis_button.setText("Analyze")
                 self._resume_maia_after_auto_play()
             else:
                 delay = self.config.get("watch_delay_ms", 500) if self._auto_play_active or self.config.get("mode") == "ai_ai" else 80
-                QTimer.singleShot(delay, self, self._schedule_engine)
+                QTimer.singleShot(delay, self, lambda: self._schedule_engine(preserve_position_analysis=True))
         self._save(defer=True)
 
     def _show_info(self, info, job, *, store=True):
