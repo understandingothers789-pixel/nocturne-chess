@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import QEasingCurve, QPointF, QRectF, QSize, Qt, QVariantAnimation, Signal
-from PySide6.QtGui import QColor, QFont, QIcon, QMouseEvent, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF
+from PySide6.QtGui import QColor, QFont, QIcon, QMouseEvent, QPainter, QPainterPath, QPainterPathStroker, QPen, QPixmap, QPolygonF
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QMenu, QWidget
 
@@ -79,6 +79,8 @@ class BoardWidget(QWidget):
         self._anim_progress = 0.0
         self._renderers = {}
         self._renderer_sets = {}
+        self._piece_pixmaps = {}
+        self._piece_pixmap_size = None
         self.piece_set = ""
         self.set_piece_set(DEFAULT_PIECE_SET)
         self._animation = QVariantAnimation(self)
@@ -303,9 +305,24 @@ class BoardWidget(QWidget):
         self.update()
 
     def _piece(self, painter: QPainter, piece: int, rect: QRectF):
-        # Every set is vector art. QSvgRenderer follows the painter's device
-        # pixel ratio; its asset viewBox alone controls piece size and spacing.
-        self._renderers[piece].render(painter, rect)
+        # Rasterize once per piece at the current physical size. Keep only the
+        # current size/set so resizing cannot grow the cache without bound.
+        ratio = painter.device().devicePixelRatioF()
+        size = (self.piece_set, math.ceil(rect.width() * ratio),
+                math.ceil(rect.height() * ratio), ratio)
+        if self._piece_pixmap_size != size:
+            self._piece_pixmaps.clear()
+            self._piece_pixmap_size = size
+        pixmap = self._piece_pixmaps.get(piece)
+        if pixmap is None:
+            pixmap = QPixmap(size[1], size[2])
+            pixmap.fill(Qt.GlobalColor.transparent)
+            raster = QPainter(pixmap)
+            self._renderers[piece].render(raster, QRectF(0, 0, size[1], size[2]))
+            raster.end()
+            pixmap.setDevicePixelRatio(ratio)
+            self._piece_pixmaps[piece] = pixmap
+        painter.drawPixmap(rect, pixmap, QRectF(pixmap.rect()))
 
     def _arrow(self, painter: QPainter, src: int, dst: int, color: QColor, unit: float, *, subtle=False):
         if src == dst:

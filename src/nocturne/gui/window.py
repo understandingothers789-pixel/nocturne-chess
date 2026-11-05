@@ -53,6 +53,7 @@ from PySide6.QtWidgets import (
 from .. import __version__
 from ..maia import RATINGS as MAIA_RATINGS
 from ..maia.controller import MaiaController
+from .menu_help import menu_help
 from .maia import MaiaControls
 from .leela import LeelaPanel
 from .maia_insights import MaiaInsights
@@ -1372,7 +1373,36 @@ class MainWindow(QMainWindow):
                 continue
         return False
 
+    def _menu_hover_help(self, menu, action):
+        self._menu_help_timer.stop()
+        QToolTip.hideText()
+        self._menu_help_target = (menu, action)
+        if action and not action.isSeparator():
+            self._menu_help_timer.start(900)
+
+    def _show_menu_hover_help(self):
+        menu, action = self._menu_help_target
+        if menu.isVisible() and menu.activeAction() is action:
+            rect = menu.actionGeometry(action)
+            QToolTip.showText(menu.mapToGlobal(rect.bottomLeft()), menu_help(action, menu), menu, rect, 12000)
+
     def eventFilter(self, watched, event):
+        if (event.type() in (QEvent.Type.Show, QEvent.Type.Hide, QEvent.Type.Leave,
+                             QEvent.Type.MouseButtonPress, QEvent.Type.ToolTip)
+                and isinstance(watched, QMenu) and self._is_top_menu(watched)):
+            if event.type() == QEvent.Type.Show and not watched.property("hoverHelpReady"):
+                if not hasattr(self, "_menu_help_timer"):
+                    self._menu_help_timer = QTimer(self)
+                    self._menu_help_timer.setSingleShot(True)
+                    self._menu_help_timer.timeout.connect(self._show_menu_hover_help)
+                watched.setProperty("hoverHelpReady", True)
+                watched.hovered.connect(lambda action, menu=watched: self._menu_hover_help(menu, action))
+            elif event.type() in (QEvent.Type.Hide, QEvent.Type.Leave, QEvent.Type.MouseButtonPress):
+                if hasattr(self, "_menu_help_timer"):
+                    self._menu_help_timer.stop()
+                    QToolTip.hideText()
+            elif event.type() == QEvent.Type.ToolTip:
+                return True
         if (event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease)
                 and isinstance(watched, QMenu) and event.button() == Qt.MouseButton.LeftButton
                 and self._is_top_menu(watched)):
@@ -3531,37 +3561,57 @@ class MainWindow(QMainWindow):
             self.analysis_detail_splitter.setSizes([max(100, total - 177), 170])
 
     def _show_board_guide(self):
-        QMessageBox.information(self, "Board symbols guide",
-            "Stockfish — transparent arrows\n"
-            "Blue marks Stockfish's top recommendation; gray arrows show its other candidates. "
-            "These are the moves in the Stockfish analysis lines.\n\n"
-            "Maia — colored rods and numbered circles\n"
-            "A rod appears for every move Maia predicts has more than a 10% chance of being played at the selected rating. "
-            "The circle numbers are Maia likelihood rankings, not probabilities: 1 is the most likely human move. "
-            "Each rod and circle matches that move's color in Moves by Rating. These colors identify moves, not quality.\n\n"
-            "When both agree\n"
-            "A Stockfish arrow and a Maia rod/circle can point to the same destination. "
-            "The arrow shows the engine candidate; the rod shows the predicted human choice.\n\n"
-            "Maia percentages and the Blunder Meter\n"
-            "Percentages estimate human move choices. Green, yellow and red in the Blunder Meter "
-            "describe Stockfish-assessed move quality; gray there means not evaluated.\n\n"
-            "How to read both models\n"
-            "Stockfish evaluates objective playing strength; Maia predicts human choices at the selected rating. "
-            "A popular move is not necessarily a good move. Use the evaluations and Blunder Meter to judge quality.\n\n"
-            "Play a marked move\n"
-            "With destination-click moves enabled, click a Maia circle or Stockfish arrow destination to play it. "
-            "When different moves share a square, Stockfish takes priority; otherwise the most likely Maia move is selected. "
-            "Recorded continuations remain available where neither engine marks the destination. "
-            "Select a piece first to choose a move manually.\n\n"
-            "Scores and ratings\n"
-            "Stockfish scores are from White's perspective: + favors White, − favors Black. "
-            "Maia percentages are probabilities of choosing moves, not winning the game. The Maia outcome rail "
-            "shows White's expected score: win probability plus half the draw probability.\n\n"
-            "Rating curves\n"
-            "Moves by Rating compares the same position across equal-rated opponents. "
-            "Details → Calculate ratings controls which ratings Maia actually computes.\n\n"
-            "Move previews\n"
-            "Hover a variation and scroll to explore it on the preview board. The main board stays on your game position.")
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Board symbols guide")
+        layout = QVBoxLayout(dialog)
+        heading = QLabel("<h2>Read the board at a glance</h2>")
+        layout.addWidget(heading)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        text = QLabel(
+            "<h3>→ Stockfish arrows</h3>"
+            "<p>Blue is the top engine recommendation; gray arrows are other candidates. "
+            "With candidate loss colors enabled, green, yellow and red show loss relative to the best move.</p>"
+            "<h3>① Numbered rods: Maia or Leela</h3>"
+            "<p>For Maia, <b>1 means the most likely human move</b> at the selected rating. "
+            "Only moves above 10% likelihood get rods. Their colors match Moves by Rating and identify "
+            "the moves, rather than their quality. When Leela board markers are active, the rods instead "
+            "show Leela candidate ranks. A circle number is never a percentage.</p>"
+            "<p>An arrow and rod may overlap when both engines suggest the same move.</p>"
+            "<h3>Squares and other markings</h3>"
+            "<p><b>Highlighted pair of squares:</b> the last move.<br>"
+            "<b>Gold outline:</b> the piece you selected.<br>"
+            "<b>Dark dot / ring:</b> a legal destination / capture for that piece.<br>"
+            "<b>Red king square:</b> the side to move is in check.<br>"
+            "<b>Faint brown arrow:</b> a saved continuation in the game tree.<br>"
+            "<b>Gold arrow / blue square:</b> your own annotation. Right-click a square to mark it; "
+            "right-drag between squares to draw an arrow. Repeat to remove it; Escape clears annotations.</p>"
+            "<h3>Scores, percentages and colors</h3>"
+            "<p><b>+1.00</b> favors White by roughly a pawn; <b>−1.00</b> favors Black. "
+            "Maia percentages predict <b>move choices</b>, not game wins. "
+            "The Blunder Meter uses green for best moves, yellow for OK moves, red for blunders "
+            "and gray for moves Stockfish has not evaluated. A likely human move can still be a blunder.</p>"
+            "<p>Leela W/D/L estimates wins, draws and losses for the selected side and rating matchup. "
+            "Maia's outcome rail shows White's expected score: win probability plus half the draw probability.</p>"
+            "<h3>Play or inspect a move</h3>"
+            "<p>When destination-click moves are enabled, click a marked destination to play it. "
+            "If several moves share a square, Stockfish takes priority, followed by the numbered rods, "
+            "then a recorded continuation. Select a piece first to choose manually.</p>"
+            "<p>Hover an analysis variation and scroll to explore its continuation on the preview board. "
+            "Moves by Rating compares human choices across ratings; Details → Calculate ratings selects "
+            "which ratings Maia computes.</p>"
+        )
+        text.setWordWrap(True)
+        text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        text.setMargin(12)
+        scroll.setWidget(text)
+        layout.addWidget(scroll)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        screen = self.screen().availableGeometry()
+        dialog.resize(min(620, screen.width() - 40), min(740, screen.height() - 80))
+        dialog.exec()
 
     def _sync_workspace_layout(self):
         self._sync_insight_layout()

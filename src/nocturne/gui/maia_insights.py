@@ -458,6 +458,12 @@ class MaiaInsights(QScrollArea):
 
     def set_data(self, policies, board, rating, appearance=None):
         policies = {str(r): policies[str(r)] for r in self.chart.ratings if str(r) in policies}
+        signature = (board.fen(), board.chess960, rating,
+                     tuple((r, tuple(sorted(policy.items()))) for r, policy in sorted(policies.items())),
+                     bool(QApplication.instance().property("nocturneLightAppearance")))
+        if signature == getattr(self, "_chart_data_signature", None):
+            return
+        self._chart_data_signature = signature
         policy = policies.get(str(rating), {})
         moves = [move for move, _ in sorted(policy.items(), key=lambda item: -item[1])[:5]]
         self.chart.policies = policies

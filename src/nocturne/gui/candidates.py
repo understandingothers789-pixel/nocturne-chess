@@ -480,7 +480,11 @@ class CandidatePanel(QWidget):
             QTimer.singleShot(0, self, lambda r=rank: self._refresh_expander(r))
 
     def set_maia(self, policy=None, rating=1800, enabled=True):
-        self.maia_policy = policy or {}
+        signature = (tuple(sorted((policy or {}).items())), rating, enabled, self.light)
+        if signature == getattr(self, "_maia_policy_signature", None):
+            return
+        self._maia_policy_signature = signature
+        self.maia_policy = dict(policy or {})
         self.maia_rating = rating
         self.maia_enabled = enabled
         for rank in self.maia_labels:

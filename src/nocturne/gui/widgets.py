@@ -113,6 +113,11 @@ class EvaluationGraph(QWidget):
         self.setAccessibleName("Evaluation history · White perspective · linear near zero, logarithmic beyond one pawn")
 
     def set_samples(self, samples: dict[int, int], cursor: int, total: int, *, context=None):
+        # Engine telemetry often changes without changing a plotted score.
+        # Avoid copying the history and scheduling an identical repaint.
+        if (samples == self.samples and cursor == self.cursor
+                and total == self.total and context == self._context):
+            return
         self.samples = samples.copy()
         if total != self.total or context != self._context:
             self.view_start = 0.0
