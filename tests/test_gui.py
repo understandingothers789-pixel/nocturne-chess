@@ -257,10 +257,17 @@ class GuiTests(unittest.TestCase):
         self.assertFalse(window.game_line_panel.isHidden())
         window._set_display("show_maia_insights", True)
         self.assertIs(window.game, game)
-        with patch("nocturne.gui.window.QMessageBox.information") as guide:
+        from PySide6.QtWidgets import QDialog, QLabel
+        with patch("nocturne.gui.window.QDialog.exec", return_value=0):
             window._show_board_guide()
-        self.assertIn("10%", guide.call_args.args[2])
-        self.assertIn("rankings, not probabilities", guide.call_args.args[2])
+        guide = next(dialog for dialog in window.findChildren(QDialog)
+                     if dialog.windowTitle() == "Board symbols guide")
+        scroll = guide.findChild(QScrollArea)
+        self.assertIsNotNone(scroll)
+        text = scroll.findChild(QLabel).text()
+        self.assertIn("10%", text)
+        self.assertIn("Leela candidate ranks", text)
+        self.assertIn("A circle number is never a percentage", text)
 
     def test_maia_range_updates_requests_chart_and_selected_rating(self):
         from nocturne.settings import normalize
