@@ -21,7 +21,9 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
-**[Download Nocturne 0.5.7.139 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41984365767/artifacts/13396000935).** Adds a scrollable board symbol guide and menu explanations after a short hover. Caches rendered pieces and skips unchanged graph, rating-chart and Maia probability updates. Windows validation, full tests, packaging and packaged startup checks passed. See the [performance review](docs/audits/performance-139.md).
+**[Download Nocturne 0.5.7.139 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42154153067/artifacts/13473864289).** Adds a scrollable board symbol guide and menu explanations after a short hover. Caches rendered pieces and skips unchanged graph, rating-chart and Maia probability updates. Windows validation, full tests, packaging and packaged startup checks passed. See the [performance review](docs/audits/performance-139.md).
+
+Build 139 was rebuilt successfully on November 5, 2026. It remains unsigned: rebuilding does not resolve Windows Smart App Control publisher-trust blocks. [Earlier 139 build](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41984365767/artifacts/13396000935).
 
 **[Download Nocturne 0.5.7.138 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/41727581875/artifacts/13275966495).** Keeps configured MultiPV lines visible during self-play and preserves the played line’s continuation while fresh analysis starts. Windows validation, full tests and packaging passed.
 
