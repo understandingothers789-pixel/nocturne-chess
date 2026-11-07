@@ -59,7 +59,7 @@ from .leela import LeelaPanel
 from .maia_insights import MaiaInsights
 from ..maia.risk import assess_moves
 from ..core.board import Move, SQUARES
-from ..core.rules import Board
+from ..core.rules import Board, wrapped
 from ..core.game import Game, TimeControl
 from ..core.variation import mainline
 from ..core.notation import pgn_clock
@@ -5040,7 +5040,7 @@ class MainWindow(QMainWindow):
         identity = self._position_identity()
         texts = tuple(info.get("pv", [])[:128])
         if identity != self._pv_identity or texts != getattr(self, "_pv_texts", None):
-            position = self.game.board.copy()
+            position = self.game.board.native.copy(stack=False)
             self._pv_root = self.game.board.copy(history=False)
             self._pv_identity = identity
             self._pv_texts = texts
@@ -5048,7 +5048,9 @@ class MainWindow(QMainWindow):
             for text in texts:
                 try:
                     move = position.parse_uci(text)
-                    self._pv_moves.append(move)
+                    if not move:
+                        break
+                    self._pv_moves.append(wrapped(move))
                     position.push(move)
                 except ValueError:
                     break

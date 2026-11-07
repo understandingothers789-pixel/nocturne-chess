@@ -53,7 +53,7 @@ class UciConnection(QObject):
         self._flush = QTimer(self)
         self._flush.setInterval(80)
         self._flush.timeout.connect(self._emit_info)
-        self._flush.start()
+        self._flush.setSingleShot(True)
 
     @property
     def alive(self):
@@ -101,6 +101,7 @@ class UciConnection(QObject):
     def request(self, generation, position, go, options, study_id=""):
         self.pending = (generation, position, go, dict(options), study_id)
         self._announced_ranks.clear()
+        self._flush.stop()
         self._last_info.clear()
         self._last_exact_info.clear()
         if self.phase == "search":
@@ -115,6 +116,7 @@ class UciConnection(QObject):
         self._announced_ranks.clear()
         self.pending = None
         self.running = None
+        self._flush.stop()
         self._last_info.clear()
         self._last_exact_info.clear()
         if self.phase == "search":
@@ -233,6 +235,8 @@ class UciConnection(QObject):
                 if first not in self._announced_ranks:
                     self._announced_ranks.add(first)
                     self._emit_info()
+                elif not self._flush.isActive():
+                    self._flush.start()
 
     def _safe_prepare(self):
         try:
@@ -241,6 +245,7 @@ class UciConnection(QObject):
             self._fail(str(exc))
 
     def _emit_info(self):
+        self._flush.stop()
         pending, self._last_info = self._last_info, {}
         exact_pending, self._last_exact_info = self._last_exact_info, {}
         for rank in sorted(pending):
@@ -274,6 +279,7 @@ class UciConnection(QObject):
         self.phase = "failed"
         self.timer.stop()
         self.pending = self.running = None
+        self._flush.stop()
         self._last_info.clear()
         self._last_exact_info.clear()
         self._quitting = True
@@ -287,6 +293,7 @@ class UciConnection(QObject):
         self._quitting = True
         self.timer.stop()
         self.pending = self.running = None
+        self._flush.stop()
         self._last_info.clear()
         self._last_exact_info.clear()
         if self.alive:

@@ -5,7 +5,6 @@ from collections import OrderedDict
 
 from PySide6.QtCore import QObject, Signal
 
-from ..core.notation import san
 from ..snapshots import milestones
 from .uci_connection import UciConnection
 
@@ -124,13 +123,17 @@ class EngineController(QObject):
         key = (self.board.fen(), bool(getattr(self.board, "chess960", False)), tuple(info["pv"][:128]))
         cached = self._validated_pvs.get(key)
         if cached is None:
-            position = self.board.copy()
+            # PV formatting needs legal moves and SAN, not drawing arrays or
+            # position hashes. Use the same rules board without rebuilding the
+            # GUI wrapper after every ply of every new engine variation.
+            position = self.board.native.copy(stack=False)
             pv, texts = [], []
             for text in key[2]:
                 try:
                     move = position.parse_uci(text)
-                    texts.append(san(position, move))
-                    position.push(move)
+                    if not move:  # UCI null moves are not legal PV moves.
+                        break
+                    texts.append(position.san_and_push(move))
                     pv.append(text)
                 except ValueError:
                     break
@@ -197,10 +200,10 @@ class EngineController(QObject):
             pv = self.lines.get(rank, {}).get("pv", [])
             if len(pv) >= 3:
                 continue
-            position = self.board.copy()
+            position = self.board.native.copy(stack=True)
             for text in pv:
                 position.push(position.parse_uci(text))
-            if not pv or not position.native.is_game_over(claim_draw=True):
+            if not pv or not position.is_game_over(claim_draw=True):
                 return False
         return True
 

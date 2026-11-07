@@ -4,7 +4,7 @@ import re
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QPainter, QPen, QTextCursor
-from PySide6.QtWidgets import QTextBrowser
+from PySide6.QtWidgets import QTextBrowser, QTextEdit
 
 from .notation import html as notation_html
 from .moves import MoveText
@@ -59,10 +59,16 @@ class GameLine(MoveText):
         self._book_departures = departures
         nodes = game.nodes
         current = game.current_node
-        signature = (game.id, current, light, tuple(sorted(departures.items())),
+        signature = (game.id, light, tuple(sorted(departures.items())),
                      tuple((node.parent, tuple(node.children), node.san, node.evaluation, tuple(node.nags), node.comment, node.starting_comment)
                            for node in nodes), tuple(sorted(move_risks.items())), self.show_notes)
         if signature == self._game_signature:
+            if current != self._current:
+                self._current = current
+                self.cancel_preview()
+                self._highlight_current()
+                if current:
+                    self.scrollToAnchor(f'node{current}')
             return
         previous_current = self._current
         previous_game = self._game_signature[0] if self._game_signature else None
@@ -96,10 +102,9 @@ class GameLine(MoveText):
             if index is None:
                 return f'<td width="44%" bgcolor="{colors["soft"] if indent else colors["panel"]}"></td>'
             node = nodes[index]
-            active = index == current
             flagged = index in move_risks
-            bg = ("#59463a" if not light else "#f1dfc9") if flagged else colors['selection'] if active else colors['soft'] if indent else colors['panel']
-            fg = colors['selected_text'] if active else ('#cbd9dc' if not light else '#334b50')
+            bg = ("#59463a" if not light else "#f1dfc9") if flagged else colors['soft'] if indent else colors['panel']
+            fg = ('#cbd9dc' if not light else '#334b50')
             if index in departures:
                 fg = '#87713f' if light else '#c3b07c'
             value = plot_score_label(node.evaluation) if node.evaluation is not None else ''
@@ -120,9 +125,8 @@ class GameLine(MoveText):
             white = (node.depth - 1 + offset) % 2 == 0
             number = root.fullmove + (node.depth - 1 + offset) // 2
             prefix = f"{number}." if white else f"{number}…" if first else ""
-            active = index == current
-            fg = colors['selected_text'] if active else ('#cbd9dc' if not light else '#334b50')
-            bg = f"background-color:{colors['selection']};" if active else ""
+            fg = ('#cbd9dc' if not light else '#334b50')
+            bg = ""
             punctuation = {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}
             san = figurine(node.san) + escape("".join(punctuation.get(n, f" ${n}") for n in node.nags))
             value = plot_score_label(node.evaluation) if node.evaluation is not None else ''
@@ -191,6 +195,7 @@ class GameLine(MoveText):
             stack.extend((child, path + (child,)) for child in reversed(branches))
         self.setHtml(f'<body bgcolor="{colors["panel"]}"><div style="font-family:Segoe UI,sans-serif;font-size:14px;">'
                      + note_html(0) + ''.join(rows) + '</div></body>')
+        self._node_cursors = {}
         anchors = {}
         ends = {}
         block = self.document().begin()
@@ -198,6 +203,15 @@ class GameLine(MoveText):
             iterator = block.begin()
             while not iterator.atEnd():
                 fragment = iterator.fragment()
+                href = fragment.charFormat().anchorHref()
+                if href.startswith("move:") and href[5:].isdigit():
+                    node_id = int(href[5:])
+                    cursor = self._node_cursors.get(node_id)
+                    if cursor is None:
+                        cursor = QTextCursor(self.document())
+                        cursor.setPosition(fragment.position())
+                    cursor.setPosition(fragment.position() + fragment.length(), QTextCursor.MoveMode.KeepAnchor)
+                    self._node_cursors[node_id] = cursor
                 for name in fragment.charFormat().anchorNames():
                     if name.startswith('row') and not name.startswith('rowend'):
                         cursor = QTextCursor(self.document())
@@ -219,11 +233,24 @@ class GameLine(MoveText):
                         groups[(depth, branch)].append(ends[first])
         self._branch_guides = [(depth, cursors)
                                for (depth, _), cursors in groups.items()]
+        self._highlight_current()
         self.viewport().update()
         if (previous_current != current or previous_game != game.id) and current:
             self.scrollToAnchor(f'node{current}')
         else:
             self.verticalScrollBar().setValue(scroll)
+
+    def _highlight_current(self):
+        selections = []
+        cursor = getattr(self, "_node_cursors", {}).get(self._current)
+        if cursor is not None:
+            colors = palette(self._light)
+            selection = QTextEdit.ExtraSelection()
+            selection.cursor = cursor
+            selection.format.setBackground(QColor(colors["selection"]))
+            selection.format.setForeground(QColor(colors["selected_text"]))
+            selections.append(selection)
+        self.setExtraSelections(selections)
 
     def paintEvent(self, event):
         super().paintEvent(event)
