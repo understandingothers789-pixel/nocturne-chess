@@ -2091,9 +2091,11 @@ class GuiTests(unittest.TestCase):
             self.assertIs(self.window.board_view.board, self.window.game.board)
             searched_node = self.window.game.nodes[self.window.game._line_nodes[1]]
             self.assertEqual(searched_node.analysis["score_type"], "cp")
-            # The score belongs to the position before the engine's reply;
-            # do not leave it displayed as the new position's evaluation.
-            self.assertIsNone(self.window._last_info)
+            # Keep the old PV tail when the engine's reply follows that line.
+            self.assertIsNotNone(self.window._last_info)
+            self.assertEqual(self.window._carried_pv_identity, self.window._position_identity())
+            self.assertTrue(self.window._last_info["pv"])
+            self.window.game.board.parse_uci(self.window._last_info["pv"][0])
         finally:
             pulse.stop()
 

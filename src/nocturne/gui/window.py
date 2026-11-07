@@ -3858,6 +3858,7 @@ class MainWindow(QMainWindow):
             self._render_move_history()
         self._request_maia()
         if self._pv_identity != self._position_identity():
+            continuation = self._previous_position_continuation()
             self._clear_analysis_output()
             if defer_secondary:
                 rating = self.config.get("maia_rating", 1800)
@@ -3869,6 +3870,12 @@ class MainWindow(QMainWindow):
                 "Syzygy: awaiting probe" if self.config.get("syzygy_path") else "Syzygy: not configured"
             )
             self._restore_position_analysis()
+            if continuation and self._last_info is None:
+                self._show_info(continuation, {"turn": self.game.board.turn,
+                                "multipv": self._effective_multipv()}, store=False)
+                self._carried_pv_identity = self._position_identity()
+                self.telemetry.setToolTip("Previous position’s continuation; awaiting fresh analysis.")
+                self.engine_state.setText(self._active_engine_name() + " · previous continuation")
         outcome = self.game.outcome
         self.board_view.branch_moves = (
             [self.game.nodes[c].move for c in self.game.nodes[self.game.current_node].children]
@@ -3941,6 +3948,35 @@ class MainWindow(QMainWindow):
         for widget in (self.draw_button, self.resign_button, self.pause_button):
             widget.setEnabled(not outcome and not self.analysis_mode)
         self._update_players()
+
+    def _previous_position_continuation(self):
+        """Carry the remaining PV forward while every intervening move matches."""
+        identity = self._pv_identity
+        if (not identity or identity[0] != self.game.id
+                or self.game.cursor <= identity[1] or self._pv_root is None):
+            return None
+        played = [move.uci() for move in self.game.moves[identity[1]:self.game.cursor]]
+        count = len(played)
+        position = self._pv_root.copy(history=False)
+        try:
+            for text in played:
+                position.push(position.parse_uci(text))
+        except ValueError:
+            return None
+        if position.fen() != self.game.board.fen():
+            return None
+        for line in self.candidates.lines.values():
+            if (line.get("pv", [])[:count] != played or len(line.get("pv", [])) <= count
+                    or len(line.get("san", [])) <= count):
+                continue
+            result = dict(line, pv=line["pv"][count:], san=line["san"][count:], multipv=1)
+            perspective = -1 if count % 2 else 1
+            result["score"] = perspective * line["score"]
+            result["score_value"] = perspective * line["score_value"]
+            if count % 2 and line.get("wdl"):
+                result["wdl"] = line["wdl"][::-1]
+            return result
+        return None
 
     def _restore_position_analysis(self):
         """Display saved engine lines without launching or rewriting a search."""
@@ -4868,7 +4904,8 @@ class MainWindow(QMainWindow):
             time_enabled,
         )
         if context != self._analysis_context:
-            if not preserve_position_analysis or self._candidate_identity != self._position_identity():
+            keep_continuation = getattr(self, "_carried_pv_identity", None) == self._position_identity()
+            if (not preserve_position_analysis and not keep_continuation) or self._candidate_identity != self._position_identity():
                 self._clear_analysis_output()
             self._analysis_context = context
         self.candidates.set_multipv(count)
@@ -4908,6 +4945,8 @@ class MainWindow(QMainWindow):
         self.board_view.interactive = kind == "analysis"
 
     def _clear_analysis_output(self):
+        self._carried_pv_identity = None
+        self.telemetry.setToolTip("")
         if self._last_info is not None:
             self.telemetry.setMinimumHeight(max(self.telemetry.minimumHeight(), self.telemetry.height()))
             self._telemetry_reserved_width = self.telemetry.width()
@@ -5010,6 +5049,9 @@ class MainWindow(QMainWindow):
         self._save(defer=True)
 
     def _show_info(self, info, job, *, store=True):
+        if store:
+            self._carried_pv_identity = None
+            self.telemetry.setToolTip("")
         if not info:
             return
         if "score_type" in info and info.get("multipv", 1) > job.get("multipv", self._effective_multipv()):

@@ -34,6 +34,34 @@ class SpeedPathTests(unittest.TestCase):
         connection.deleteLater()
         QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
+    def test_matching_continuation_survives_successive_moves_and_forward_jumps(self):
+        from types import SimpleNamespace
+        from nocturne.gui.window import MainWindow
+        game = Game.from_pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *")
+        game.navigate(0)
+        original = dict(pv=[m.uci() for m in game.moves], san=game.sans[:],
+                        score=50, score_value=50, wdl=(600, 300, 100))
+        state = SimpleNamespace(game=game, _pv_identity=(game.id, 0),
+                                _pv_root=game.board.copy(),
+                                candidates=SimpleNamespace(lines={1: original}))
+        for ply in range(1, 5):
+            game.navigate(ply)
+            line = MainWindow._previous_position_continuation(state)
+            self.assertEqual(line["pv"], original["pv"][ply:])
+            self.assertEqual(line["score"], 50 * (-1 if ply % 2 else 1))
+            state.candidates.lines = {1: line}
+            state._pv_identity = (game.id, ply)
+            state._pv_root = game.board.copy()
+        game.navigate(0)
+        state._pv_identity = (game.id, 0)
+        state._pv_root = game.board.copy()
+        state.candidates.lines = {1: original}
+        game.navigate(3)
+        self.assertEqual(MainWindow._previous_position_continuation(state)["pv"], original["pv"][3:])
+        game.navigate(0)
+        game.play(game.board.parse_uci("d2d4"))
+        self.assertIsNone(MainWindow._previous_position_continuation(state))
+
     def test_output_timer_is_idle_without_pending_information(self):
         from PySide6.QtTest import QTest
         from nocturne.gui.uci_connection import UciConnection
