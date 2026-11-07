@@ -3,6 +3,7 @@
 from collections import deque
 from pathlib import Path
 import os
+import time
 
 from PySide6.QtCore import QObject, QProcess, QTimer, Signal
 
@@ -46,6 +47,7 @@ class UciConnection(QObject):
         self.confirmed = {}
         self._prepared = None
         self._quitting = False
+        self._launch_started = time.perf_counter()
         self._last_info = {}
         self._announced_ranks = set()
         self.observe_nodes = False
@@ -72,6 +74,7 @@ class UciConnection(QObject):
         self.process.setProgram(path)
         self.process.setArguments(list(arguments or []))
         self.process.setWorkingDirectory(str(Path(path).parent))
+        self._launch_started = time.perf_counter()
         self.process.start()
         self.timer.start(self.timeout_ms)
         self.status.emit("Starting " + self.name)
@@ -98,7 +101,8 @@ class UciConnection(QObject):
         self.phase = "uci"
         self.send("uci")
 
-    def request(self, generation, position, go, options, study_id=""):
+    def request(self, generation, position, go, options, study_id="", *, adaptive_hash=False):
+        self._adaptive_hash = adaptive_hash
         self.pending = (generation, position, go, dict(options), study_id)
         self._announced_ranks.clear()
         self._flush.stop()
@@ -127,11 +131,20 @@ class UciConnection(QObject):
     def _prepare(self):
         if self.pending is None:
             return
+        self._prepare_started = time.perf_counter()
+        changes = []
         desired = dict(self.pending[3])
         # Profiles are independent even when they share the same executable.
         for name, option in self.options.items():
             if option.kind != "button" and name not in desired:
                 desired[name] = "" if option.default == "<empty>" else option.default
+        hash_option = self.options.get("Hash")
+        if getattr(self, "_adaptive_hash", False) and hash_option is not None:
+            from .hardware import automatic_hash_mb
+
+            allocated = int(self.confirmed.get("Hash", 0))
+            desired["Hash"] = max(hash_option.minimum or 1, automatic_hash_mb(
+                allocated, min(int(desired.get("Hash", 2048)), hash_option.maximum or 2048)))
         if desired.get("UCI_Chess960") and "UCI_Chess960" not in self.options:
             raise ValueError("This engine does not advertise Chess960 support")
         for name, value in desired.items():
@@ -148,13 +161,18 @@ class UciConnection(QObject):
                         f"Hash exceeds the current memory budget ({budget} MB). Reduce it in Engine → Hash."
                     )
             if self.applied.get(name) != value:
+                changes.append(f"{name}={value}")
                 suffix = "" if option.kind == "button" else " value " + (value or "<empty>")
                 self.send("setoption name " + name + suffix)
                 self.applied[name] = value
         study = self.pending[4]
         if self.applied.get("__study") != study:
+            changes.append("new study: clear engine search state")
             self.send("ucinewgame")
             self.applied["__study"] = study
+        preparation = "; ".join(changes) or "waiting for readiness"
+        self.log.append("Preparation: " + preparation)
+        self.status.emit(self.name + " · preparing · " + preparation)
         self.phase = "ready"
         self._prepared = self.pending
         self.send("isready")
@@ -192,14 +210,18 @@ class UciConnection(QObject):
             prepared_request, self._prepared = self._prepared, None
             self.phase = "idle"
             if prepared:
+                self.log.append(f"Timing: preparation {time.perf_counter() - self._prepare_started:.3f} s")
                 self.confirmed = self.applied.copy()
                 self.configured.emit()
             if initial:
+                self.log.append(f"Timing: launch and handshake {time.perf_counter() - self._launch_started:.3f} s")
                 self.discovered.emit({"path": self.path, "name": self.name, "options": self.options.copy()})
             if self.pending:
                 if prepared and self.pending is prepared_request:
                     self.running, self.pending = self.pending, None
                     self.phase = "search"
+                    self._search_started = time.perf_counter()
+                    self._first_output = False
                     self.send(self.running[1])
                     self.send(self.running[2])
                     tokens = self.running[2].split()
@@ -226,6 +248,9 @@ class UciConnection(QObject):
                     self._safe_prepare()
         elif self.phase == "search" and self.running:
             if info := parse_info(line):
+                if not getattr(self, "_first_output", False):
+                    self._first_output = True
+                    self.log.append(f"Timing: first search result {time.perf_counter() - getattr(self, '_search_started', time.perf_counter()):.3f} s")
                 if self.observe_nodes:
                     self.observation.emit(self.running[0], info)
                 self._last_info[info["multipv"]] = (self.running[0], info)

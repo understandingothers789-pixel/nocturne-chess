@@ -69,6 +69,7 @@ class EngineController(QObject):
         ensure_pv_length=False,
         time_enabled=True,
         time_nodes_only=False,
+        adaptive_hash=False,
     ):
         if not external:
             raise ValueError("Select your Stockfish or another UCI executable first")
@@ -116,7 +117,7 @@ class EngineController(QObject):
             if searchmoves:
                 go += " searchmoves " + " ".join(valid)
         self._busy = True
-        self.connection.request(self.generation, position, go, desired, game.id)
+        self.connection.request(self.generation, position, go, desired, game.id, adaptive_hash=adaptive_hash)
         return self.generation
 
     def _validated_info(self, info):

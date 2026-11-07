@@ -38,3 +38,22 @@ class ResourceTests(unittest.TestCase):
             self.assertEqual(hash_budget_mb(), 5120)
             self.assertEqual(hash_budget_mb(4096), 9216)
             self.assertEqual(hash_budget_mb(32768), 28672)
+
+
+class AutomaticHashTests(unittest.TestCase):
+    def test_pressure_and_recovery_include_replaceable_allocation(self):
+        from nocturne.gui.hardware import automatic_hash_mb
+        for budget, expected in ((4096, 1024), (5120, 2048), (16384, 2048), (2048, 16)):
+            with patch("nocturne.gui.hardware.hash_budget_mb", return_value=budget) as read:
+                self.assertEqual(automatic_hash_mb(1024), expected)
+                read.assert_called_once_with(1024)
+        with patch("nocturne.gui.hardware.hash_budget_mb", return_value=None):
+            self.assertEqual(automatic_hash_mb(), 256)
+
+    def test_configured_ceiling_is_reached_after_memory_recovers(self):
+        from nocturne.gui.hardware import automatic_hash_mb
+        with patch("nocturne.gui.hardware.hash_budget_mb", return_value=4096):
+            self.assertEqual(automatic_hash_mb(maximum=8192), 1024)
+        with patch("nocturne.gui.hardware.hash_budget_mb", return_value=16384):
+            self.assertEqual(automatic_hash_mb(1024, maximum=8192), 8192)
+            self.assertEqual(automatic_hash_mb(1024, maximum=4320), 4320)

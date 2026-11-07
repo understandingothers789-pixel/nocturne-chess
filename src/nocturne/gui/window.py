@@ -2750,6 +2750,7 @@ class MainWindow(QMainWindow):
                 limits,
                 profile["path"],
                 options=options,
+                adaptive_hash="Hash" in options,
                 multipv=state.get("multipv", 1),
                 infinite=state.get("kind") == "auto_eval" and state["nodes"] is None,
                 nodes_only=state.get("kind") == "auto_eval" or confirming,
@@ -2970,14 +2971,17 @@ class MainWindow(QMainWindow):
             self._save()
             self._schedule_engine()
 
-    def _set_engine_resource(self, name, value):
+    def _set_engine_resource(self, name, value, *, automatic=False):
         profile = self._profile()
         try:
-            number = validate_resource(profile, name, value, self.resource_controls.allocated_hash())
+            number = validate_resource(profile, name, value, self.resource_controls.allocated_hash(), adaptive_hash=name == "Hash")
         except (TypeError, ValueError) as exc:
             self._error("Cannot apply engine setting", str(exc))
             return
+        removed_auto = name == "Hash" and not automatic and profile.pop("gpu_hash_defaulted", None) is not None
         if value is not None and profile["values"].get(name) == number:
+            if removed_auto:
+                self._save()
             self.resource_controls.refresh()
             return
         self._cancel_review()
@@ -3020,7 +3024,7 @@ class MainWindow(QMainWindow):
             self._maybe_apply_gpu_hash_default(self._profile())
 
     def _maybe_apply_gpu_hash_default(self, profile):
-        """Use an 8 GB starting Hash on detected-GPU desktops, respecting overrides."""
+        """Use a conservative automatic Hash ceiling, respecting manual overrides."""
         if (not self._gpu_hardware_detected or not profile or not profile.get("options_detected")
                 or profile.get("gpu_hash_default_suppressed")
                 or profile["id"] in self._gpu_hash_default_profiles):
@@ -3029,13 +3033,14 @@ class MainWindow(QMainWindow):
         if not isinstance(option, dict) or option.get("kind") != "spin":
             return
         saved = profile.get("values", {}).get("Hash")
-        if saved is not None and str(saved) != str(option.get("default", "")):
+        if (saved is not None and str(saved) != str(option.get("default", ""))
+                and str(saved) != str(profile.get("gpu_hash_defaulted"))):
             return
 
         from .hardware import hash_budget_mb
 
         minimum = int(option.get("minimum", 1))
-        maximum = min(8192, int(option.get("maximum", 8192)))
+        maximum = min(2048, int(option.get("maximum", 2048)))
         budget = hash_budget_mb(self.resource_controls.allocated_hash())
         if budget is not None:
             maximum = min(maximum, budget)
@@ -3054,7 +3059,7 @@ class MainWindow(QMainWindow):
 
     def _apply_gpu_hash_default(self, profile, value):
         if not self._closing and profile is self._profile():
-            self._set_engine_resource("Hash", value)
+            self._set_engine_resource("Hash", value, automatic=True)
 
     def _effective_multipv(self):
         profile = self._profile()
@@ -4874,6 +4879,7 @@ class MainWindow(QMainWindow):
                 limits,
                 profile["path"],
                 options=options,
+                adaptive_hash="Hash" in options,
                 kind=kind,
                 ensure_pv_length=kind == "analysis" and not self._auto_play_active,
                 infinite=infinite,

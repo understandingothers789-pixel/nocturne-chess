@@ -18,6 +18,22 @@ class SpeedPathTests(unittest.TestCase):
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
 
+    def test_automatic_hash_rechecks_memory_and_manual_hash_is_preserved(self):
+        from nocturne.gui.uci_connection import UciConnection
+        from nocturne.engine.uci_types import parse_option
+        connection = UciConnection()
+        connection.options["Hash"] = parse_option("option name Hash type spin default 16 min 1 max 8192")
+        for adaptive, expected in ((True, "512"), (False, "2048")):
+            connection.applied.clear()
+            connection.request(1, "position startpos", "go infinite", {"Hash": 2048}, adaptive_hash=adaptive)
+            with patch("nocturne.gui.hardware.automatic_hash_mb", return_value=512), patch.object(connection, "send") as send:
+                connection._prepare()
+                commands = [call.args[0] for call in send.call_args_list]
+                self.assertIn("setoption name Hash value " + expected, commands)
+        connection.close()
+        connection.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
     def test_output_timer_is_idle_without_pending_information(self):
         from PySide6.QtTest import QTest
         from nocturne.gui.uci_connection import UciConnection

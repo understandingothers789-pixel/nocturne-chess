@@ -1851,7 +1851,7 @@ class GuiTests(unittest.TestCase):
         self.assertIsNone(self.window.board_view.preview_board)
         self.assertEqual(self.window.board_view.display_board.fen(), actual)
 
-    def test_detected_gpu_selects_eight_gigabyte_hash_only_for_default_profiles(self):
+    def test_detected_gpu_selects_two_gigabyte_ceiling_only_for_automatic_profiles(self):
         from nocturne.gui.hardware import has_discrete_gpu
 
         self.assertTrue(has_discrete_gpu("Intel UHD Graphics\nAMD Radeon RX 9070 XT"))
@@ -1871,8 +1871,8 @@ class GuiTests(unittest.TestCase):
         with patch("nocturne.gui.hardware.hash_budget_mb", return_value=16384):
             self.window._maybe_apply_gpu_hash_default(default_profile)
             self.window._maybe_apply_gpu_hash_default(custom_profile)
-        self.assertEqual(default_profile["values"]["Hash"], 8192)
-        self.assertEqual(default_profile["gpu_hash_defaulted"], 8192)
+        self.assertEqual(default_profile["values"]["Hash"], 2048)
+        self.assertEqual(default_profile["gpu_hash_defaulted"], 2048)
         self.assertEqual(custom_profile["values"]["Hash"], "4096")
 
     def test_hover_special_moves_uses_copies_and_preserves_hash_and_cursor(self):

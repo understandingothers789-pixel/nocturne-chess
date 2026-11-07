@@ -45,19 +45,19 @@ def resource_option(profile, name):
         return None
 
 
-def resource_limits(option, allocated_mb=0):
+def resource_limits(option, allocated_mb=0, *, adaptive_hash=False):
     maximum = min(option.maximum, 2147483647)
-    if option.name == "Hash" and (budget := hash_budget_mb(allocated_mb)) is not None:
+    if option.name == "Hash" and not adaptive_hash and (budget := hash_budget_mb(allocated_mb)) is not None:
         maximum = min(maximum, budget)
     return option.minimum, maximum
 
 
-def validate_resource(profile, name, value, allocated_mb=0):
+def validate_resource(profile, name, value, allocated_mb=0, *, adaptive_hash=False):
     option = resource_option(profile, name)
     if option is None:
         raise ValueError(f"This engine does not advertise a supported {name} option")
     value = int(option.validate(option.default if value is None else value))
-    minimum, maximum = resource_limits(option, allocated_mb)
+    minimum, maximum = resource_limits(option, allocated_mb, adaptive_hash=adaptive_hash)
     if maximum < minimum:
         raise ValueError(f"{name}: the engine minimum ({minimum:,} MB) exceeds the current memory budget")
     if not minimum <= value <= maximum:
@@ -107,9 +107,12 @@ class EngineResources(QObject):
             except ValueError:
                 value = "invalid"
             current = resource_label(name, value)
-            menu.setTitle(f"{name} ({current})")
-            matches = matches and same_engine and confirmed.get(name) == str(value)
-            minimum, maximum = resource_limits(option, self.allocated_hash())
+            adaptive = name == "Hash" and name in profile["values"] and isinstance(value, int)
+            allocated = int(confirmed.get("Hash", 0)) if same_engine else 0
+            menu.setTitle(f"Hash (max {current}, using {format_hash_mb(allocated)})" if adaptive else f"{name} ({current})")
+            applied = 0 < allocated <= value if adaptive else confirmed.get(name) == str(value)
+            matches = matches and same_engine and applied
+            minimum, maximum = resource_limits(option, self.allocated_hash(), adaptive_hash=name == "Hash")
             presets = (
                 (1, 2, 3, 4, 6, 8, 12, 14, 15, 16, 24, 32, 48, 64, 96, 128)
                 if name == "Threads"
@@ -157,7 +160,7 @@ class EngineResources(QObject):
         option = resource_option(profile, name)
         if option is None:
             return
-        minimum, maximum = resource_limits(option, self.allocated_hash())
+        minimum, maximum = resource_limits(option, self.allocated_hash(), adaptive_hash=name == "Hash")
         if maximum < minimum:
             return
         try:
@@ -166,7 +169,7 @@ class EngineResources(QObject):
             value = minimum
         number, accepted = QInputDialog.getInt(
             self.parent(), f"Engine {name}",
-            "Hash size in MB (1 GB = 1,024 MB):" if name == "Hash" else "Search threads:",
+            "Maximum hash in MB (1 GB = 1,024 MB). Actual use grows as RAM becomes available:" if name == "Hash" else "Search threads:",
             min(maximum, max(minimum, value)), minimum, maximum, 1,
         )
         if accepted:

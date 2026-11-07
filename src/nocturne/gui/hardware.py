@@ -45,3 +45,18 @@ def hash_budget_mb(allocated_mb=0):
         return max(16, min(total - 4096, available + max(0, allocated_mb) - 1024))
     except (OSError, ValueError, AttributeError):
         return None
+
+
+def automatic_hash_mb(allocated_mb=0, maximum=2048):
+    """Grow to the configured ceiling when RAM permits, reserving app headroom.
+
+    Include replaceable engine memory; hash_budget_mb already reserves 1 GB
+    of free RAM, and this adds another 3 GB for other applications.
+    """
+    budget = hash_budget_mb(allocated_mb)
+    target = 256 if budget is None else max(16, budget - 3072)
+    if target >= maximum:
+        return maximum
+    # Stable steps avoid frequent small reallocations. The exact configured
+    # maximum is reachable even when it is not a power of two.
+    return min(maximum, max(16, 1 << max(0, int(target).bit_length() - 1)))
