@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.141 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42359190648/artifacts/13569053113).** Stockfish Hash now treats your setting as a maximum, reducing its allocation when RAM is busy and growing it on later searches as memory becomes available. The Hash menu shows the maximum and current allocation. Windows tests, packaging and startup checks passed.
+
 **[Download Nocturne 0.5.7.140 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42317940397/artifacts/13551713120).** Faster study navigation reuses the Game Line document; engine variation formatting and board previews avoid repeated position synchronization. Engine output no longer wakes an idle timer. Full Windows validation, packaging and packaged startup checks passed. See the [performance follow-up](docs/audits/performance-followup.md).
 
 **[Download Nocturne 0.5.7.139 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42154153067/artifacts/13473864289).** Adds a scrollable board symbol guide and menu explanations after a short hover. Caches rendered pieces and skips unchanged graph, rating-chart and Maia probability updates. Windows validation, full tests, packaging and packaged startup checks passed. See the [performance review](docs/audits/performance-139.md).
