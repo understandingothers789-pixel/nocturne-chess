@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.146 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42447778909/artifacts/13604492263).** Optional Analysis history below STOCKFISH captures 1M, 2M, 4M and successive doubling checkpoints, with interactive previews and ranked or fixed-move views. Find tactics scans the first four moves per line only after analysis stops, identifying patterns and possible sacrifices without claiming engine verification. Checkpoints are kept in memory for this session. Windows tests, packaging, startup and live database checks passed. See the [analysis history guide](docs/ANALYSIS_HISTORY.md).
+
 **[Download Nocturne 0.5.7.145 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42446123966/artifacts/13603412436).** Leela advanced-setting explanations appear on their labels, keeping value fields clear; Switch, Follow board and Enabled controls retain their own tooltips. Windows validation and packaging passed.
 
 **[Download Nocturne 0.5.7.144 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42444262975/artifacts/13601969889).** Leela can follow the board orientation when flipped, with an option in Advanced to disable it. Advanced Leela settings now include explanatory tooltips. Windows validation and packaging passed.
