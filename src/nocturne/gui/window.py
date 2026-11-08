@@ -4304,6 +4304,7 @@ class MainWindow(QMainWindow):
 
     def _flip(self):
         self.board_view.flip()
+        self.leela_panel.follow_board_flip(self.board_view.flipped)
         self.eval_bar.flipped = self.board_view.flipped
         self.eval_bar.update()
         self._update_players()

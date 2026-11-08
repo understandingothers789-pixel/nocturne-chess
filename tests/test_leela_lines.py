@@ -12,6 +12,27 @@ from nocturne.gui.leela import LeelaPanel
 
 
 class LeelaLineTests(unittest.TestCase):
+    def test_follow_board_flip_can_be_disabled_and_saved(self):
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as folder:
+            config = dict(DEFAULTS)
+            panel = LeelaPanel(Path(folder), config)
+            try:
+                panel.follow_board_flip(False)
+                self.assertEqual(config['leela_side'], 'white')
+                panel.follow_board_flip(True)
+                self.assertEqual(config['leela_side'], 'black')
+                panel.follow_board.setChecked(False)
+                self.assertFalse(config['leela_follow_board'])
+                panel.follow_board_flip(False)
+                self.assertEqual(config['leela_side'], 'black')
+                panel.side.setCurrentIndex(0)
+                self.assertEqual(config['leela_side'], 'white')
+                app.processEvents()
+            finally:
+                panel.shutdown()
+                panel.deleteLater()
+
     def test_render_score_depth_wdl_and_hover_without_starting_engine(self):
         app = QApplication.instance() or QApplication([])
         with tempfile.TemporaryDirectory() as folder:

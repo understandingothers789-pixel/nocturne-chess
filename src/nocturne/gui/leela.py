@@ -144,6 +144,7 @@ class LeelaPanel(QWidget):
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
         details = QPushButton('Advanced · ratings, GPU and search limits')
+        details.setToolTip('Show settings for Leela’s perspective, player ratings, GPU, and search limits.')
         details.setCheckable(True)
         layout.addWidget(details)
         settings = QWidget()
@@ -159,11 +160,16 @@ class LeelaPanel(QWidget):
         self.gap.setValue(config['leela_gap'])
         self.opponent.setValue(config['leela_rating'] - config['leela_gap'])
         side_row = QHBoxLayout()
-        side_row.addWidget(self.side, 1)
+        side_row.addWidget(self.side)
         switch_side = QPushButton('⇄ Switch')
         switch_side.setToolTip('Switch White and Black, keeping the ratings and advantage.')
         switch_side.clicked.connect(lambda: self.side.setCurrentIndex(1 - self.side.currentIndex()))
         side_row.addWidget(switch_side)
+        self.follow_board = QCheckBox('Follow board')
+        self.follow_board.setChecked(config.get('leela_follow_board', True))
+        self.follow_board.setToolTip('When the board is flipped, use the color at the bottom as the perspective / stronger side.')
+        side_row.addWidget(self.follow_board)
+        side_row.addStretch()
         form.addRow('Perspective / stronger side', side_row)
         form.addRow('Selected side rating', self.rating)
         form.addRow('Opponent rating', self.opponent)
@@ -205,6 +211,26 @@ class LeelaPanel(QWidget):
         form.addRow(self.auto_gpu)
         form.addRow('GPU backend / adapter', self.gpu_info)
         form.addRow('DirectML GPU index', self.device)
+        tips = [
+            (side_row, self.side, 'Choose the side whose win, draw and loss chances are shown and which receives the rating advantage.'),
+            (self.rating, self.rating, 'Set the rating of the selected side for Leela’s matchup model.'),
+            (self.opponent, self.opponent, 'Set the opponent’s rating; changing it updates the rating advantage.'),
+            (self.gap, self.gap, 'Rating difference between the selected side and its opponent. Positive means the selected side is stronger.'),
+            (time_row, self.seconds, 'Maximum time Leela spends analyzing each position, in seconds.'),
+            (node_row, self.nodes, 'Maximum number of positions Leela searches for each analysis.'),
+            (self.batch, self.batch, 'Number of positions sent to the GPU together. Larger batches may improve throughput, but use more video memory and can affect search efficiency. Default: 16.'),
+            (self.gpu_info, self.gpu_info, 'Shows the GPU backend and selected adapter used for Leela analysis.'),
+            (self.device, self.device, 'Choose the DirectML GPU adapter index when automatic GPU selection is off.'),
+        ]
+        for field, widget, tip in tips:
+            widget.setToolTip(tip)
+            label = form.labelForField(field)
+            if label:
+                label.setToolTip(tip)
+        self.time_enabled.setToolTip('Enable the time limit. When both limits are enabled, the first reached stops the search.')
+        self.nodes_enabled.setToolTip('Enable the node limit. When both limits are enabled, the first reached stops the search.')
+        self.auto_gpu.setToolTip('Automatically select a discrete GPU, preferring Radeon when available.')
+        limit_note.setToolTip(limit_note.text())
         layout.addWidget(settings)
         settings.hide()
         details.toggled.connect(settings.setVisible)
@@ -219,6 +245,7 @@ class LeelaPanel(QWidget):
         self.batch.valueChanged.connect(self._settings)
         self.nodes.valueChanged.connect(self._settings)
         self.auto_gpu.toggled.connect(self._settings)
+        self.follow_board.toggled.connect(self._settings)
         self._sync_limit_controls()
         self.outcome = QLabel('Win —    Draw —    Loss —')
         self.outcome.setWordWrap(True)
@@ -290,7 +317,7 @@ class LeelaPanel(QWidget):
         self._sync_gpu()
         mode = ('both' if self.time_enabled.isChecked() and self.nodes_enabled.isChecked() else
                 'time' if self.time_enabled.isChecked() else 'nodes' if self.nodes_enabled.isChecked() else 'infinite')
-        self.config.update(leela_limit=mode, leela_nodes=self.nodes.value(), leela_batch_size=self.batch.value(),
+        self.config.update(leela_follow_board=self.follow_board.isChecked(), leela_limit=mode, leela_nodes=self.nodes.value(), leela_batch_size=self.batch.value(),
                            leela_gpu_auto=self.auto_gpu.isChecked(), leela_side=self.side.currentText().lower(), leela_rating=self.rating.value(),
                            leela_gap=self.gap.value(), leela_seconds=self.seconds.value(),
                            leela_device=self.device.value())
@@ -298,6 +325,10 @@ class LeelaPanel(QWidget):
         self.settings_changed.emit()
         if self.game and self.active:
             self.request(self.game)
+
+    def follow_board_flip(self, flipped):
+        if self.follow_board.isChecked():
+            self.side.setCurrentIndex(1 if flipped else 0)
 
     def _verify_engine(self, profile):
         required = {'ContemptMode', 'Contempt', 'WDLCalibrationElo', 'UCI_ShowWDL'}
