@@ -206,7 +206,6 @@ class LeelaPanel(QWidget):
         self.batch = QSpinBox()
         self.batch.setRange(1, 512)
         self.batch.setValue(config['leela_batch_size'])
-        self.batch.setToolTip('Larger batches may improve GPU throughput but use more VRAM and can affect search efficiency. Default: 16.')
         form.addRow('GPU batch size', self.batch)
         form.addRow(self.auto_gpu)
         form.addRow('GPU backend / adapter', self.gpu_info)
@@ -222,8 +221,7 @@ class LeelaPanel(QWidget):
             (self.gpu_info, self.gpu_info, 'Shows the GPU backend and selected adapter used for Leela analysis.'),
             (self.device, self.device, 'Choose the DirectML GPU adapter index when automatic GPU selection is off.'),
         ]
-        for field, widget, tip in tips:
-            widget.setToolTip(tip)
+        for field, _widget, tip in tips:
             label = form.labelForField(field)
             if label:
                 label.setToolTip(tip)
@@ -289,7 +287,6 @@ class LeelaPanel(QWidget):
         text = f'{prefix}: ONNX DirectML GPU · index {self.device.value()}\n{name}'
         if self.gpu_info.text() != text:
             self.gpu_info.setText(text)
-        self.gpu_info.setToolTip('DXGI adapter indices match the DirectML device setting. No CPU backend fallback is configured.')
 
     def _settings(self, *args, opponent=False):
         if opponent:
