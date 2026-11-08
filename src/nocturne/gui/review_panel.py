@@ -79,20 +79,31 @@ class ReviewPanel(QWidget):
         self.errors_only = QCheckBox("Mistakes and inaccuracies only")
         self.errors_only.toggled.connect(self._render_rows)
         layout.addWidget(self.errors_only)
-        self.table = QTableWidget(0, 4)
+        moments = QHBoxLayout()
+        previous = QPushButton("Previous mistake")
+        following = QPushButton("Next mistake")
+        biggest = QPushButton("Biggest mistake")
+        previous.clicked.connect(lambda: self._key_moment(-1))
+        following.clicked.connect(lambda: self._key_moment(1))
+        biggest.clicked.connect(lambda: self._key_moment(0))
+        for widget in (previous, following, biggest):
+            widget.setToolTip("Jump to a reviewed inaccuracy, mistake or blunder on the selected line.")
+            moments.addWidget(widget)
+        layout.addLayout(moments)
+        self.table = QTableWidget(0, 5)
         self.table.setMinimumHeight(105)
-        self.table.setHorizontalHeaderLabels(["Move", "Quality", "Accuracy", "Best move"])
+        self.table.setHorizontalHeaderLabels(["Move", "Quality", "Accuracy", "Chance loss", "Best move"])
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setShowGrid(False)
         self.table.verticalHeader().hide()
-        for column in range(4):
+        for column in range(5):
             self.table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.Stretch)
         self.table.cellClicked.connect(self._clicked)
         layout.addWidget(self.table, 1)
         self.detail = QTextBrowser()
-        self.detail.setMaximumHeight(105)
+        self.detail.setMaximumHeight(190)
         self.detail.setMinimumHeight(65)
         self.detail.setPlainText("Select a reviewed move to see the engine evidence.")
         layout.addWidget(self.detail)
@@ -133,7 +144,8 @@ class ReviewPanel(QWidget):
             summary = summarize(self.entries, color)
             value.setText(f"{summary['accuracy']:.1f}%" if summary["accuracy"] is not None else "—")
             coverage.setText(f"{summary['reviewed']}/{summary['total']} reviewed" +
-                             (" · partial" if summary["reviewed"] < summary["total"] else ""))
+                             (" · partial" if summary["reviewed"] < summary["total"] else "") +
+                             f"\n{summary['counts']['Mistake']} mistakes · {summary['counts']['Blunder']} blunders")
         self.counts.setText("  ·  ".join(f"{label} {total['counts'][label]}" for label in LABELS))
         signature = (game.id, game.current_node, light, tuple((e["node"], e["san"], repr(e["record"])) for e in self.entries))
         if self._signature != signature:
@@ -150,7 +162,9 @@ class ReviewPanel(QWidget):
             record = entry["record"]
             move = f"{entry['number']}{'.' if entry['color'] == 1 else '…'} {entry['san']}"
             values = [move, record["label"] if record else "Not reviewed",
-                      f"{record['accuracy']:.1f}%" if record else "—", record["best_san"] if record else "—"]
+                      f"{record['accuracy']:.1f}%" if record else "—",
+                      f"{record['loss_percent']:.1f} pp" if record else "—",
+                      record["best_san"] if record else "—"]
             for column, text in enumerate(values):
                 item = QTableWidgetItem(text)
                 item.setData(Qt.ItemDataRole.UserRole, entry["node"])
@@ -162,6 +176,20 @@ class ReviewPanel(QWidget):
                 self.table.setItem(row, column, item)
             if self.game and self.game.current_node == entry["node"]:
                 self.table.selectRow(row)
+        self._show_detail()
+
+    def _key_moment(self, direction):
+        errors = [e for e in self.entries if e["record"] and e["record"]["label"] in ERRORS]
+        if not errors or not self.game:
+            return
+        if direction == 0:
+            entry = max(errors, key=lambda e: e["record"]["loss_percent"])
+        else:
+            nodes = [e["node"] for e in self.entries]
+            index = nodes.index(self.game.current_node) if self.game.current_node in nodes else -1
+            ordered = errors if direction > 0 else list(reversed(errors))
+            entry = next((e for e in ordered if (nodes.index(e["node"]) - index) * direction > 0), ordered[0])
+        self.move_requested.emit(entry["node"])
         self._show_detail()
 
     def _clicked(self, row, column):
@@ -182,11 +210,17 @@ class ReviewPanel(QWidget):
         confirmed = (f"\nConfirmed with {confirmation['nodes_per_search']:,} nodes per search "
                      f"(initial label: {confirmation['initial_label']})." if confirmation else "")
         cp = f" · {record['loss_cp'] / 100:.2f} pawns" if "loss_cp" in record else " · mate distances are not graded"
+        continuation = " ".join(best.get("san", [])[:12]) or record["best_san"]
+        explanation = (f"The engine preferred {record['best_san']}. Compare the continuation below from the position before your move."
+                       if record["label"] in ERRORS else
+                       "Your move matched the engine’s choice." if record["label"] == "Best" else
+                       "Your move kept most of the position’s estimated chances.")
         self.detail.setPlainText(
             f"{entry['san']}: {record['label']} · {record['accuracy']:.1f}%\n"
             f"Best {record['best_san']} {score_label(best)} (depth {best.get('depth', '?')}); "
             f"played {score_label(played)} (depth {played.get('depth', '?')}). Scores favor the mover.\n"
-            f"Outcome-proxy loss {record['loss_percent']:.2f} percentage points{cp}.\n"
+            f"Estimated chance loss {record['loss_percent']:.2f} percentage points{cp}.\n"
+            f"{explanation}\nSuggested line: {continuation}\n"
             f"Engine: {best.get('engine', record['context'].get('engine', 'UCI'))}{confirmed}")
 
     def _before(self):

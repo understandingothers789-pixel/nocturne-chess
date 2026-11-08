@@ -11,12 +11,76 @@ from .moves import MoveText
 from ..snapshots import node_label
 
 
+def exchange_description(white_lost, black_lost):
+    """Cancel matching material, treating bishops and knights as minor pieces."""
+    kinds = ('pawn', 'minor piece', 'rook', 'queen')
+    left, right = dict(white_lost), dict(black_lost)
+    for kind in kinds:
+        common = min(left.get(kind, 0), right.get(kind, 0))
+        left[kind] = left.get(kind, 0) - common
+        right[kind] = right.get(kind, 0) - common
+    if not any(left.values()) or not any(right.values()):
+        return None
+    if not any(left[k] or right[k] for k in kinds[1:]):
+        return None
+
+    def describe(items):
+        return ' + '.join(f'{n} {kind}' + ('s' if n != 1 else '')
+                          for kind in reversed(kinds) if (n := items.get(kind, 0)))
+    return f'White gives {describe(left)} for {describe(right)}'
+
+
+def material_imbalances(fen, pv, plies=12, min_ply=4):
+    """Group capture sequences; report material trades, not their soundness."""
+    board = chess.Board(fen)
+    lost = {chess.WHITE: {}, chess.BLACK: {}}
+    start = end = quiet = 0
+    results = []
+
+    def finish():
+        if start >= min_ply:
+            description = exchange_description(lost[chess.WHITE], lost[chess.BLACK])
+            if description:
+                results.append((end, f'Material imbalance · {description} · plies {start}–{end} (PV only)'))
+        lost[chess.WHITE].clear()
+        lost[chess.BLACK].clear()
+
+    for ply, text in enumerate(pv[:plies], 1):
+        move = board.parse_uci(text)
+        victim = board.piece_at(move.to_square)
+        if board.is_en_passant(move):
+            victim = chess.Piece(chess.PAWN, not board.turn)
+        if victim:
+            if not start:
+                start = ply
+            kind = ('minor piece' if victim.piece_type in (chess.KNIGHT, chess.BISHOP)
+                    else chess.piece_name(victim.piece_type))
+            items = lost[victim.color]
+            items[kind] = items.get(kind, 0) + 1
+            end, quiet = ply, 0
+        else:
+            quiet += 1
+        board.push(move)
+        if start and quiet >= 2:
+            finish()
+            start = 0
+        # Promotions change material independently of captures; don't confuse
+        # that gain with compensation for a sacrificed piece.
+        if move.promotion:
+            lost[chess.WHITE].clear()
+            lost[chess.BLACK].clear()
+            start = 0
+    if start:
+        finish()
+    return results
+
+
 def tactic_patterns(fen, pv, plies=12, min_ply=4):
     """Conservative pattern hints, not engine proof of a sound combination."""
     board = chess.Board(fen)
     values = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
               chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 100}
-    found = []
+    found = material_imbalances(fen, pv, plies, min_ply)
     for ply, uci in enumerate(pv[:plies], 1):
         move = board.parse_uci(uci)
         color = board.turn

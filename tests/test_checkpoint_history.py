@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 import chess
 from PySide6.QtWidgets import QApplication
-from nocturne.gui.analysis_history import AnalysisHistory, tactic_patterns
+from nocturne.gui.analysis_history import AnalysisHistory, tactic_patterns, exchange_description, material_imbalances
 
 
 def line(move, rank=1, nodes=1_000_000):
@@ -143,6 +143,18 @@ class CheckpointTests(unittest.TestCase):
             self.assertTrue(engine.connection.observe_nodes)
         finally:
             engine.connection.close()
+
+    def test_material_exchange_types_exclude_normal_trades(self):
+        self.assertIn('1 minor piece for 2 pawns', exchange_description({'minor piece': 1}, {'pawn': 2}))
+        self.assertIn('1 minor piece for 3 pawns', exchange_description({'minor piece': 1}, {'pawn': 3}))
+        self.assertIn('2 minor pieces for 1 rook + 1 pawn',
+                      exchange_description({'minor piece': 2}, {'rook': 1, 'pawn': 1}))
+        self.assertIsNone(exchange_description({'minor piece': 1}, {'minor piece': 1}))
+        self.assertIsNone(exchange_description({'pawn': 1}, {'pawn': 1}))
+        fen = '6k1/7p/8/8/8/3B4/8/6K1 w - - 0 1'
+        result = material_imbalances(fen, ['d3h7', 'g8h7'], min_ply=1)
+        self.assertTrue(any('1 minor piece for 1 pawn' in text for _, text in result))
+        self.assertFalse(material_imbalances(fen, ['d3h7', 'g8h7'], min_ply=4))
 
     def test_fork_and_mate_patterns_and_plain_opening(self):
         fen = '4k3/8/3r1q2/8/8/2N5/8/4K3 w - - 0 1'
