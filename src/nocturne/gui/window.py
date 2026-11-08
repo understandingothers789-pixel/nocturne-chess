@@ -227,6 +227,8 @@ class MainWindow(QMainWindow):
         self.analysis_history.pointer_moved.connect(self._move_cursor_preview)
         self.engine = EngineController(self)
         self.engine.message.connect(self._engine_message)
+        self.engine.set_history_capture(self.config.get("checkpoint_history", False))
+        self.engine.connection.observation.connect(self._observe_checkpoint)
         self.engine.discovered.connect(self._engine_discovered)
         self.engine.status.connect(self.engine_state.setText)
         self.engine.connection.configured.connect(self.resource_controls.refresh)
@@ -477,12 +479,22 @@ class MainWindow(QMainWindow):
         self.engine_layout.setSpacing(0)
         column_titles = QHBoxLayout()
         column_titles.addWidget(label("STOCKFISH", "eyebrow"), 1)
-        self.analysis_history_toggle = QCheckBox("Analysis history")
+        self.analysis_history_toggle = QPushButton("Analysis history")
+        self.analysis_history_toggle.setCheckable(True)
+        self.analysis_history_toggle.setFlat(True)
+        self.analysis_history_toggle.setObjectName("historyToggle")
+        self.analysis_history_toggle.setStyleSheet("QPushButton#historyToggle {border:none; background:transparent; padding:2px 4px;} QPushButton#historyToggle:checked {border-bottom:2px solid #8cd2c3;}")
         self.analysis_history_toggle.setChecked(self.config.get("checkpoint_history", False))
         self.analysis_history_toggle.setToolTip("Capture interactive MultiPV checkpoints at 1M, 2M, 4M nodes and onward. A new search replaces this position’s checkpoints.")
         column_titles.addWidget(self.analysis_history_toggle)
+        history_details = QPushButton("More details")
+        history_details.setFlat(True)
+        history_details.clicked.connect(self._checkpoint_details)
+        column_titles.addWidget(history_details)
+        column_titles.addSpacing(12)
         self.maia_column_title = label("MAIA · 1800", "maiaHeading")
         self.maia_column_title.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.maia_column_title.setMinimumWidth(90)
         column_titles.addWidget(self.maia_column_title)
         self.engine_layout.addLayout(column_titles)
         self.pv_label = MoveText(auto_fit=True)
@@ -514,6 +526,8 @@ class MainWindow(QMainWindow):
         self.checkpoint_history.panel.pointer_moved.connect(self._move_cursor_preview)
         self.checkpoint_history.preview_end.connect(lambda: self._end_preview("maia-all"))
         self.checkpoint_history.insert.connect(self._insert_checkpoint)
+        self.checkpoint_history.min_ply = self.config.get("tactic_min_ply", 4)
+        self.checkpoint_history.max_ply = self.config.get("tactic_max_ply", 12)
         self.checkpoint_history.setVisible(self.analysis_history_toggle.isChecked())
         self.analysis_history_toggle.toggled.connect(self._toggle_checkpoint_history)
         self.engine_layout.addWidget(self.candidate_splitter, 1)
@@ -2258,8 +2272,80 @@ class MainWindow(QMainWindow):
         if self.config.get('leela_enabled'):
             self._leela_results(self.leela_panel.lines)
 
+    def _checkpoint_details(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Analysis history details")
+        layout = QVBoxLayout(dialog)
+        precise = QCheckBox("Finer capture: use one engine thread")
+        precise.setChecked(self.config.get("checkpoint_precise", False))
+        precise.setToolTip("Slows the next Stockfish search to one thread, giving early checkpoints more time. Raw-output capture is always used. Missing milestones are never fabricated.")
+        layout.addWidget(precise)
+        form = QFormLayout()
+        minimum, maximum = QSpinBox(), QSpinBox()
+        minimum.setRange(1, 64)
+        maximum.setRange(1, 128)
+        minimum.setValue(self.config.get("tactic_min_ply", 4))
+        maximum.setValue(self.config.get("tactic_max_ply", 12))
+        minimum.setToolTip("Ignore tactics before this half-move. Ply 4 is the fourth move by either player, counting from the analyzed position.")
+        maximum.setToolTip("Stop looking after this half-move of each captured variation.")
+        form.addRow("First tactic ply", minimum)
+        form.addRow("Last tactic ply", maximum)
+        layout.addLayout(form)
+        note = QLabel("Tactics are pattern hints, not verified combinations. Settings apply to the next scan; engine thread changes apply to the next search.")
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.config.update(checkpoint_precise=precise.isChecked(), tactic_min_ply=minimum.value(),
+                               tactic_max_ply=max(minimum.value(), maximum.value()))
+            self.checkpoint_history.min_ply = minimum.value()
+            self.checkpoint_history.max_ply = max(minimum.value(), maximum.value())
+            self._save()
+
+    def _observe_checkpoint(self, generation, info):
+        job = self._job
+        if (not self.config.get("checkpoint_history", False) or not job
+                or generation != job.get("generation") or generation != self.engine.generation
+                or job.get("identity") != self._position_identity()):
+            return
+        history = self.checkpoint_history
+        history.position((self.game.id, position_key(self.game)), self.game.board.fen(), self.game.board.turn)
+        session = (generation, self._position_identity())
+        if getattr(self, "_checkpoint_session", None) != session:
+            self._checkpoint_session = session
+            self._checkpoint_raw = {}
+            self._checkpoint_earlier = []
+        if info.get("pv"):
+            root = info["pv"][0]
+            self._checkpoint_earlier = [info.copy()] + [value for value in self._checkpoint_earlier
+                                                        if value.get("pv", [None])[0] != root][:63]
+        self._checkpoint_raw[info["multipv"]] = info.copy()
+        required = min(job.get("multipv", 1), self.game.board.native.legal_moves.count())
+        if len(self._checkpoint_raw) < required:
+            return
+        nodes = info.get("nodes", 0)
+        # Validate only at milestones, keeping the per-output observer cheap.
+        if history.session == generation and nodes < history.next_nodes:
+            return
+        lines = {rank: self.engine._validated_info(value)
+                 for rank, value in self._checkpoint_raw.items() if rank <= required}
+        lines = {rank: value for rank, value in lines.items() if value}
+        if len(lines) == required:
+            active_roots = {value["pv"][0] for value in lines.values() if value.get("pv")}
+            earlier = [value for value in self._checkpoint_earlier
+                       if value.get("pv") and value["pv"][0] not in active_roots][:max(0, 5 - required)]
+            for rank, value in enumerate(earlier, required + 1):
+                validated = self.engine._validated_info(value)
+                if validated:
+                    lines[rank] = dict(validated, multipv=rank, historical=True)
+            history.observe(generation, lines, nodes)
+
     def _toggle_checkpoint_history(self, enabled):
         self.config["checkpoint_history"] = bool(enabled)
+        self.engine.set_history_capture(enabled)
         self.checkpoint_history.setVisible(enabled)
         if enabled:
             self.checkpoint_history.position((self.game.id, position_key(self.game)), self.game.board.fen(), self.game.board.turn)
@@ -4950,6 +5036,8 @@ class MainWindow(QMainWindow):
             self.analysis_scope = f"{count} PV" if count > 1 else ""
         options = dict(profile.get("values", {}))
         options.setdefault("UCI_ShowWDL", True)
+        if self.config.get("checkpoint_history", False) and self.config.get("checkpoint_precise", False):
+            options["Threads"] = 1
         context = (
             self._position_identity(),
             profile["id"],
@@ -5121,12 +5209,9 @@ class MainWindow(QMainWindow):
                 rank = info.get("multipv", 1)
                 job.setdefault("lines", {})[rank] = info.copy()
                 if self.config.get("checkpoint_history", False):
-                    self.checkpoint_history.position((self.game.id, position_key(self.game)), self.game.board.fen(), self.game.board.turn)
-                    lines = job["lines"]
-                    required = min(job.get("multipv", 1), self.game.board.native.legal_moves.count())
-                    if len(lines) >= required:
-                        self.checkpoint_history.observe(job.get("generation", id(job)), lines,
-                                                        min(x.get("nodes", 0) for x in lines.values()))
+                    self.checkpoint_history.live = {r: dict(x) for r, x in job["lines"].items()}
+                    if self.checkpoint_history.selected is None and self.checkpoint_history.mode.currentIndex():
+                        self.checkpoint_history._render()
                 if info.get("bound", "exact") == "exact":
                     job.setdefault("exact_lines", {})[rank] = info.copy()
             self._candidate_identity = self._position_identity()

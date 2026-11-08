@@ -36,18 +36,25 @@ class EngineController(QObject):
         self._limit_reached = False
         self._pv_stop_sent = False
         self._validated_pvs = OrderedDict()
+        self.history_capture = False
+        self.snapshot_capture = False
 
     @property
     def busy(self):
         return self._busy
 
     def set_snapshot_capture(self, enabled):
-        if self.connection.observe_nodes == bool(enabled):
+        if self.snapshot_capture == bool(enabled):
             return
-        self.connection.observe_nodes = bool(enabled)
+        self.snapshot_capture = bool(enabled)
+        self.connection.observe_nodes = self.snapshot_capture or self.history_capture
         self._snapshot_pending = []
         self._snapshot_lines = {rank: dict(info) for rank, info in self.lines.items()}
         self._snapshot_nodes = max((info.get("nodes", 0) for info in self.lines.values()), default=0)
+
+    def set_history_capture(self, enabled):
+        self.history_capture = bool(enabled)
+        self.connection.observe_nodes = self.snapshot_capture or self.history_capture
 
     def connect_engine(self, path, arguments=None):
         self.stop()
@@ -153,6 +160,8 @@ class EngineController(QObject):
         )
 
     def _observe(self, generation, info):
+        if not self.snapshot_capture:
+            return
         if generation != self.generation or not self._busy:
             return
         self._snapshot_lines[info["multipv"]] = dict(info)

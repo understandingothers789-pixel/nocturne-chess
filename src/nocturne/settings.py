@@ -68,6 +68,9 @@ DEFAULTS = {
     "review_confirm": True,
     "analysis_snapshots": False,
     "checkpoint_history": False,
+    "checkpoint_precise": False,
+    "tactic_min_ply": 4,
+    "tactic_max_ply": 12,
     "details": False,
     "pv_font_increase": 20,
     "show_seldepth": False,
@@ -188,6 +191,7 @@ def normalize(data) -> dict:
         "review_confirm",
         "analysis_snapshots",
         "checkpoint_history",
+        "checkpoint_precise",
     ):
         if isinstance(data.get(key), bool):
             result[key] = data[key]
@@ -277,6 +281,8 @@ def normalize(data) -> dict:
     if result["candidate_arrow_yellow_cp"] < result["candidate_arrow_green_cp"]:
         result["candidate_arrow_yellow_cp"] = result["candidate_arrow_green_cp"]
     result['leela_limit'] = data.get('leela_limit') if data.get('leela_limit') in ('time', 'nodes', 'both', 'infinite') else 'time'
+    result['tactic_min_ply'] = max(1, min(64, int(data.get('tactic_min_ply', 4)))) if type(data.get('tactic_min_ply', 4)) is int else 4
+    result['tactic_max_ply'] = max(result['tactic_min_ply'], min(128, data.get('tactic_max_ply', 12))) if type(data.get('tactic_max_ply', 12)) is int else max(result['tactic_min_ply'], 12)
     result['leela_side'] = 'white' if data.get('leela_side') == 'white' else 'black'
     for key, low, high in (('leela_rating', 800, 3500), ('leela_gap', -2000, 2000),
                            ('leela_seconds', 1, 120), ('leela_device', 0, 31), ('leela_nodes', 1, 2000000000), ('leela_batch_size', 1, 512)):

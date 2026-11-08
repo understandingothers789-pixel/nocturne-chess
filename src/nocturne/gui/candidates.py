@@ -55,6 +55,7 @@ class CandidatePanel(QWidget):
         self.maia_rating = 1800
         self.light = False
         self.show_seldepth = False
+        self.show_line_depth = False
         self.show_details = False
         self.database = None
         self.details = {}
@@ -455,6 +456,7 @@ class CandidatePanel(QWidget):
         self.changed.emit()
 
     def _paint_line(self, rank, info, turn, light, detailed, previous=None, historical=False):
+        historical = historical or info.get("historical", False)
         self.turn = turn
         self.recolor(light)
         self.details[rank] = detailed
@@ -467,7 +469,7 @@ class CandidatePanel(QWidget):
         moves.candidate_historical = historical
         moves.candidate_turn = turn
         moves.candidate_evaluation = score_label(info, turn)
-        moves.candidate_depth = info["depth"] if historical else None
+        moves.candidate_depth = info.get("depth") if historical or self.show_line_depth else None
         old_content = (moves._items, moves._candidate_style)
         moves.set_moves([(text, i + 1) for i, text in enumerate(info["san"])], light=light, figurines=True)
         content_changed = old_content != (moves._items, moves._candidate_style)

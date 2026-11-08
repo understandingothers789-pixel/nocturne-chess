@@ -11,7 +11,7 @@ from .moves import MoveText
 from ..snapshots import node_label
 
 
-def tactic_patterns(fen, pv, plies=8):
+def tactic_patterns(fen, pv, plies=12, min_ply=4):
     """Conservative pattern hints, not engine proof of a sound combination."""
     board = chess.Board(fen)
     values = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
@@ -66,7 +66,7 @@ def tactic_patterns(fen, pv, plies=8):
                     recovery = values.get(victim.piece_type, 0) if victim else 0
                 if recovery < values[piece.piece_type]:
                     found.append((ply, f'Possible {chess.piece_name(piece.piece_type)} sacrifice · {prefix}'))
-    return found
+    return [(ply, text) for ply, text in found if ply >= min_ply]
 
 
 class AnalysisHistory(QWidget):
@@ -88,6 +88,7 @@ class AnalysisHistory(QWidget):
         self.checkpoints = {}
         self.next_nodes = 1_000_000
         self.scanning = False
+        self.min_ply, self.max_ply = 4, 12
         self.scan_token = 0
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -106,7 +107,7 @@ class AnalysisHistory(QWidget):
         self.mode.currentIndexChanged.connect(self._mode_changed)
         row.addWidget(self.mode)
         self.find = QPushButton('Find tactics')
-        self.find.setToolTip('Stop analysis first. Check the first four moves of each displayed line for tactical patterns and possible sacrifices; results are not engine verification.')
+        self.find.setToolTip('Stop analysis first. Check the configured ply range of each displayed line for tactical patterns and possible sacrifices; results are not engine verification.')
         self.find.clicked.connect(self.scan)
         row.addWidget(self.find)
         self.reorder = QPushButton('Update move order')
@@ -117,6 +118,7 @@ class AnalysisHistory(QWidget):
         row.addWidget(self.caption)
         layout.addLayout(row)
         self.panel = CandidatePanel(MoveText(auto_fit=True))
+        self.panel.show_line_depth = True
         self.panel.preview.connect(self._preview)
         self.panel.preview_end.connect(self.preview_end)
         self.panel.navigate.connect(self._insert)
@@ -156,12 +158,13 @@ class AnalysisHistory(QWidget):
         self.live = deepcopy(lines)
         if self.mode.currentIndex() and not self.anchor:
             self.anchor = [x['pv'][0] for _, x in sorted(lines.items()) if x.get('pv')]
-        changed = False
+        crossed = None
         while nodes >= self.next_nodes:
-            self.checkpoints[self.next_nodes] = (nodes, deepcopy(lines))
+            crossed = self.next_nodes
             self.next_nodes *= 2
-            changed = True
-        if changed:
+        if crossed is not None:
+            # A single output must never masquerade as multiple checkpoints.
+            self.checkpoints[crossed] = (nodes, deepcopy(lines))
             self._buttons()
         if self.selected is None and self.mode.currentIndex():
             self._render()
@@ -261,7 +264,7 @@ class AnalysisHistory(QWidget):
         self.find.setText('Cancel')
         token = self.scan_token
         tasks = iter(sorted(deepcopy(self.shown()).items()))
-        note = QLabel('Checking first four moves per line. Pattern hints, not verified combinations.')
+        note = QLabel(f'Checking plies {self.min_ply}–{self.max_ply} per line. Pattern hints, not verified combinations.')
         note.setWordWrap(True)
         self.results.addWidget(note)
 
@@ -277,7 +280,7 @@ class AnalysisHistory(QWidget):
                 return
             rank, info = task
             try:
-                hints = tactic_patterns(self.root, info['pv'])
+                hints = tactic_patterns(self.root, info['pv'], self.max_ply, self.min_ply)
             except ValueError:
                 hints = []
             if not hints:
