@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.144 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42444262975/artifacts/13601969889).** Leela can follow the board orientation when flipped, with an option in Advanced to disable it. Advanced Leela settings now include explanatory tooltips. Windows validation and packaging passed.
+
 **[Download Nocturne 0.5.7.143 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42443213354/artifacts/13601774536).** Maia background caching yields to Leela searches, resumes automatically when they finish, works forward along the selected line and wraps back to earlier positions. Completed predictions remain cached when navigating away. Windows validation and packaging passed.
 
 **[Download Nocturne 0.5.7.142 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42411467032/artifacts/13589902201).** Keeps the previous analysis line visible while navigating forward through matching moves, including multi-move jumps, and clears it after a divergence. Full Windows tests, packaging, startup and live database checks passed.
