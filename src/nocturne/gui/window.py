@@ -80,6 +80,7 @@ from ..review import classify, chance
 from .explorer_panel import OpeningExplorer
 from .opening_coverage import OpeningCoverage
 from .snapshot_dialog import SnapshotDialog
+from .analysis_history import AnalysisHistory
 from ..explorer import RATINGS, SPEEDS
 from .moves import MoveText
 from .game_line import GameLine
@@ -476,6 +477,10 @@ class MainWindow(QMainWindow):
         self.engine_layout.setSpacing(0)
         column_titles = QHBoxLayout()
         column_titles.addWidget(label("STOCKFISH", "eyebrow"), 1)
+        self.analysis_history_toggle = QCheckBox("Analysis history")
+        self.analysis_history_toggle.setChecked(self.config.get("checkpoint_history", False))
+        self.analysis_history_toggle.setToolTip("Capture interactive MultiPV checkpoints at 1M, 2M, 4M nodes and onward. A new search replaces this position’s checkpoints.")
+        column_titles.addWidget(self.analysis_history_toggle)
         self.maia_column_title = label("MAIA · 1800", "maiaHeading")
         self.maia_column_title.setAlignment(Qt.AlignmentFlag.AlignRight)
         column_titles.addWidget(self.maia_column_title)
@@ -499,6 +504,18 @@ class MainWindow(QMainWindow):
             "QSplitter::handle:vertical {background:rgba(130,150,160,65); height:7px;}"
             "QSplitter::handle:vertical:hover {background:rgba(130,150,160,150);}")
         self.candidate_splitter.addWidget(self.candidates)
+        self.checkpoint_history = AnalysisHistory(
+            lambda: self.engine.busy or bool(self._review) or self._auto_play_active
+            or (hasattr(self, "leela_panel") and
+                (self.leela_panel.engine.busy or self.leela_panel.timer.isActive())), self)
+        self.engine_layout.addWidget(self.checkpoint_history)
+        self.checkpoint_history.viewing.connect(lambda viewing: self.candidates.setVisible(not viewing))
+        self.checkpoint_history.preview.connect(self._preview_maia_line)
+        self.checkpoint_history.panel.pointer_moved.connect(self._move_cursor_preview)
+        self.checkpoint_history.preview_end.connect(lambda: self._end_preview("maia-all"))
+        self.checkpoint_history.insert.connect(self._insert_checkpoint)
+        self.checkpoint_history.setVisible(self.analysis_history_toggle.isChecked())
+        self.analysis_history_toggle.toggled.connect(self._toggle_checkpoint_history)
         self.engine_layout.addWidget(self.candidate_splitter, 1)
         self.inline_history = GameLine()
         self.inline_history.setMinimumHeight(160)
@@ -2241,6 +2258,33 @@ class MainWindow(QMainWindow):
         if self.config.get('leela_enabled'):
             self._leela_results(self.leela_panel.lines)
 
+    def _toggle_checkpoint_history(self, enabled):
+        self.config["checkpoint_history"] = bool(enabled)
+        self.checkpoint_history.setVisible(enabled)
+        if enabled:
+            self.checkpoint_history.position((self.game.id, position_key(self.game)), self.game.board.fen(), self.game.board.turn)
+        self.checkpoint_history.select(None)
+        if not enabled:
+            self.candidates.show()
+        self._save()
+
+    def _insert_checkpoint(self, moves):
+        board = self.game.board.copy()
+        try:
+            parsed = []
+            for text in moves:
+                move = board.parse_uci(text)
+                parsed.append(move)
+                board.push(move)
+        except ValueError:
+            return
+        self._stop_engine()
+        for move in parsed:
+            self.game.play(move)
+        self._refresh(animate=len(parsed) == 1, defer_secondary=self.analysis_mode)
+        self._save(defer=True)
+        self._schedule_engine(preserve_position_analysis=True)
+
     def _insert_candidate(self, rank, ply=None):
         if self._candidate_identity != self._position_identity() or not self.candidates.display_line(rank):
             return
@@ -3843,6 +3887,8 @@ class MainWindow(QMainWindow):
             self._refresh(board_ready=True)
 
     def _refresh(self, animate=False, board_ready=False, defer_secondary=False):
+        if self.config.get("checkpoint_history", False):
+            self.checkpoint_history.position((self.game.id, position_key(self.game)), self.game.board.fen(), self.game.board.turn)
         if defer_secondary:
             self._navigation_refresh_identity = self._position_identity()
             self._navigation_refresh_timer.start()
@@ -5074,6 +5120,13 @@ class MainWindow(QMainWindow):
             if store:
                 rank = info.get("multipv", 1)
                 job.setdefault("lines", {})[rank] = info.copy()
+                if self.config.get("checkpoint_history", False):
+                    self.checkpoint_history.position((self.game.id, position_key(self.game)), self.game.board.fen(), self.game.board.turn)
+                    lines = job["lines"]
+                    required = min(job.get("multipv", 1), self.game.board.native.legal_moves.count())
+                    if len(lines) >= required:
+                        self.checkpoint_history.observe(job.get("generation", id(job)), lines,
+                                                        min(x.get("nodes", 0) for x in lines.values()))
                 if info.get("bound", "exact") == "exact":
                     job.setdefault("exact_lines", {})[rank] = info.copy()
             self._candidate_identity = self._position_identity()

@@ -2224,7 +2224,8 @@ class GuiTests(unittest.TestCase):
         for kind in (QComboBox, QSpinBox, QToolButton):
             controls = [control for control in self.window.tabs.widget(1).findChildren(kind)
                         if control not in self.window.candidates.expand_buttons.values()
-                        and not self.window.leela_panel.isAncestorOf(control)]
+                        and not self.window.leela_panel.isAncestorOf(control)
+                        and not self.window.checkpoint_history.isAncestorOf(control)]
             expected = ([self.window.maia_controls.rating, self.window.maia_controls.range_min, self.window.maia_controls.range_max, self.window.maia_insights.blunder.move] if kind is QComboBox
                         else [self.window.maia_controls.move_limit] if kind is QSpinBox else [])
             self.assertEqual(controls, expected)

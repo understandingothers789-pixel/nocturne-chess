@@ -67,6 +67,7 @@ DEFAULTS = {
     "review_seconds": 3.0,
     "review_confirm": True,
     "analysis_snapshots": False,
+    "checkpoint_history": False,
     "details": False,
     "pv_font_increase": 20,
     "show_seldepth": False,
@@ -186,6 +187,7 @@ def normalize(data) -> dict:
         "reanalyze_on_navigation",
         "review_confirm",
         "analysis_snapshots",
+        "checkpoint_history",
     ):
         if isinstance(data.get(key), bool):
             result[key] = data[key]
