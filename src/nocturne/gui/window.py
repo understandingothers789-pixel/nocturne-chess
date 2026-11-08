@@ -2118,7 +2118,7 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, self, self._ensure_maia_gpu)
             path = self.game.node_path(self.game.current_node)[1:]
             self.maia.request(self.game.initial_fen, [self.game.nodes[n].move.uci() for n in path], rating, sweep=self.config.get("show_maia_insights", True))
-            self.maia.foreground_busy = lambda: self.engine.busy or self._closing or bool(self._review)
+            self.maia.foreground_busy = self._maia_background_blocked
             continuation = []
             moves = [self.game.nodes[n].move.uci() for n in path]
             index = self.game.current_node
@@ -2126,9 +2126,21 @@ class MainWindow(QMainWindow):
             while self.game.nodes[index].children:
                 index = next(selected_future, self.game.nodes[index].children[0])
                 continuation.append(self.game.nodes[index].move.uci())
+            # Cache forward from the selected position, then wrap to its ancestors.
+            # request() above always supersedes this background queue on navigation.
             histories = (moves + continuation[:i] for i in range(1, len(continuation) + 1))
+            from itertools import chain
+            histories = chain(histories, (moves[:i] for i in range(len(moves))))
             self.maia.prefetch(self.game.initial_fen, histories, rating)
         self._maia_changed(self.maia.policies if enabled else {})
+
+    def _maia_background_blocked(self):
+        # Only background predictions yield to Leela; the selected position
+        # remains a foreground request. The prefetch timer resumes work as
+        # soon as Leela's finite search ends, without requiring navigation.
+        return (self._closing or bool(self._review)
+                or (self.leela_panel.active and
+                    (self.leela_panel.timer.isActive() or self.leela_panel.engine.busy)))
 
     def _maia_changed(self, policies):
         if self._navigation_refresh_timer.isActive():

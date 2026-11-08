@@ -223,6 +223,18 @@ class MaiaController(QObject):
                     self._busy = False
                     if self._queued:
                         self._dispatch()
+            elif (self._active and message.get("id") == self._active[1]["id"]
+                  and message.get("id") != self._serial):
+                # Navigation makes a result stale for display, but it remains
+                # valid for the position that requested it.
+                key = self._active[0][0]
+                self.cache.setdefault(key, {}).update(message.get("policies", {}))
+                self.value_cache.setdefault(key, {}).update(message.get("outcomes", {}))
+                self.cache.move_to_end(key)
+                if message.get("complete"):
+                    self._trim_cache()
+                    if not self.cache_timer.isActive():
+                        self.cache_timer.start()
             elif self._active and message.get("id") == self._serial == self._active[1]["id"]:
                 self.outcomes.update(message.get("outcomes", {}))
                 self.value_cache[self._active[0][0]] = self.outcomes.copy()

@@ -12,6 +12,27 @@ class PrefetchTests(unittest.TestCase):
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
 
+    def test_background_yields_to_leela_and_resumes_without_navigation(self):
+        from types import SimpleNamespace
+        from nocturne.gui.window import MainWindow
+        with tempfile.TemporaryDirectory() as folder:
+            c = MaiaController(folder)
+            panel = SimpleNamespace(active=True, engine=SimpleNamespace(busy=True),
+                                    timer=SimpleNamespace(isActive=lambda: False))
+            window = SimpleNamespace(_closing=False, _review=None, leela_panel=panel)
+            c.foreground_busy = lambda: MainWindow._maia_background_blocked(window)
+            c._ready = True
+            c.device_label = 'DirectML'
+            c.prefetch('root', [['e2e4']], 1800)
+            with patch.object(c.process, 'write') as write:
+                c._prefetch_next()
+                write.assert_not_called()
+                panel.engine.busy = False
+                c._prefetch_next()
+                self.assertEqual(write.call_count, 1)
+                self.assertEqual(json.loads(bytes(write.call_args.args[0]))['moves'], ['e2e4'])
+            c.stop()
+
     def test_configured_range_limits_foreground_and_prefetch_requests(self):
         self.assertEqual(RATINGS[0], 600)
         with tempfile.TemporaryDirectory() as folder:
