@@ -207,10 +207,20 @@ class LeelaPanel(QWidget):
         self.batch.setRange(1, 512)
         self.batch.setValue(config['leela_batch_size'])
         form.addRow('GPU batch size', self.batch)
+        self.speed_limit = QSpinBox()
+        self.speed_limit.setRange(0, 1000000)
+        self.speed_limit.setSpecialValueText('Unlimited')
+        self.speed_limit.setSuffix(' nodes/s')
+        self.speed_limit.setSingleStep(100)
+        self.speed_limit.setGroupSeparatorShown(True)
+        self.speed_limit.setValue(config.get('leela_nps_limit', 3000))
+        self.speed_limit.setAccessibleName('Leela search speed limit')
+        form.addRow('Search speed limit', self.speed_limit)
         form.addRow(self.auto_gpu)
         form.addRow('GPU backend / adapter', self.gpu_info)
         form.addRow('DirectML GPU index', self.device)
         tips = [
+            (self.speed_limit, self.speed_limit, 'Limit Leela’s average search speed to reduce GPU work. Zero means Unlimited. Default: 3,000 nodes/s. Increase it for faster analysis or lower it to reduce GPU work. Unlimited permits the engine’s full speed; a higher limit cannot guarantee higher hardware throughput. This is not an exact GPU percentage or a hardware power limit. Short timed searches will analyze fewer positions; node-limited searches take longer. Applies when the value changes. Maia is controlled separately.'),
             (side_row, self.side, 'Choose the side whose win, draw and loss chances are shown and which receives the rating advantage.'),
             (self.rating, self.rating, 'Set the rating of the selected side for Leela’s matchup model.'),
             (self.opponent, self.opponent, 'Set the opponent’s rating; changing it updates the rating advantage.'),
@@ -241,6 +251,7 @@ class LeelaPanel(QWidget):
         self.time_enabled.toggled.connect(self._settings)
         self.nodes_enabled.toggled.connect(self._settings)
         self.batch.valueChanged.connect(self._settings)
+        self.speed_limit.valueChanged.connect(self._settings)
         self.nodes.valueChanged.connect(self._settings)
         self.auto_gpu.toggled.connect(self._settings)
         self.follow_board.toggled.connect(self._settings)
@@ -314,7 +325,7 @@ class LeelaPanel(QWidget):
         self._sync_gpu()
         mode = ('both' if self.time_enabled.isChecked() and self.nodes_enabled.isChecked() else
                 'time' if self.time_enabled.isChecked() else 'nodes' if self.nodes_enabled.isChecked() else 'infinite')
-        self.config.update(leela_follow_board=self.follow_board.isChecked(), leela_limit=mode, leela_nodes=self.nodes.value(), leela_batch_size=self.batch.value(),
+        self.config.update(leela_nps_limit=self.speed_limit.value(), leela_follow_board=self.follow_board.isChecked(), leela_limit=mode, leela_nodes=self.nodes.value(), leela_batch_size=self.batch.value(),
                            leela_gpu_auto=self.auto_gpu.isChecked(), leela_side=self.side.currentText().lower(), leela_rating=self.rating.value(),
                            leela_gap=self.gap.value(), leela_seconds=self.seconds.value(),
                            leela_device=self.device.value())
@@ -329,6 +340,8 @@ class LeelaPanel(QWidget):
 
     def _verify_engine(self, profile):
         required = {'ContemptMode', 'Contempt', 'WDLCalibrationElo', 'UCI_ShowWDL'}
+        if self.config.get('leela_nps_limit', 3000):
+            required.add('NodesPerSecondLimit')
         missing = required.difference(profile.get('options', {}))
         if missing:
             self.engine.stop()
@@ -361,7 +374,7 @@ class LeelaPanel(QWidget):
                self.config['leela_side'], self.config['leela_rating'], self.config['leela_gap'],
                self.config['leela_seconds'], self.config['leela_device'],
                self.config['leela_limit'], self.config['leela_nodes'], self.config['leela_gpu_auto'],
-               self.config['leela_batch_size'])
+               self.config['leela_batch_size'], self.config.get('leela_nps_limit', 3000))
         if key == self.identity and not force:
             return
         self._sync_gpu()
@@ -412,6 +425,7 @@ class LeelaPanel(QWidget):
                    'WDLEvalObjectivity': '0.0', 'WDLContemptAttenuation': '1.0',
                    'WDLDrawRateReference': '0.62', 'MovesLeftThreshold': '0.95',
                    'Threads': 2, 'NNCacheSize': 200000,
+                   'NodesPerSecondLimit': cfg.get('leela_nps_limit', 3000),
                    'MinibatchSize': cfg['leela_batch_size']}
         try:
             self.engine.start(self.game, AnalysisLimits(depth=128, seconds=cfg['leela_seconds'],

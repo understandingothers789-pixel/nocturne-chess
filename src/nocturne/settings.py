@@ -40,6 +40,7 @@ DEFAULTS = {
     "analysis_time_enabled": True,
     "analysis_nodes_enabled": True,
     "leela_gpu_auto": True,
+    "leela_nps_limit": 3000,
     "leela_follow_board": True,
     "leela_device": 0,
     "maia_rating": 1800,
@@ -284,7 +285,7 @@ def normalize(data) -> dict:
     result['tactic_min_ply'] = max(1, min(64, int(data.get('tactic_min_ply', 4)))) if type(data.get('tactic_min_ply', 4)) is int else 4
     result['tactic_max_ply'] = max(result['tactic_min_ply'], min(128, data.get('tactic_max_ply', 12))) if type(data.get('tactic_max_ply', 12)) is int else max(result['tactic_min_ply'], 12)
     result['leela_side'] = 'white' if data.get('leela_side') == 'white' else 'black'
-    for key, low, high in (('leela_rating', 800, 3500), ('leela_gap', -2000, 2000),
+    for key, low, high in (('leela_nps_limit', 0, 1000000), ('leela_rating', 800, 3500), ('leela_gap', -2000, 2000),
                            ('leela_seconds', 1, 120), ('leela_device', 0, 31), ('leela_nodes', 1, 2000000000), ('leela_batch_size', 1, 512)):
         value = data.get(key)
         if type(value) is int:
