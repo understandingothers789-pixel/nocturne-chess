@@ -194,8 +194,17 @@ class AnalysisHistory(QWidget):
         self.poll = QTimer(self)
         self.poll.setInterval(250)
         self.poll.timeout.connect(self._availability)
-        self.poll.start()
         self._buttons()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._availability()
+        self.poll.start()
+
+    def hideEvent(self, event):
+        self.poll.stop()
+        self.cancel()
+        super().hideEvent(event)
 
     def position(self, key, fen, turn):
         if self.key == key:
@@ -228,7 +237,9 @@ class AnalysisHistory(QWidget):
             self.next_nodes *= 2
         if crossed is not None:
             # A single output must never masquerade as multiple checkpoints.
-            self.checkpoints[crossed] = (nodes, deepcopy(lines))
+            # live is replaced, not mutated, by subsequent output. Share this
+            # detached copy with the checkpoint instead of copying every PV twice.
+            self.checkpoints[crossed] = (nodes, self.live)
             self._buttons()
         if self.selected is None and self.mode.currentIndex():
             self._render()

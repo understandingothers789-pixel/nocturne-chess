@@ -156,6 +156,15 @@ class CheckpointTests(unittest.TestCase):
         self.assertTrue(any('1 minor piece for 1 pawn' in text for _, text in result))
         self.assertFalse(material_imbalances(fen, ['d3h7', 'g8h7'], min_ply=4))
 
+    def test_hidden_history_does_not_poll(self):
+        w = self.widget
+        self.assertFalse(w.poll.isActive())
+        w.show()
+        self.app.processEvents()
+        self.assertTrue(w.poll.isActive())
+        w.hide()
+        self.assertFalse(w.poll.isActive())
+
     def test_fork_and_mate_patterns_and_plain_opening(self):
         fen = '4k3/8/3r1q2/8/8/2N5/8/4K3 w - - 0 1'
         self.assertTrue(any('Fork' in text for _, text in tactic_patterns(fen, ['c3e4'], min_ply=1)))

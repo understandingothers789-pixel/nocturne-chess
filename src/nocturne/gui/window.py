@@ -2312,16 +2312,19 @@ class MainWindow(QMainWindow):
                 or job.get("identity") != self._position_identity()):
             return
         history = self.checkpoint_history
-        history.position((self.game.id, position_key(self.game)), self.game.board.fen(), self.game.board.turn)
         session = (generation, self._position_identity())
         if getattr(self, "_checkpoint_session", None) != session:
+            history.position((self.game.id, position_key(self.game)), self.game.board.fen(), self.game.board.turn)
             self._checkpoint_session = session
             self._checkpoint_raw = {}
             self._checkpoint_earlier = []
         if info.get("pv"):
             root = info["pv"][0]
-            self._checkpoint_earlier = [info.copy()] + [value for value in self._checkpoint_earlier
-                                                        if value.get("pv", [None])[0] != root][:63]
+            if self._checkpoint_earlier and self._checkpoint_earlier[0]["pv"][0] == root:
+                self._checkpoint_earlier[0] = info.copy()
+            else:
+                self._checkpoint_earlier = [info.copy()] + [value for value in self._checkpoint_earlier
+                                                          if value.get("pv", [None])[0] != root][:63]
         self._checkpoint_raw[info["multipv"]] = info.copy()
         required = min(job.get("multipv", 1), self.game.board.native.legal_moves.count())
         if len(self._checkpoint_raw) < required:

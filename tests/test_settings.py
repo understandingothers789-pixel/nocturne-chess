@@ -4,6 +4,16 @@ from nocturne.settings import DEFAULTS, normalize
 
 
 class SettingsTests(unittest.TestCase):
+    def test_both_models_survive_restart_unless_exclusive_is_selected(self):
+        both = dict(maia_enabled=True, leela_enabled=True)
+        saved = normalize(both)
+        self.assertTrue(saved['maia_enabled'])
+        self.assertTrue(saved['leela_enabled'])
+        saved = normalize(dict(both, exclusive_analysis_models=True))
+        self.assertTrue(saved['exclusive_analysis_models'])
+        self.assertFalse(saved['maia_enabled'])
+        self.assertTrue(saved['leela_enabled'])
+
     def test_candidate_arrow_loss_preferences_default_and_normalize(self):
         self.assertFalse(DEFAULTS["candidate_loss_arrows"])
         self.assertEqual((DEFAULTS["candidate_arrow_green_cp"],

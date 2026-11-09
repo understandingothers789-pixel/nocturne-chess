@@ -30,6 +30,7 @@ DEFAULTS = {
     "show_clocks": True,
     "maia_enabled": True,
     "leela_enabled": False,
+    "exclusive_analysis_models": False,
     "leela_side": "black",
     "leela_rating": 2700,
     "leela_gap": 250,
@@ -161,6 +162,7 @@ def normalize(data) -> dict:
         "show_raw_pgn",
         "maia_enabled",
         "leela_enabled",
+        "exclusive_analysis_models",
         "analysis_time_enabled",
         "analysis_nodes_enabled",
         "leela_gpu_auto",
@@ -290,6 +292,6 @@ def normalize(data) -> dict:
         value = data.get(key)
         if type(value) is int:
             result[key] = max(low, min(high, value))
-    if result['leela_enabled']:
+    if result['leela_enabled'] and result['exclusive_analysis_models']:
         result['maia_enabled'] = False
     return result
