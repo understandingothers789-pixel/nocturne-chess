@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.151 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42747468676/artifacts/13732352206).** Adds Normal, Low and Minimal Leela GPU workload presets, optional click-to-analyze mode, and a Stop Leela control. Windows lint, full tests, packaging, packaged startup checks and live database check passed. See the [Leela GPU workload guide](docs/LEELA_GPU_WORKLOAD.md).
+
 **[Download Nocturne 0.5.7.150 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42667686776/artifacts/13697028992).** Preserves Maia and Leela together after restart unless exclusive model selection is enabled. Reduces repeated position hashing, capture copying and candidate-list rebuilding, and stops the history polling timer while hidden. Full Windows validation and packaging passed.
 
 **[Download Nocturne 0.5.7.149 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42538445086/artifacts/13639858515).** Adds Leela’s adjustable Search speed limit under Advanced, defaulting to 3,000 nodes/s to reduce GPU work. Increase or lower the limit, or choose Unlimited. Windows tests, packaging, startup and live database checks passed.
