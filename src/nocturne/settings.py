@@ -42,6 +42,8 @@ DEFAULTS = {
     "analysis_nodes_enabled": True,
     "leela_gpu_auto": True,
     "leela_nps_limit": 3000,
+    "leela_workload": "normal",
+    "leela_on_demand": False,
     "leela_follow_board": True,
     "leela_device": 0,
     "maia_rating": 1800,
@@ -162,6 +164,7 @@ def normalize(data) -> dict:
         "show_raw_pgn",
         "maia_enabled",
         "leela_enabled",
+        "leela_on_demand",
         "exclusive_analysis_models",
         "analysis_time_enabled",
         "analysis_nodes_enabled",
@@ -283,6 +286,7 @@ def normalize(data) -> dict:
         result[key] = value if type(value) is int and 1 <= value <= 2000 else default
     if result["candidate_arrow_yellow_cp"] < result["candidate_arrow_green_cp"]:
         result["candidate_arrow_yellow_cp"] = result["candidate_arrow_green_cp"]
+    result["leela_workload"] = data.get("leela_workload") if data.get("leela_workload") in ("normal", "low", "minimal") else "normal"
     result['leela_limit'] = data.get('leela_limit') if data.get('leela_limit') in ('time', 'nodes', 'both', 'infinite') else 'time'
     result['tactic_min_ply'] = max(1, min(64, int(data.get('tactic_min_ply', 4)))) if type(data.get('tactic_min_ply', 4)) is int else 4
     result['tactic_max_ply'] = max(result['tactic_min_ply'], min(128, data.get('tactic_max_ply', 12))) if type(data.get('tactic_max_ply', 12)) is int else max(result['tactic_min_ply'], 12)

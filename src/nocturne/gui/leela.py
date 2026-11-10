@@ -101,6 +101,18 @@ class LeelaInstaller(QThread):
             self.failed.emit(str(exc))
 
 
+def workload_limits(config):
+    """Bound batch size and parallelism as well as average search speed."""
+    batch = config['leela_batch_size']
+    nps = config.get('leela_nps_limit', 3000)
+    mode = config.get('leela_workload', 'normal')
+    if mode == 'minimal':
+        return 1, 1, min(nps or 100, 100)
+    if mode == 'low':
+        return min(batch, 4), 1, min(nps or 500, 500)
+    return batch, 2, nps
+
+
 class LeelaPanel(QWidget):
     settings_changed = Signal()
     move_selected = Signal(str)
@@ -115,6 +127,8 @@ class LeelaPanel(QWidget):
         self.config = config
         self.root = Path(root) / 'leela'
         self.identity = None
+        self._paused_by_user = False
+        self._resume_after_setup = False
         self.game = None
         self.active = False
         self.exe = self.weights = ''
@@ -216,10 +230,24 @@ class LeelaPanel(QWidget):
         self.speed_limit.setValue(config.get('leela_nps_limit', 3000))
         self.speed_limit.setAccessibleName('Leela search speed limit')
         form.addRow('Search speed limit', self.speed_limit)
+        self.workload = QComboBox()
+        self.workload.addItem('Normal', 'normal')
+        self.workload.addItem('Low · up to 500 nodes/s', 'low')
+        self.workload.addItem('Minimal · up to 100 nodes/s', 'minimal')
+        self.workload.setCurrentIndex(max(0, self.workload.findData(config.get('leela_workload', 'normal'))))
+        form.addRow('GPU workload', self.workload)
+        self.workload_summary = QLabel()
+        self.workload_summary.setWordWrap(True)
+        form.addRow(self.workload_summary)
+        self.on_demand = QCheckBox('Analyze only when I click Analyze again')
+        self.on_demand.setChecked(config.get('leela_on_demand', False))
+        self.on_demand.setToolTip('Keep Leela idle while navigating. Completed cached results still display. Click Analyze again to start a search on the current position.')
+        form.addRow(self.on_demand)
         form.addRow(self.auto_gpu)
         form.addRow('GPU backend / adapter', self.gpu_info)
         form.addRow('DirectML GPU index', self.device)
         tips = [
+            (self.workload, self.workload, 'Low: batch at most 4, one search thread, at most 500 nodes/s. Minimal: batch 1, one thread, at most 100 nodes/s. Lower custom speed limits remain effective. These limit average work, not peak GPU watts; loading the network can still cause a spike.'),
             (self.speed_limit, self.speed_limit, 'Limit Leela’s average search speed to reduce GPU work. Zero means Unlimited. Default: 3,000 nodes/s. Increase it for faster analysis or lower it to reduce GPU work. Unlimited permits the engine’s full speed; a higher limit cannot guarantee higher hardware throughput. This is not an exact GPU percentage or a hardware power limit. Short timed searches will analyze fewer positions; node-limited searches take longer. Applies when the value changes. Maia is controlled separately.'),
             (side_row, self.side, 'Choose the side whose win, draw and loss chances are shown and which receives the rating advantage.'),
             (self.rating, self.rating, 'Set the rating of the selected side for Leela’s matchup model.'),
@@ -252,10 +280,13 @@ class LeelaPanel(QWidget):
         self.nodes_enabled.toggled.connect(self._settings)
         self.batch.valueChanged.connect(self._settings)
         self.speed_limit.valueChanged.connect(self._settings)
+        self.workload.currentIndexChanged.connect(self._settings)
+        self.on_demand.toggled.connect(self._settings)
         self.nodes.valueChanged.connect(self._settings)
         self.auto_gpu.toggled.connect(self._settings)
         self.follow_board.toggled.connect(self._settings)
         self._sync_limit_controls()
+        self._workload_summary()
         self.outcome = QLabel('Win —    Draw —    Loss —')
         self.outcome.setWordWrap(True)
         layout.addWidget(self.outcome)
@@ -280,6 +311,9 @@ class LeelaPanel(QWidget):
         restart = QPushButton('Analyze again')
         restart.clicked.connect(lambda: self.request(self.game, force=True) if self.game else None)
         row.addWidget(restart)
+        stop = QPushButton('Stop Leela')
+        stop.clicked.connect(self.pause_search)
+        row.addWidget(stop)
         layout.addLayout(row)
         self.lines = {}
 
@@ -298,6 +332,22 @@ class LeelaPanel(QWidget):
         text = f'{prefix}: ONNX DirectML GPU · index {self.device.value()}\n{name}'
         if self.gpu_info.text() != text:
             self.gpu_info.setText(text)
+
+    def _workload_summary(self):
+        cfg = dict(self.config, leela_workload=self.workload.currentData(),
+                   leela_batch_size=self.batch.value(), leela_nps_limit=self.speed_limit.value())
+        batch, threads, nps = workload_limits(cfg)
+        speed = f'{nps:,} nodes/s' if nps else 'unlimited speed'
+        self.workload_summary.setText(f'Effective: batch {batch} · {threads} search thread(s) · {speed}. '
+                                      'Lower workload means less analysis in a timed search. GPU power spikes are still possible.')
+
+    def pause_search(self):
+        self._paused_by_user = True
+        self._resume_after_setup = False
+        self.timer.stop()
+        self.engine.stop()
+        self.completed_cache.discard(self.identity)
+        self._status('Leela · stopped · click Analyze again to resume')
 
     def _settings(self, *args, opponent=False):
         if opponent:
@@ -325,10 +375,11 @@ class LeelaPanel(QWidget):
         self._sync_gpu()
         mode = ('both' if self.time_enabled.isChecked() and self.nodes_enabled.isChecked() else
                 'time' if self.time_enabled.isChecked() else 'nodes' if self.nodes_enabled.isChecked() else 'infinite')
-        self.config.update(leela_nps_limit=self.speed_limit.value(), leela_follow_board=self.follow_board.isChecked(), leela_limit=mode, leela_nodes=self.nodes.value(), leela_batch_size=self.batch.value(),
+        self.config.update(leela_workload=self.workload.currentData(), leela_on_demand=self.on_demand.isChecked(), leela_nps_limit=self.speed_limit.value(), leela_follow_board=self.follow_board.isChecked(), leela_limit=mode, leela_nodes=self.nodes.value(), leela_batch_size=self.batch.value(),
                            leela_gpu_auto=self.auto_gpu.isChecked(), leela_side=self.side.currentText().lower(), leela_rating=self.rating.value(),
                            leela_gap=self.gap.value(), leela_seconds=self.seconds.value(),
                            leela_device=self.device.value())
+        self._workload_summary()
         self.identity = None
         self.settings_changed.emit()
         if self.game and self.active:
@@ -340,12 +391,13 @@ class LeelaPanel(QWidget):
 
     def _verify_engine(self, profile):
         required = {'ContemptMode', 'Contempt', 'WDLCalibrationElo', 'UCI_ShowWDL'}
-        if self.config.get('leela_nps_limit', 3000):
-            required.add('NodesPerSecondLimit')
+        if workload_limits(self.config)[2]:
+            required.update(('NodesPerSecondLimit', 'MinibatchSize', 'Threads'))
         missing = required.difference(profile.get('options', {}))
         if missing:
             self.engine.stop()
-            self._status('Lc0 is missing required WDL options: ' + ', '.join(sorted(missing)))
+            self._status('Lc0 is missing required analysis/workload controls: ' + ', '.join(sorted(missing)))
+        return not missing
 
     def _status(self, text):
         self.status.setText(text)
@@ -365,19 +417,25 @@ class LeelaPanel(QWidget):
         self.adapters = gpu_info.get('adapters', [])
         self.gpu_error = gpu_info.get('error', '')
         self._settings()
+        if self._resume_after_setup and not self._paused_by_user and self.active and self.game:
+            self._resume_after_setup = False
+            self.request(self.game, force=True)
 
     def request(self, game, force=False):
         if not self.active:
             return
         self.game = game
+        if force:
+            self._paused_by_user = False
         key = (game.board.fen(), tuple(m.uci() for m in game.moves[:game.cursor]),
                self.config['leela_side'], self.config['leela_rating'], self.config['leela_gap'],
                self.config['leela_seconds'], self.config['leela_device'],
                self.config['leela_limit'], self.config['leela_nodes'], self.config['leela_gpu_auto'],
-               self.config['leela_batch_size'], self.config.get('leela_nps_limit', 3000))
+               self.config['leela_batch_size'], self.config.get('leela_nps_limit', 3000), self.config.get('leela_workload', 'normal'))
         if key == self.identity and not force:
             return
         self._sync_gpu()
+        self.timer.stop()
         self.engine.stop()
         self.render_timer.stop()
         self.identity = key
@@ -394,13 +452,18 @@ class LeelaPanel(QWidget):
             self._status('Leela · cached WDL analysis')
             return
         self.completed_cache.discard(key)
+        if (self.config.get('leela_on_demand', False) or self._paused_by_user) and not force:
+            self.timer.stop()
+            self._status('Leela · on demand · click Analyze again to start')
+            return
         self._status('Leela · waiting to analyze…')
         self.timer.start()
 
     def _start(self):
-        if not self.active or not self.game:
+        if not self.active or not self.game or self._paused_by_user:
             return
         if not self.exe:
+            self._resume_after_setup = True
             self.setup()
             return
         cfg = self.config
@@ -412,10 +475,14 @@ class LeelaPanel(QWidget):
             self._status('The selected adapter is a software renderer. Choose a hardware GPU.')
             return
         self._sync_gpu()
-        if (self._launched_device, self._launched_batch) != (cfg['leela_device'], cfg['leela_batch_size']):
+        batch, threads, nps = workload_limits(cfg)
+        if (self.engine.connection.alive and self.engine.connection.options
+                and not self._verify_engine({'options': self.engine.connection.options})):
+            return
+        if (self._launched_device, self._launched_batch) != (cfg['leela_device'], batch):
             self.engine.close()
             self._launched_device = cfg['leela_device']
-            self._launched_batch = cfg['leela_batch_size']
+            self._launched_batch = batch
         options = {'Backend': 'onnx-dml', 'WeightsFile': self.weights,
                    'BackendOptions': f'gpu={cfg["leela_device"]}', 'UCI_ShowWDL': True,
                    'ScoreType': 'centipawn',
@@ -424,9 +491,9 @@ class LeelaPanel(QWidget):
                    'ContemptMaxValue': '2000.0',
                    'WDLEvalObjectivity': '0.0', 'WDLContemptAttenuation': '1.0',
                    'WDLDrawRateReference': '0.62', 'MovesLeftThreshold': '0.95',
-                   'Threads': 2, 'NNCacheSize': 200000,
-                   'NodesPerSecondLimit': cfg.get('leela_nps_limit', 3000),
-                   'MinibatchSize': cfg['leela_batch_size']}
+                   'Threads': threads, 'NNCacheSize': 200000,
+                   'NodesPerSecondLimit': nps,
+                   'MinibatchSize': batch}
         try:
             self.engine.start(self.game, AnalysisLimits(depth=128, seconds=cfg['leela_seconds'],
                                                          nodes=cfg['leela_nodes'] if cfg['leela_limit'] in ('nodes', 'both') else None),
@@ -435,13 +502,13 @@ class LeelaPanel(QWidget):
                               nodes_only=cfg['leela_limit'] == 'nodes',
                               time_nodes_only=True,
                               arguments=['--backend=onnx-dml', f'--backend-opts=gpu={cfg["leela_device"]}',
-                                         f'--minibatch-size={cfg["leela_batch_size"]}', '--weights=' + self.weights])
+                                         f'--minibatch-size={batch}', '--weights=' + self.weights])
             self._status('Leela · DirectML GPU analysis')
         except (ValueError, OSError) as exc:
             self._status('Leela: ' + str(exc))
 
     def _message(self, generation, kind, info):
-        if (not self.active or not self.identity or not self.game
+        if (generation != self.engine.generation or not self.active or not self.identity or not self.game
                 or self.game.board.fen() != self.identity[0]):
             return
         if kind == 'info':
@@ -531,6 +598,7 @@ class LeelaPanel(QWidget):
             self.preview.emit(self.lines[rank]['pv'], ply)
 
     def stop(self):
+        self._resume_after_setup = False
         self.active = False
         self.identity = None
         self.timer.stop()

@@ -8,10 +8,40 @@ os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 from PySide6.QtWidgets import QApplication
 from nocturne.core.game import Game
 from nocturne.settings import DEFAULTS
-from nocturne.gui.leela import LeelaPanel
+from nocturne.gui.leela import LeelaPanel, workload_limits
 
 
 class LeelaLineTests(unittest.TestCase):
+    def test_workload_presets_bound_batch_threads_and_speed(self):
+        cfg = dict(DEFAULTS, leela_batch_size=128, leela_nps_limit=0)
+        self.assertEqual(workload_limits(dict(cfg, leela_workload='minimal')), (1, 1, 100))
+        self.assertEqual(workload_limits(dict(cfg, leela_workload='low')), (4, 1, 500))
+        self.assertEqual(workload_limits(dict(cfg, leela_workload='normal')), (128, 2, 0))
+        self.assertEqual(workload_limits(dict(cfg, leela_workload='minimal', leela_nps_limit=25)), (1, 1, 25))
+
+    def test_on_demand_and_stop_do_not_restart_on_navigation(self):
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as folder:
+            panel = LeelaPanel(Path(folder), dict(DEFAULTS, leela_on_demand=True))
+            try:
+                panel.active = True
+                game = Game()
+                panel.request(game)
+                self.assertFalse(panel.timer.isActive())
+                panel.request(game, force=True)
+                self.assertTrue(panel.timer.isActive())
+                panel.pause_search()
+                self.assertFalse(panel.timer.isActive())
+                game.play(game.board.parse_uci('e2e4'))
+                panel.request(game)
+                self.assertFalse(panel.timer.isActive())
+                panel._message(panel.engine.generation - 1, 'info', {'multipv': 1})
+                self.assertFalse(panel.lines)
+            finally:
+                panel.shutdown()
+                panel.deleteLater()
+                app.processEvents()
+
     def test_follow_board_flip_can_be_disabled_and_saved(self):
         app = QApplication.instance() or QApplication([])
         with tempfile.TemporaryDirectory() as folder:
@@ -119,6 +149,11 @@ class LeelaLineTests(unittest.TestCase):
                     panel.timer.stop()
                     panel._start()
                     self.assertEqual(panel.engine.connection.request.call_args.args[3]['NodesPerSecondLimit'], 0)
+                    panel.workload.setCurrentIndex(panel.workload.findData('minimal'))
+                    panel.timer.stop()
+                    panel._start()
+                    limited = panel.engine.connection.request.call_args.args[3]
+                    self.assertEqual((limited['MinibatchSize'], limited['Threads'], limited['NodesPerSecondLimit']), (1, 1, 100))
                 self.assertIsNone(panel.installer)
             finally:
                 panel.shutdown()
