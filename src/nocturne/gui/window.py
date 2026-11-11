@@ -3702,6 +3702,13 @@ class MainWindow(QMainWindow):
                 column.addWidget(self.graph)
             self.graph.setMaximumHeight(85)
             self.graph.setVisible(self.config.get("show_eval_graph", True))
+        self.blunder_scroll.setMaximumHeight(16777215 if right else 180)
+        if right:
+            for widget in (insights.trends_card, self.blunder_scroll, self.explorer, self.graph):
+                index = self.right_detail_splitter.indexOf(widget)
+                if index >= 0:
+                    self.right_detail_splitter.setStretchFactor(
+                        index, 1 if widget in (self.blunder_scroll, self.explorer) else 0)
         self._sync_explorer_meter()
         self._protect_analysis_chart()
         self.game_line_panel.setVisible(not right)
@@ -3726,6 +3733,8 @@ class MainWindow(QMainWindow):
         trends.layout().activate()
         required = trends.minimumSizeHint().height() if show else 0
         trends.setMinimumHeight(required)
+        # Keep the heading and legend compact; give the lower panel the spare height.
+        trends.setMaximumHeight(required if show else 16777215)
         required += max(self.candidates.minimumSizeHint().height(),
                         sum(row[0].minimumSizeHint().height() for row in self.candidates.rows.values() if not row[0].isHidden())) + 32
         # Reserve the entire chart and legend ahead of the scrollable meter.

@@ -6,7 +6,7 @@ from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QFrame, QGridLayout, QLabel, QScrollArea, QVBoxLayout, QWidget, QToolTip,
-    QComboBox, QHBoxLayout, QApplication,
+    QComboBox, QHBoxLayout, QApplication, QSizePolicy,
 )
 from ..core.notation import san
 from ..maia import RATINGS, percentage
@@ -24,12 +24,15 @@ class InsightCard(QFrame):
         self.content = QVBoxLayout(self)
         self.content.setContentsMargins(10, 8, 10, 9)
         self.content.setSpacing(5)
+        self.content.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.heading = QHBoxLayout()
         self.heading.setSpacing(7)
         index = QLabel(number)
         index.setObjectName("sectionNumber")
         title_label = QLabel(title)
         title_label.setObjectName("sectionTitle")
+        index.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        title_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.heading.addWidget(index)
         self.heading.addWidget(title_label, 1)
         self.content.addLayout(self.heading)
@@ -431,6 +434,7 @@ class MaiaInsights(QScrollArea):
         self.trends_card = trends
         self.rating_chip = QLabel("1800")
         self.rating_chip.setObjectName("sectionNumber")
+        self.rating_chip.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         self.rating_chip.setToolTip("Selected Lichess blitz rating; opponent has the same rating.")
         trends.heading.addWidget(self.rating_chip)
         self.chart = RatingChart()
