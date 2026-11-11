@@ -104,7 +104,7 @@ class LeelaInstaller(QThread):
 def workload_limits(config):
     """Bound batch size and parallelism as well as average search speed."""
     batch = config['leela_batch_size']
-    nps = config.get('leela_nps_limit', 3000)
+    nps = config.get('leela_nps_limit', 256)
     mode = config.get('leela_workload', 'normal')
     if mode == 'minimal':
         return 1, 1, min(nps or 100, 100)
@@ -227,7 +227,7 @@ class LeelaPanel(QWidget):
         self.speed_limit.setSuffix(' nodes/s')
         self.speed_limit.setSingleStep(100)
         self.speed_limit.setGroupSeparatorShown(True)
-        self.speed_limit.setValue(config.get('leela_nps_limit', 3000))
+        self.speed_limit.setValue(config.get('leela_nps_limit', 256))
         self.speed_limit.setAccessibleName('Leela search speed limit')
         form.addRow('Search speed limit', self.speed_limit)
         self.workload = QComboBox()
@@ -248,7 +248,7 @@ class LeelaPanel(QWidget):
         form.addRow('DirectML GPU index', self.device)
         tips = [
             (self.workload, self.workload, 'Low: batch at most 4, one search thread, at most 500 nodes/s. Minimal: batch 1, one thread, at most 100 nodes/s. Lower custom speed limits remain effective. These limit average work, not peak GPU watts; loading the network can still cause a spike.'),
-            (self.speed_limit, self.speed_limit, 'Limit Leela’s average search speed to reduce GPU work. Zero means Unlimited. Default: 3,000 nodes/s. Increase it for faster analysis or lower it to reduce GPU work. Unlimited permits the engine’s full speed; a higher limit cannot guarantee higher hardware throughput. This is not an exact GPU percentage or a hardware power limit. Short timed searches will analyze fewer positions; node-limited searches take longer. Applies when the value changes. Maia is controlled separately.'),
+            (self.speed_limit, self.speed_limit, 'Limit Leela’s average search speed to reduce GPU work. Zero means Unlimited. Default: 256 nodes/s. Increase it for faster analysis or lower it to reduce GPU work. Unlimited permits the engine’s full speed; a higher limit cannot guarantee higher hardware throughput. This is not an exact GPU percentage or a hardware power limit. Short timed searches will analyze fewer positions; node-limited searches take longer. Applies when the value changes. Maia is controlled separately.'),
             (side_row, self.side, 'Choose the side whose win, draw and loss chances are shown and which receives the rating advantage.'),
             (self.rating, self.rating, 'Set the rating of the selected side for Leela’s matchup model.'),
             (self.opponent, self.opponent, 'Set the opponent’s rating; changing it updates the rating advantage.'),
@@ -431,7 +431,7 @@ class LeelaPanel(QWidget):
                self.config['leela_side'], self.config['leela_rating'], self.config['leela_gap'],
                self.config['leela_seconds'], self.config['leela_device'],
                self.config['leela_limit'], self.config['leela_nodes'], self.config['leela_gpu_auto'],
-               self.config['leela_batch_size'], self.config.get('leela_nps_limit', 3000), self.config.get('leela_workload', 'normal'))
+               self.config['leela_batch_size'], self.config.get('leela_nps_limit', 256), self.config.get('leela_workload', 'normal'))
         if key == self.identity and not force:
             return
         self._sync_gpu()

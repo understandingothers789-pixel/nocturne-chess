@@ -4877,6 +4877,8 @@ class MainWindow(QMainWindow):
             return
         self._analysis_enabled = False
         self._stop_engine()
+        if hasattr(self, "leela_panel"):
+            self.leela_panel.pause_search()
 
     def _start_analysis(self):
         self._cancel_review()
