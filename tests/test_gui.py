@@ -239,6 +239,18 @@ class GuiTests(unittest.TestCase):
         self.assertIs(w.blunder_scroll.widget(), w.maia_insights.blunder)
         self.assertIs(w.right_detail_splitter.widget(2), w.graph)
 
+    def test_combined_models_keep_explorer_below_blunder_meter(self):
+        window = self.window
+        window.config.update(maia_enabled=True, leela_enabled=True, explorer_enabled=True)
+        window.analysis_mode = True
+        window._sync_insight_layout()
+        self.app.processEvents()
+        column = window.right_detail_splitter
+        self.assertLess(column.indexOf(window.maia_insights.trends_card), column.indexOf(window.blunder_scroll))
+        self.assertLess(column.indexOf(window.blunder_scroll), column.indexOf(window.explorer))
+        self.assertFalse(window.explorer.isHidden())
+        self.assertEqual(window.maia_insights.chart.maximumHeight(), 220)
+
     def test_analysis_columns_put_tools_in_middle_and_game_database_on_right(self):
         window = self.window
         window.analysis_mode = True

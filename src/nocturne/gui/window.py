@@ -1277,8 +1277,7 @@ class MainWindow(QMainWindow):
                 menu.setEnabled(self.config.get("explorer_source") == "lichess")
         if self._explorer_active and not active:
             self.explorer._end_preview()
-        self.explorer.setVisible(active and not (self.config.get("maia_panels_right", False) or
-                                (self.config.get("maia_enabled", True) and self.config.get("leela_enabled", False))))
+        self.explorer.setVisible(active)
         self.explorer.set_position(self.game.board, self._position_identity(), lookup,
                                    self.config.get("explorer_source", "masters"),
                                    self.config.get("explorer_speed", "all"),
@@ -3642,7 +3641,7 @@ class MainWindow(QMainWindow):
             self.blunder_scroll.setMaximumHeight(180)
             self.blunder_scroll.setWidget(insights.blunder)
             self.analysis_detail_splitter.addWidget(self.blunder_scroll)
-            insights.chart.setMaximumHeight(16777215)
+            insights.chart.setMaximumHeight(220)
             insights.trends_card.content.setStretch(1, 1)
             self.game_line_panel.setMinimumHeight(160)
             self.candidate_splitter.setStretchFactor(0, 0)
@@ -3663,7 +3662,10 @@ class MainWindow(QMainWindow):
         destination = self.right_detail_splitter if right else self.analysis_detail_splitter
         if destination.indexOf(self.blunder_scroll) < 0:
             destination.addWidget(self.blunder_scroll)
-        self.explorer.setVisible(not right and self.config.get('explorer_enabled', False))
+        if self._dock_workspace is None:
+            # Keep the database below the meter when the Maia cards share this column.
+            self.right_detail_splitter.addWidget(self.explorer)
+        self.explorer.setVisible(self.analysis_mode and self.config.get('explorer_enabled', False))
         show_tools = (self.analysis_mode and self.config.get("maia_enabled", True)
                       and self.config.get("show_maia_insights", True))
         insights.trends_card.setVisible(show_tools)
