@@ -341,7 +341,9 @@ class LeelaPanel(QWidget):
         self.workload_summary.setText(f'Effective: batch {batch} · {threads} search thread(s) · {speed}. '
                                       'Lower workload means less analysis in a timed search. GPU power spikes are still possible.')
 
-    def pause_search(self):
+    def pause_search(self, *, preserve_completed=False):
+        if preserve_completed and self.identity in self.completed_cache:
+            return
         self._paused_by_user = True
         self._resume_after_setup = False
         self.timer.stop()
@@ -421,7 +423,7 @@ class LeelaPanel(QWidget):
             self._resume_after_setup = False
             self.request(self.game, force=True)
 
-    def request(self, game, force=False):
+    def request(self, game, force=False, *, reuse_completed=False):
         if not self.active:
             return
         self.game = game
@@ -432,6 +434,9 @@ class LeelaPanel(QWidget):
                self.config['leela_seconds'], self.config['leela_device'],
                self.config['leela_limit'], self.config['leela_nodes'], self.config['leela_gpu_auto'],
                self.config['leela_batch_size'], self.config.get('leela_nps_limit', 256), self.config.get('leela_workload', 'normal'))
+        if (reuse_completed and key == self.identity and key in self.completed_cache
+                and key in self.cache):
+            return
         if key == self.identity and not force:
             return
         self._sync_gpu()
@@ -446,7 +451,7 @@ class LeelaPanel(QWidget):
         self.telemetry.setText("Depth — · Nodes —")
         self.outcome.setText('Win —    Draw —    Loss —')
         self.results_changed.emit({})
-        if key in self.cache and key in self.completed_cache and not force and self.config['leela_limit'] != 'infinite':
+        if key in self.cache and key in self.completed_cache and (not force or reuse_completed) and self.config['leela_limit'] != 'infinite':
             self.lines = dict(self.cache[key])
             self._render()
             self._status('Leela · cached WDL analysis')

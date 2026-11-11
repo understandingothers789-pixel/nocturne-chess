@@ -101,6 +101,35 @@ class LeelaLineTests(unittest.TestCase):
         self.assertEqual(preferred_adapter([integrated, discrete, software]), discrete)
         self.assertIsNone(preferred_adapter([software]))
 
+    def test_shared_controls_preserve_completed_results_but_restart_partial_search(self):
+        from unittest.mock import Mock
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as folder:
+            panel = LeelaPanel(Path(folder), dict(DEFAULTS))
+            try:
+                panel.active = True
+                game = Game()
+                panel.request(game)
+                panel.timer.stop()
+                key = panel.identity
+                panel.cache[key] = {}
+                panel.completed_cache.add(key)
+                panel.engine.stop = Mock()
+                panel.pause_search(preserve_completed=True)
+                panel.request(game, force=True, reuse_completed=True)
+                panel.engine.stop.assert_not_called()
+                self.assertIn(key, panel.completed_cache)
+                self.assertFalse(panel.timer.isActive())
+                panel.completed_cache.clear()
+                panel.pause_search(preserve_completed=True)
+                panel.request(game, force=True, reuse_completed=True)
+                self.assertTrue(panel.timer.isActive())
+                self.assertFalse(panel._paused_by_user)
+                app.processEvents()
+            finally:
+                panel.shutdown()
+                panel.deleteLater()
+
     def test_node_and_unlimited_modes_do_not_send_time_or_depth_limits(self):
         from unittest.mock import Mock, PropertyMock, patch
         from nocturne.gui.uci_connection import UciConnection

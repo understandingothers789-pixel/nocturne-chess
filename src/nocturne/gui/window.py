@@ -327,6 +327,9 @@ class MainWindow(QMainWindow):
         self.study_tabs = StudyTabBar()
         self.study_tabs.setTabsClosable(True)
         self.study_tabs.setExpanding(False)
+        self.study_tabs.setUsesScrollButtons(True)
+        self.study_tabs.setMinimumWidth(0)
+        self.study_tabs.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.study_tabs.setMovable(True)
         for study in self._study_games.values():
             index = self.study_tabs.addTab(study.headers.get("Event") or "Study")
@@ -340,6 +343,7 @@ class MainWindow(QMainWindow):
         study_row.addWidget(self.study_tabs, 1)
         study_row.addWidget(button("＋", self._new_study, "quiet"))
         self.quick_analysis_button = button("Analyze", self._analyze, "primary")
+        self.quick_analysis_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         study_row.addWidget(self.quick_analysis_button)
         content.addLayout(study_row)
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -4878,7 +4882,7 @@ class MainWindow(QMainWindow):
         self._analysis_enabled = False
         self._stop_engine()
         if hasattr(self, "leela_panel"):
-            self.leela_panel.pause_search()
+            self.leela_panel.pause_search(preserve_completed=True)
 
     def _start_analysis(self):
         self._cancel_review()
@@ -4888,7 +4892,7 @@ class MainWindow(QMainWindow):
         self._analysis_enabled = True
         if self.config.get("leela_enabled", False):
             self.leela_panel.active = True
-            self.leela_panel.request(self.game, force=True)
+            self.leela_panel.request(self.game, force=True, reuse_completed=True)
         self.tabs.setCurrentIndex(1)
         self._save()
         self._schedule_engine()
