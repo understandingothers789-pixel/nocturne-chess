@@ -1278,6 +1278,7 @@ class MainWindow(QMainWindow):
         if self._explorer_active and not active:
             self.explorer._end_preview()
         self.explorer.setVisible(active)
+        self._sync_explorer_meter()
         self.explorer.set_position(self.game.board, self._position_identity(), lookup,
                                    self.config.get("explorer_source", "masters"),
                                    self.config.get("explorer_speed", "all"),
@@ -1337,7 +1338,22 @@ class MainWindow(QMainWindow):
         self.opening_cancel_action.setEnabled(coverage.running)
         self._render_move_history()
 
+    def _sync_explorer_meter(self):
+        if not hasattr(self, "blunder_scroll"):
+            return
+        explorer = self.explorer
+        enabled = self.analysis_mode and self.config.get("explorer_enabled", False)
+        masters = self.config.get("explorer_source", "masters") == "masters"
+        tools = (self.analysis_mode and self.config.get("maia_enabled", True)
+                 and self.config.get("show_maia_insights", True))
+        games = bool(enabled and explorer.query and explorer.query.source == "masters"
+                     and explorer.identity == self._position_identity()
+                     and explorer.statistics and explorer.statistics.get("total", 0) > 0)
+        explorer.setVisible(enabled and (games if masters and tools else True))
+        self.blunder_scroll.setVisible(tools and not (masters and games))
+
     def _sync_candidate_database(self):
+        self._sync_explorer_meter()
         explorer = self.explorer
         if (explorer.query and explorer.identity == self._position_identity()
                 and self._candidate_identity == self._position_identity()):
@@ -3679,6 +3695,7 @@ class MainWindow(QMainWindow):
             self.right_detail_splitter.addWidget(self.graph)
             self.graph.setMaximumHeight(85)
             self.graph.setVisible(self.config.get("show_eval_graph", True))
+        self._sync_explorer_meter()
         self._protect_analysis_chart()
         self.game_line_panel.setVisible(not right)
         self._rating_game_line_swapped = True

@@ -241,14 +241,26 @@ class GuiTests(unittest.TestCase):
 
     def test_combined_models_keep_explorer_below_blunder_meter(self):
         window = self.window
-        window.config.update(maia_enabled=True, leela_enabled=True, explorer_enabled=True)
+        window.config.update(maia_enabled=True, leela_enabled=True, explorer_enabled=True, explorer_source="masters")
         window.analysis_mode = True
         window._sync_insight_layout()
         self.app.processEvents()
         column = window.right_detail_splitter
         self.assertLess(column.indexOf(window.maia_insights.trends_card), column.indexOf(window.blunder_scroll))
         self.assertLess(column.indexOf(window.blunder_scroll), column.indexOf(window.explorer))
+        self.assertTrue(window.explorer.isHidden())
+        self.assertFalse(window.blunder_scroll.isHidden())
+        from types import SimpleNamespace
+        window.explorer.query = SimpleNamespace(source="masters")
+        window.explorer.identity = window._position_identity()
+        window.explorer.statistics = {"total": 20}
+        window._sync_explorer_meter()
         self.assertFalse(window.explorer.isHidden())
+        self.assertTrue(window.blunder_scroll.isHidden())
+        window.explorer.statistics = {"total": 0}
+        window._sync_explorer_meter()
+        self.assertTrue(window.explorer.isHidden())
+        self.assertFalse(window.blunder_scroll.isHidden())
         self.assertEqual(window.maia_insights.chart.maximumHeight(), 220)
 
     def test_analysis_columns_put_tools_in_middle_and_game_database_on_right(self):
