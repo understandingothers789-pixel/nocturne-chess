@@ -85,6 +85,18 @@ class Store:
         temporary = None
         try:
             destination = self.pgn_path(game.id)
+            # Check the saved tree, including side lines, rather than the cursor.
+            pending = [(0, 0)]
+            keep = False
+            while pending:
+                index, depth = pending.pop()
+                if depth >= 4:
+                    keep = True
+                    break
+                pending.extend((child, depth + 1) for child in game.nodes[index].children)
+            if not keep:
+                destination.unlink(missing_ok=True)
+                return destination
             text = game.pgn()
             self.pgn_directory.mkdir(parents=True, exist_ok=True)
             if destination.exists():

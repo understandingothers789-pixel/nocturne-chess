@@ -106,8 +106,8 @@ class StorageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(Path(tmp) / "games.db")
             try:
-                first = Game.from_pgn('1.e4 {Keep this note} (1.d4 d5) e5 *')
-                second = Game.from_pgn("1.Nf3 d5 *")
+                first = Game.from_pgn('1.e4 {Keep this note} (1.d4 d5) e5 2.Nc3 Nc6 *')
+                second = Game.from_pgn("1.Nf3 d5 2.d4 Nf6 *")
                 store.save(first)
                 store.save(second)
                 original = store.pgn_path(first.id).read_text(encoding="utf-8")
@@ -116,8 +116,8 @@ class StorageTests(unittest.TestCase):
                 first.play(first.board.parse_uci("g1f3"))
                 store.save(first)
                 self.assertEqual(len(list(store.pgn_directory.glob("*.pgn"))), 2)
-                self.assertEqual(Game.from_pgn(store.pgn_path(first.id).read_text()).sans, ["e4", "e5", "Nf3"])
-                self.assertEqual(Game.from_pgn(store.pgn_path(second.id).read_text()).sans, ["Nf3", "d5"])
+                self.assertEqual(Game.from_pgn(store.pgn_path(first.id).read_text()).sans, ["e4", "e5", "Nc3", "Nc6", "Nf3"])
+                self.assertEqual(Game.from_pgn(store.pgn_path(second.id).read_text()).sans, ["Nf3", "d5", "d4", "Nf6"])
                 store.pgn_path(first.id).write_bytes(b"\xffbroken")
                 store.save(first)
                 self.assertEqual(Game.from_pgn(store.pgn_path(first.id).read_text()).sans[-1], "Nf3")
@@ -127,23 +127,38 @@ class StorageTests(unittest.TestCase):
             finally:
                 store.close()
 
+    def test_short_games_are_kept_in_library_but_not_archived_as_pgn(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Store(Path(tmp) / "games.db")
+            try:
+                game = Game.from_pgn("1.e4 e5 2.Nf3 *")
+                store.save(game)
+                path = store.pgn_path(game.id)
+                self.assertFalse(path.exists())
+                game.play(game.board.parse_uci("b8c6"))
+                store.save(game)
+                self.assertTrue(path.is_file())
+                self.assertEqual(len(Game.from_pgn(path.read_text()).moves), 4)
+            finally:
+                store.close()
+
     def test_pgn_write_failure_retains_database_and_previous_copy(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(Path(tmp) / "games.db")
             try:
-                game = Game.from_pgn("1.e4 *")
+                game = Game.from_pgn("1.e4 e5 2.Nf3 Nc6 3.Bc4 *")
                 store.save(game)
                 path = store.pgn_path(game.id)
                 prior = path.read_bytes()
-                game.play(game.board.parse_uci("e7e5"))
+                game.play(game.board.parse_uci("f8c5"))
                 with patch("nocturne.storage.os.replace", side_effect=OSError("disk write failed")):
                     with self.assertRaisesRegex(StorageError, "retained in the library"):
                         store.save(game)
                 self.assertEqual(path.read_bytes(), prior)
-                self.assertEqual(store.resume().sans, ["e4", "e5"])
+                self.assertEqual(store.resume().sans, ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5"])
                 self.assertFalse(list(store.pgn_directory.glob("*.tmp")))
                 store.save(game)
-                self.assertEqual(Game.from_pgn(path.read_text()).sans, ["e4", "e5"])
+                self.assertEqual(Game.from_pgn(path.read_text()).sans, ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5"])
                 escaped = store.pgn_path("../../outside.pgn")
                 self.assertEqual(escaped.parent, store.pgn_directory)
             finally:

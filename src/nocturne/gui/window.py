@@ -4809,8 +4809,7 @@ class MainWindow(QMainWindow):
             self.archive_timer.stop()
             return
         try:
-            if not self.store.pgn_path(game_id).exists():
-                self.store.archive_pgn(self.store.load(game_id))
+            self.store.archive_pgn(self.store.load(game_id))
         except StorageError as exc:
             self.statusBar().showMessage(str(exc))
 
@@ -4865,7 +4864,8 @@ class MainWindow(QMainWindow):
         if self._review:
             self._pause_review()
             return
-        if self._job and self._job["kind"] == "analysis":
+        if ((self._job and self._job["kind"] == "analysis")
+                or self.leela_panel.engine.busy or self.leela_panel.timer.isActive()):
             self._halt_analysis()
             return
         self._start_analysis()
@@ -4886,6 +4886,9 @@ class MainWindow(QMainWindow):
         self._workspace(True)
         self._clear_saved_analysis([self.game.current_node])
         self._analysis_enabled = True
+        if self.config.get("leela_enabled", False):
+            self.leela_panel.active = True
+            self.leela_panel.request(self.game, force=True)
         self.tabs.setCurrentIndex(1)
         self._save()
         self._schedule_engine()
