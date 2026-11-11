@@ -116,7 +116,7 @@ class LeelaLineTests(unittest.TestCase):
                 panel.exe = str(Path(folder) / 'lc0.exe')
                 panel.weights = 'network.pb.gz'
                 panel._launched_device = 1
-                panel._launched_batch = 16
+                panel._launched_batch = 8
                 panel.engine.connection.path = panel.exe
                 panel.engine.connection.request = Mock()
                 with patch.object(UciConnection, 'alive', new_callable=PropertyMock, return_value=True):
@@ -125,7 +125,7 @@ class LeelaLineTests(unittest.TestCase):
                     self.assertEqual(sent[2], 'go nodes 125000')
                     self.assertEqual(sent[3]['Backend'], 'onnx-dml')
                     self.assertEqual(sent[3]['BackendOptions'], 'gpu=1')
-                    self.assertEqual(sent[3]['MinibatchSize'], 16)
+                    self.assertEqual(sent[3]['MinibatchSize'], 8)
                     config['leela_limit'] = 'time'
                     panel._start()
                     self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go movetime 20000')
@@ -135,7 +135,7 @@ class LeelaLineTests(unittest.TestCase):
                     config['leela_limit'] = 'infinite'
                     panel._start()
                     self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go infinite')
-                    self.assertEqual(panel.speed_limit.value(), 3000)
+                    self.assertEqual(panel.speed_limit.value(), 256)
                     panel.speed_limit.setValue(6000)
                     panel.timer.stop()
                     panel._start()
