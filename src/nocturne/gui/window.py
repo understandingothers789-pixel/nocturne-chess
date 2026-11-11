@@ -1277,7 +1277,6 @@ class MainWindow(QMainWindow):
                 menu.setEnabled(self.config.get("explorer_source") == "lichess")
         if self._explorer_active and not active:
             self.explorer._end_preview()
-        self.explorer.setVisible(active)
         self._sync_explorer_meter()
         self.explorer.set_position(self.game.board, self._position_identity(), lookup,
                                    self.config.get("explorer_source", "masters"),
@@ -1349,8 +1348,12 @@ class MainWindow(QMainWindow):
         games = bool(enabled and explorer.query and explorer.query.source == "masters"
                      and explorer.identity == self._position_identity()
                      and explorer.statistics and explorer.statistics.get("total", 0) > 0)
-        explorer.setVisible(enabled and (games if masters and tools else True))
-        self.blunder_scroll.setVisible(tools and not (masters and games))
+        show_explorer = enabled and (games if masters and tools else True)
+        show_meter = tools and not (masters and games)
+        if explorer.isHidden() == show_explorer:
+            explorer.setVisible(show_explorer)
+        if self.blunder_scroll.isHidden() == show_meter:
+            self.blunder_scroll.setVisible(show_meter)
 
     def _sync_candidate_database(self):
         self._sync_explorer_meter()
@@ -1839,7 +1842,9 @@ class MainWindow(QMainWindow):
             self.workspace_splitter.addWidget(self.analysis_moves_panel)
             self.workspace_splitter.setCollapsible(1, True)
             self.right_detail_splitter.addWidget(self.explorer)
-            self.right_detail_splitter.addWidget(self.graph)
+            column = self.right_detail_splitter
+            if column.indexOf(self.graph) != column.count() - 1 or self.graph.parentWidget() is not column:
+                column.addWidget(self.graph)
             self.graph.setMaximumHeight(85)
             self.arena.show()
             self.panel.show()
@@ -3680,19 +3685,21 @@ class MainWindow(QMainWindow):
             destination.addWidget(self.blunder_scroll)
         if self._dock_workspace is None:
             # Keep the database below the meter when the Maia cards share this column.
-            self.right_detail_splitter.addWidget(self.explorer)
-        self.explorer.setVisible(self.analysis_mode and self.config.get('explorer_enabled', False))
+            column = self.right_detail_splitter
+            if right and column.indexOf(self.explorer) < column.indexOf(self.blunder_scroll):
+                column.insertWidget(column.indexOf(self.blunder_scroll) + 1, self.explorer)
         show_tools = (self.analysis_mode and self.config.get("maia_enabled", True)
                       and self.config.get("show_maia_insights", True))
         insights.trends_card.setVisible(show_tools)
         insights.blunder.setVisible(show_tools)
-        self.blunder_scroll.setVisible(show_tools)
         if hasattr(self, 'leela_panel'):
             if self.candidate_splitter.indexOf(self.leela_panel) < 0:
                 self.candidate_splitter.addWidget(self.leela_panel)
             self.leela_panel.setVisible(self.analysis_mode and self.config.get('leela_enabled', False))
         if self._dock_workspace is None:
-            self.right_detail_splitter.addWidget(self.graph)
+            column = self.right_detail_splitter
+            if column.indexOf(self.graph) != column.count() - 1 or self.graph.parentWidget() is not column:
+                column.addWidget(self.graph)
             self.graph.setMaximumHeight(85)
             self.graph.setVisible(self.config.get("show_eval_graph", True))
         self._sync_explorer_meter()
