@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.152 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42931179851/artifacts/13816736142).** Defaults new installs to Leela at 256 nodes/s and batch size 8. The Analyze/Stop control now stops both Stockfish and Leela. Windows lint, full tests, packaging, startup checks and live database check passed.
+
 **[Download Nocturne 0.5.7.151 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42747468676/artifacts/13732352206).** Adds Normal, Low and Minimal Leela GPU workload presets, optional click-to-analyze mode, and a Stop Leela control. Windows lint, full tests, packaging, packaged startup checks and live database check passed. See the [Leela GPU workload guide](docs/LEELA_GPU_WORKLOAD.md).
 
 **[Download Nocturne 0.5.7.150 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/42667686776/artifacts/13697028992).** Preserves Maia and Leela together after restart unless exclusive model selection is enabled. Reduces repeated position hashing, capture copying and candidate-list rebuilding, and stops the history polling timer while hidden. Full Windows validation and packaging passed.
