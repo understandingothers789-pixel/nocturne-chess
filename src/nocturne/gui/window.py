@@ -1354,6 +1354,31 @@ class MainWindow(QMainWindow):
             explorer.setVisible(show_explorer)
         if self.blunder_scroll.isHidden() == show_meter:
             self.blunder_scroll.setVisible(show_meter)
+        state = (show_explorer, show_meter, self.right_detail_splitter.indexOf(self.maia_insights.trends_card) >= 0)
+        if state != getattr(self, "_right_panel_start_state", None):
+            self._right_panel_start_state = state
+            QTimer.singleShot(0, self._size_right_panel_start)
+
+    def _size_right_panel_start(self):
+        if self._dock_workspace is not None:
+            return
+        column = self.right_detail_splitter
+        trends = self.maia_insights.trends_card
+        if column.indexOf(trends) < 0:
+            return
+        # Start at the upper drag limit once per panel change. Later dragging is free.
+        sizes = []
+        for index in range(column.count()):
+            widget = column.widget(index)
+            if widget.isHidden():
+                sizes.append(0)
+            elif widget is trends:
+                sizes.append(trends.minimumSizeHint().height())
+            elif widget is self.graph:
+                sizes.append(85)
+            else:
+                sizes.append(max(1, column.height()))
+        column.setSizes(sizes)
 
     def _sync_candidate_database(self):
         self._sync_explorer_meter()
@@ -3702,7 +3727,7 @@ class MainWindow(QMainWindow):
                 column.addWidget(self.graph)
             self.graph.setMaximumHeight(85)
             self.graph.setVisible(self.config.get("show_eval_graph", True))
-        self.blunder_scroll.setMaximumHeight(16777215 if right else 180)
+        self.blunder_scroll.setMaximumHeight(180)
         if right:
             for widget in (insights.trends_card, self.blunder_scroll, self.explorer, self.graph):
                 index = self.right_detail_splitter.indexOf(widget)
@@ -3733,8 +3758,7 @@ class MainWindow(QMainWindow):
         trends.layout().activate()
         required = trends.minimumSizeHint().height() if show else 0
         trends.setMinimumHeight(required)
-        # Keep the heading and legend compact; give the lower panel the spare height.
-        trends.setMaximumHeight(required if show else 16777215)
+        trends.setMaximumHeight(16777215)
         required += max(self.candidates.minimumSizeHint().height(),
                         sum(row[0].minimumSizeHint().height() for row in self.candidates.rows.values() if not row[0].isHidden())) + 32
         # Reserve the entire chart and legend ahead of the scrollable meter.
