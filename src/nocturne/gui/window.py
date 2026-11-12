@@ -3281,15 +3281,15 @@ class MainWindow(QMainWindow):
         profile["gpu_hash_defaulted"] = target
         if saved is not None and str(saved) == str(target):
             return
-        if profile is self._profile():
-            QTimer.singleShot(0, self, lambda p=profile, value=target: self._apply_gpu_hash_default(p, value))
-        else:
-            profile.setdefault("values", {})["Hash"] = target
-            self._save()
-
-    def _apply_gpu_hash_default(self, profile, value):
-        if not self._closing and profile is self._profile():
-            self._set_engine_resource("Hash", value, automatic=True)
+        profile.setdefault("values", {})["Hash"] = target
+        if profile is self._profile() and hasattr(self, "engine"):
+            connection = self.engine.connection
+            # Discovery occurs before the first ready request is prepared. Apply
+            # the automatic default there without canceling self-play or review.
+            if (connection.pending is not None and connection.phase == "idle"
+                    and connection.path == str(Path(profile["path"]).absolute())):
+                connection.pending[3]["Hash"] = target
+        self._save()
 
     def _effective_multipv(self):
         profile = self._profile()
