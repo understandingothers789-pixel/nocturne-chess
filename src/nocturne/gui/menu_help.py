@@ -1,5 +1,7 @@
 """Plain-language help for menu commands, including generated choices."""
 
+import re
+
 HELP = {
     'New game': 'Choose players, colors and time controls for a new game.',
     'New study tab': 'Open a separate study without closing your current game.',
@@ -89,17 +91,74 @@ HELP = {
 }
 
 
+HELP.update({
+    'MultiPV': 'Choose how many candidate moves the engine searches at once. Each has its own evaluation and continuation. More lines can reduce the depth reached in the same time.',
+    'Threads': 'Choose the number of CPU search threads. More threads use more processor capacity; leaving some free can keep other apps responsive.',
+    'Hash': 'Set the maximum RAM used for the engine’s position cache. Nocturne can start with less when memory is busy and grow it on later searches.',
+    'Stockfish CPU budget': 'Limit the selected engine’s CPU use on Windows. Lower percentages leave more processor time for other applications and may slow analysis.',
+    'Active engine': 'Select which saved UCI engine profile is used for analysis and engine play.',
+    'Analysis limits': 'Choose whether analysis runs continuously, stops at a node count, or uses time and depth limits.',
+    'Continuous': 'Search the position until you press Stop or move to another position.',
+    'Node limit': 'Stop each search after the configured number of nodes, which count positions searched.',
+    'Time / depth limits': 'Use the configured time or search depth to end analysis instead of searching continuously.',
+    'Set limits': 'Edit the time, depth and node limits used for analysis.',
+    'Normal nodes per position': 'Set the number of positions searched for a normal analysis before stopping.',
+    'Auto-evaluation nodes per position': 'Set the search work for each position when evaluating the entire line automatically.',
+    'Auto-play nodes per move': 'Set the number of positions searched before the engine plays each self-play move.',
+    'Stockfish variation text size': 'Change the text size of engine variation lines to make them easier to read.',
+    'Position bookmarks': 'Jump to a position you previously bookmarked in this study.',
+    'Coordinates': 'Show file letters and rank numbers around the board.',
+    'Clocks': 'Show player clocks. Hiding them does not pause the game or change its time control.',
+    'Analysis overlays': 'Show analysis move markers and evaluation overlays on the board.',
+    'Evaluation graph': 'Show the evaluation history graph. Click a point to visit its position.',
+    'Move animations': 'Animate pieces as moves are played or navigated.',
+    'Light appearance': 'Use the light interface color scheme instead of the dark scheme.',
+    'Preview moves on a small board near cursor': 'Show a small board near your pointer when hovering over a variation move.',
+    'Maia-3 79M': 'Configure local predictions of human move choices. Maia predicts player behavior at a rating rather than replacing the main analysis engine.',
+    'Inference device': 'Choose whether Maia uses an available GPU or the CPU to calculate predictions.',
+    'Auto · GPU when available': 'Use an available supported GPU for Maia, with CPU fallback if needed.',
+    'CPU only': 'Run Maia predictions on the processor without using GPU inference.',
+    'Lichess blitz rating (equal-rated opponent)': 'Select the player rating used for Maia’s human-move predictions, assuming an equally rated opponent.',
+    'Lichess game speed': 'Filter the Lichess player database by time control. This does not change the Masters database.',
+    'Lichess rating groups': 'Filter Lichess player games by rating group. Masters results are unfiltered.',
+    'Automatically analyze when selecting a position': 'Start fresh analysis when you navigate to a position. Turn this off to start searches manually.',
+    'Lichess access token': 'Enter a Lichess token to access authenticated opening databases. The stored token can be cleared from the Database menu.',
+    'Available on Windows': 'This control requires Windows and is unavailable on this platform.',
+})
+
+
 def menu_help(action, menu):
-    label = action.text().replace('&', '').replace('…', '').strip()
+    label = action.text().replace('&', '').replace('…', '').split('\t')[0].strip()
+    if not label and hasattr(action, 'defaultWidget') and action.defaultWidget():
+        label = action.defaultWidget().accessibleName() or menu.title().replace('&', '')
     explicit = action.toolTip()
     if explicit and explicit != action.text():
         return explicit
-    if label in HELP:
-        return HELP[label]
+    base = re.sub(r'\s*\(\d+%?\)$', '', label).split(' · ')[0]
+    if base in HELP:
+        return HELP[base]
     title = menu.title().replace('&', '')
+    context = title.split(' · ')[0]
+    if 'Choose' in label and 'engine' in label.lower():
+        return 'Choose and detect a UCI engine first so Nocturne can discover its supported search settings.'
+    if context.startswith('MultiPV'):
+        return ('Enter a custom number of candidate lines to search.' if label == 'Custom' else
+                f'Search {label} candidate lines at once. More lines spread the search effort across more moves.')
+    if context in ('Threads', 'Hash'):
+        return f'Apply {label} for engine {context.lower()}. ' + HELP[context]
+    if 'blitz rating' in title:
+        return f'Predict human move choices for a {label} Elo player against an equally rated opponent.'
+    if context == 'Active engine':
+        return f'Use the saved engine profile {label} for analysis and engine play.'
+    if context == 'Position bookmarks':
+        return f'Go to the bookmarked position {label} in this study.'
     if action.menu():
         return f'Open {label} settings and choices.'
     if 'node' in title.lower():
+        if label == 'Custom':
+            return f'Enter a custom node count for {context.lower()}. Nodes count positions searched; larger values usually take longer.'
+        if label.startswith('Unlimited'):
+            return 'Search without a node limit until stopped manually or by another enabled limit.'
         return f'Set the search limit for {title.split(" · ")[0]} to {label}. Nodes count positions searched by the engine.'
     if 'rating groups' in title:
         return f'Filter Lichess games to the {label} rating group.'

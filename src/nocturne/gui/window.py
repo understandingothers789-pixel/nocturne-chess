@@ -10,7 +10,7 @@ import sys
 import time
 
 from PySide6.QtCore import QByteArray, QEvent, QPoint, QProcess, QStandardPaths, Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence
+from PySide6.QtGui import QAction, QCursor, QDesktopServices, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QAbstractButton,
@@ -53,7 +53,10 @@ from PySide6.QtWidgets import (
 from .. import __version__
 from ..maia import RATINGS as MAIA_RATINGS
 from ..maia.controller import MaiaController
+from shiboken6 import isValid
+
 from .menu_help import menu_help
+from .menu_help_panel import MenuHelpPanel
 from .maia import MaiaControls
 from .leela import LeelaPanel
 from .maia_insights import MaiaInsights
@@ -1455,21 +1458,46 @@ class MainWindow(QMainWindow):
         return False
 
     def _menu_hover_help(self, menu, action):
+        if getattr(self, "_menu_help_target", None) == (menu, action):
+            if self._menu_help_timer.isActive() or (hasattr(self, "_menu_help_panel") and self._menu_help_panel.isVisible()):
+                return
         self._menu_help_timer.stop()
         QToolTip.hideText()
+        if hasattr(self, "_menu_help_panel"):
+            self._menu_help_panel.hide()
         self._menu_help_target = (menu, action)
         if action and not action.isSeparator():
-            self._menu_help_timer.start(900)
+            self._menu_help_timer.start(650)
 
     def _show_menu_hover_help(self):
+        if self._closing:
+            return
         menu, action = self._menu_help_target
-        if menu.isVisible() and menu.activeAction() is action:
-            rect = menu.actionGeometry(action)
-            QToolTip.showText(menu.mapToGlobal(rect.bottomLeft()), menu_help(action, menu), menu, rect, 12000)
+        if not isValid(menu) or action is None or not isValid(action):
+            return
+        under_pointer = menu.actionAt(menu.mapFromGlobal(QCursor.pos()))
+        if menu.isVisible() and (menu.activeAction() is action or under_pointer is action):
+            if not hasattr(self, "_menu_help_panel"):
+                self._menu_help_panel = MenuHelpPanel(self)
+            roots = [a.menu() for a in self.menuBar().actions() if a.menu() and a.menu().isVisible()]
+            root = roots[0] if roots else menu
+            title = action.text().replace("&", "").split("\t")[0]
+            if not title and isinstance(action, QWidgetAction) and action.defaultWidget():
+                title = action.defaultWidget().accessibleName()
+            title = title or menu.title().replace("&", "")
+            self._menu_help_panel.show_help(title, menu_help(action, menu), menu, root, action)
 
     def eventFilter(self, watched, event):
+        # Sliders and token buttons are QWidgetActions, so their child widgets
+        # receive pointer events instead of QMenu.hovered.
+        if (event.type() == QEvent.Type.MouseMove and isinstance(watched, QWidget)
+                and not isinstance(watched, QMenu) and hasattr(self, "_menu_help_timer")):
+            popup = QApplication.activePopupWidget()
+            if isinstance(popup, QMenu) and popup.isAncestorOf(watched) and self._is_top_menu(popup):
+                point = popup.mapFromGlobal(QCursor.pos())
+                self._menu_hover_help(popup, popup.actionAt(point))
         if (event.type() in (QEvent.Type.Show, QEvent.Type.Hide, QEvent.Type.Leave,
-                             QEvent.Type.MouseButtonPress, QEvent.Type.ToolTip)
+                             QEvent.Type.MouseButtonPress, QEvent.Type.ToolTip, QEvent.Type.MouseMove)
                 and isinstance(watched, QMenu) and self._is_top_menu(watched)):
             if event.type() == QEvent.Type.Show and not watched.property("hoverHelpReady"):
                 if not hasattr(self, "_menu_help_timer"):
@@ -1478,10 +1506,14 @@ class MainWindow(QMainWindow):
                     self._menu_help_timer.timeout.connect(self._show_menu_hover_help)
                 watched.setProperty("hoverHelpReady", True)
                 watched.hovered.connect(lambda action, menu=watched: self._menu_hover_help(menu, action))
+            elif event.type() == QEvent.Type.MouseMove:
+                self._menu_hover_help(watched, watched.actionAt(event.position().toPoint()))
             elif event.type() in (QEvent.Type.Hide, QEvent.Type.Leave, QEvent.Type.MouseButtonPress):
                 if hasattr(self, "_menu_help_timer"):
                     self._menu_help_timer.stop()
                     QToolTip.hideText()
+                    if hasattr(self, "_menu_help_panel"):
+                        self._menu_help_panel.hide()
             elif event.type() == QEvent.Type.ToolTip:
                 return True
         if (event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease)
@@ -5381,6 +5413,10 @@ class MainWindow(QMainWindow):
         if self.engine.busy and self.config.get("analysis_snapshots", False):
             self.engine._flush_snapshot()
         self._closing = True
+        if hasattr(self, "_menu_help_timer"):
+            self._menu_help_timer.stop()
+        if hasattr(self, "_menu_help_panel"):
+            self._menu_help_panel.hide()
         self._secondary_timer.stop()
         self._navigation_refresh_timer.stop()
         QApplication.instance().removeEventFilter(self)

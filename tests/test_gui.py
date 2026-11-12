@@ -264,6 +264,33 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(window.maia_insights.chart.maximumHeight(), 16777215)
         self.assertEqual(window.maia_insights.chart.minimumHeight(), 320)
 
+    def test_menu_help_is_outside_cascade_and_tracks_submenu_choices(self):
+        from nocturne.gui.menu_help import menu_help
+        window = self.window
+        root = window.menus["Engine"]
+        root.popup(window.mapToGlobal(QPoint(400, 40)))
+        action = window.multipv_menu.menuAction()
+        root.setActiveAction(action)
+        window._menu_hover_help(root, action)
+        window._menu_help_timer.stop()
+        window._show_menu_hover_help()
+        panel = window._menu_help_panel
+        self.assertTrue(panel.isVisible())
+        self.assertIn("candidate", panel.description.text())
+        if root.geometry().left() >= panel.width() + 10:
+            self.assertLess(panel.geometry().right(), root.geometry().left())
+        self.assertTrue(panel.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents))
+        self.assertFalse(window._menu_help_timer.isActive())
+        window._menu_hover_help(root, action)
+        self.assertFalse(window._menu_help_timer.isActive())
+        menu = QMenu("MultiPV (4)", window)
+        choice = menu.addAction("8")
+        self.assertIn("8 candidate lines", menu_help(choice, menu))
+        menu.deleteLater()
+        root.close()
+        self.app.processEvents()
+        self.assertFalse(panel.isVisible())
+
     def test_analysis_columns_put_tools_in_middle_and_game_database_on_right(self):
         window = self.window
         window.analysis_mode = True
