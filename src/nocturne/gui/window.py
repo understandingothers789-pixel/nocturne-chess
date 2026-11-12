@@ -10,7 +10,7 @@ import sys
 import time
 
 from PySide6.QtCore import QByteArray, QEvent, QPoint, QProcess, QStandardPaths, Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QCursor, QDesktopServices, QIcon, QKeySequence
+from PySide6.QtGui import QAction, QActionGroup, QCursor, QDesktopServices, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QAbstractButton,
@@ -3255,7 +3255,7 @@ class MainWindow(QMainWindow):
 
     def _maybe_apply_gpu_hash_default(self, profile):
         """Use a conservative automatic Hash ceiling, respecting manual overrides."""
-        if (not self._gpu_hardware_detected or not profile or not profile.get("options_detected")
+        if (not profile or not profile.get("options_detected")
                 or profile.get("gpu_hash_default_suppressed")
                 or profile["id"] in self._gpu_hash_default_profiles):
             return
@@ -3270,7 +3270,7 @@ class MainWindow(QMainWindow):
         from .hardware import hash_budget_mb
 
         minimum = int(option.get("minimum", 1))
-        maximum = min(2048, int(option.get("maximum", 2048)))
+        maximum = min(1024, int(option.get("maximum", 1024)))
         budget = hash_budget_mb(self.resource_controls.allocated_hash())
         if budget is not None:
             maximum = min(maximum, budget)
@@ -3368,6 +3368,18 @@ class MainWindow(QMainWindow):
         if accepted:
             self._set_node_limit(key, nodes)
 
+    @staticmethod
+    def _exclusive_menu_choices(menu):
+        previous = getattr(menu, "_choice_group", None)
+        if previous is not None:
+            previous.deleteLater()
+        group = QActionGroup(menu)
+        group.setExclusive(True)
+        for action in menu.actions():
+            if action.isCheckable():
+                group.addAction(action)
+        menu._choice_group = group
+
     def _populate_node_limit_menu(self, menu, key, label, values, allow_unlimited=True):
         current = self.config.get(key, 0)
         if key == "analysis_nodes" and (self.config.get("analysis_kind") in ("infinite", "explore")
@@ -3389,6 +3401,7 @@ class MainWindow(QMainWindow):
         menu.addAction(f"Reset to default · {DEFAULTS[key]:,}",
                        lambda checked=False, k=key: self._set_node_limit(k, DEFAULTS[k]))
         menu.addAction("Custom…", lambda checked=False, k=key, t=label: self._custom_node_limit(k, t))
+        self._exclusive_menu_choices(menu)
 
     def _edit_analysis_limits(self):
         dialog = QDialog(self)
@@ -3452,6 +3465,8 @@ class MainWindow(QMainWindow):
             current_mode = self.config.get("analysis_kind")
             action.setChecked((current_mode == mode) or (current_mode == "explore" and mode == "infinite"))
             action.triggered.connect(lambda checked=False, m=mode: self._set_analysis_limit(m))
+        self._exclusive_menu_choices(self.profile_menu)
+        self._exclusive_menu_choices(self.search_mode_menu)
         self.search_mode_menu.addSeparator()
         self.search_mode_menu.addAction("Set limits…", self._edit_analysis_limits)
         for menu in (self.normal_limit_menu, self.auto_eval_limit_menu, self.auto_play_limit_menu):
@@ -3483,6 +3498,7 @@ class MainWindow(QMainWindow):
             action.setCheckable(True)
             action.setChecked(count == current)
             action.triggered.connect(lambda checked=False, n=count: self._set_multipv(n))
+        self._exclusive_menu_choices(self.multipv_menu)
         self.multipv_menu.addSeparator()
         self.multipv_menu.addAction("Custom…", self._custom_multipv)
         self.multipv_menu.addAction("More lines divide search effort").setEnabled(False)

@@ -1903,13 +1903,34 @@ class GuiTests(unittest.TestCase):
         self.assertIsNone(self.window.board_view.preview_board)
         self.assertEqual(self.window.board_view.display_board.fen(), actual)
 
-    def test_detected_gpu_selects_two_gigabyte_ceiling_only_for_automatic_profiles(self):
+    def test_engine_choices_have_one_checkmark_and_apply_node_limit(self):
+        window = self.window
+        window._analysis_enabled = False
+        for nodes in (400_000_000, 1_000_000_000, 400_000_000):
+            action = next(a for a in window.normal_limit_menu.actions() if a.text() == f"{nodes:,}")
+            action.trigger()
+            self.assertEqual(window.config["analysis_nodes"], nodes)
+            checked = [a.text() for a in window.normal_limit_menu.actions() if a.isChecked()]
+            self.assertEqual(checked, [f"{nodes:,}"])
+        menu = QMenu("MultiPV", window)
+        for value in (1, 4, 8):
+            action = menu.addAction(str(value))
+            action.setCheckable(True)
+        window._exclusive_menu_choices(menu)
+        for action in menu.actions():
+            action.trigger()
+            self.assertEqual([a.text() for a in menu.actions() if a.isChecked()], [action.text()])
+            action.trigger()
+            self.assertTrue(action.isChecked())
+        menu.deleteLater()
+
+    def test_hash_defaults_to_one_gigabyte_only_for_automatic_profiles(self):
         from nocturne.gui.hardware import has_discrete_gpu
 
         self.assertTrue(has_discrete_gpu("Intel UHD Graphics\nAMD Radeon RX 9070 XT"))
         self.assertTrue(has_discrete_gpu("NVIDIA GeForce"))
         self.assertFalse(has_discrete_gpu("Intel UHD Graphics\nMicrosoft Basic Display Adapter"))
-        self.window._gpu_hardware_detected = True
+        self.window._gpu_hardware_detected = False
         option = {"kind": "spin", "default": "16", "minimum": 1, "maximum": 65536}
         default_profile = {
             "id": "gpu-default", "path": "stockfish", "values": {"Hash": "16"},
@@ -1923,8 +1944,8 @@ class GuiTests(unittest.TestCase):
         with patch("nocturne.gui.hardware.hash_budget_mb", return_value=16384):
             self.window._maybe_apply_gpu_hash_default(default_profile)
             self.window._maybe_apply_gpu_hash_default(custom_profile)
-        self.assertEqual(default_profile["values"]["Hash"], 2048)
-        self.assertEqual(default_profile["gpu_hash_defaulted"], 2048)
+        self.assertEqual(default_profile["values"]["Hash"], 1024)
+        self.assertEqual(default_profile["gpu_hash_defaulted"], 1024)
         self.assertEqual(custom_profile["values"]["Hash"], "4096")
 
     def test_hover_special_moves_uses_copies_and_preserves_hash_and_cursor(self):
