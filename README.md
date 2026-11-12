@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.159 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43149838076/artifacts/13914525193).** Makes MultiPV, node limits and other engine selectors exclusive. Defaults automatic Hash profiles to a 1 GB ceiling without requiring a GPU; custom values remain intact. Initializes Hash without canceling self-play or review. Clarifies that rating curves show the top five moves at the selected Maia rating. Includes the contextual menu explanations from 158. Windows lint, full tests, packaging, startup checks and live database check passed.
+
 **[Download Nocturne 0.5.7.158 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43133949305/artifacts/13906318315).** Adds contextual menu explanations beside the menu cascade, including generated choices. Avoids repeated ownership checks and theme restyling during menu hovering. Windows lint, full tests, packaging, startup checks and live database check passed.
 
 **[Download Nocturne 0.5.7.157 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43130046201/artifacts/13904228931).** Makes the Game Review evaluation badge smaller. Moves by Rating starts taller, grows with its panel, and uses a compact single-row move legend. Corrects unnecessary chart space reservation in the engine column. Windows lint, full tests, packaging, startup checks and live database check passed.
