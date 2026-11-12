@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.156 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43124494451/artifacts/13902942589).** Restores compact rating-card headings and purple badges. Blunder Meter starts at its existing height limit, and Masters starts with the remaining space beneath the compact rating chart; both remain adjustable downward. Deferred sizing is canceled when the window closes. Windows lint, full tests, packaging, startup checks and live database check passed.
+
 **[Download Nocturne 0.5.7.155 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43121081496/artifacts/13900692682).** Alternates the Masters explorer and full Blunder Meter according to whether the current position has master games. Avoids repeated splitter panel moves and intermediate visibility toggles during layout updates. Windows lint, full tests, packaging, startup checks and live database check passed.
 
 **[Download Nocturne 0.5.7.154 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43118232515/artifacts/13900560156).** Keeps the opening explorer visible with Maia and Leela together, places it below Blunder Meter in their right column, and caps the Moves by Rating chart at 220 pixels. Shared Start/Stop preserves completed Leela results while controlling unfinished searches. Windows lint, full tests, packaging, startup checks and live database check passed.
