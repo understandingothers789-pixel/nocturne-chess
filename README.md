@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.162 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43156852351/artifacts/13917105244).** Starts with Stockfish and Leela idle, makes shared Start/Stop follow the Stockfish analysis state, and pauses unfinished Leela work during F12 auto-evaluation. Continues the requested action after an engine is selected. Windows lint, desktop tests, packaging, startup checks and live database check passed.
+
 **[Download Nocturne 0.5.7.161 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43153742549/artifacts/13915935273).** Fresh rebuild verified against the 158 source with the 159 and 160 code changes reapplied. Includes exclusive menu selections, a 1 GB automatic Hash default, elapsed analysis time and immediate database-row sizing. Windows lint, desktop tests, packaging, startup checks and live database check passed. This unsigned rebuild does not guarantee Windows Smart App Control approval.
 
 **[Download Nocturne 0.5.7.160 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43151557495/artifacts/13914152581).** Reserves four complete opening database rows immediately after results arrive and displays engine-reported elapsed search time beside nodes. The default desktop test suite omits the retired built-in search engine tests; use `--include-legacy` to run them too. Windows lint, desktop tests, packaging, startup checks and live database check passed.
