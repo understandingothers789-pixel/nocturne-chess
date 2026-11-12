@@ -273,7 +273,6 @@ class AnalysisHistory(QWidget):
                 button.setProperty('previousRun', previous)
                 if previous:
                     button.setText(node_label(value) + ' •')
-                    button.setStyleSheet('border: 1px dashed #b88735;')
                     button.setAccessibleName(node_label(value) + ', previous run')
             button.clicked.connect(lambda checked=False, v=value: self.select(v))
             self.tabs_layout.addWidget(button)
