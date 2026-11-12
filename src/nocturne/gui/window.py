@@ -1357,10 +1357,10 @@ class MainWindow(QMainWindow):
         state = (show_explorer, show_meter, self.right_detail_splitter.indexOf(self.maia_insights.trends_card) >= 0)
         if state != getattr(self, "_right_panel_start_state", None):
             self._right_panel_start_state = state
-            QTimer.singleShot(0, self._size_right_panel_start)
+            QTimer.singleShot(0, self, self._size_right_panel_start)
 
     def _size_right_panel_start(self):
-        if self._dock_workspace is not None:
+        if self._closing or self._dock_workspace is not None:
             return
         column = self.right_detail_splitter
         trends = self.maia_insights.trends_card
