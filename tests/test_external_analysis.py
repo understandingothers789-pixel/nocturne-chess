@@ -63,6 +63,8 @@ class QtIntegration(unittest.TestCase):
     def workspace(self):
         with tempfile.TemporaryDirectory() as directory:
             window = MainWindow(Path(directory))
+            # These integration cases exercise an already-started analysis.
+            window._analysis_enabled = True
             try:
                 yield window
             finally:
