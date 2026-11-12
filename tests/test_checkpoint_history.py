@@ -43,8 +43,11 @@ class CheckpointTests(unittest.TestCase):
         w.select(8_000_000)
         self.assertFalse(w.panel.lines)
         w.observe(2, {1: line('e2e4')}, 1_000_000)
-        self.assertEqual(list(w.checkpoints), [1_000_000])
-        self.assertIsNone(w.selected)
+        self.assertEqual(sorted(w.checkpoints), [1_000_000, 4_000_000, 8_000_000])
+        self.assertEqual(w.fresh_checkpoints, {1_000_000})
+        w.select(8_000_000)
+        self.assertIn('previous run', w.caption.text())
+        self.assertEqual(w.selected, 8_000_000)
 
     def test_navigation_restores_position_and_scan_cancels_on_search(self):
         w = self.widget

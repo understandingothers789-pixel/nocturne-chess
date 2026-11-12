@@ -150,6 +150,7 @@ class AnalysisHistory(QWidget):
         self.root = None
         self.live = {}
         self.checkpoints = {}
+        self.fresh_checkpoints = set()
         self.next_nodes = 1_000_000
         self.scanning = False
         self.min_ply, self.max_ply = 4, 12
@@ -213,6 +214,7 @@ class AnalysisHistory(QWidget):
         self.key = key
         self.root, self.turn = fen, turn
         self.session = None
+        self.fresh_checkpoints.clear()
         self.live = {}
         self.checkpoints = self.records.setdefault(key, {})
         self.records.move_to_end(key)
@@ -223,12 +225,16 @@ class AnalysisHistory(QWidget):
         self.select(None)
 
     def observe(self, session, lines, nodes):
-        if self.session != session:
+        new_session = self.session != session
+        if new_session:
             self.session = session
-            self.checkpoints.clear()
+            self.fresh_checkpoints.clear()
             self.next_nodes = 1_000_000
-            self.select(None)
+            self.cancel()
+            self._buttons()
         self.live = deepcopy(lines)
+        if new_session and self.selected is not None:
+            self._render()
         if self.mode.currentIndex() and not self.anchor:
             self.anchor = [x['pv'][0] for _, x in sorted(lines.items()) if x.get('pv')]
         crossed = None
@@ -240,7 +246,10 @@ class AnalysisHistory(QWidget):
             # live is replaced, not mutated, by subsequent output. Share this
             # detached copy with the checkpoint instead of copying every PV twice.
             self.checkpoints[crossed] = (nodes, self.live)
+            self.fresh_checkpoints.add(crossed)
             self._buttons()
+            if self.selected == crossed:
+                self._render()
         if self.selected is None and self.mode.currentIndex():
             self._render()
 
@@ -252,13 +261,20 @@ class AnalysisHistory(QWidget):
 
     def _buttons(self):
         self._clear_layout(self.tabs_layout)
-        for value in [None] + list(self.checkpoints):
+        for value in [None] + sorted(self.checkpoints):
             button = QPushButton('Live' if value is None else node_label(value))
             button.setCheckable(True)
             button.setChecked(self.selected == value)
             if value is not None:
                 actual, lines = self.checkpoints[value]
-                button.setToolTip(f'First captured output at {actual:,} nodes. {len(lines)} MultiPV lines; individual lines may have different depths.')
+                previous = value not in self.fresh_checkpoints
+                origin = 'Previous run' if previous else 'Current run'
+                button.setToolTip(f'{origin}: first captured output at {actual:,} nodes. {len(lines)} MultiPV lines; individual lines may have different depths.')
+                button.setProperty('previousRun', previous)
+                if previous:
+                    button.setText(node_label(value) + ' •')
+                    button.setStyleSheet('border: 1px dashed #b88735;')
+                    button.setAccessibleName(node_label(value) + ', previous run')
             button.clicked.connect(lambda checked=False, v=value: self.select(v))
             self.tabs_layout.addWidget(button)
         self.tabs_layout.addStretch()
@@ -282,7 +298,9 @@ class AnalysisHistory(QWidget):
         historical = self.selected is not None or bool(self.mode.currentIndex())
         self.viewing.emit(historical)
         self.panel.setVisible(historical)
-        self.caption.setText('Viewing: ' + ('Live' if self.selected is None else node_label(self.selected)))
+        previous = self.selected is not None and self.selected not in self.fresh_checkpoints
+        self.caption.setText('Viewing: ' + ('Live' if self.selected is None else node_label(self.selected))
+                             + (' · previous run' if previous else ''))
         if not historical:
             return
         self.panel.clear()

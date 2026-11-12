@@ -1,3 +1,3 @@
 """Nocturne: native, offline chess analysis with user-supplied UCI engines."""
 
-__version__ = "0.5.7.162"
+__version__ = "0.5.7.163"
