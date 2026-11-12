@@ -261,7 +261,8 @@ class GuiTests(unittest.TestCase):
         window._sync_explorer_meter()
         self.assertTrue(window.explorer.isHidden())
         self.assertFalse(window.blunder_scroll.isHidden())
-        self.assertEqual(window.maia_insights.chart.maximumHeight(), 220)
+        self.assertEqual(window.maia_insights.chart.maximumHeight(), 16777215)
+        self.assertEqual(window.maia_insights.chart.minimumHeight(), 320)
 
     def test_analysis_columns_put_tools_in_middle_and_game_database_on_right(self):
         window = self.window

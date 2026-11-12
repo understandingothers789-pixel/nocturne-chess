@@ -1366,18 +1366,21 @@ class MainWindow(QMainWindow):
         trends = self.maia_insights.trends_card
         if column.indexOf(trends) < 0:
             return
-        # Start at the upper drag limit once per panel change. Later dragging is free.
+        # Reserve a readable plot first; the database can scroll its remaining rows.
+        available = max(1, column.height() - column.handleWidth() * (column.count() - 1))
+        chart_height = max(trends.minimumSizeHint().height(), int(available * 0.60))
+        lower_height = max(1, available - chart_height - (85 if not self.graph.isHidden() else 0))
         sizes = []
         for index in range(column.count()):
             widget = column.widget(index)
             if widget.isHidden():
                 sizes.append(0)
             elif widget is trends:
-                sizes.append(trends.minimumSizeHint().height())
+                sizes.append(chart_height)
             elif widget is self.graph:
                 sizes.append(85)
             else:
-                sizes.append(max(1, column.height()))
+                sizes.append(lower_height)
         column.setSizes(sizes)
 
     def _sync_candidate_database(self):
@@ -3687,7 +3690,7 @@ class MainWindow(QMainWindow):
             self.blunder_scroll.setMaximumHeight(180)
             self.blunder_scroll.setWidget(insights.blunder)
             self.analysis_detail_splitter.addWidget(self.blunder_scroll)
-            insights.chart.setMaximumHeight(220)
+            insights.chart.setMaximumHeight(16777215)
             insights.trends_card.content.setStretch(1, 1)
             self.game_line_panel.setMinimumHeight(160)
             self.candidate_splitter.setStretchFactor(0, 0)

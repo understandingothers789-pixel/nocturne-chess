@@ -43,8 +43,8 @@ class RatingChart(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMouseTracking(True)
-        self.setMinimumHeight(220)
-        self.setMaximumHeight(280)
+        self.setMinimumHeight(320)
+        self.setMaximumHeight(16777215)
         self.setMinimumWidth(210)
         self.policies = {}
         self.moves = []
@@ -438,9 +438,11 @@ class MaiaInsights(QScrollArea):
         self.rating_chip.setToolTip("Selected Lichess blitz rating; opponent has the same rating.")
         trends.heading.addWidget(self.rating_chip)
         self.chart = RatingChart()
+        self.chart.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.chart.setToolTip("Predicted likelihood across equal-rated opponents. Hover a point for its exact percentage; click a legend to toggle a curve.")
         trends.content.addWidget(self.chart)
         legend = QWidget()
+        legend.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         self.legend_layout = QGridLayout(legend)
         self.legend_layout.setContentsMargins(0, 0, 0, 0)
         self.legend_layout.setSpacing(3)
@@ -495,7 +497,7 @@ class MaiaInsights(QScrollArea):
                 button.setChecked(move not in self.chart.hidden_moves)
                 button.setStyleSheet(f"color: {curve_colors()[index]};")
                 button.toggled.connect(lambda checked, uci=move: self._toggle_curve(uci, checked))
-                self.legend_layout.addWidget(button, index//3, index % 3)
+                self.legend_layout.addWidget(button, 0, index)
                 self.legend_buttons[move] = button
         self.chart.update()
 
