@@ -2394,6 +2394,8 @@ class MainWindow(QMainWindow):
 
     def _observe_checkpoint(self, generation, info):
         job = self._job
+        if self._review and self._review.get("kind") == "auto_eval":
+            job = self._review
         if (not self.config.get("checkpoint_history", False) or not job
                 or generation != job.get("generation") or generation != self.engine.generation
                 or job.get("identity") != self._position_identity()):
@@ -2776,6 +2778,8 @@ class MainWindow(QMainWindow):
 
     def _auto_evaluate_line(self):
         if self._review and self._review.get("kind") == "auto_eval":
+            if self._review.get("paused"):
+                self.analysis_history_toggle.setChecked(True)
             self.tabs.setCurrentIndex(1)
             self._pause_review()
             return
@@ -2790,6 +2794,7 @@ class MainWindow(QMainWindow):
         self.analysis_mode = True
         self.paused = False
         self._analysis_enabled = False
+        self.analysis_history_toggle.setChecked(True)
         self.game.pause_clock()
         start_index = self.game.cursor
         self._clear_saved_analysis(self.game._line_nodes[start_index:])
