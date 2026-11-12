@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.163 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43293633536/artifacts/13978423051).** Keeps earlier analysis-history checkpoints when analysis restarts. Previous-run captures have a dotted amber border and dot marker; new captures replace only their matching node-count checkpoint. Higher-count captures remain selectable while the new run is still searching at lower counts. Windows lint, desktop tests, packaging, startup checks and live database check passed.
+
 **[Download Nocturne 0.5.7.162 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43156852351/artifacts/13917105244).** Starts with Stockfish and Leela idle, makes shared Start/Stop follow the Stockfish analysis state, and pauses unfinished Leela work during F12 auto-evaluation. Continues the requested action after an engine is selected. Windows lint, desktop tests, packaging, startup checks and live database check passed.
 
 **[Download Nocturne 0.5.7.161 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43153742549/artifacts/13915935273).** Fresh rebuild verified against the 158 source with the 159 and 160 code changes reapplied. Includes exclusive menu selections, a 1 GB automatic Hash default, elapsed analysis time and immediate database-row sizing. Windows lint, desktop tests, packaging, startup checks and live database check passed. This unsigned rebuild does not guarantee Windows Smart App Control approval.
