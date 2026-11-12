@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.166 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43305495115/artifacts/13983583255).** Fresh rebuild containing the subtle previous-run checkpoint marker from 164 and automatic F12 Analysis History capture from 165. Windows lint, desktop tests, packaging, startup checks and live database check passed. This unsigned rebuild does not guarantee Smart App Control approval.
+
 **[Download Nocturne 0.5.7.165 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43300481523/artifacts/13981683485).** F12 automatically enables Analysis History on start or resume and captures checkpoints from auto-evaluation searches. Windows lint, desktop tests, packaging, startup checks and live database check passed.
 
 **[Download Nocturne 0.5.7.164 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43298530101/artifacts/13979649309).** Uses a subtle dot and tooltip for previous-run analysis checkpoints instead of a gold border. Windows lint, desktop tests, packaging, startup checks and live database check passed.
