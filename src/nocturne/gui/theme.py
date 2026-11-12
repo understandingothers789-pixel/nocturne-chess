@@ -147,8 +147,8 @@ def stylesheet(light: bool = False) -> str:
     QLabel#sectionTitle {{ color: {text}; font-size: 13px; font-weight: 600; }}
     QLabel#sectionNote {{ color: {muted}; font-size: 11px; }}
     QLabel#maiaHeading {{ color: {c['maia']}; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }}
-    QLabel#engineEval {{ background: {c['soft']}; color: {c['metric']}; padding: 5px 9px;
-        border: 1px solid {border}; border-radius: 7px; font-size: 22px; font-weight: 600; }}
+    QLabel#engineEval {{ background: {c['soft']}; color: {c['metric']}; padding: 3px 7px;
+        border: 1px solid {border}; border-radius: 6px; font-size: 18px; font-weight: 600; }}
     QLabel#telemetryStrip {{ background: {c['soft']}; border-radius: 6px; padding: 6px 7px; }}
     QLabel#gameLineHeading {{ color: {muted}; padding-top: 10px; padding-bottom: 4px;
         font-size: 10px; font-weight: 600; letter-spacing: 1px; }}

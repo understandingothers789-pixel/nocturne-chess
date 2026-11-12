@@ -3762,6 +3762,9 @@ class MainWindow(QMainWindow):
         required = trends.minimumSizeHint().height() if show else 0
         trends.setMinimumHeight(required)
         trends.setMaximumHeight(16777215)
+        # A chart in the separate right column needs no space in the engine scroll area.
+        if self.candidate_splitter.indexOf(trends) < 0:
+            required = 0
         required += max(self.candidates.minimumSizeHint().height(),
                         sum(row[0].minimumSizeHint().height() for row in self.candidates.rows.values() if not row[0].isHidden())) + 32
         # Reserve the entire chart and legend ahead of the scrollable meter.
