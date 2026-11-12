@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.158 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43133949305/artifacts/13906318315).** Adds contextual menu explanations beside the menu cascade, including generated choices. Avoids repeated ownership checks and theme restyling during menu hovering. Windows lint, full tests, packaging, startup checks and live database check passed.
+
 **[Download Nocturne 0.5.7.157 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43130046201/artifacts/13904228931).** Makes the Game Review evaluation badge smaller. Moves by Rating starts taller, grows with its panel, and uses a compact single-row move legend. Corrects unnecessary chart space reservation in the engine column. Windows lint, full tests, packaging, startup checks and live database check passed.
 
 **[Download Nocturne 0.5.7.156 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43124494451/artifacts/13902942589).** Restores compact rating-card headings and purple badges. Blunder Meter starts at its existing height limit, and Masters starts with the remaining space beneath the compact rating chart; both remain adjustable downward. Deferred sizing is canceled when the window closes. Windows lint, full tests, packaging, startup checks and live database check passed.
