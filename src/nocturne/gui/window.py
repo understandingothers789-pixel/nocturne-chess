@@ -197,7 +197,7 @@ class MainWindow(QMainWindow):
         self.analysis_mode = self.config.get("mode") == "analysis"
         if self.analysis_mode:
             self.paused = False
-        self._analysis_enabled = self.analysis_mode and resumed is None
+        self._analysis_enabled = False
         self._review = restore_job(self.game)
         self._auto_play_active = False
         self._auto_play_paused = False
@@ -240,6 +240,8 @@ class MainWindow(QMainWindow):
         self.maia.changed.connect(self._maia_changed)
         self.maia.status.connect(self.maia_controls.status.setText)
         self.leela_panel = LeelaPanel(self.data_directory, self.config, self)
+        # Both engines wait for an explicit start after opening the app.
+        self.leela_panel._paused_by_user = True
         self.leela_panel.move_selected.connect(self._maia_move)
         self.leela_panel.preview.connect(self._preview_leela)
         self.leela_panel.preview_end.connect(lambda: self._end_preview('leela'))
@@ -2779,9 +2781,11 @@ class MainWindow(QMainWindow):
             return
         if not self._profile():
             self._manage_engines()
-            return
+            if not self._profile():
+                return
         self._cancel_review()
         self._stop_engine()
+        self.leela_panel.pause_search(preserve_completed=True)
         self._ensure_analysis_copy()
         self.analysis_mode = True
         self.paused = False
@@ -4978,12 +4982,12 @@ class MainWindow(QMainWindow):
             return
         if not self._profile():
             self._manage_engines()
-            return
+            if not self._profile():
+                return
         if self._review:
             self._pause_review()
             return
-        if ((self._job and self._job["kind"] == "analysis")
-                or self.leela_panel.engine.busy or self.leela_panel.timer.isActive()):
+        if (self._job and self._job["kind"] == "analysis") or self._analysis_enabled:
             self._halt_analysis()
             return
         self._start_analysis()
