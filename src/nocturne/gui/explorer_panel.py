@@ -183,6 +183,14 @@ class OpeningExplorer(QWidget):
                 "stalemate": "Stalemate · no moves", "ok": "No scored moves available",
             }[data["status"]])
             self.status_label.setText(origin)
+        # Reserve complete rows immediately, including wrapped opening/status text.
+        self.layout().activate()
+        visible_rows = min(4, self.table.rowCount())
+        if visible_rows:
+            table_height = self.table.horizontalHeader().height() + sum(
+                self.table.rowHeight(row) for row in range(visible_rows)) + 2 * self.table.frameWidth()
+            self.table.setMinimumHeight(table_height + 3)
+            self.setMinimumHeight(self.minimumSizeHint().height())
             return
         self._set_compact_empty(not bool(self.rows))
         for i, row in enumerate(self.rows):

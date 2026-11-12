@@ -11,9 +11,12 @@ import sys
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pattern", default="test_*.py")
+    parser.add_argument("--include-legacy", action="store_true", help="Also test the retired built-in search engine")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     modules = sorted((root / "tests").glob(args.pattern))
+    if not args.include_legacy and args.pattern == "test_*.py":
+        modules = [module for module in modules if module.name != "test_search.py"]
     if not modules:
         parser.error("No test modules matched")
     total = skipped = failures = 0

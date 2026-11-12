@@ -5403,6 +5403,7 @@ class MainWindow(QMainWindow):
         separator = f'<span style="color:{colors["metadata"]};"> · </span>'
         values = [
             metric("Depth", depth),
+            metric("Time", f"{info.get('seconds', info.get('time', 0) / 1000):.1f} s"),
             metric("Nodes", f"{info['nodes']:,}"),
             metric("Nodes/second", f"{info.get('nps', 0):,}"),
         ]
