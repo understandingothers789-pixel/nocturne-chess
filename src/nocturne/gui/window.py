@@ -1493,12 +1493,13 @@ class MainWindow(QMainWindow):
         if (event.type() == QEvent.Type.MouseMove and isinstance(watched, QWidget)
                 and not isinstance(watched, QMenu) and hasattr(self, "_menu_help_timer")):
             popup = QApplication.activePopupWidget()
-            if isinstance(popup, QMenu) and popup.isAncestorOf(watched) and self._is_top_menu(popup):
+            if isinstance(popup, QMenu) and popup.isAncestorOf(watched) and (popup.property("hoverHelpReady") or self._is_top_menu(popup)):
                 point = popup.mapFromGlobal(QCursor.pos())
                 self._menu_hover_help(popup, popup.actionAt(point))
         if (event.type() in (QEvent.Type.Show, QEvent.Type.Hide, QEvent.Type.Leave,
                              QEvent.Type.MouseButtonPress, QEvent.Type.ToolTip, QEvent.Type.MouseMove)
-                and isinstance(watched, QMenu) and self._is_top_menu(watched)):
+                and isinstance(watched, QMenu)
+                and (watched.property("hoverHelpReady") or self._is_top_menu(watched))):
             if event.type() == QEvent.Type.Show and not watched.property("hoverHelpReady"):
                 if not hasattr(self, "_menu_help_timer"):
                     self._menu_help_timer = QTimer(self)

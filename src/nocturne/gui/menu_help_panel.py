@@ -11,7 +11,7 @@ class MenuHelpPanel(QFrame):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setObjectName('menuExplanation')
-        self.setStyleSheet('QFrame#menuExplanation { background: #202d3a; border: 1px solid #50667b; border-radius: 6px; } QLabel { color: #e6f0ef; background: transparent; border: none; }')
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 10)
         self.title = QLabel()
@@ -26,8 +26,11 @@ class MenuHelpPanel(QFrame):
         self.setFixedWidth(270)
 
     def show_help(self, title, description, menu, root, action):
-        colors = palette(self.parentWidget().config.get("light", False))
-        self.setStyleSheet("QFrame#menuExplanation { background: %s; border: 1px solid %s; border-radius: 6px; } QLabel { color: %s; background: transparent; border: none; }" % (colors["raised"], colors["border"], colors["text"]))
+        light = self.parentWidget().config.get("light", False)
+        if light != getattr(self, "_last_light", None):
+            self._last_light = light
+            colors = palette(light)
+            self.setStyleSheet("QFrame#menuExplanation { background: %s; border: 1px solid %s; border-radius: 6px; } QLabel { color: %s; background: transparent; border: none; }" % (colors["raised"], colors["border"], colors["text"]))
         self.title.setText(title)
         self.description.setText(description)
         self.adjustSize()
