@@ -4991,6 +4991,10 @@ class MainWindow(QMainWindow):
         dialog.deleteLater()
 
     def _analyze(self):
+        self.engine.connection.log.append(
+            f"Analyze clicked: busy={self.engine.busy}, phase={self.engine.connection.phase}, "
+            f"enabled={self._analysis_enabled}, paused={self.paused}, "
+            f"job={self._job.get('kind') if self._job else None}, review={bool(self._review)}")
         if self._auto_play_active:
             self._start_auto_play()
             return
@@ -5001,7 +5005,7 @@ class MainWindow(QMainWindow):
         if self._review and self.quick_analysis_button.text() != "Analyze":
             self._pause_review()
             return
-        if (self._job and self._job["kind"] == "analysis") or (self.engine.busy and self._analysis_enabled):
+        if self.engine.busy and ((self._job and self._job["kind"] == "analysis") or self._analysis_enabled):
             self._halt_analysis()
             return
         self._start_analysis()
@@ -5224,7 +5228,17 @@ class MainWindow(QMainWindow):
                 time_enabled=time_enabled,
             )
         except (OSError, RuntimeError, ValueError) as exc:
+            self.engine.stop()
+            self._job = None
+            self._analysis_enabled = False
+            self.quick_analysis_button.setText("Analyze")
             self._error("Cannot start engine", str(exc))
+            return
+        if not self.engine.busy:
+            self._job = None
+            self._analysis_enabled = False
+            self.quick_analysis_button.setText("Analyze")
+            self.engine_state.setText("Engine failed to start · open Engine diagnostics for details")
             return
         self._job = {
             "generation": generation,

@@ -199,6 +199,18 @@ class QtIntegration(unittest.TestCase):
         self.wait_until(lambda: "> go infinite" in controller.connection.log)
         self.assertNotIn("> go infinite nodes 123", controller.connection.log)
 
+    def test_controller_restarts_failed_connection_during_process_shutdown(self):
+        controller = EngineController()
+        self.addCleanup(controller.close)
+        controller.connect_engine(sys.executable, [SIMULATOR])
+        self.wait_until(lambda: controller.connection.phase == "idle")
+        controller.connection._fail("Simulated connection failure")
+        controller.start(Game(), AnalysisLimits(depth=2, seconds=1), sys.executable,
+                         arguments=[SIMULATOR], infinite=True)
+        self.wait_until(lambda: bool(controller.lines))
+        self.assertEqual(controller.connection.phase, "search")
+        self.assertTrue(controller.busy)
+
     def test_handshake_timeout_and_crash_recovery(self):
         connection = UciConnection(timeout_ms=100)
         self.addCleanup(connection.close)

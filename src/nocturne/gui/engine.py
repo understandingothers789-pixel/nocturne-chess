@@ -96,7 +96,8 @@ class EngineController(QObject):
         if tablebase_path:
             desired["SyzygyPath"] = tablebase_path
         desired["UCI_Chess960"] = bool(getattr(self.board, "chess960", False))
-        if self.connection.path != str(Path(external).absolute()) or not self.connection.alive:
+        if (self.connection.path != str(Path(external).absolute()) or not self.connection.alive
+                or self.connection.phase in ("failed", "closed")):
             self.connection.launch(external, arguments)
         position = "position fen " + game.initial_fen
         if game.cursor:
