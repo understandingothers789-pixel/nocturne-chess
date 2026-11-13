@@ -147,7 +147,9 @@ class LeelaLineTests(unittest.TestCase):
                 panel._launched_device = 1
                 panel._launched_batch = 8
                 panel.engine.connection.path = panel.exe
+                panel.engine.connection.phase = 'idle'
                 panel.engine.connection.request = Mock()
+                panel.engine.connection.launch = Mock(side_effect=lambda *args: setattr(panel.engine.connection, 'phase', 'idle'))
                 with patch.object(UciConnection, 'alive', new_callable=PropertyMock, return_value=True):
                     panel._start()
                     sent = panel.engine.connection.request.call_args.args
@@ -216,6 +218,7 @@ class LeelaLineTests(unittest.TestCase):
         engine = EngineController()
         try:
             engine.connection.path = str(Path('stockfish').absolute())
+            engine.connection.phase = 'idle'
             engine.connection.request = Mock()
             with patch.object(UciConnection, 'alive', new_callable=PropertyMock, return_value=True):
                 engine.start(Game(), AnalysisLimits(depth=80, seconds=7, nodes=500000),
