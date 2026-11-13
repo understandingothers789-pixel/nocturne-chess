@@ -4397,7 +4397,7 @@ class MainWindow(QMainWindow):
         self._save()
         self._schedule_engine()
 
-    def _workspace(self, analysis):
+    def _workspace(self, analysis, *, schedule=True):
         if not analysis:
             self._cancel_review()
         self._stop_engine()
@@ -4421,7 +4421,8 @@ class MainWindow(QMainWindow):
             "Follow an idea. Try another line." if analysis else "Find your focus. Enjoy the game."
         )
         self._refresh()
-        self._schedule_engine()
+        if schedule:
+            self._schedule_engine()
 
     def _navigation_should_analyze(self):
         return bool(
@@ -4997,7 +4998,7 @@ class MainWindow(QMainWindow):
             self._manage_engines()
             if not self._profile():
                 return
-        if self._review:
+        if self._review and self.quick_analysis_button.text() != "Analyze":
             self._pause_review()
             return
         if (self._job and self._job["kind"] == "analysis") or (self.engine.busy and self._analysis_enabled):
@@ -5020,7 +5021,7 @@ class MainWindow(QMainWindow):
         self.pause_button.setText("Pause")
         self._cancel_review()
         self._stop_engine()
-        self._workspace(True)
+        self._workspace(True, schedule=False)
         self._clear_saved_analysis([self.game.current_node])
         self._analysis_enabled = True
         if self.config.get("leela_enabled", False):
@@ -5139,8 +5140,11 @@ class MainWindow(QMainWindow):
             or self.engine.busy
             or self.paused
             or (self._auto_play_active and self._auto_play_paused)
-            or self.game.outcome
+            or (self.game.outcome and (not self.analysis_mode or self._auto_play_active))
         ):
+            return
+        if self.analysis_mode and not any(self.game.board.legal_moves()):
+            self.engine_state.setText("No legal moves · this position is terminal")
             return
         if self._review:
             return

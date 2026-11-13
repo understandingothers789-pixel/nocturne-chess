@@ -99,6 +99,19 @@ class AutomationTests(unittest.TestCase):
         window._escape()
 
 
+    def test_analyze_starts_on_reported_position_even_after_game_result(self):
+        window = self.window
+        window.game = Game("r4rk1/p2n1pbp/2ppb1p1/1p3p2/3PP3/2P2P2/PP1B2PP/1K1R1BNR w - - 0 1")
+        window.game.resign(1)
+        window.analysis_mode = True
+        window._refresh()
+        window._analyze()
+        self.wait(lambda: bool(window.candidates.lines))
+        self.assertTrue(window.engine.busy)
+        window._halt_analysis()
+        window._analyze()
+        self.wait(lambda: bool(window.candidates.lines))
+
     def test_f12_streams_current_position_and_manual_navigation_cancels(self):
         window = self.window
         window.game = Game.from_pgn("1.e4 e5 2.Nf3 *")
