@@ -4992,7 +4992,7 @@ class MainWindow(QMainWindow):
         if self._review:
             self._pause_review()
             return
-        if (self._job and self._job["kind"] == "analysis") or self._analysis_enabled:
+        if (self._job and self._job["kind"] == "analysis") or (self.engine.busy and self._analysis_enabled):
             self._halt_analysis()
             return
         self._start_analysis()
@@ -5008,6 +5008,8 @@ class MainWindow(QMainWindow):
             self.leela_panel.pause_search(preserve_completed=True)
 
     def _start_analysis(self):
+        self.paused = False
+        self.pause_button.setText("Pause")
         self._cancel_review()
         self._stop_engine()
         self._workspace(True)

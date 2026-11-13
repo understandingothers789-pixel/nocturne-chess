@@ -172,7 +172,7 @@ class UciConnection(QObject):
             self.applied["__study"] = study
         preparation = "; ".join(changes) or "waiting for readiness"
         self.log.append("Preparation: " + preparation)
-        self.status.emit(self.name + " · preparing · " + preparation)
+        self.status.emit(self.name + " · preparing engine…")
         self.phase = "ready"
         self._prepared = self.pending
         self.send("isready")
