@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.170 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43525697315/artifacts/14086041020).** Recovers Analyze requests made while a failed engine process is shutting down, clears stale jobs after startup errors, and prevents idle stale jobs from turning an Analyze click into Stop. Adds bounded diagnostic entries for each Analyze click. Windows lint, desktop tests, packaging, startup checks and live database check passed.
+
 **[Download Nocturne 0.5.7.169 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43383146037/artifacts/14017472814).** Fixes silent Analyze blockers for recorded game results and paused reviews, and starts one engine search after the analysis view is reset. Windows lint, desktop tests, packaging, startup checks and live database check passed.
 
 **[Download Nocturne 0.5.7.168 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43380708966/artifacts/14017275242).** With Leela enabled, F12 runs Leela contempt analysis alongside Stockfish at each position until Stockfish completes its node-limited search. Leela keeps its GPU workload controls while bypassing its ordinary time/node search limit during F12. Pause, cancellation and Stockfish errors stop the paired Leela search. Windows lint, desktop tests, packaging, startup checks and live database check passed.
