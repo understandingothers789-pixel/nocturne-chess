@@ -128,6 +128,7 @@ class LeelaPanel(QWidget):
         self.root = Path(root) / 'leela'
         self.identity = None
         self._paused_by_user = False
+        self.follow_stockfish = False
         self._resume_after_setup = False
         self.game = None
         self.active = False
@@ -309,7 +310,7 @@ class LeelaPanel(QWidget):
         retry.clicked.connect(self.setup)
         row.addWidget(retry)
         restart = QPushButton('Analyze again')
-        restart.clicked.connect(lambda: self.request(self.game, force=True) if self.game else None)
+        restart.clicked.connect(lambda: self.request(self.game, force=True, follow_stockfish=self.follow_stockfish) if self.game else None)
         row.addWidget(restart)
         stop = QPushButton('Stop Leela')
         stop.clicked.connect(self.pause_search)
@@ -351,6 +352,21 @@ class LeelaPanel(QWidget):
         self.completed_cache.discard(self.identity)
         self._status('Leela · stopped · click Analyze again to resume')
 
+    def finish_following(self, completed=False):
+        if not self.follow_stockfish:
+            return
+        self.timer.stop()
+        self.render_timer.stop()
+        self._resume_after_setup = False
+        self._paused_by_user = True
+        self.engine.stop()
+        if self.lines:
+            self._render()
+            if completed:
+                self.completed_cache.add(self.identity)
+        self.follow_stockfish = False
+        self._status('Leela · Stockfish node limit reached' if completed else 'Leela · auto-evaluation paused')
+
     def _settings(self, *args, opponent=False):
         if opponent:
             gap = self.rating.value() - self.opponent.value()
@@ -385,7 +401,7 @@ class LeelaPanel(QWidget):
         self.identity = None
         self.settings_changed.emit()
         if self.game and self.active:
-            self.request(self.game)
+            self.request(self.game, follow_stockfish=self.follow_stockfish)
 
     def follow_board_flip(self, flipped):
         if self.follow_board.isChecked():
@@ -421,19 +437,20 @@ class LeelaPanel(QWidget):
         self._settings()
         if self._resume_after_setup and not self._paused_by_user and self.active and self.game:
             self._resume_after_setup = False
-            self.request(self.game, force=True)
+            self.request(self.game, force=True, follow_stockfish=self.follow_stockfish)
 
-    def request(self, game, force=False, *, reuse_completed=False):
+    def request(self, game, force=False, *, reuse_completed=False, follow_stockfish=False):
         if not self.active:
             return
         self.game = game
+        self.follow_stockfish = follow_stockfish
         if force:
             self._paused_by_user = False
         key = (game.board.fen(), tuple(m.uci() for m in game.moves[:game.cursor]),
                self.config['leela_side'], self.config['leela_rating'], self.config['leela_gap'],
                self.config['leela_seconds'], self.config['leela_device'],
                self.config['leela_limit'], self.config['leela_nodes'], self.config['leela_gpu_auto'],
-               self.config['leela_batch_size'], self.config.get('leela_nps_limit', 256), self.config.get('leela_workload', 'normal'))
+               self.config['leela_batch_size'], self.config.get('leela_nps_limit', 256), self.config.get('leela_workload', 'normal'), follow_stockfish)
         if (reuse_completed and key == self.identity and key in self.completed_cache
                 and key in self.cache):
             return
@@ -503,7 +520,7 @@ class LeelaPanel(QWidget):
             self.engine.start(self.game, AnalysisLimits(depth=128, seconds=cfg['leela_seconds'],
                                                          nodes=cfg['leela_nodes'] if cfg['leela_limit'] in ('nodes', 'both') else None),
                               external=self.exe, kind='analysis', multipv=5, options=options,
-                              infinite=cfg['leela_limit'] == 'infinite',
+                              infinite=self.follow_stockfish or cfg['leela_limit'] == 'infinite',
                               nodes_only=cfg['leela_limit'] == 'nodes',
                               time_nodes_only=True,
                               arguments=['--backend=onnx-dml', f'--backend-opts=gpu={cfg["leela_device"]}',
@@ -603,6 +620,7 @@ class LeelaPanel(QWidget):
             self.preview.emit(self.lines[rank]['pv'], ply)
 
     def stop(self):
+        self.follow_stockfish = False
         self._resume_after_setup = False
         self.active = False
         self.identity = None

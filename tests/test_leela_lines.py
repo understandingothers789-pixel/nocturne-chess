@@ -156,6 +156,11 @@ class LeelaLineTests(unittest.TestCase):
                     self.assertEqual(sent[3]['BackendOptions'], 'gpu=1')
                     self.assertEqual(sent[3]['MinibatchSize'], 8)
                     config['leela_limit'] = 'time'
+                    panel.follow_stockfish = True
+                    panel._start()
+                    self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go infinite')
+                    self.assertIn('ContemptMode', panel.engine.connection.request.call_args.args[3])
+                    panel.follow_stockfish = False
                     panel._start()
                     self.assertEqual(panel.engine.connection.request.call_args.args[2], 'go movetime 20000')
                     config['leela_limit'] = 'both'

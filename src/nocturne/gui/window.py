@@ -2203,7 +2203,8 @@ class MainWindow(QMainWindow):
         self.maia_insights.set_outcome_bar_visible(
             self.config.get('show_maia_eval_bar', True) and not leela)
         if leela:
-            self.leela_panel.request(self.game)
+            if not (self._review and self._review.get("kind") == "auto_eval"):
+                self.leela_panel.request(self.game)
         else:
             self.leela_panel.stop()
         self.maia.set_rating_range(self.config.get("maia_rating_min", 600), self.config.get("maia_rating_max", 3000))
@@ -3010,6 +3011,9 @@ class MainWindow(QMainWindow):
         state["turn"] = position.turn
         state["profile"] = profile["id"]
         state["options"] = dict(options)
+        if state.get("kind") == "auto_eval" and self.config.get("leela_enabled", False):
+            self.leela_panel.active = True
+            self.leela_panel.request(self.game, force=True, follow_stockfish=True)
         self.quick_analysis_button.setText(
             "Pause auto-evaluation" if state.get("kind") == "auto_eval" else "Pause review"
         )
@@ -3032,6 +3036,7 @@ class MainWindow(QMainWindow):
         if not state or generation != state.get("generation"):
             return False
         if kind == "error":
+            self.leela_panel.finish_following()
             state["paused"] = True
             state["generation"] = None
             state["message"] = payload["message"] + " · review paused"
@@ -3053,6 +3058,7 @@ class MainWindow(QMainWindow):
             return True
         if kind != "result":
             return True
+        self.leela_panel.finish_following(completed=True)
         # Saving analysis accepts partial iterations, including bound scores.
         # Grading a move still needs exact evidence rather than an inequality.
         exact_lines = payload.get("exact_lines") or {}
@@ -3157,6 +3163,7 @@ class MainWindow(QMainWindow):
             return
         self._review["paused"] = not self._review["paused"]
         if self._review["paused"]:
+            self.leela_panel.finish_following()
             self.engine.stop()
             self._review["generation"] = None
             self.quick_analysis_button.setText(
@@ -3171,6 +3178,7 @@ class MainWindow(QMainWindow):
 
     def _cancel_review(self):
         if self._review:
+            self.leela_panel.finish_following()
             self.engine.stop()
             self._review = None
             self.quick_analysis_button.setText("Analyze")
