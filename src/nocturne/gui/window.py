@@ -1476,17 +1476,12 @@ class MainWindow(QMainWindow):
         if self._closing or not hasattr(self, "_menu_help_timer"):
             return
         point = QCursor.pos()
-        pending = [a.menu() for a in self.menuBar().actions() if a.menu()]
-        visited = set()
         target = None
-        while pending:
-            menu = pending.pop()
-            if not isValid(menu) or menu in visited or not menu.isVisible():
+        for menu in self.findChildren(QMenu):
+            if not isValid(menu) or not menu.isVisible() or not self._is_top_menu(menu):
                 continue
-            visited.add(menu)
             if menu.rect().contains(menu.mapFromGlobal(point)):
                 target = menu, menu.actionAt(menu.mapFromGlobal(point))
-            pending.extend(a.menu() for a in menu.actions() if a.menu())
         if target and target[1] and not target[1].isSeparator():
             self._menu_hover_help(*target)
         else:
