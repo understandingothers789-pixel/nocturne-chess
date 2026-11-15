@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.174 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43775207787/artifacts/14186506418).** Adds Games, Special Positions and Bookmarks views to the saved-game browser with board and move previews, plus direct menu links. Restores native input for ordinary nested menu toggles and Lichess token entry. Windows lint, full desktop tests, packaging, startup checks and live database checks passed.
+
 **[Download Nocturne 0.5.7.173 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43754570326/artifacts/14177188617).** Simplifies menus with task-based submenus, removes duplicate entries and the Dev tab, preserves keyboard shortcuts, adds submenu explanations, and makes command search include nested commands. Display has 11 main rows instead of 31; Engine has 8 instead of 20. Windows lint, full desktop tests, packaging, startup checks and live database checks passed.
 
 **[Download Nocturne 0.5.7.172 — fresh Windows rebuild (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43749260049/artifacts/14176046847).** Fresh rebuild of 172 with the same application features and menus. Windows lint, full desktop tests, packaging, startup checks and live database checks passed.
