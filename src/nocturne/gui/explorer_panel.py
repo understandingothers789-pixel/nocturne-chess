@@ -4,7 +4,7 @@ from PySide6.QtCore import QEvent, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (
     QAbstractItemView, QHBoxLayout, QHeaderView, QLabel, QPushButton,
-    QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+    QSizePolicy, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from ..explorer import ExplorerCache, ExplorerQuery, chessdb_score
@@ -59,6 +59,8 @@ class OpeningExplorer(QWidget):
         header = QHBoxLayout()
         self.title = QLabel("Database explorer")
         self.title.setTextFormat(Qt.TextFormat.PlainText)
+        self.title.setMinimumWidth(0)
+        self.title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         header.addWidget(self.title, 1)
         refresh = QPushButton("↻")
         refresh.setAccessibleName("Refresh database explorer")
@@ -81,6 +83,7 @@ class OpeningExplorer(QWidget):
         self.table.setHorizontalHeaderLabels(["Move", "Games", "White / Draw / Black"])
         self.table.verticalHeader().hide()
         self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setMinimumSectionSize(24)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
