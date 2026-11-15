@@ -1457,8 +1457,12 @@ class GuiTests(unittest.TestCase):
 
         self.assertFalse(self.window.config["expand_pv"])
         self.assertFalse(normalize({"expand_pv": True})["expand_pv"])
-        engine_actions = {action.text(): action for action in self.window.menus["Engine"].actions()}
-        dev_actions = {action.text() for action in self.window.menus["Dev"].actions()}
+        engine_actions = {action.text(): action for menu in self.window.findChildren(QMenu) for action in menu.actions()}
+        dev_actions = set()
+        self.assertNotIn("Dev", self.window.menus)
+        self.assertLessEqual(len(self.window.menus["Display"].actions()), 12)
+        self.assertLessEqual(len(self.window.menus["Engine"].actions()), 12)
+        self.assertEqual(self.window.menu_actions["Auto-evaluate entire line"].shortcut().toString(), "F12")
         self.assertIn("Expand all analysis lines", engine_actions)
         self.assertIn("Preview moves on a small board near cursor", engine_actions)
         self.assertNotIn("Expand all analysis lines", dev_actions)
@@ -1772,7 +1776,7 @@ class GuiTests(unittest.TestCase):
     def test_nibbler_style_menus_and_no_widget_tooltips(self):
         self.assertEqual(
             [a.text().replace("&", "") for a in self.window.menuBar().actions()],
-            ["File", "Tree", "Analysis", "Display", "Engine", "Database", "Play", "Dev"],
+            ["File", "Tree", "Analysis", "Display", "Engine", "Database", "Play"],
         )
         self.assertTrue(all("custom engine" not in w.toolTip() for w in self.window.findChildren(QWidget)))
         action = self.window.display_actions["coordinates"]
@@ -1791,8 +1795,10 @@ class GuiTests(unittest.TestCase):
         self.app.processEvents()
         menu = self.window.menus["File"]
         self.assertTrue(menu.isVisible())
-        self.assertIn(self.window.menu_actions["load_clipboard"], menu.actions())
-        self.assertIn(self.window.menu_actions["copy_pgn"], menu.actions())
+        self.assertIn(self.window.menu_actions["load_clipboard"],
+                      next(a.menu() for a in menu.actions() if a.text() == "Import").actions())
+        self.assertIn(self.window.menu_actions["copy_pgn"],
+                      next(a.menu() for a in menu.actions() if a.text() == "Copy").actions())
         menu.close()
 
     def _analysis_game(self, text="1. e4 e5 2. Nf3 Nc6 *"):
@@ -2318,7 +2324,8 @@ class GuiTests(unittest.TestCase):
                         else [self.window.maia_controls.move_limit] if kind is QSpinBox else [])
             self.assertEqual(controls, expected)
         self.assertTrue(self.window.maia_controls.move_limit.isHidden())
-        self.assertIn(self.window.resource_controls.menus["Threads"].menuAction(), self.window.menus["Engine"].actions())
+        self.assertTrue(any(self.window.resource_controls.menus["Threads"].menuAction() in menu.actions()
+                            for menu in self.window.findChildren(QMenu) if menu.title() == "Resources"))
         self.assertIn(self.window.multipv_menu.menuAction(), self.window.menus["Engine"].actions())
 
     def test_delayed_search_cannot_restart_after_window_close(self):

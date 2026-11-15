@@ -1097,6 +1097,103 @@ class MainWindow(QMainWindow):
             "Play": play,
             "Dev": dev,
         }
+        self._organize_menus()
+
+    def _organize_menus(self):
+        """Group existing actions without replacing their shortcuts or state."""
+        menus = self.menus
+        self._grouped_menus = []
+
+        def move(source, destination, titles):
+            for action in list(source.actions()):
+                if action.text().replace('&', '') in titles:
+                    source.removeAction(action)
+                    destination.addAction(action)
+
+        def group(source, title, titles):
+            target = source.addMenu(title)
+            self._grouped_menus.append(target)
+            move(source, target, titles)
+            return target
+
+        file, tree, analysis, display, engine, database, play, dev = (menus[n] for n in
+            ('File', 'Tree', 'Analysis', 'Display', 'Engine', 'Database', 'Play', 'Dev'))
+        group(file, 'Study', ['New study tab', 'Rename study…'])
+        group(file, 'Position setup', ['Set up position…', 'New Chess960 position…'])
+        group(file, 'Import', ['Open PGN…', 'Load FEN / PGN from clipboard', 'Enter FEN / PGN…'])
+        exports = group(file, 'Save / Export', ['Save to library', 'Save this game as PGN…', 'Save to Special Positions…'])
+        move(display, exports, ['Save board image…'])
+        group(file, 'Copy', ['Write PGN to clipboard', 'Write FEN to clipboard'])
+        group(file, 'Library', ['Saved PGNs / game library…', 'Open saved PGN folder'])
+        pgn = group(file, 'PGN tools', ['Edit / paste PGN…'])
+        move(dev, pgn, ['Show raw PGN data'])
+        # Keep Quit last, even after appending new submenus.
+        quit_action = self.menu_actions['Quit']
+        file.removeAction(quit_action)
+        file.addSeparator()
+        file.addAction(quit_action)
+        group(tree, 'Navigate', ['Root', 'End', 'Backward', 'Forward'])
+        group(tree, 'Variations', ['Return to main line', 'Previous variation', 'Next variation',
+                                  'Promote variation to main line', 'Delete current line'])
+        bookmarks = group(tree, 'Bookmarks', ['Bookmark this position…'])
+        move(tree, bookmarks, ['Position bookmarks'])
+        group(analysis, 'Analysis controls', ['Go', 'Halt'])
+        group(analysis, 'Game analysis', ['Analyze entire line…', 'Pause / resume game analysis',
+              'Cancel game analysis', 'Confirm mistakes with deeper analysis'])
+        group(analysis, 'Play candidate', [f'Execute candidate {n}' for n in range(1, 4)])
+        automation = analysis.addMenu('Automation')
+        move(engine, automation, ['Auto-play engines from this position', 'Auto-evaluate entire line'])
+        move(dev, automation, ['Automatically analyze when selecting a position'])
+        snapshots = analysis.addMenu('Snapshot tools')
+        move(dev, snapshots, ['Save analysis snapshots at node milestones', 'Compare saved analysis snapshots…'])
+        group(display, 'Layout', ['Maia panels on the right', 'Arrange panels', 'Reset layout',
+                                 'Classic Nibbler layout', 'Analysis on the left'])
+        group(display, 'Appearance', ['Coordinates', 'Clocks', 'Move animations', 'Light appearance', 'Board appearance…'])
+        group(display, 'Board overlays', ['Analysis overlays', 'Show saved continuation arrows', 'Stockfish arrows by eval loss'])
+        analysis_display = group(display, 'Analysis display', ['Stockfish variation text size',
+            'Always show five Stockfish rows', 'Detailed analysis statistics', 'Show selective depth (seldepth)'])
+        move(engine, analysis_display, ['Expand all analysis lines', 'Preview moves on a small board near cursor'])
+        group(display, 'Maia display', ['Show Maia insights', 'Show Maia evaluation bar', 'Show Maia evaluation bar label'])
+        group(display, 'Mouse interaction', ['Smart Move · click recommended destinations',
+            'Wheel navigates game moves', 'Wheel previews analysis moves'])
+        group(display, 'Commands', ['Command palette…', 'Keyboard shortcuts…'])
+        group(engine, 'Engines / Profiles', ['Choose engine…', 'Engine profiles and options…', 'Active engine'])
+        resources = engine.addMenu('Resources')
+        for submenu in (self.resource_controls.menus['Threads'], self.cpu_budget_menu, self.resource_controls.menus['Hash']):
+            engine.removeAction(submenu.menuAction())
+            resources.addMenu(submenu)
+        engine.removeAction(self.resource_status_action)
+        resources.addAction(self.resource_status_action)
+        limits = engine.addMenu('Search limits')
+        for submenu in (self.search_mode_menu, self.normal_limit_menu, self.auto_eval_limit_menu, self.auto_play_limit_menu):
+            engine.removeAction(submenu.menuAction())
+            limits.addMenu(submenu)
+        models = engine.addMenu('Models')
+        move(engine, models, ['Maia-3 79M'])
+        move(display, models, ['Use only one of Maia or Leela'])
+        group(database, 'Source', ['Lichess Masters database (Recommended)', 'Lichess players (Amateurs)', 'ChessDB · cloud analysis'])
+        group(database, 'Player filters', ['Lichess game speed', 'Lichess rating groups'])
+        access = database.addMenu('Lichess access')
+        database.removeAction(self.lichess_token_action)
+        access.addAction(self.lichess_token_action)
+        move(database, access, ['Create a Lichess access token…', 'Clear saved access token'])
+        self.lichess_token_row.clicked.disconnect()
+        self.lichess_token_row.clicked.connect(lambda: (access.close(), database.close(), self.lichess_token_action.trigger()))
+        group(database, 'Database settings', ['Enable database statistics'])
+        group(database, 'Coverage scan', ['Find where this line leaves the database', 'Cancel database coverage scan'])
+        for source in (analysis, dev, play):
+            for action in list(source.actions()):
+                if action.text() == 'Engine diagnostics…' or (source is play and action.text() == 'New game…'):
+                    source.removeAction(action)
+        self.menuBar().removeAction(dev.menuAction())
+        self._grouped_menus.extend([automation, snapshots, resources, limits, models, access, dev])
+        del menus['Dev']
+        self._grouped_menu_actions = [menu.menuAction() for menu in self._grouped_menus]
+        # Separators left behind by moves should not create empty sections.
+        for menu in self.findChildren(QMenu):
+            for action in list(menu.actions()):
+                if action.isSeparator():
+                    menu.removeAction(action)
 
     def _set_cursor_preview(self, enabled):
         for view in {self.analysis_history, self.pv_label, *(row[2] for row in self.candidates.rows.values())}:
@@ -2752,9 +2849,19 @@ class MainWindow(QMainWindow):
         layout.addWidget(query)
         results = QListWidget()
         layout.addWidget(results)
-        actions = [
-            a for menu in self.menus.values() for a in menu.actions() if not a.isSeparator() and a.isEnabled()
-        ]
+        actions = []
+        seen = set()
+        def collect(menu):
+            for action in menu.actions():
+                if action.isSeparator() or not action.isEnabled() or action in seen:
+                    continue
+                seen.add(action)
+                if action.menu():
+                    collect(action.menu())
+                else:
+                    actions.append(action)
+        for menu in self.menus.values():
+            collect(menu)
 
         def update(text):
             results.clear()

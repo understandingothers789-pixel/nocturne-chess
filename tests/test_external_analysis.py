@@ -797,7 +797,8 @@ class QtIntegration(unittest.TestCase):
             window.show()
             window.activateWindow()
             self.app.processEvents()
-            engine_actions = window.menus["Engine"].actions()
+            engine_actions = next(a.menu() for a in window.menus["Analysis"].actions()
+                                  if a.text() == "Automation").actions()
             for title in ("Auto-play engines from this position", "Auto-evaluate entire line"):
                 action = window.menu_actions[title]
                 self.assertIn(action, engine_actions)
