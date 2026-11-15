@@ -37,6 +37,12 @@ class LeelaLineTests(unittest.TestCase):
                 self.assertFalse(panel.timer.isActive())
                 panel._message(panel.engine.generation - 1, 'info', {'multipv': 1})
                 self.assertFalse(panel.lines)
+                panel.request(game, force=True)
+                panel.timer.stop()
+                panel._message(panel.engine.generation, 'result', {})
+                self.assertNotIn(panel.identity, panel.completed_cache)
+                panel.request(game, force=True, reuse_completed=True)
+                self.assertTrue(panel.timer.isActive())
             finally:
                 panel.shutdown()
                 panel.deleteLater()

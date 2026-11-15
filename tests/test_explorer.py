@@ -117,6 +117,12 @@ class DataTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, "dispatch reached"):
                         client._send()
                 client.blocked_until = 12.0
+                client.query = ExplorerQuery(Game().board.fen(), "chessdb")
+                self.assertEqual(client.blocked_until, 0)
+                client.blocked_until = 15.0
+                client.query = ExplorerQuery(Game().board.fen(), "lichess")
+                self.assertEqual(client.blocked_until, 12.0)
+                client.query = ExplorerQuery(Game().board.fen())
                 with patch("nocturne.gui.explorer_client.time.monotonic", return_value=11.0), \
                         patch.object(client, "request_for") as request:
                     client._send()
@@ -343,6 +349,12 @@ class CachedGuiTests(unittest.TestCase):
                 explorer._result(query.key, populated, "Cached · Lichess Masters")
                 self.assertEqual(explorer.maximumHeight(), 16777215)
                 self.assertFalse(explorer.table.isHidden())
+                selected = []
+                explorer.identity = "current-position"
+                explorer.move_selected.connect(lambda identity, move: selected.append((identity, move)))
+                explorer.table.setCurrentCell(1, 0)
+                QTest.keyClick(explorer.table, Qt.Key.Key_Return)
+                self.assertEqual(selected, [("current-position", populated["moves"][1]["uci"])])
             finally:
                 explorer.close_client()
 

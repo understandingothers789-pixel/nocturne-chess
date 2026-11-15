@@ -348,6 +348,10 @@ class MainWindow(QMainWindow):
         study_row.addWidget(self.study_tabs, 1)
         study_row.addWidget(button("＋", self._new_study, "quiet"))
         self.quick_analysis_button = button("Analyze", self._analyze, "primary")
+        self.quick_analysis_button.setToolTip(
+            "Start or stop Stockfish and enabled Leela analysis for this position. "
+            "Completed Leela results are kept. Ctrl+G starts; Ctrl+H stops. "
+            "F12 analyzes the game line.")
         self.quick_analysis_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         study_row.addWidget(self.quick_analysis_button)
         content.addLayout(study_row)

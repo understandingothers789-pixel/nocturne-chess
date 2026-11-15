@@ -542,11 +542,13 @@ class LeelaPanel(QWidget):
             self._status('Leela: ' + info.get('message', 'Engine error'))
         elif kind == 'result':
             self._sync_gpu()
-            self.completed_cache.add(self.identity)
+            if self.lines:
+                self.completed_cache.add(self.identity)
             self.render_timer.stop()
             self._render()
             nodes = max((line.get('nodes', 0) for line in self.lines.values()), default=0)
-            self._status('Leela · analysis complete' if nodes >= 10000 else
+            self._status('Leela · no analysis received · click Analyze again to retry' if not self.lines else
+                         'Leela · analysis complete' if nodes >= 10000 else
                          'Leela · short search: increase the search limit for more reliable contempt results')
 
     def _wdl(self, info):

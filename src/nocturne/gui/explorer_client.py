@@ -35,9 +35,19 @@ class ExplorerClient(QObject):
         self.generation = 0
         self.last_sent = -math.inf
         self._send_after = -math.inf
-        self.blocked_until = 0
+        self._service_deadlines = {}
         self.saved = None
         self._lichess_token = ""
+
+    @property
+    def blocked_until(self):
+        service = "chessdb" if self.query and self.query.source == "chessdb" else "lichess"
+        return self._service_deadlines.get(service, 0)
+
+    @blocked_until.setter
+    def blocked_until(self, value):
+        service = "chessdb" if self.query and self.query.source == "chessdb" else "lichess"
+        self._service_deadlines[service] = value
 
     @property
     def has_lichess_token(self):

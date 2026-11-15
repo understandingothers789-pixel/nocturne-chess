@@ -62,10 +62,12 @@ class OpeningExplorer(QWidget):
         header.addWidget(self.title, 1)
         refresh = QPushButton("↻")
         refresh.setAccessibleName("Refresh database explorer")
+        refresh.setToolTip("Fetch fresh statistics for this position. Saved results remain available while loading.")
         refresh.setFixedWidth(36)
         refresh.clicked.connect(self.refresh)
         close = QPushButton("×")
         close.setAccessibleName("Close database explorer")
+        close.setToolTip("Hide the opening explorer. Reopen it from the Database menu.")
         close.setFixedWidth(36)
         close.clicked.connect(self.close_requested)
         header.addWidget(refresh)
@@ -87,9 +89,12 @@ class OpeningExplorer(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setShowGrid(False)
+        self.table.setToolTip("Click a move or select a row and press Enter to play it. Hover over a move to preview it.")
         self.table.setMouseTracking(True)
         self.table.viewport().setMouseTracking(True)
         self.table.viewport().installEventFilter(self)
+        self.table.installEventFilter(self)
+        self.table.setAccessibleName("Opening database moves")
         self.table.cellClicked.connect(self._click)
         self.table.cellEntered.connect(self._preview)
         layout.addWidget(self.table, 1)
@@ -232,6 +237,10 @@ class OpeningExplorer(QWidget):
         self.preview_ended.emit()
 
     def eventFilter(self, watched, event):
+        if (watched is self.table and event.type() == QEvent.Type.KeyPress
+                and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)):
+            self._click(self.table.currentRow(), self.table.currentColumn())
+            return True
         if watched is self.table.viewport():
             if event.type() == QEvent.Type.Leave or (event.type() == QEvent.Type.MouseMove and not self.table.indexAt(event.position().toPoint()).isValid()):
                 self._end_preview()
