@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.173 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43754570326/artifacts/14177188617).** Simplifies menus with task-based submenus, removes duplicate entries and the Dev tab, preserves keyboard shortcuts, adds submenu explanations, and makes command search include nested commands. Display has 11 main rows instead of 31; Engine has 8 instead of 20. Windows lint, full desktop tests, packaging, startup checks and live database checks passed.
+
 **[Download Nocturne 0.5.7.172 — fresh Windows rebuild (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43749260049/artifacts/14176046847).** Fresh rebuild of 172 with the same application features and menus. Windows lint, full desktop tests, packaging, startup checks and live database checks passed.
 
 **[Download Nocturne 0.5.7.172 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43748223113/artifacts/14175760801).** Fixes empty Leela results being marked complete and separates ChessDB/Lichess rate-limit cooldowns. Adds explorer keyboard selection, clearer control tooltips, and a compact explorer header that keeps its buttons accessible. Windows lint, full desktop tests, packaging, startup checks and live database checks passed.
