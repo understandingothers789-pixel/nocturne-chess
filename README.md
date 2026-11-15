@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.172 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43748223113/artifacts/14175760801).** Fixes empty Leela results being marked complete and separates ChessDB/Lichess rate-limit cooldowns. Adds explorer keyboard selection, clearer control tooltips, and a compact explorer header that keeps its buttons accessible. Windows lint, full desktop tests, packaging, startup checks and live database checks passed.
+
 **[Download Nocturne 0.5.7.171 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43699927024/artifacts/14156212574).** Keeps menu explanations visible across the full row and submenu transitions, with immediate updates once help is open. Windows lint, desktop tests, packaging, startup checks and live database checks passed.
 
 **[Download Nocturne 0.5.7.170 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43525697315/artifacts/14086041020).** Recovers Analyze requests made while a failed engine process is shutting down, clears stale jobs after startup errors, and prevents idle stale jobs from turning an Analyze click into Stop. Adds bounded diagnostic entries for each Analyze click. Windows lint, desktop tests, packaging, startup checks and live database check passed.
