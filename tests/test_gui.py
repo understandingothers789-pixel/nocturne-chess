@@ -1683,6 +1683,52 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(self.window.game.board.cells[parse_square("e4")], 1)
         self.assertIs(self.window.board_view.board, self.window.game.board)
 
+    def test_library_categories_preview_special_positions_and_bookmarks(self):
+        from PySide6.QtWidgets import QDialog, QComboBox, QListWidget
+        window = self.window
+        window.game = Game.from_pgn('1.e4 e5 2.Nf3 *')
+        window._set_bookmark('Knight development')
+        directory = window.store.pgn_directory / 'Special Positions'
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / 'Training.pgn').write_text('1.d4 d5 *', encoding='utf-8')
+
+        def inspect(dialog):
+            category = next(w for w in dialog.findChildren(QComboBox)
+                            if w.accessibleName() == 'Library category')
+            listing = dialog.findChild(QListWidget)
+            category.setCurrentIndex(1)
+            self.assertEqual(listing.count(), 1)
+            self.assertEqual(listing.currentItem().text(), 'Training')
+            category.setCurrentIndex(2)
+            self.assertEqual(listing.count(), 1)
+            self.assertIn('Knight development', listing.currentItem().text())
+            return QDialog.DialogCode.Rejected
+
+        with patch.object(QDialog, 'exec', inspect):
+            window._library()
+
+    def test_nested_maia_toggle_and_token_entry_by_mouse(self):
+        from PySide6.QtWidgets import QInputDialog
+        window = self.window
+        window.show()
+        self.app.processEvents()
+        menu = next(m for m in window.findChildren(QMenu) if window.maia_arrows_action in m.actions())
+        previous = window.config['maia_arrows']
+        menu.popup(window.mapToGlobal(QPoint(200, 100)))
+        self.app.processEvents()
+        QTest.mouseClick(menu, Qt.MouseButton.LeftButton,
+                        pos=menu.actionGeometry(window.maia_arrows_action).center())
+        self.assertEqual(window.config['maia_arrows'], not previous)
+        self.assertEqual(window.store.get('settings')['maia_arrows'], not previous)
+        access = next(m for m in window.findChildren(QMenu) if window.lichess_token_action in m.actions())
+        with patch.object(QInputDialog, 'getText', return_value=('', False)) as enter:
+            access.popup(window.mapToGlobal(QPoint(200, 100)))
+            self.app.processEvents()
+            QTest.mouseClick(access, Qt.MouseButton.LeftButton,
+                            pos=access.actionGeometry(window.lichess_token_action).center())
+            QTest.qWait(20)
+            enter.assert_called_once()
+
     def test_saved_game_preview_click_wheel_and_blank_reset(self):
         from nocturne.gui.saved_game_preview import SavedGameMoves
 

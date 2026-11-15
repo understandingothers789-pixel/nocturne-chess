@@ -1045,11 +1045,11 @@ class MainWindow(QMainWindow):
             self.explorer_actions[("explorer_rating", value)] = action
         self.explorer_filter_menus = (speeds, ratings)
         database.addSeparator()
-        self.lichess_token_action = QWidgetAction(database)
-        self.lichess_token_row = QPushButton()
+        self.lichess_token_action = QAction(database)
+        self.lichess_token_row = QPushButton(database)
+        self.lichess_token_row.hide()
         self.lichess_token_row.setAccessibleName("Lichess access token")
-        self.lichess_token_action.setDefaultWidget(self.lichess_token_row)
-        self.lichess_token_action.triggered.connect(self._lichess_token_dialog)
+        self.lichess_token_action.triggered.connect(lambda: QTimer.singleShot(0, self, self._lichess_token_dialog))
         self.lichess_token_row.clicked.connect(lambda: (database.close(), self.lichess_token_action.trigger()))
         database.addAction(self.lichess_token_action)
         self.menu_actions["Lichess access token…"] = self.lichess_token_action
@@ -1188,6 +1188,10 @@ class MainWindow(QMainWindow):
         self.menuBar().removeAction(dev.menuAction())
         self._grouped_menus.extend([automation, snapshots, resources, limits, models, access, dev])
         del menus['Dev']
+        bookmarks.addAction('Browse saved bookmarks…', lambda: self._library(2))
+        library_menu = next(m for m in self._grouped_menus if m.title() == 'Library')
+        library_menu.addAction('Browse Special Positions…', lambda: self._library(1))
+        library_menu.addAction('Browse saved bookmarks…', lambda: self._library(2))
         self._grouped_menu_actions = [menu.menuAction() for menu in self._grouped_menus]
         # Separators left behind by moves should not create empty sections.
         for menu in self.findChildren(QMenu):
@@ -1645,7 +1649,7 @@ class MainWindow(QMainWindow):
                 and self._is_top_menu(watched)):
             point = event.position().toPoint()
             action = watched.actionAt(point)
-            if action and action.isCheckable() and action.isEnabled():
+            if action is self.stockfish_arrow_action and action.isEnabled():
                 rect = watched.actionGeometry(action)
                 # Leave a submenu's arrow available for opening its settings.
                 if action.menu() is None or point.x() < rect.right() - 24:
@@ -4928,7 +4932,7 @@ class MainWindow(QMainWindow):
             self.save_label.setText("SAVE FAILED · SEE STATUS")
             self.statusBar().showMessage(str(exc))
 
-    def _library(self):
+    def _library(self, initial_category=0):
         if not self.store:
             self._error("Library unavailable", self._storage_message)
             return
@@ -4950,6 +4954,10 @@ class MainWindow(QMainWindow):
         except StorageError as exc:
             self._error("Library unavailable", str(exc))
             return
+        categories = QComboBox()
+        categories.addItems(["Games", "Special Positions", "Bookmarks"])
+        categories.setAccessibleName("Library category")
+        layout.addWidget(categories)
         content = QSplitter(Qt.Orientation.Horizontal)
         listing = QListWidget()
         listing.setMouseTracking(True)
@@ -4991,6 +4999,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(content, 1)
 
         preview_cache = {}
+        library_entries = {}
         preview_game = {"game": None}
 
         def show_game_position(ply):
@@ -5013,16 +5022,68 @@ class MainWindow(QMainWindow):
             try:
                 game = preview_cache.get(game_id)
                 if game is None:
-                    game = preview_cache[game_id] = self.store.load(game_id)
-            except StorageError as exc:
+                    game = preview_cache[game_id] = load_entry(game_id)
+            except (StorageError, OSError, ValueError) as exc:
                 preview_title.setText("Cannot preview this game")
                 opening.setText(str(exc))
                 return
             preview_game["game"] = game
             opening.set_game(game, self._appearance_config().get("light", False))
+            entry = library_entries.get(game_id)
+            if entry and entry[0] == 'bookmark':
+                opening._line = game._line_nodes.copy()
+                opening.select_ply(game.cursor, emit=False)
             show_game_position(opening.selected_ply)
 
-        listing.itemEntered.connect(show_game_preview)
+        def load_entry(key):
+            entry = library_entries.get(key)
+            if not entry:
+                return self.store.load(key)
+            if entry[0] == 'special':
+                return Game.from_pgn(entry[1].read_text(encoding='utf-8-sig'))
+            game = self.store.load(entry[1])
+            game.select_node(entry[2])
+            return game
+
+        def populate_category():
+            listing.clear()
+            library_entries.clear()
+            preview_cache.clear()
+            preview_game['game'] = None
+            opening.clear()
+            preview_title.setText('Select an item to preview' )
+            mini_board.set_position(Board())
+            category = categories.currentIndex()
+            if category == 1:
+                directory = self.store.pgn_directory / 'Special Positions'
+                for path in sorted(directory.glob('*.pgn'), key=lambda p: p.name.casefold()):
+                    key = 'special:' + str(path)
+                    library_entries[key] = ('special', path)
+                    item = QListWidgetItem(path.stem)
+                    item.setData(Qt.ItemDataRole.UserRole, key)
+                    listing.addItem(item)
+            else:
+                for record in games:
+                    if category == 0:
+                        entries = [(record['id'], f"{record['title']}\n{record['updated'][:16].replace('T', ' ')} UTC · {record['plies']} plies · {record['result']}")]
+                    else:
+                        saved = self.store.load(record['id'])
+                        entries = []
+                        for node, bookmark in saved.metadata.get('bookmarks', {}).items():
+                            if str(node).isdigit() and 0 <= int(node) < len(saved.nodes) and isinstance(bookmark, dict):
+                                key = f"bookmark:{record['id']}:{node}"
+                                library_entries[key] = ('bookmark', record['id'], int(node))
+                                entries.append((key, bookmark.get('name', 'Bookmark') + ' · ' + record['title']))
+                    for key, title in entries:
+                        item = QListWidgetItem(title)
+                        item.setData(Qt.ItemDataRole.UserRole, key)
+                        listing.addItem(item)
+            if listing.count():
+                listing.setCurrentRow(0)
+            else:
+                preview_title.setText('No saved items in this category')
+
+        categories.currentIndexChanged.connect(populate_category)
         listing.currentItemChanged.connect(show_game_preview)
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Open | QDialogButtonBox.StandardButton.Cancel
@@ -5030,16 +5091,16 @@ class MainWindow(QMainWindow):
         open_button = buttons.button(QDialogButtonBox.StandardButton.Open)
         open_button.setEnabled(False)
         listing.currentItemChanged.connect(lambda current, _: open_button.setEnabled(current is not None))
-        if listing.count():
-            listing.setCurrentRow(0)
+        categories.setCurrentIndex(int(initial_category))
+        populate_category()
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
         listing.itemDoubleClicked.connect(lambda _: dialog.accept())
         layout.addWidget(buttons)
         if dialog.exec() == QDialog.DialogCode.Accepted and listing.currentItem():
             try:
-                game = self.store.load(listing.currentItem().data(Qt.ItemDataRole.UserRole))
-            except StorageError as exc:
+                game = load_entry(listing.currentItem().data(Qt.ItemDataRole.UserRole))
+            except (StorageError, OSError, ValueError) as exc:
                 self._error("Cannot restore", str(exc))
                 return
             self._save()
