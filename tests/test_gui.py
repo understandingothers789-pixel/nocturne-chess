@@ -292,10 +292,12 @@ class GuiTests(unittest.TestCase):
         QTest.qWait(20)
         self.assertTrue(panel.isVisible())
         self.assertIs(window._menu_help_target[1], action)
-        QCursor.setPos(old_cursor)
+        # Flush any native hover update before checking the repeated target.
+        window._show_menu_hover_help()
         self.assertFalse(window._menu_help_timer.isActive())
         window._menu_hover_help(root, action)
         self.assertFalse(window._menu_help_timer.isActive())
+        QCursor.setPos(old_cursor)
         menu = QMenu("MultiPV (4)", window)
         choice = menu.addAction("8")
         self.assertIn("8 candidate lines", menu_help(choice, menu))
