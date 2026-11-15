@@ -1465,13 +1465,37 @@ class MainWindow(QMainWindow):
                 return
         self._menu_help_timer.stop()
         QToolTip.hideText()
-        if hasattr(self, "_menu_help_panel"):
-            self._menu_help_panel.hide()
+        visible = hasattr(self, "_menu_help_panel") and self._menu_help_panel.isVisible()
         self._menu_help_target = (menu, action)
         if action and not action.isSeparator():
-            self._menu_help_timer.start(650)
+            self._menu_help_timer.start(0 if visible else 650)
+        else:
+            QTimer.singleShot(0, self, self._refresh_menu_hover_help)
+
+    def _refresh_menu_hover_help(self):
+        if self._closing or not hasattr(self, "_menu_help_timer"):
+            return
+        point = QCursor.pos()
+        pending = [a.menu() for a in self.menuBar().actions() if a.menu()]
+        visited = set()
+        target = None
+        while pending:
+            menu = pending.pop()
+            if not isValid(menu) or menu in visited or not menu.isVisible():
+                continue
+            visited.add(menu)
+            if menu.rect().contains(menu.mapFromGlobal(point)):
+                target = menu, menu.actionAt(menu.mapFromGlobal(point))
+            pending.extend(a.menu() for a in menu.actions() if a.menu())
+        if target and target[1] and not target[1].isSeparator():
+            self._menu_hover_help(*target)
+        else:
+            self._menu_help_timer.stop()
+            if hasattr(self, "_menu_help_panel"):
+                self._menu_help_panel.hide()
 
     def _show_menu_hover_help(self):
+        self._menu_help_timer.stop()
         if self._closing:
             return
         menu, action = self._menu_help_target
@@ -1509,15 +1533,16 @@ class MainWindow(QMainWindow):
                     self._menu_help_timer.timeout.connect(self._show_menu_hover_help)
                 watched.setProperty("hoverHelpReady", True)
                 watched.hovered.connect(lambda action, menu=watched: self._menu_hover_help(menu, action))
+                QTimer.singleShot(0, self, self._refresh_menu_hover_help)
             elif event.type() == QEvent.Type.MouseMove:
                 self._menu_hover_help(watched, watched.actionAt(event.position().toPoint()))
             elif event.type() in (QEvent.Type.Hide, QEvent.Type.Leave, QEvent.Type.MouseButtonPress):
-                if hasattr(self, "_menu_help_timer"):
-                    self._menu_help_timer.stop()
-                    QToolTip.hideText()
-                    if hasattr(self, "_menu_help_panel"):
-                        self._menu_help_panel.hide()
+                # Opening a submenu causes a parent Leave even though the pointer
+                # is still within the menu cascade. Resolve after Qt updates it.
+                QTimer.singleShot(0, self, self._refresh_menu_hover_help)
             elif event.type() == QEvent.Type.ToolTip:
+                action = watched.actionAt(event.pos())
+                self._menu_hover_help(watched, action)
                 return True
         if (event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease)
                 and isinstance(watched, QMenu) and event.button() == Qt.MouseButton.LeftButton

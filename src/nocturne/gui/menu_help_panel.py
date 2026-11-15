@@ -7,7 +7,8 @@ from .theme import palette
 
 class MenuHelpPanel(QFrame):
     def __init__(self, parent):
-        super().__init__(parent, Qt.WindowType.ToolTip)
+        super().__init__(parent, Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint
+                         | Qt.WindowType.WindowDoesNotAcceptFocus | Qt.WindowType.WindowTransparentForInput)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setObjectName('menuExplanation')

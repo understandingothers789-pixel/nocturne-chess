@@ -267,6 +267,8 @@ class GuiTests(unittest.TestCase):
     def test_menu_help_is_outside_cascade_and_tracks_submenu_choices(self):
         from nocturne.gui.menu_help import menu_help
         window = self.window
+        window.show()
+        self.app.processEvents()
         root = window.menus["Engine"]
         root.popup(window.mapToGlobal(QPoint(400, 40)))
         action = window.multipv_menu.menuAction()
@@ -280,6 +282,17 @@ class GuiTests(unittest.TestCase):
         if root.geometry().left() >= panel.width() + 10:
             self.assertLess(panel.geometry().right(), root.geometry().left())
         self.assertTrue(panel.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents))
+        from PySide6.QtGui import QCursor
+        old_cursor = QCursor.pos()
+        rect = root.actionGeometry(action)
+        QCursor.setPos(root.mapToGlobal(QPoint(rect.right() - 3, rect.center().y())))
+        window._refresh_menu_hover_help()
+        window._show_menu_hover_help()
+        QApplication.sendEvent(root, QEvent(QEvent.Type.Leave))
+        QTest.qWait(20)
+        self.assertTrue(panel.isVisible())
+        self.assertIs(window._menu_help_target[1], action)
+        QCursor.setPos(old_cursor)
         self.assertFalse(window._menu_help_timer.isActive())
         window._menu_hover_help(root, action)
         self.assertFalse(window._menu_help_timer.isActive())
