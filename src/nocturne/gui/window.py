@@ -1158,12 +1158,6 @@ class MainWindow(QMainWindow):
             'Wheel navigates game moves', 'Wheel previews analysis moves'])
         group(display, 'Commands', ['Command palette…', 'Keyboard shortcuts…'])
         group(engine, 'Engines / Profiles', ['Choose engine…', 'Engine profiles and options…', 'Active engine'])
-        resources = engine.addMenu('Resources')
-        for submenu in (self.resource_controls.menus['Threads'], self.cpu_budget_menu, self.resource_controls.menus['Hash']):
-            engine.removeAction(submenu.menuAction())
-            resources.addMenu(submenu)
-        engine.removeAction(self.resource_status_action)
-        resources.addAction(self.resource_status_action)
         limits = engine.addMenu('Search limits')
         for submenu in (self.search_mode_menu, self.normal_limit_menu, self.auto_eval_limit_menu, self.auto_play_limit_menu):
             engine.removeAction(submenu.menuAction())
@@ -1186,7 +1180,7 @@ class MainWindow(QMainWindow):
                 if action.text() == 'Engine diagnostics…' or (source is play and action.text() == 'New game…'):
                     source.removeAction(action)
         self.menuBar().removeAction(dev.menuAction())
-        self._grouped_menus.extend([automation, snapshots, resources, limits, models, access, dev])
+        self._grouped_menus.extend([automation, snapshots, limits, models, access, dev])
         del menus['Dev']
         bookmarks.addAction('Browse saved bookmarks…', lambda: self._library(2))
         library_menu = next(m for m in self._grouped_menus if m.title() == 'Library')

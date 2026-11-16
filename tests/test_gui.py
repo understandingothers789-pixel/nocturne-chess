@@ -2370,8 +2370,11 @@ class GuiTests(unittest.TestCase):
                         else [self.window.maia_controls.move_limit] if kind is QSpinBox else [])
             self.assertEqual(controls, expected)
         self.assertTrue(self.window.maia_controls.move_limit.isHidden())
-        self.assertTrue(any(self.window.resource_controls.menus["Threads"].menuAction() in menu.actions()
-                            for menu in self.window.findChildren(QMenu) if menu.title() == "Resources"))
+        engine = self.window.menus["Engine"]
+        self.assertIn(self.window.resource_controls.menus["Threads"].menuAction(), engine.actions())
+        self.assertIn(self.window.cpu_budget_menu.menuAction(), engine.actions())
+        self.assertIn(self.window.resource_controls.menus["Hash"].menuAction(), engine.actions())
+        self.assertIn(self.window.resource_status_action, engine.actions())
         self.assertIn(self.window.multipv_menu.menuAction(), self.window.menus["Engine"].actions())
 
     def test_delayed_search_cannot_restart_after_window_close(self):
