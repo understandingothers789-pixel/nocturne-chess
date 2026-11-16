@@ -3,7 +3,7 @@
 from pathlib import Path
 from collections import OrderedDict
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, QTimer, Signal
 
 from ..snapshots import milestones
 from .uci_connection import UciConnection
@@ -36,6 +36,11 @@ class EngineController(QObject):
         self._limit_reached = False
         self._pv_stop_sent = False
         self._validated_pvs = OrderedDict()
+        self._startup_watch = QTimer(self)
+        self._startup_watch.setInterval(3000)
+        self._startup_watch.timeout.connect(self._check_startup)
+        self._startup_request = None
+        self._startup_retries = 0
         self.history_capture = False
         self.snapshot_capture = False
 
@@ -125,7 +130,11 @@ class EngineController(QObject):
             if searchmoves:
                 go += " searchmoves " + " ".join(valid)
         self._busy = True
+        self._startup_retries = 0
+        self._startup_request = (external, list(arguments or []), position, go, desired, game.id, adaptive_hash) if kind == "analysis" else None
         self.connection.request(self.generation, position, go, desired, game.id, adaptive_hash=adaptive_hash)
+        if self._startup_request:
+            self._startup_watch.start()
         return self.generation
 
     def _validated_info(self, info):
@@ -189,6 +198,8 @@ class EngineController(QObject):
         info = self._validated_info(info)
         if info is None:
             return
+        self._startup_watch.stop()
+        self._startup_request = None
         self.lines[info["multipv"]] = info
         if info.get("bound", "exact") == "exact":
             self.exact_lines[info["multipv"]] = info.copy()
@@ -221,6 +232,8 @@ class EngineController(QObject):
     def _result(self, generation, bestmove):
         if generation != self.generation or not self._busy:
             return
+        self._startup_watch.stop()
+        self._startup_request = None
         self._flush_snapshot()
         self._busy = False
         try:
@@ -240,11 +253,53 @@ class EngineController(QObject):
             }
         )
 
+    def _check_startup(self):
+        if not self._busy or not self._startup_request:
+            self._startup_watch.stop()
+            return
+        if self.connection.phase == "search" and not getattr(self.connection, "_first_output", False):
+            # Count from dispatch, not from the earlier handshake or hash setup.
+            import time
+            if time.perf_counter() - self.connection._search_started >= 3:
+                self._retry_startup("No engine output after three seconds")
+
+    def _retry_startup(self, reason):
+        if not self._busy or not self._startup_request:
+            return False
+        if self._startup_retries >= 3:
+            self._startup_watch.stop()
+            self._startup_request = None
+            self.connection.close()
+            self._busy = False
+            self.message.emit(self.generation, "error", {"message": reason + "; retries exhausted. Open Engine diagnostics."})
+            return True
+        self._startup_retries += 1
+        external, arguments, position, go, desired, study, adaptive_hash = self._startup_request
+        self.connection.log.append(f"Startup recovery {self._startup_retries}/3: {reason}")
+        self.status.emit(f"Engine not responding · retrying ({self._startup_retries}/3)…")
+        try:
+            self.connection.launch(external, arguments)
+            self.connection.request(self.generation, position, go, desired, study, adaptive_hash=adaptive_hash)
+        except (OSError, RuntimeError, ValueError) as exc:
+            self._startup_watch.stop()
+            self._startup_request = None
+            self._busy = False
+            self.message.emit(self.generation, "error", {"message": str(exc)})
+            return True
+        self._startup_watch.start()
+        return True
+
     def _error(self, message):
+        if "did not respond during" in message and self._retry_startup(message):
+            return
+        self._startup_watch.stop()
+        self._startup_request = None
         self._busy = False
         self.message.emit(self.generation, "error", {"message": message})
 
     def stop(self):
+        self._startup_watch.stop()
+        self._startup_request = None
         if self._busy and self.connection.observe_nodes:
             self._flush_snapshot()
         self._managed_limits = None

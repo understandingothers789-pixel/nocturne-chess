@@ -91,6 +91,47 @@ class QtIntegration(unittest.TestCase):
             "options": {},
         }
 
+    def test_startup_watchdog_retries_silent_search_and_stop_cancels_it(self):
+        from unittest.mock import patch
+        controller = EngineController()
+        self.addCleanup(controller.close)
+        messages = []
+        controller.message.connect(lambda g, k, p: messages.append((g, k, p)))
+        controller._busy = True
+        controller._startup_request = (sys.executable, [SIMULATOR], 'position startpos',
+                                       'go infinite', {}, 'study', False)
+        controller.connection.phase = 'search'
+        controller.connection._search_started = time.perf_counter() - 4
+        controller.connection._first_output = False
+        with patch.object(controller.connection, 'launch') as launch, \
+             patch.object(controller.connection, 'request') as request:
+            controller._check_startup()
+            self.assertEqual(launch.call_count, 1)
+            self.assertEqual(request.call_count, 1)
+            self.assertEqual(controller._startup_retries, 1)
+            controller._startup_retries = 3
+            controller._retry_startup('No engine output')
+            self.assertFalse(controller.busy)
+            self.assertIn('retries exhausted', messages[-1][2]['message'])
+        controller._busy = True
+        controller._startup_request = ('unused', [], '', '', {}, '', False)
+        controller.stop()
+        self.assertIsNone(controller._startup_request)
+        self.assertFalse(controller._startup_watch.isActive())
+
+    def test_analysis_handshake_timeout_retries_then_reports_failure(self):
+        controller = EngineController()
+        self.addCleanup(controller.close)
+        controller.connection.timeout_ms = 150
+        messages = []
+        controller.message.connect(lambda generation, kind, data: messages.append((kind, data)))
+        controller.start(Game(), AnalysisLimits(depth=4, seconds=1), sys.executable,
+                         kind='analysis', arguments=[SIMULATOR, 'hang'], infinite=True)
+        self.wait_until(lambda: any(kind == 'error' for kind, _ in messages), seconds=5)
+        self.assertFalse(controller.busy)
+        self.assertIn('retries exhausted', messages[-1][1]['message'])
+        self.assertEqual(sum('Startup recovery' in line for line in controller.connection.log), 3)
+
     def test_persistent_multipv_stop_barrier_and_rapid_positions(self):
         controller = EngineController()
         self.addCleanup(controller.close)
