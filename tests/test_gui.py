@@ -2376,6 +2376,9 @@ class GuiTests(unittest.TestCase):
         self.assertIn(self.window.resource_controls.menus["Hash"].menuAction(), engine.actions())
         self.assertIn(self.window.resource_status_action, engine.actions())
         self.assertIn(self.window.multipv_menu.menuAction(), self.window.menus["Engine"].actions())
+        engine_actions = self.window.menus["Engine"].actions()
+        self.assertEqual(engine_actions[0].text(), "Choose Syzygy folder…")
+        self.assertIs(engine_actions[1], self.window.multipv_menu.menuAction())
 
     def test_delayed_search_cannot_restart_after_window_close(self):
         self.window.config["mode"] = "ai_ai"
