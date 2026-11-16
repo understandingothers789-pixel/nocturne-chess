@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne 0.5.7.176 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43802131464/artifacts/14196649086).** Returns Threads, CPU budget, Hash, and resource status to the main Engine menu. Windows lint, full desktop tests, packaging, startup checks and live database checks passed.
+
 **[Download Nocturne 0.5.7.175 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43798302432/artifacts/14196140736).** Automatically retries stalled engine startup or silent initial analysis up to three times and reports a diagnostic error if recovery fails. Windows lint, full desktop tests, packaging, startup checks and live database checks passed.
 
 **[Download Nocturne 0.5.7.174 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43775207787/artifacts/14186506418).** Adds Games, Special Positions and Bookmarks views to the saved-game browser with board and move previews, plus direct menu links. Restores native input for ordinary nested menu toggles and Lichess token entry. Windows lint, full desktop tests, packaging, startup checks and live database checks passed.
