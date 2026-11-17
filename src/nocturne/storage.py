@@ -145,10 +145,18 @@ class Store:
         game_id = self.get("resume_id")
         return self.load(game_id) if game_id else None
 
-    def list_games(self) -> list[dict]:
+    def list_games(self, *, bookmarked=False) -> list[dict]:
+        query = "SELECT id,title,updated,result,plies FROM games"
+        if bookmarked:
+            query += """ WHERE EXISTS (
+                SELECT 1 FROM json_each(
+                    CASE WHEN json_valid(payload) THEN payload ELSE '{}' END,
+                    '$.metadata.bookmarks'
+                )
+            )"""
         try:
             return [dict(zip(("id", "title", "updated", "result", "plies"), row)) for row in
-                    self.db.execute("SELECT id,title,updated,result,plies FROM games ORDER BY updated DESC LIMIT 1000")]
+                    self.db.execute(query + " ORDER BY updated DESC LIMIT 1000")]
         except sqlite3.Error as exc:
             raise StorageError(f"Cannot list saved games: {exc}") from exc
 

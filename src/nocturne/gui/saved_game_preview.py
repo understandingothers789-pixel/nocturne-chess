@@ -24,7 +24,7 @@ class SavedGameMoves(QTextBrowser):
         self.viewport().installEventFilter(self)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._wheel_steps = WheelSteps()
-        self._game = None
+        self._tokens = []
         self._line = []
         self._selected_ply = 0
         self._light = False
@@ -35,11 +35,18 @@ class SavedGameMoves(QTextBrowser):
     def selected_ply(self):
         return self._selected_ply
 
-    def set_game(self, game, light=False):
-        self._game = game
-        self._line = mainline(game.nodes)
+    def set_game(self, game, light=False, *, at_cursor=False):
+        self._line = (game._line_nodes.copy() if at_cursor else mainline(game.nodes)) if game else []
         self._light = light
-        self.select_ply(len(self._line) - 1, emit=False)
+        self._tokens = []
+        self._wheel_steps = WheelSteps()
+        if game:
+            position = game.position_at_node(0)
+            first_halfmove = 2 * position.fullmove + (position.turn < 0)
+            for halfmove, node_id in enumerate(self._line[1:], first_halfmove):
+                prefix = f"{halfmove // 2}{'...' if halfmove % 2 else '.'} "
+                self._tokens.append(prefix + notation_html(game.nodes[node_id].san, size=15))
+        self.select_ply(game.cursor if game and at_cursor else len(self._line) - 1, emit=False)
 
     def select_ply(self, ply, *, emit=True):
         if not self._line:
@@ -57,23 +64,18 @@ class SavedGameMoves(QTextBrowser):
             self.select_ply(int(text[4:]))
 
     def _render(self):
-        if self._game is None:
+        if not self._line:
             return
         scroll = self.verticalScrollBar().value()
         colors = palette(self._light)
-        position = self._game.position_at_node(0)
         tokens = []
-        for ply, node_id in enumerate(self._line[1:], 1):
-            node = self._game.nodes[node_id]
-            move_number = position.fullmove
-            prefix = f"{move_number}. " if position.turn > 0 else f"{move_number}... "
+        for ply, token in enumerate(self._tokens, 1):
             if ply == self._selected_ply:
                 style = (f"color:{colors['selected_text']}; background-color:{colors['selection']};"
                          "text-decoration:none; border-radius:2px;")
             else:
                 style = f"color:{colors['history']}; text-decoration:none;"
-            tokens.append(f'<a href="ply:{ply}" style="{style}">{prefix}{notation_html(node.san, size=15)}</a>')
-            position.push(node.move)
+            tokens.append(f'<a href="ply:{ply}" style="{style}">{token}</a>')
         body = " ".join(tokens) if tokens else '<span style="color:%s;">No moves in this game.</span>' % colors["muted"]
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:14px; line-height:150%; '
                      f'white-space:pre-wrap;">{body}</div>')

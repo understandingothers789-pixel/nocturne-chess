@@ -4874,6 +4874,7 @@ class MainWindow(QMainWindow):
             folder.mkdir(parents=True, exist_ok=True)
             path.write_text(self.game.pgn(), encoding='utf-8')
             self.statusBar().showMessage(f"Saved to Special Positions: {name}", 5000)
+            return True
         except OSError as exc:
             self._error("Save failed", str(exc))
 
@@ -4940,7 +4941,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(label("Games and studies are saved automatically on this device.", "muted", True))
         layout.addWidget(button("Open PGN folder", self._open_pgn_folder))
         special_actions = QHBoxLayout()
-        special_actions.addWidget(button("Save to Special Positions…", self._save_special_position))
+        special_actions.addWidget(button("Save to Special Positions…", lambda: save_special()))
         special_actions.addWidget(button("Open Special Positions folder", self._open_special_positions_folder))
         layout.addLayout(special_actions)
         try:
@@ -4956,12 +4957,6 @@ class MainWindow(QMainWindow):
         listing = QListWidget()
         listing.setMouseTracking(True)
         listing.setMinimumWidth(300)
-        for record in games:
-            item = QListWidgetItem(
-                f"{record['title']}\n{record['updated'][:16].replace('T', ' ')} UTC · {record['plies']} plies · {record['result']}"
-            )
-            item.setData(Qt.ItemDataRole.UserRole, record["id"])
-            listing.addItem(item)
         content.addWidget(listing)
 
         preview = QFrame()
@@ -4979,7 +4974,7 @@ class MainWindow(QMainWindow):
         preview_layout.addWidget(mini_board, 0, Qt.AlignmentFlag.AlignTop)
 
         move_preview = QVBoxLayout()
-        preview_title = label("Hover over a saved game to preview it", "subtitle", True)
+        preview_title = label("Select an item to preview", "subtitle", True)
         move_preview.addWidget(preview_title)
         move_preview.addWidget(label("Click a move or scroll to preview a position · click blank space to return to the end",
                                      "eyebrow", True))
@@ -5018,15 +5013,16 @@ class MainWindow(QMainWindow):
                 if game is None:
                     game = preview_cache[game_id] = load_entry(game_id)
             except (StorageError, OSError, ValueError) as exc:
+                preview_game["game"] = None
+                opening.set_game(None)
+                mini_board.set_position(Board())
                 preview_title.setText("Cannot preview this game")
                 opening.setText(str(exc))
                 return
             preview_game["game"] = game
-            opening.set_game(game, self._appearance_config().get("light", False))
             entry = library_entries.get(game_id)
-            if entry and entry[0] == 'bookmark':
-                opening._line = game._line_nodes.copy()
-                opening.select_ply(game.cursor, emit=False)
+            opening.set_game(game, self._appearance_config().get("light", False),
+                             at_cursor=bool(entry and entry[0] == 'bookmark'))
             show_game_position(opening.selected_ply)
 
         def load_entry(key):
@@ -5044,8 +5040,8 @@ class MainWindow(QMainWindow):
             library_entries.clear()
             preview_cache.clear()
             preview_game['game'] = None
-            opening.clear()
-            preview_title.setText('Select an item to preview' )
+            opening.set_game(None)
+            preview_title.setText('Select an item to preview')
             mini_board.set_position(Board())
             category = categories.currentIndex()
             if category == 1:
@@ -5057,13 +5053,24 @@ class MainWindow(QMainWindow):
                     item.setData(Qt.ItemDataRole.UserRole, key)
                     listing.addItem(item)
             else:
-                for record in games:
+                try:
+                    records = self.store.list_games(bookmarked=True) if category == 2 else games
+                except StorageError as exc:
+                    preview_title.setText(str(exc))
+                    return
+                for record in records:
                     if category == 0:
                         entries = [(record['id'], f"{record['title']}\n{record['updated'][:16].replace('T', ' ')} UTC · {record['plies']} plies · {record['result']}")]
                     else:
-                        saved = self.store.load(record['id'])
+                        try:
+                            saved = self.store.load(record['id'])
+                        except StorageError:
+                            continue
+                        bookmarks = saved.metadata.get('bookmarks')
+                        if not isinstance(bookmarks, dict):
+                            continue
                         entries = []
-                        for node, bookmark in saved.metadata.get('bookmarks', {}).items():
+                        for node, bookmark in bookmarks.items():
                             if str(node).isdigit() and 0 <= int(node) < len(saved.nodes) and isinstance(bookmark, dict):
                                 key = f"bookmark:{record['id']}:{node}"
                                 library_entries[key] = ('bookmark', record['id'], int(node))
@@ -5077,6 +5084,11 @@ class MainWindow(QMainWindow):
             else:
                 preview_title.setText('No saved items in this category')
 
+        def save_special():
+            if self._save_special_position() and categories.currentIndex() == 1:
+                populate_category()
+
+        categories.setCurrentIndex(int(initial_category))
         categories.currentIndexChanged.connect(populate_category)
         listing.currentItemChanged.connect(show_game_preview)
         buttons = QDialogButtonBox(
@@ -5085,7 +5097,6 @@ class MainWindow(QMainWindow):
         open_button = buttons.button(QDialogButtonBox.StandardButton.Open)
         open_button.setEnabled(False)
         listing.currentItemChanged.connect(lambda current, _: open_button.setEnabled(current is not None))
-        categories.setCurrentIndex(int(initial_category))
         populate_category()
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
