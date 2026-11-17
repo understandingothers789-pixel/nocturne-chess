@@ -21,7 +21,7 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
-**[Download Nocturne 0.5.7.177 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/44188642654/artifacts/14374549592).** Speeds up bookmark browsing and saved-game move previews, refreshes Special Positions after saving, and places MultiPV directly below Choose Syzygy folder. Windows tests, packaged startup checks, and live database checks passed.
+**[Download Nocturne 0.5.7.177 for Windows (176 rebuild, unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/44190895298/artifacts/14378105735).** Rebuilds the working 0.5.7.176 source with version metadata set to 0.5.7.177. Windows tests, packaged startup checks, and live database checks passed.
 
 **[Download Nocturne 0.5.7.176 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/43802131464/artifacts/14196649086).** Returns Threads, CPU budget, Hash, and resource status to the main Engine menu. Windows lint, full desktop tests, packaging, startup checks and live database checks passed.
 
