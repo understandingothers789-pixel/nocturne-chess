@@ -80,7 +80,9 @@ class Predictor:
         tokens = get_historical_tokens(history, self.cfg, 180, 0, 180, 0)
         mask = get_legal_moves_mask(board, self.indices)
         def forward():
-            with torch.inference_mode():
+            # DirectML needs ordinary tensors with version counters.
+            disable_grad = torch.no_grad if self.device.type == "privateuseone" else torch.inference_mode
+            with disable_grad():
                 elo = torch.tensor(ratings, dtype=torch.long, device=self.device)
                 logits, values, _ = self.model(tokens.to(self.device).unsqueeze(0).expand(len(ratings), -1, -1), elo, elo)
                 # Official Maia labels: side-to-move loss, draw, win.
