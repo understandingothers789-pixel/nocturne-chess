@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.180 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/44592435940/artifacts/14565040404).** Maia uses DirectML for new AMD GPU setups and skips legacy ROCm environments. CPU inference remains available. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.179 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/44196895579/artifacts/14380101776).** Includes faster bookmark loading and saved-game previews, immediate Special Positions refresh after saving, and MultiPV directly below Choose Syzygy folder. Open `NocturneChess.exe` in the extracted Nocturne folder. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.178 for Windows (176 rebuild, unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/actions/runs/44193068397/artifacts/14378801467).** Fresh build of the 176 application source, labeled 178, with the executable named **NocturneChess.exe** inside the Nocturne folder. Windows tests, packaged startup checks including the renamed executable, and live database checks passed. Smart App Control acceptance on your PC remains unverified.
