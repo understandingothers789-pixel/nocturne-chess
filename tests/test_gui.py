@@ -849,19 +849,21 @@ class GuiTests(unittest.TestCase):
         self.assertLess(graph._point(2, 0).x(), early_position)
 
     def test_graph_mates_do_not_flatten_cp_and_zoom_clicks_keep_ply_mapping(self):
-        graph = self.window.graph
+        from nocturne.gui.widgets import EvaluationGraph
+
+        graph = EvaluationGraph()
+        self.addCleanup(graph.close)
+        graph.resize(650, 85)
+        graph.show()
+        self.app.processEvents()
         graph.set_samples({0: 0, 1: 100, 2: -100, 3: 400}, 1, 6)
         ordinary = graph._point(1, 100).y()
         graph.set_samples({0: 0, 1: 100, 2: -100, 3: 400, 4: 30000, 6: -30000}, 1, 6)
         self.assertEqual(graph._point(1, 100).y(), ordinary)
         self.assertEqual(graph._point(4, 30000).y(), graph._plot_rect().top())
         self.assertEqual(graph._point(6, -30000).y(), graph._plot_rect().bottom())
-        graph.resize(650, 85)
         graph.view_start, graph.view_end = 1.0, 4.0
         selected = []
-        graph.position_requested.connect(selected.append)
-        # Disconnect normal game navigation while checking graph coordinates.
-        graph.position_requested.disconnect()
         graph.position_requested.connect(selected.append)
         QTest.mouseClick(graph, Qt.MouseButton.LeftButton, pos=graph._point(3, 0).toPoint())
         self.assertEqual(selected, [3])
