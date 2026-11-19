@@ -1,0 +1,25 @@
+name: Publish 181 download
+on:
+  push:
+    branches: [publish/181-download]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: NocturneChess-0.5.7.181-Windows-x64-unsigned
+          run-id: 44594087923
+          github-token: ${{ github.token }}
+          path: download
+      - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd download
+          zip -qr ../NocturneChess-0.5.7.181-Windows-x64-unsigned.zip .
+          gh release upload v0.5.7.181 ../NocturneChess-0.5.7.181-Windows-x64-unsigned.zip
