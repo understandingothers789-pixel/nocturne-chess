@@ -22,4 +22,4 @@ jobs:
         run: |
           cd download
           zip -qr ../NocturneChess-0.5.7.181-Windows-x64-unsigned.zip .
-          gh release upload v0.5.7.181 ../NocturneChess-0.5.7.181-Windows-x64-unsigned.zip
+          gh release create v0.5.7.181 ../NocturneChess-0.5.7.181-Windows-x64-unsigned.zip --target a94e7cb69b614d863f87fc8e98ba01845002488d --title "Nocturne Chess 0.5.7.181" --notes "Windows x64 build with node-limit shortcuts." --latest=false
