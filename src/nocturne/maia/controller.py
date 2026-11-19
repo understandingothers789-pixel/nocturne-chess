@@ -10,6 +10,20 @@ from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, QTimer, Signa
 from . import RATINGS, MODEL_REVISION
 
 
+def ready_gpu_runtime(runtime):
+    if not (runtime / "Scripts/python.exe").is_file():
+        return False
+    try:
+        marker = json.loads((runtime / "ready.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    if not isinstance(marker, dict):
+        return False
+    device = marker.get("device")
+    return (isinstance(device, str) and marker.get("gpu") is True
+            and device.startswith(("NVIDIA CUDA · ", "DirectML · ")))
+
+
 class MaiaController(QObject):
     changed = Signal(dict)
     status = Signal(str)
@@ -158,7 +172,7 @@ class MaiaController(QObject):
             runtime = self.directory / "maia-gpu"
             python = runtime / "Scripts/python.exe"
             self._external = (self.device_mode == "auto" and not self._cpu_retry
-                              and (runtime / "ready.json").is_file() and python.is_file())
+                              and ready_gpu_runtime(runtime))
             env = QProcessEnvironment.systemEnvironment()
             env.insert("NOCTURNE_MAIA_DEVICE", "cpu" if self._cpu_retry else self.device_mode)
             if self._external:

@@ -52,7 +52,7 @@ from PySide6.QtWidgets import (
 
 from .. import __version__
 from ..maia import RATINGS as MAIA_RATINGS
-from ..maia.controller import MaiaController
+from ..maia.controller import MaiaController, ready_gpu_runtime
 from shiboken6 import isValid
 
 from .menu_help import menu_help
@@ -2077,7 +2077,7 @@ class MainWindow(QMainWindow):
                 or self.config.get("maia_device", "auto") != "auto"):
             return
         runtime = self.data_directory / "maia-gpu"
-        if (runtime / "ready.json").is_file() and (runtime / "Scripts/python.exe").is_file():
+        if ready_gpu_runtime(runtime):
             return
         if getattr(self, "_gpu_setup", None) is not None:
             return

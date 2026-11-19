@@ -116,7 +116,7 @@ reported problem. **CPU only** never starts GPU setup.
 **Set up optional GPU runtime…** also lets you manually reinstall: it detects NVIDIA/AMD adapters and installs
 an isolated runtime under Nocturne’s local data folder (`maia-gpu`). This setup
 requires Python 3.12 x64 (python.org launcher) and an internet connection, and can
-download several GB. It uses NVIDIA PyTorch CUDA 12.8 or AMD ROCm 7.2.1 / PyTorch 2.9.1;
+download several GB. It uses NVIDIA PyTorch CUDA 12.8 or Microsoft DirectML for AMD adapters;
 actual model inference must succeed on the GPU before setup is marked ready.
 GPU/driver compatibility varies. Setup does not install drivers or change global
 Python packages. If unsupported operations, insufficient memory or a worker
@@ -124,12 +124,9 @@ failure prevent GPU use, inference falls back to CPU. The status line reports
 the actual device, or that the result came from cache. Existing policy caches
 remain reusable; a cached position does not run the GPU again.
 
-Native ROCm uses PyTorch’s `torch.cuda` interface, distinguished by `torch.version.hip`.
-Windows AMD setup follows AMD’s official ROCm 7.2.1 package list and requires
-AMD graphics driver 26.2.2. The supported matrix includes RX 9070 XT; support
-is not assumed for every AMD GPU. See [AMD installation instructions](https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/docs/install/installrad/windows/install-pytorch.html)
-and [Windows hardware matrix](https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/docs/compatibility/compatibilityrad/windows/windows_compatibility.html).
-DirectML is a different Microsoft backend; it is not installed by this setup.
+Installations using the older AMD ROCm runtime need to run GPU setup again
+to switch to DirectML. The new app uses the bundled CPU worker until a DirectML
+installation passes the model probe. Existing NVIDIA CUDA installations can be reused.
 NVIDIA/AMD hardware has not been available in the development environment;
 Windows CI checks the bundled CPU model, not physical GPU performance.
 

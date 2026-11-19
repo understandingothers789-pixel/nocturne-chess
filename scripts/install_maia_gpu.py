@@ -34,17 +34,8 @@ def main():
         packages = ['torch==2.7.1', '--index-url', 'https://download.pytorch.org/whl/cu128']
         subprocess.run([str(python), '-m', 'pip', 'install', *packages], check=True)
     else:
-        print('Installing native AMD ROCm 7.2.1 / PyTorch 2.9.1. AMD requires graphics driver 26.2.2. '
-              'Unsupported adapters will keep using the bundled CPU runtime.', flush=True)
-        repo = 'https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/'
-        sdk = [repo + name for name in (
-            'rocm_sdk_core-7.2.1-py3-none-win_amd64.whl',
-            'rocm_sdk_devel-7.2.1-py3-none-win_amd64.whl',
-            'rocm_sdk_libraries_custom-7.2.1-py3-none-win_amd64.whl',
-            'rocm-7.2.1.tar.gz')]
-        subprocess.run([str(python), '-m', 'pip', 'install', *sdk], check=True)
-        subprocess.run([str(python), '-m', 'pip', 'install',
-                        repo + 'torch-2.9.1%2Brocm7.2.1-cp312-cp312-win_amd64.whl'], check=True)
+        print('Installing PyTorch DirectML for the AMD adapter. CPU inference remains available.', flush=True)
+        subprocess.run([str(python), '-m', 'pip', 'install', 'torch-directml==0.2.5.dev240914'], check=True)
     subprocess.run([str(python), '-m', 'pip', 'install', 'numpy==1.26.4', 'python-chess==1.999'], check=True)
     env = os.environ.copy()
     env['PYTHONPATH'] = str(args.source.resolve())
