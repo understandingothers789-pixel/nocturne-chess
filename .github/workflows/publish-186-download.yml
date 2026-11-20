@@ -1,0 +1,30 @@
+name: Publish 186 download
+on:
+  push:
+    branches: [publish/186-download]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for verified Windows build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: timeout 900 gh run watch 44692198479 --exit-status --interval 20
+      - uses: actions/download-artifact@v4
+        with:
+          name: NocturneChess-0.5.7.186-Windows-x64-unsigned
+          run-id: 44692198479
+          github-token: ${{ github.token }}
+          path: download
+      - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd download
+          zip -qr ../NocturneChess-0.5.7.186-Windows-x64-unsigned.zip .
+          gh release create v0.5.7.186 ../NocturneChess-0.5.7.186-Windows-x64-unsigned.zip --target 871c42500e853b5f7e7910f85a68d98b1a2a2089 --title "Nocturne Chess 0.5.7.186" --notes "Windows x64 build with focused tactics review and full interactive continuations."
