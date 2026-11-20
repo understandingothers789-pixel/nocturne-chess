@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.188 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.188/NocturneChess-0.5.7.188-Windows-x64-unsigned.zip).** Removes repeated move numbers and excess line spacing from expanded tactic continuations. Single-space SAN text and continuous move previews eliminate dead hover gaps. Compact tactic rows remain. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.187 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.187/NocturneChess-0.5.7.187-Windows-x64-unsigned.zip).** Restores compact tactic rows showing the motif, ply, move and source lines. Select a row to expand its continuation; other rows stay compact. Retains sacrifice and material-imbalance detection, merges repeated motifs across quiet move orders, and filters harmless discoveries against defended lower-value pieces. Tactic results remain pattern hints, not verified combinations. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.186 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.186/NocturneChess-0.5.7.186-Windows-x64-unsigned.zip).** Find tactics opens a focused results view that temporarily replaces Stockfish and the panels below it. Compact cards show full, wrapped continuations with move previews; Show idea focuses the results, and Back to analysis restores the normal panels. Windows tests and packaged startup checks passed.
