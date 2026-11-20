@@ -3372,6 +3372,7 @@ class MainWindow(QMainWindow):
         dialog = EngineManager(
             self.profiles, self.config.get("engine_id", ""), self,
             allocated_hash=self.resource_controls.allocated_hash(),
+            download_directory=self.data_directory / "stockfish-development",
         )
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return

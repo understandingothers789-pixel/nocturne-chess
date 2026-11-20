@@ -290,7 +290,11 @@ class UciConnection(QObject):
 
     def _process_error(self, error):
         if not self._quitting:
-            self._fail("Engine process error: " + self.process.errorString())
+            message = "Engine process error: " + self.process.errorString()
+            if os.name == "nt" and error == QProcess.ProcessError.FailedToStart:
+                message += (" Check Windows Security notifications for an app block. "
+                            "If Windows blocked this executable, select a working engine profile.")
+            self._fail(message)
 
     def _finished(self, code, status):
         self._cpu_limiter.close()

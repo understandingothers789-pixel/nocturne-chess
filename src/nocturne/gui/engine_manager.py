@@ -2,9 +2,12 @@
 
 from dataclasses import asdict
 from pathlib import Path
+import os
+import platform
+from zipfile import BadZipFile
 from uuid import uuid4
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QThread, QTimer, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -24,17 +27,37 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..engine.stockfish_dev import install_development
 from .uci_connection import UciConnection
 from .engine_resources import format_hash_mb
 
 
+class StockfishDownload(QThread):
+    status = Signal(str)
+
+    def __init__(self, root, architecture, parent):
+        super().__init__(parent)
+        self.root = root
+        self.architecture = architecture
+        self.result = None
+        self.error = ""
+
+    def run(self):
+        try:
+            self.result = install_development(self.root, self.architecture, self.status.emit)
+        except (OSError, ValueError, KeyError, TypeError, BadZipFile) as exc:
+            self.error = str(exc)
+
+
 class EngineManager(QDialog):
-    def __init__(self, profiles, selected="", parent=None, allocated_hash=0):
+    def __init__(self, profiles, selected="", parent=None, allocated_hash=0, *, download_directory=None):
         super().__init__(parent)
         self.setWindowTitle("UCI engine profiles")
         self.resize(720, 650)
         self.profiles = [{**p, "values": dict(p.get("values", {}))} for p in profiles]
         self.selected = selected
+        self.download_directory = download_directory
+        self.download = None
         self.allocated_hash = allocated_hash
         self.connection = UciConnection(self)
         self.connection.discovered.connect(self._discovered)
@@ -59,6 +82,11 @@ class EngineManager(QDialog):
             b.clicked.connect(slot)
             row.addWidget(b)
         layout.addLayout(row)
+        if os.name == "nt" and download_directory is not None:
+            button = QPushButton("Download latest Stockfish development build")
+            button.setToolTip("Get the latest development release from the official Stockfish GitHub repository and add it as an engine profile.")
+            button.clicked.connect(self._download_stockfish)
+            layout.addWidget(button)
         self.label = QLineEdit()
         self.path = QLineEdit()
         self.path.setReadOnly(True)
@@ -66,7 +94,7 @@ class EngineManager(QDialog):
         form.addRow("Profile name", self.label)
         form.addRow("Executable", self.path)
         layout.addLayout(form)
-        self.status = QLabel("Select an installed executable. No engine is downloaded.")
+        self.status = QLabel("Select an installed executable or download Stockfish.")
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
         presets = QHBoxLayout()
@@ -205,14 +233,16 @@ class EngineManager(QDialog):
         path, _ = QFileDialog.getOpenFileName(
             self, "Choose your UCI engine", "", "Executables (*.exe);;All files (*)"
         )
-        if not path:
-            return
+        if path:
+            self._add_profile(path, Path(path).stem)
+
+    def _add_profile(self, path, label):
         self._remember()
         p = {
             "id": str(uuid4()),
             "path": path,
             "name": Path(path).stem,
-            "label": Path(path).stem,
+            "label": label,
             "values": {},
             "options": {},
         }
@@ -220,6 +250,37 @@ class EngineManager(QDialog):
         self.selector.addItem(p["label"], p["id"])
         self.selector.setCurrentIndex(self.selector.count() - 1)
         self._detect()
+
+    def _download_stockfish(self):
+        machine = os.environ.get("PROCESSOR_ARCHITEW6432", platform.machine()).lower()
+        architecture = {"amd64": "x86-64", "x86_64": "x86-64",
+                        "arm64": "arm64", "aarch64": "arm64"}.get(machine)
+        if architecture is None:
+            self.status.setText("No official Windows development download for this CPU architecture.")
+            return
+        self._detect_timer.stop()
+        self.connection.close()
+        self.download = StockfishDownload(self.download_directory, architecture, self)
+        self.download.status.connect(self.status.setText)
+        self.download.finished.connect(self._download_finished)
+        self.setEnabled(False)
+        self.download.start()
+
+    def _download_finished(self):
+        worker = self.download
+        self.download = None
+        self.setEnabled(True)
+        worker.deleteLater()
+        if worker.result is None:
+            self.status.setText(f"Stockfish download failed. {worker.error}")
+            return
+        tag, path = worker.result
+        existing = next((profile for profile in self.profiles if Path(profile["path"]) == path), None)
+        if existing:
+            self.selector.setCurrentIndex(self.selector.findData(existing["id"]))
+            self._detect()
+        else:
+            self._add_profile(str(path), tag)
 
     def _remove(self):
         p = self._profile()
@@ -277,6 +338,8 @@ class EngineManager(QDialog):
         self.accept()
 
     def done(self, result):
+        if self.download is not None:
+            return
         self._detect_timer.stop()
         self.connection.close()
         super().done(result)
