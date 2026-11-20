@@ -2134,6 +2134,7 @@ class MainWindow(QMainWindow):
         process.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
         process.readyReadStandardOutput.connect(lambda: log.appendPlainText(bytes(process.readAllStandardOutput()).decode("utf-8", "replace")))
         def finished(code, status):
+            self.maia.gpu_setup_active = False
             close.setEnabled(True)
             if code == 0:
                 log.appendPlainText("GPU runtime ready. Auto will reuse this installation on future launches. Cached predictions are reused.")
@@ -2146,7 +2147,14 @@ class MainWindow(QMainWindow):
             else:
                 log.appendPlainText("GPU setup did not complete. CPU inference remains available.")
         process.finished.connect(finished)
-        process.errorOccurred.connect(lambda error: (log.appendPlainText(process.errorString()), close.setEnabled(True)))
+        def setup_error(error):
+            log.appendPlainText(process.errorString())
+            if error == QProcess.ProcessError.FailedToStart:
+                self.maia.gpu_setup_active = False
+                close.setEnabled(True)
+                self._request_maia()
+
+        process.errorOccurred.connect(setup_error)
         dialog.reject = lambda: QDialog.reject(dialog) if process.state() == QProcess.ProcessState.NotRunning else None
         # Keep setup alive until completion, including when the window close button is used.
         dialog.setWindowFlag(Qt.WindowType.WindowCloseButtonHint, False)
@@ -2155,7 +2163,15 @@ class MainWindow(QMainWindow):
         dialog.show()
         log.appendPlainText("Auto GPU setup: detects NVIDIA/AMD and downloads the compatible runtime once. "
                             "Python 3.12 x64 is required; CPU inference stays available.")
+        self.maia.gpu_setup_active = True
+        self.maia.stop()
+        if self.maia.process.state() != QProcess.ProcessState.NotRunning:
+            self.maia.gpu_setup_active = False
+            close.setEnabled(True)
+            log.appendPlainText("Maia is still stopping. Close this dialog and try GPU setup again.")
+            return
         process.start("py", ["-3.12", str(script), str(self.data_directory / "maia-gpu"), str(source), str(checkpoint)])
+        self._request_maia()
 
     def _set_leela_enabled(self, enabled):
         if enabled and self.config.get('exclusive_analysis_models', False):

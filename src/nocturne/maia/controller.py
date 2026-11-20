@@ -40,6 +40,7 @@ class MaiaController(QObject):
         self.prefetch_timer.timeout.connect(self._prefetch_next)
         self.prefetch_timer.start()
         self.device_mode = "auto"
+        self.gpu_setup_active = False
         self.device_label = "not loaded"
         self._external = False
         self._cpu_retry = False
@@ -171,7 +172,7 @@ class MaiaController(QObject):
                 command = [sys.executable, "-m", "nocturne.maia.worker", str(checkpoint)]
             runtime = self.directory / "maia-gpu"
             python = runtime / "Scripts/python.exe"
-            self._external = (self.device_mode == "auto" and not self._cpu_retry
+            self._external = (self.device_mode == "auto" and not self.gpu_setup_active and not self._cpu_retry
                               and ready_gpu_runtime(runtime))
             env = QProcessEnvironment.systemEnvironment()
             env.insert("NOCTURNE_MAIA_DEVICE", "cpu" if self._cpu_retry else self.device_mode)

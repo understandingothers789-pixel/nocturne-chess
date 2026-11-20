@@ -28,7 +28,13 @@ def main():
     marker = root / 'ready.json'
     marker.unlink(missing_ok=True)
     print('Creating isolated GPU environment. This may download several GB.', flush=True)
-    venv.create(root, with_pip=True, clear=True)
+    try:
+        venv.create(root, with_pip=True, clear=True)
+    except PermissionError as exc:
+        raise RuntimeError(
+            "Windows could not replace a GPU runtime file. Close other Nocturne windows "
+            "and retry GPU setup. If it still fails, restart Windows and retry."
+        ) from exc
     python = root / 'Scripts/python.exe'
     if nvidia:
         packages = ['torch==2.7.1', '--index-url', 'https://download.pytorch.org/whl/cu128']
