@@ -13,11 +13,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: timeout 900 gh run watch 44683449541 --exit-status --interval 20
+        run: timeout 900 gh run watch 44683748595 --exit-status --interval 20
       - uses: actions/download-artifact@v4
         with:
           name: NocturneChess-0.5.7.184-Windows-x64-unsigned
-          run-id: 44683449541
+          run-id: 44683748595
           github-token: ${{ github.token }}
           path: download
       - name: Package and upload
@@ -27,4 +27,4 @@ jobs:
         run: |
           cd download
           zip -qr ../NocturneChess-0.5.7.184-Windows-x64-unsigned.zip .
-          gh release create v0.5.7.184 ../NocturneChess-0.5.7.184-Windows-x64-unsigned.zip --target e0237c7d2479a88841b525024c45d549fe051e17 --title "Nocturne Chess 0.5.7.184" --notes "Windows x64 build with a fix for locked GPU runtime files during Maia setup."
+          gh release create v0.5.7.184 ../NocturneChess-0.5.7.184-Windows-x64-unsigned.zip --target 46a699a2147f10cf1b87ba319104bc9fd79b8a82 --title "Nocturne Chess 0.5.7.184" --notes "Windows x64 build with shared Ctrl bracket shortcuts and a GPU setup file-lock fix."
