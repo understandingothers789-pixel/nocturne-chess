@@ -13,11 +13,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: timeout 900 gh run watch 44692198479 --exit-status --interval 20
+        run: timeout 900 gh run watch 44692634892 --exit-status --interval 20
       - uses: actions/download-artifact@v4
         with:
           name: NocturneChess-0.5.7.186-Windows-x64-unsigned
-          run-id: 44692198479
+          run-id: 44692634892
           github-token: ${{ github.token }}
           path: download
       - name: Package and upload
@@ -27,4 +27,4 @@ jobs:
         run: |
           cd download
           zip -qr ../NocturneChess-0.5.7.186-Windows-x64-unsigned.zip .
-          gh release create v0.5.7.186 ../NocturneChess-0.5.7.186-Windows-x64-unsigned.zip --target 871c42500e853b5f7e7910f85a68d98b1a2a2089 --title "Nocturne Chess 0.5.7.186" --notes "Windows x64 build with focused tactics review and full interactive continuations."
+          gh release create v0.5.7.186 ../NocturneChess-0.5.7.186-Windows-x64-unsigned.zip --target 2a34711a1f8e54e05a324336f55f8f300e0639d4 --title "Nocturne Chess 0.5.7.186" --notes "Windows x64 build with focused tactics review and full interactive continuations."
