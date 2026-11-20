@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.183 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.183/NocturneChess-0.5.7.183-Windows-x64-unsigned.zip).** Use brackets for finer self-play node steps, Ctrl + brackets for auto-evaluation, and Shift + brackets for Analyze. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.182 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.182/NocturneChess-0.5.7.182-Windows-x64-unsigned.zip).** Fixes the inference-tensor error during Maia’s DirectML setup probe. Windows tests and packaged startup checks passed. DirectML compatibility is checked during GPU setup.
 
 **[Download Nocturne Chess 0.5.7.181 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.181/NocturneChess-0.5.7.181-Windows-x64-unsigned.zip).** Use `[` and `]` to lower and raise the self-play node limit. Hold Shift to adjust auto-evaluation. The node-limit and automation menu tooltips explain the shortcuts. Windows tests and packaged startup checks passed.
