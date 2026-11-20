@@ -13,11 +13,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: timeout 900 gh run watch 44689391695 --exit-status --interval 20
+        run: timeout 900 gh run watch 44690127912 --exit-status --interval 20
       - uses: actions/download-artifact@v4
         with:
           name: NocturneChess-0.5.7.185-Windows-x64-unsigned
-          run-id: 44689391695
+          run-id: 44690127912
           github-token: ${{ github.token }}
           path: download
       - name: Package and upload
@@ -27,4 +27,4 @@ jobs:
         run: |
           cd download
           zip -qr ../NocturneChess-0.5.7.185-Windows-x64-unsigned.zip .
-          gh release create v0.5.7.185 ../NocturneChess-0.5.7.185-Windows-x64-unsigned.zip --target f763de4131c5d814b998db54fad72143f0c063b9 --title "Nocturne Chess 0.5.7.185" --notes "Windows x64 build with practical tactic review cards and improved sacrifice detection."
+          gh release create v0.5.7.185 ../NocturneChess-0.5.7.185-Windows-x64-unsigned.zip --target b6b9d96bc2432fe1fd98a9250507abdb3ac1a310 --title "Nocturne Chess 0.5.7.185" --notes "Windows x64 build with practical tactic review cards and optional background history."
