@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.191 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.191/NocturneChess-0.5.7.191-Windows-x64-unsigned.zip).** Stockfish development profiles show the Git commit date and short ID. The downloader reuses installed copies of the same commit, including builds saved by 190, and keeps distinct commits in separate profiles. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.190 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.190/NocturneChess-0.5.7.190-Windows-x64-unsigned.zip).** In UCI engine profiles, choose **Download latest Stockfish development build** to fetch and verify the official Windows prerelease and add it as a separate engine profile. Windows launch errors point to Windows Security notifications. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.189 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.189/NocturneChess-0.5.7.189-Windows-x64-unsigned.zip).** Automatically discovers UCI options for untested profiles and rechecks replaced executables. Profile changes cannot apply pending results to a different profile; detection failures and engines with no configurable options show explicit status. Includes the compact tactic-continuation spacing fix from 188. Windows tests and packaged startup checks passed.
