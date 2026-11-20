@@ -1,0 +1,30 @@
+name: Publish 190 download
+on:
+  push:
+    branches: [publish/190-download]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for verified Windows build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: timeout 1200 gh run watch 44806270609 --exit-status --interval 20
+      - uses: actions/download-artifact@v4
+        with:
+          name: NocturneChess-0.5.7.190-Windows-x64-unsigned
+          run-id: 44806270609
+          github-token: ${{ github.token }}
+          path: download
+      - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd download
+          zip -qr ../NocturneChess-0.5.7.190-Windows-x64-unsigned.zip .
+          gh release create v0.5.7.190 ../NocturneChess-0.5.7.190-Windows-x64-unsigned.zip --target f93001421a90fdbf117bbdf87d3838d404dc12cf --title "Nocturne Chess 0.5.7.190" --notes "Download official Stockfish development builds from engine profiles."
