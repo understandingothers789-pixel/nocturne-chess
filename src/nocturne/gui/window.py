@@ -2525,7 +2525,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(background)
         precise = QCheckBox("Use one engine thread for finer checkpoints")
         precise.setChecked(self.config.get("checkpoint_precise", False))
-        precise.setToolTip("Use one Stockfish thread on the next search. A slower search gives the engine more time to report distinct variations near 1M, 2M, 4M and later checkpoints. Capture uses reported output and may miss milestones between updates. This reduces analysis speed. Leave it off to use your normal thread setting.")
+        precise.setToolTip("Use one Stockfish thread on the next search. A slower search gives the engine more time to report distinct variations near 1M, 2M, 4M and later checkpoints. Capture uses reported output and may miss milestones between updates. This reduces analysis speed. Choosing a setting in Engine → Threads turns this mode off.")
         layout.addWidget(precise)
         form = QFormLayout()
         minimum, maximum = QSpinBox(), QSpinBox()
@@ -3376,6 +3376,15 @@ class MainWindow(QMainWindow):
         )
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
+        if self.config.get("checkpoint_precise", False):
+            previous_values = {profile["id"]: profile.get("values", {}) for profile in self.profiles}
+            for profile in dialog.profiles:
+                default = profile.get("options", {}).get("Threads", {}).get("default")
+                before = previous_values.get(profile["id"], {}).get("Threads", default)
+                after = profile.get("values", {}).get("Threads", default)
+                if str(before) != str(after):
+                    self.config["checkpoint_precise"] = False
+                    break
         self.profiles = dialog.profiles
         self.config["engine_id"] = dialog.selected
         self._apply_settings()
@@ -3402,7 +3411,10 @@ class MainWindow(QMainWindow):
             self._error("Cannot apply engine setting", str(exc))
             return
         removed_auto = name == "Hash" and not automatic and profile.pop("gpu_hash_defaulted", None) is not None
-        if value is not None and profile["values"].get(name) == number:
+        finer_capture_disabled = name == "Threads" and self.config.get("checkpoint_precise", False)
+        if finer_capture_disabled:
+            self.config["checkpoint_precise"] = False
+        if not finer_capture_disabled and value is not None and profile["values"].get(name) == number:
             if removed_auto:
                 self._save()
             self.resource_controls.refresh()

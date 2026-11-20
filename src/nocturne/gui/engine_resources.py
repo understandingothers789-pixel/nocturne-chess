@@ -109,7 +109,13 @@ class EngineResources(QObject):
             current = resource_label(name, value)
             adaptive = name == "Hash" and name in profile["values"] and isinstance(value, int)
             allocated = int(confirmed.get("Hash", 0)) if same_engine else 0
-            menu.setTitle(f"Hash (max {current}, using {format_hash_mb(allocated)})" if adaptive else f"{name} ({current})")
+            active_threads = confirmed.get("Threads") if name == "Threads" and same_engine else None
+            if adaptive:
+                menu.setTitle(f"Hash (max {current}, using {format_hash_mb(allocated)})")
+            elif active_threads and active_threads != str(value):
+                menu.setTitle(f"Threads ({current} saved, using {active_threads})")
+            else:
+                menu.setTitle(f"{name} ({current})")
             applied = 0 < allocated <= value if adaptive else confirmed.get(name) == str(value)
             matches = matches and same_engine and applied
             minimum, maximum = resource_limits(option, self.allocated_hash(), adaptive_hash=name == "Hash")

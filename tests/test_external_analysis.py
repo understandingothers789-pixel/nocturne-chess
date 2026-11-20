@@ -406,6 +406,26 @@ class QtIntegration(unittest.TestCase):
             self.assertIn("> setoption name Hash value 2048", log)
             self.assertNotIn("setoption name Hash value 2 GB", log)
 
+    def test_manual_threads_selection_releases_finer_checkpoint_override(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            window.profiles = [self.profile()]
+            window.profiles[0]["values"]["Threads"] = 14
+            window.config.update(engine_id="simulator", checkpoint_background=True, checkpoint_precise=True)
+            window._apply_settings()
+            window._schedule_engine()
+            self.wait_until(lambda: window.engine.connection.confirmed.get("Threads") == "1")
+            menu = window.resource_controls.menus["Threads"]
+            self.assertEqual(menu.title(), "Threads (14 saved, using 1)")
+            # Choosing the already saved count must still stop the override.
+            next(action for action in menu.actions() if action.data() == 14).trigger()
+            self.wait_until(lambda: window.engine.connection.confirmed.get("Threads") == "14")
+            self.assertFalse(window.config["checkpoint_precise"])
+            self.assertTrue(window.config["checkpoint_background"])
+            next(action for action in menu.actions() if action.data() == 8).trigger()
+            self.wait_until(lambda: window.engine.connection.confirmed.get("Threads") == "8")
+            self.assertIn("> setoption name Threads value 8", window.engine.connection.log)
+
     def test_multipv_menu_controls_live_and_bounded_search_without_explore_mode(self):
         with self.workspace() as window:
             window.timer.stop()
