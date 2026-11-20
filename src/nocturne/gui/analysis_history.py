@@ -110,13 +110,23 @@ def tactic_patterns(fen, pv, plies=12, min_ply=4):
                 found.append((ply, f'Absolute pin pattern · {prefix} · {chess.piece_name(board.piece_type_at(square))}'
                               f' on {chess.square_name(square)} is pinned to its king'))
                 break
+        # A discovery must uncover a ray through the vacated square, not just
+        # add an attack after a capture. Ignore harmless queen attacks on defended
+        # minor pieces: those dominate ordinary positional continuations.
         revealed = [(s, t) for s in chess.SQUARES if board.color_at(s) == color
                     and s != move.to_square for t in board.attacks(s)
                     if board.color_at(t) == (not color) and (s, t) not in old_attacks
                     and board.piece_type_at(s) in (chess.BISHOP, chess.ROOK, chess.QUEEN)
-                    and values[board.piece_type_at(t)] >= 3]
+                    and chess.BB_SQUARES[move.from_square] & chess.between(s, t)
+                    and not board.is_pinned(color, s)
+                    and values[board.piece_type_at(t)] >= 3
+                    and (values[board.piece_type_at(t)] > values[board.piece_type_at(s)]
+                         or not board.is_attacked_by(not color, t))]
         if revealed and not board.is_check():
-            found.append((ply, f'Discovered attack pattern · {prefix}'))
+            names = ', '.join(f'{chess.piece_name(board.piece_type_at(s))} on {chess.square_name(s)}'
+                              f' attacks {chess.piece_name(board.piece_type_at(t))} on {chess.square_name(t)}'
+                              for s, t in revealed)
+            found.append((ply, f'Discovered attack · {prefix} · {names}'))
         attackers = board.attackers(color, board.king(not color))
         if board.is_check() and move.to_square not in attackers:
             found.append((ply, f'Discovered check · {prefix}'))
@@ -167,6 +177,7 @@ class AnalysisHistory(QWidget):
         self.scanning = False
         self.min_ply, self.max_ply = 4, 12
         self.scan_token = 0
+        self._tactic_details = []
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         scroll = QScrollArea()
@@ -379,12 +390,22 @@ class AnalysisHistory(QWidget):
         self.set_focus(True)
         self.preview.emit(pv, ply, text)
 
+    def _select_tactic(self, detail, entry, checked):
+        for button, widget in self._tactic_details:
+            widget.setVisible(checked and widget is detail)
+            button.setChecked(checked and widget is detail)
+        if checked:
+            self.show_idea(entry['pv'], entry['ply'], entry['text'])
+        else:
+            self.preview_end.emit()
+
     def cancel(self):
         self.set_focus(False)
         self.scan_token += 1
         self.scanning = False
         self.find.setText('Find tactics')
         self._clear_layout(self.results)
+        self._tactic_details.clear()
         self.result_scroll.hide()
 
     def scan(self):
@@ -415,26 +436,34 @@ class AnalysisHistory(QWidget):
                 0 if entry['text'].startswith('Mate') else
                 1 if 'sacrifice' in entry['text'] or entry['text'].startswith('Material imbalance') else 2,
                 entry['ply']))
-            note.setText(
-                f'{len(entries)} ideas in {line_count} lines · plies {self.min_ply}–{self.max_ply}. '
-                'These describe saved engine continuations. Alternative defenses and sacrifice soundness are unverified.'
-                + (f' {truncated} lines ended early at an invalid move.' if truncated else '')
-                + (' No ideas found in this range. Change First/Last tactic ply in More details to look earlier or deeper.'
-                   if not entries else ''))
+            note.setText(f'{len(entries)} ideas in {line_count} lines · plies {self.min_ply}–{self.max_ply}. Select a row to explore.'
+                         + (f' {truncated} lines truncated.' if truncated else '')
+                         + (' No ideas found; adjust the ply range in More details.' if not entries else ''))
+            note.setToolTip('Pattern hints from saved continuations. Alternative defenses and sacrifice soundness are unverified.')
             for entry in entries[:24]:
                 frame = QFrame()
                 frame.setObjectName('panel')
                 frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
                 card = QVBoxLayout(frame)
                 card.setSpacing(6)
+                card.setContentsMargins(6, 3, 6, 3)
+                kind = entry['text'].split(' · ')[0].replace(' pattern', '')
+                row_button = QPushButton(f"{kind} · ply {entry['ply']} · {entry['move']} · lines "
+                                         + ', '.join(str(r) for r in entry['ranks']))
+                row_button.setCheckable(True)
+                row_button.setStyleSheet('text-align:left;')
+                row_button.setToolTip(entry['text'])
+                card.addWidget(row_button)
+                detail = QWidget()
+                detail_layout = QVBoxLayout(detail)
+                detail_layout.setContentsMargins(0, 4, 0, 4)
                 description = QLabel(entry['text'])
                 description.setWordWrap(True)
                 description.setTextFormat(Qt.TextFormat.PlainText)
-                card.addWidget(description)
-                source = QLabel('Lines ' + ', '.join(str(r) for r in entry['ranks'])
-                                + f" · {entry['root_move']} · depth {entry['depth']} · White eval {entry['evaluation']}")
+                detail_layout.addWidget(description)
+                source = QLabel(f"Showing line {entry['ranks'][0]} · {entry['root_move']} · depth {entry['depth']} · White eval {entry['evaluation']}")
                 source.setWordWrap(True)
-                card.addWidget(source)
+                detail_layout.addWidget(source)
                 board = chess.Board(self.root)
                 items = []
                 for ply, uci in enumerate(entry['pv'], 1):
@@ -447,7 +476,7 @@ class AnalysisHistory(QWidget):
                 moves.move_hovered.connect(lambda n, p=entry['pv'], t=entry['text']: self.preview.emit(p, n, t))
                 moves.move_clicked.connect(lambda n, p=entry['pv'], t=entry['text']: self.show_idea(p, n, t))
                 moves.preview_ended.connect(self.preview_end)
-                card.addWidget(moves)
+                detail_layout.addWidget(moves)
                 actions = QHBoxLayout()
                 for title, ply in (('Before idea', entry['setup']),
                                    ('Show idea', entry['ply'])):
@@ -460,7 +489,11 @@ class AnalysisHistory(QWidget):
                 insert.setToolTip('Add the captured continuation as a variation in the current game.')
                 insert.clicked.connect(lambda checked=False, p=entry['pv']: self.insert.emit(p))
                 actions.addWidget(insert)
-                card.addLayout(actions)
+                detail_layout.addLayout(actions)
+                card.addWidget(detail)
+                detail.hide()
+                self._tactic_details.append((row_button, detail))
+                row_button.clicked.connect(lambda checked, d=detail, e=entry: self._select_tactic(d, e, checked))
                 self.results.addWidget(frame)
             if len(entries) > 24:
                 self.results.addWidget(QLabel(f'Showing the first 24 of {len(entries)} ideas. Narrow the ply range to focus the scan.'))
@@ -488,13 +521,21 @@ class AnalysisHistory(QWidget):
                 pv.append(text)
             hints = tactic_patterns(self.root, pv, self.max_ply, self.min_ply)
             for ply, text in hints:
-                key = (tuple(pv[:ply]), text)
+                # Group the same move/motif even when earlier quiet moves were
+                # played in a different order. Keep one representative PV.
+                normalized = re.sub(r'ply \d+', 'ply', text)
+                key = (pv[ply - 1], normalized)
                 if key in findings:
-                    findings[key]['ranks'].append(rank)
+                    if rank not in findings[key]['ranks']:
+                        findings[key]['ranks'].append(rank)
                     continue
                 sequence = re.search(r'plies (\d+)–', text)
                 setup = int(sequence.group(1)) - 1 if sequence else max(0, ply - 1)
+                at_idea = chess.Board(self.root)
+                for uci in pv[:ply - 1]:
+                    at_idea.push_uci(uci)
                 findings[key] = dict(pv=pv, ply=ply, setup=setup, text=text,
+                                     move=at_idea.san(chess.Move.from_uci(pv[ply - 1])),
                                      ranks=[rank], depth=info.get('depth', '—'),
                                      root_move=chess.Board(self.root).san(chess.Move.from_uci(pv[0])),
                                      evaluation=score_label(info, self.turn) if 'score_type' in info else '—')

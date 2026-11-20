@@ -180,6 +180,35 @@ class CheckpointTests(unittest.TestCase):
         moves = ['f2f3', 'e7e5', 'g2g4', 'd8h4']
         self.assertTrue(any('Mate' in text for _, text in tactic_patterns(board.fen(), moves)))
 
+    def test_discovery_filters_harmless_defended_targets(self):
+        quiet = '6k1/8/6p1/7b/8/5N2/8/3Q2K1 w - - 0 1'
+        self.assertFalse(any('Discovered attack' in text for _, text in
+                             tactic_patterns(quiet, ['f3e1'], min_ply=1)))
+        tactical = '7k/8/8/8/4q3/8/2N5/1B4K1 w - - 0 1'
+        self.assertTrue(any('bishop on b1 attacks queen on e4' in text for _, text in
+                            tactic_patterns(tactical, ['c2a3'], min_ply=1)))
+
+    def test_compact_rows_merge_reordered_prefixes_and_expand_on_selection(self):
+        from PySide6.QtTest import QTest
+        from PySide6.QtWidgets import QPushButton
+        w = self.widget
+        w.position('fork', '4k3/8/3r1q2/8/8/2N5/8/R3K3 w - - 0 1', 1)
+        w.min_ply = 1
+        w.live = {1: dict(pv=['c3e4'], multipv=1),
+                  2: dict(pv=['a1a2', 'e8f8', 'c3e4'], multipv=2)}
+        w.scan()
+        QTest.qWait(50)
+        self.assertEqual(len(w._tactic_details), 1)
+        button, detail = w._tactic_details[0]
+        self.assertIn('Fork · ply 1', button.text())
+        self.assertIn('lines 1, 2', button.text())
+        self.assertTrue(detail.isHidden())
+        button.click()
+        self.assertFalse(detail.isHidden())
+        button.click()
+        self.assertTrue(detail.isHidden())
+        self.assertTrue(w.results.itemAt(1).widget().findChildren(QPushButton))
+
     def test_delayed_recapture_is_not_a_sacrifice(self):
         fen = 'rnbqkbnr/ppp1pppp/8/3p4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 2'
         pv = ['e2e4', 'd5e4', 'b1c3', 'g8f6', 'c3e4']
