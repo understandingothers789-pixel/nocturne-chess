@@ -534,6 +534,7 @@ class MainWindow(QMainWindow):
             or (hasattr(self, "leela_panel") and
                 (self.leela_panel.engine.busy or self.leela_panel.timer.isActive())), self)
         self.engine_layout.addWidget(self.checkpoint_history)
+        self.checkpoint_history.focus_changed.connect(self._focus_tactics)
         self.checkpoint_history.viewing.connect(lambda viewing: self.candidates.setVisible(not viewing))
         self.checkpoint_history.preview.connect(self._preview_maia_line)
         self.checkpoint_history.panel.pointer_moved.connect(self._move_cursor_preview)
@@ -2505,6 +2506,11 @@ class MainWindow(QMainWindow):
         self.board_view.set_recommendations(entries, inferior_ranks=inferior_ranks)
         if self.config.get('leela_enabled'):
             self._leela_results(self.leela_panel.lines)
+
+    def _focus_tactics(self, focused):
+        self.candidate_splitter.setVisible(not focused)
+        self.engine_layout.setStretchFactor(self.checkpoint_history, 1 if focused else 0)
+        self.engine_layout.setStretchFactor(self.candidate_splitter, 0 if focused else 1)
 
     def _capture_history_enabled(self):
         return self.config.get("checkpoint_history", False) or self.config.get("checkpoint_background", False)

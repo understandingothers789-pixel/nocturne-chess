@@ -209,6 +209,35 @@ class CheckpointTests(unittest.TestCase):
         widget.cancel()
         self.assertTrue(widget.result_scroll.isHidden())
 
+    def test_tactics_focus_restores_engine_panels_and_full_continuation(self):
+        from nocturne.gui.window import MainWindow
+        from nocturne.gui.moves import MoveText
+        from PySide6.QtTest import QTest
+        with tempfile.TemporaryDirectory() as folder:
+            window = MainWindow(Path(folder))
+            try:
+                history = window.checkpoint_history
+                history.position('fork', '4k3/8/3r1q2/8/8/2N5/8/4K3 w - - 0 1', 1)
+                history.min_ply = 1
+                history.live = {1: dict(pv=['c3e4', 'e8f7'], multipv=1, depth=12)}
+                history.scan()
+                QTest.qWait(50)
+                self.assertTrue(history.focused)
+                self.assertTrue(window.candidate_splitter.isHidden())
+                card = history.results.itemAt(1).widget()
+                self.assertIn('Kf7', card.findChild(MoveText).toPlainText())
+                history.back.click()
+                self.assertFalse(window.candidate_splitter.isHidden())
+                self.assertFalse(history.result_scroll.isHidden())
+                history.show_idea(['c3e4'], 1, 'Fork')
+                self.assertTrue(window.candidate_splitter.isHidden())
+                history.cancel()
+                self.assertFalse(window.candidate_splitter.isHidden())
+            finally:
+                window.close()
+                window.deleteLater()
+                self.app.processEvents()
+
     def test_background_capture_survives_hidden_toggle_and_restores_milestones(self):
         from nocturne.gui.window import MainWindow
         with tempfile.TemporaryDirectory() as folder:

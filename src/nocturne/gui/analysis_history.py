@@ -144,6 +144,7 @@ def tactic_patterns(fen, pv, plies=12, min_ply=4):
 
 
 class AnalysisHistory(QWidget):
+    focus_changed = Signal(bool)
     viewing = Signal(bool)
     preview = Signal(list, int, str)
     preview_end = Signal()
@@ -162,6 +163,7 @@ class AnalysisHistory(QWidget):
         self.checkpoints = {}
         self.fresh_checkpoints = set()
         self.next_nodes = 1_000_000
+        self.focused = False
         self.scanning = False
         self.min_ply, self.max_ply = 4, 12
         self.scan_token = 0
@@ -192,6 +194,11 @@ class AnalysisHistory(QWidget):
         self.caption = QLabel('Viewing: Live')
         row.addWidget(self.caption)
         layout.addLayout(row)
+        self.back = QPushButton('Back to analysis')
+        self.back.setToolTip('Restore Stockfish and the panels below it. Tactic results remain available until the position or search changes.')
+        self.back.clicked.connect(lambda: self.set_focus(False))
+        self.back.hide()
+        layout.addWidget(self.back)
         self.panel = CandidatePanel(MoveText(auto_fit=True))
         self.panel.show_line_depth = True
         self.panel.preview.connect(self._preview)
@@ -208,7 +215,8 @@ class AnalysisHistory(QWidget):
         self.results = QVBoxLayout(result_body)
         self.results.setContentsMargins(0, 0, 0, 0)
         self.result_scroll.setWidget(result_body)
-        layout.addWidget(self.result_scroll)
+        layout.addWidget(self.result_scroll, 1)
+        self.results.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.poll = QTimer(self)
         self.poll.setInterval(250)
         self.poll.timeout.connect(self._availability)
@@ -315,7 +323,7 @@ class AnalysisHistory(QWidget):
     def _render(self):
         historical = self.selected is not None or bool(self.mode.currentIndex())
         self.viewing.emit(historical and not self.isHidden())
-        self.panel.setVisible(historical)
+        self.panel.setVisible(historical and not self.focused)
         previous = self.selected is not None and self.selected not in self.fresh_checkpoints
         self.caption.setText('Viewing: ' + ('Live' if self.selected is None else node_label(self.selected))
                              + (' · previous run' if previous else ''))
@@ -358,7 +366,21 @@ class AnalysisHistory(QWidget):
             self.cancel()
         self.find.setEnabled(self.scanning or (not self.busy() and bool(self.live or self.checkpoints)))
 
+    def set_focus(self, focused):
+        self.focused = focused
+        self.back.setVisible(focused)
+        self.result_scroll.setMaximumHeight(16777215 if focused else 300)
+        self.panel.setVisible(not focused and (self.selected is not None or bool(self.mode.currentIndex())))
+        self.focus_changed.emit(focused)
+        if not focused:
+            self.preview_end.emit()
+
+    def show_idea(self, pv, ply, text):
+        self.set_focus(True)
+        self.preview.emit(pv, ply, text)
+
     def cancel(self):
+        self.set_focus(False)
         self.scan_token += 1
         self.scanning = False
         self.find.setText('Find tactics')
@@ -380,6 +402,7 @@ class AnalysisHistory(QWidget):
         line_count = 0
         truncated = 0
         self.result_scroll.show()
+        self.set_focus(True)
         note = QLabel(f'Checking plies {self.min_ply}–{self.max_ply} in the displayed lines…')
         note.setWordWrap(True)
         self.results.addWidget(note)
@@ -409,13 +432,26 @@ class AnalysisHistory(QWidget):
                                 + f" · {entry['root_move']} · depth {entry['depth']} · White eval {entry['evaluation']}")
                 source.setWordWrap(True)
                 card.addWidget(source)
+                board = chess.Board(self.root)
+                items = []
+                for ply, uci in enumerate(entry['pv'], 1):
+                    move = board.parse_uci(uci)
+                    prefix = f'{board.fullmove_number}.' if board.turn else f'{board.fullmove_number}…'
+                    items.append((prefix + board.san(move), ply))
+                    board.push(move)
+                moves = MoveText(auto_fit=True)
+                moves.set_moves(items, figurines=True)
+                moves.move_hovered.connect(lambda n, p=entry['pv'], t=entry['text']: self.preview.emit(p, n, t))
+                moves.move_clicked.connect(lambda n, p=entry['pv'], t=entry['text']: self.show_idea(p, n, t))
+                moves.preview_ended.connect(self.preview_end)
+                card.addWidget(moves)
                 actions = QHBoxLayout()
                 for title, ply in (('Before idea', entry['setup']),
                                    ('Show idea', entry['ply'])):
                     button = QPushButton(title)
-                    button.setToolTip('Preview this position on the small board.')
+                    button.setToolTip('Focus the tactics panel and preview this position. Hover over the continuation to explore each move.')
                     button.clicked.connect(lambda checked=False, p=entry['pv'], n=ply, t=entry['text']:
-                                           self.preview.emit(p, n, t))
+                                           self.show_idea(p, n, t))
                     actions.addWidget(button)
                 insert = QPushButton('Add line')
                 insert.setToolTip('Add the captured continuation as a variation in the current game.')
