@@ -1,0 +1,30 @@
+name: Publish 191 download
+on:
+  push:
+    branches: [publish/191-download]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for verified Windows build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: timeout 1200 gh run watch 44810495994 --exit-status --interval 20
+      - uses: actions/download-artifact@v4
+        with:
+          name: NocturneChess-0.5.7.191-Windows-x64-unsigned
+          run-id: 44810495994
+          github-token: ${{ github.token }}
+          path: download
+      - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd download
+          zip -qr ../NocturneChess-0.5.7.191-Windows-x64-unsigned.zip .
+          gh release create v0.5.7.191 ../NocturneChess-0.5.7.191-Windows-x64-unsigned.zip --target 12e0d6ab283a72d7335a0e1dc129ea8b5abfbac2 --title "Nocturne Chess 0.5.7.191" --notes "Date Stockfish development profiles and reuse downloads by commit."
