@@ -1,0 +1,30 @@
+name: Publish 185 download
+on:
+  push:
+    branches: [publish/185-download]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for verified Windows build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: timeout 900 gh run watch 44689391695 --exit-status --interval 20
+      - uses: actions/download-artifact@v4
+        with:
+          name: NocturneChess-0.5.7.185-Windows-x64-unsigned
+          run-id: 44689391695
+          github-token: ${{ github.token }}
+          path: download
+      - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd download
+          zip -qr ../NocturneChess-0.5.7.185-Windows-x64-unsigned.zip .
+          gh release create v0.5.7.185 ../NocturneChess-0.5.7.185-Windows-x64-unsigned.zip --target f763de4131c5d814b998db54fad72143f0c063b9 --title "Nocturne Chess 0.5.7.185" --notes "Windows x64 build with practical tactic review cards and improved sacrifice detection."
