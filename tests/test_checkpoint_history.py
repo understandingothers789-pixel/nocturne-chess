@@ -208,3 +208,30 @@ class CheckpointTests(unittest.TestCase):
         self.assertEqual(inserted, [['c3e4']])
         widget.cancel()
         self.assertTrue(widget.result_scroll.isHidden())
+
+    def test_background_capture_survives_hidden_toggle_and_restores_milestones(self):
+        from nocturne.gui.window import MainWindow
+        with tempfile.TemporaryDirectory() as folder:
+            window = MainWindow(Path(folder))
+            try:
+                window.config['checkpoint_background'] = True
+                window.engine.set_history_capture(window._capture_history_enabled())
+                window.engine.generation = 321
+                window._job = dict(turn=1, multipv=1, generation=321, identity=window._position_identity())
+                window.engine._validated_info = lambda info: info.copy()
+                window.engine.connection.observation.emit(321, line('e2e4', nodes=1_000_000))
+                window.engine.connection.observation.emit(321, line('e2e4', nodes=64_000_000))
+                history = window.checkpoint_history
+                self.assertTrue(history.isHidden())
+                self.assertFalse(window.candidates.isHidden())
+                self.assertIn(64_000_000, history.checkpoints)
+                window.analysis_history_toggle.setChecked(True)
+                history.select(64_000_000)
+                self.assertEqual(history.panel.lines[1]['pv'], ['e2e4'])
+                window.analysis_history_toggle.setChecked(False)
+                self.assertTrue(window.engine.history_capture)
+                self.assertFalse(window.candidates.isHidden())
+            finally:
+                window.close()
+                window.deleteLater()
+                self.app.processEvents()

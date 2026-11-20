@@ -72,6 +72,7 @@ DEFAULTS = {
     "review_confirm": True,
     "analysis_snapshots": False,
     "checkpoint_history": False,
+    "checkpoint_background": False,
     "checkpoint_precise": False,
     "tactic_min_ply": 4,
     "tactic_max_ply": 12,
@@ -197,6 +198,7 @@ def normalize(data) -> dict:
         "review_confirm",
         "analysis_snapshots",
         "checkpoint_history",
+        "checkpoint_background",
         "checkpoint_precise",
     ):
         if isinstance(data.get(key), bool):

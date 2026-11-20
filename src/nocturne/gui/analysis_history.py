@@ -241,16 +241,17 @@ class AnalysisHistory(QWidget):
         self.anchor = []
         self.select(None)
 
-    def observe(self, session, lines, nodes):
+    def observe(self, session, lines, nodes, *, display=True):
         new_session = self.session != session
         if new_session:
             self.session = session
             self.fresh_checkpoints.clear()
             self.next_nodes = 1_000_000
             self.cancel()
-            self._buttons()
+            if display:
+                self._buttons()
         self.live = deepcopy(lines)
-        if new_session and self.selected is not None:
+        if display and new_session and self.selected is not None:
             self._render()
         if self.mode.currentIndex() and not self.anchor:
             self.anchor = [x['pv'][0] for _, x in sorted(lines.items()) if x.get('pv')]
@@ -264,10 +265,11 @@ class AnalysisHistory(QWidget):
             # detached copy with the checkpoint instead of copying every PV twice.
             self.checkpoints[crossed] = (nodes, self.live)
             self.fresh_checkpoints.add(crossed)
-            self._buttons()
-            if self.selected == crossed:
+            if display:
+                self._buttons()
+            if display and self.selected == crossed:
                 self._render()
-        if self.selected is None and self.mode.currentIndex():
+        if display and self.selected is None and self.mode.currentIndex():
             self._render()
 
     def _clear_layout(self, layout):
@@ -312,7 +314,7 @@ class AnalysisHistory(QWidget):
 
     def _render(self):
         historical = self.selected is not None or bool(self.mode.currentIndex())
-        self.viewing.emit(historical)
+        self.viewing.emit(historical and not self.isHidden())
         self.panel.setVisible(historical)
         previous = self.selected is not None and self.selected not in self.fresh_checkpoints
         self.caption.setText('Viewing: ' + ('Live' if self.selected is None else node_label(self.selected))
