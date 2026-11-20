@@ -20,10 +20,11 @@ class MoveText(QTextBrowser):
     pointer_moved = Signal(QPoint)
     manual_navigation = Signal()
 
-    def __init__(self, parent=None, *, auto_fit=False, reserved_lines=0):
+    def __init__(self, parent=None, *, auto_fit=False, reserved_lines=0, compact=False):
         super().__init__(parent)
         self.font_increase = 0
-        self.continuous_preview = False
+        self.compact = compact
+        self.continuous_preview = compact
         self._figurines = False
         self._auto_fit = auto_fit
         self._reserved_lines = reserved_lines
@@ -186,6 +187,8 @@ class MoveText(QTextBrowser):
             gap = " " if (self.candidate_rank is not None or self.continuous_preview) and offset < len(self._items) - 1 else ""
             tokens.append(f'<a href="move:{index}" style="{style} {decoration}"{tooltip}>{notation_html(label, size=17 * (1 + self.font_increase / 100) if self.candidate_rank is not None else 17) if figurines else escape(label)}{gap}</a>')
         size, spacing = (16, 155) if self._auto_fit else (14, 140)
+        if self.compact:
+            spacing = 100
         if self.candidate_rank is not None:
             size *= 1 + self.font_increase / 100
         self.setHtml(f'<div style="font-family:Consolas,monospace; font-size:{size}px; line-height:{spacing}%;">'

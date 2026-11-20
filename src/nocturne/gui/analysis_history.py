@@ -468,10 +468,9 @@ class AnalysisHistory(QWidget):
                 items = []
                 for ply, uci in enumerate(entry['pv'], 1):
                     move = board.parse_uci(uci)
-                    prefix = f'{board.fullmove_number}.' if board.turn else f'{board.fullmove_number}…'
-                    items.append((prefix + board.san(move), ply))
+                    items.append((board.san(move), ply))
                     board.push(move)
-                moves = MoveText(auto_fit=True)
+                moves = MoveText(auto_fit=True, compact=True)
                 moves.set_moves(items, figurines=True)
                 moves.move_hovered.connect(lambda n, p=entry['pv'], t=entry['text']: self.preview.emit(p, n, t))
                 moves.move_clicked.connect(lambda n, p=entry['pv'], t=entry['text']: self.show_idea(p, n, t))

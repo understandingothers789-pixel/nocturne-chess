@@ -209,6 +209,24 @@ class CheckpointTests(unittest.TestCase):
         self.assertTrue(detail.isHidden())
         self.assertTrue(w.results.itemAt(1).widget().findChildren(QPushButton))
 
+    def test_tactic_continuations_have_compact_spacing_and_contiguous_hover(self):
+        from PySide6.QtTest import QTest
+        from nocturne.gui.moves import MoveText
+        w = self.widget
+        w.position('fork', '4k3/8/3r1q2/8/8/2N5/8/4K3 w - - 0 1', 1)
+        w.min_ply = 1
+        w.live = {1: dict(pv=['c3e4', 'e8f7'], multipv=1)}
+        w.scan()
+        QTest.qWait(50)
+        moves = w.results.itemAt(1).widget().findChild(MoveText)
+        self.assertEqual(moves.toPlainText(), 'Ne4 Kf7')
+        self.assertTrue(moves.continuous_preview)
+        self.assertEqual(moves.document().begin().blockFormat().lineHeight(), 100)
+        previews = []
+        w.preview.connect(lambda pv, ply, text: previews.append(ply))
+        moves.move_hovered.emit(2)
+        self.assertEqual(previews, [2])
+
     def test_delayed_recapture_is_not_a_sacrifice(self):
         fen = 'rnbqkbnr/ppp1pppp/8/3p4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 2'
         pv = ['e2e4', 'd5e4', 'b1c3', 'g8f6', 'c3e4']
