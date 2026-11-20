@@ -55,7 +55,7 @@ class EngineManager(QDialog):
         self.setWindowTitle("UCI engine profiles")
         self.resize(720, 650)
         self.profiles = [{**p, "values": dict(p.get("values", {}))} for p in profiles]
-        self.selected = selected
+        self.selected = ""
         self.download_directory = download_directory
         self.download = None
         self.allocated_hash = allocated_hash
@@ -274,13 +274,17 @@ class EngineManager(QDialog):
         if worker.result is None:
             self.status.setText(f"Stockfish download failed. {worker.error}")
             return
-        tag, path = worker.result
+        title, path = worker.result
         existing = next((profile for profile in self.profiles if Path(profile["path"]) == path), None)
         if existing:
-            self.selector.setCurrentIndex(self.selector.findData(existing["id"]))
+            index = self.selector.findData(existing["id"])
+            self.selector.setCurrentIndex(index)
+            if self.label.text() == path.parent.parent.name or self.label.text() == existing.get("name"):
+                self.label.setText(title)
+                self.selector.setItemText(index, title)
             self._detect()
         else:
-            self._add_profile(str(path), tag)
+            self._add_profile(str(path), title)
 
     def _remove(self):
         p = self._profile()

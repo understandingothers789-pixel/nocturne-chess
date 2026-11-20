@@ -1,5 +1,6 @@
 """Install the official Stockfish development release for Windows."""
 
+from datetime import date
 import hashlib
 import json
 import os
@@ -12,7 +13,9 @@ from urllib.request import Request, urlopen
 from zipfile import ZipFile
 
 REPOSITORY = "https://github.com/official-stockfish/Stockfish"
-RELEASES = "https://api.github.com/repos/official-stockfish/Stockfish/releases?per_page=30"
+API = "https://api.github.com/repos/official-stockfish/Stockfish"
+RELEASES = f"{API}/releases?per_page=30"
+DEV_TAG = re.compile(r"stockfish-dev-\d{8}-([a-f0-9]{7,40})")
 MAX_DOWNLOAD = 512 * 1024 * 1024
 
 
@@ -26,11 +29,34 @@ def install_development(root, architecture, status):
     with _open(RELEASES) as response:
         releases = json.load(response)
     release = next((release for release in releases if release["prerelease"]
-                    and re.fullmatch(r"stockfish-dev-\d{8}-[a-f0-9]+", release["tag_name"])
+                    and DEV_TAG.fullmatch(release["tag_name"])
                     and not release["draft"]), None)
     if release is None:
         raise ValueError("No official Stockfish development release was found.")
     tag = release["tag_name"]
+    revision = DEV_TAG.fullmatch(tag).group(1)
+    with _open(f"{API}/commits/{revision}") as response:
+        commit = json.load(response)
+    sha = commit["sha"]
+    if not re.fullmatch(r"[a-f0-9]{40}", sha) or not sha.startswith(revision):
+        raise ValueError("GitHub returned a different Stockfish commit than the release tag.")
+    commit_date = date.fromisoformat(commit["commit"]["committer"]["date"].split("T", 1)[0])
+    title = f"Stockfish dev {commit_date:%m-%d-%Y} ({sha[:8]})"
+
+    executable = Path(filename).with_suffix(".exe").name
+    destination = root / sha / architecture
+    installed = destination / executable
+    if installed.is_file():
+        return title, installed
+    if root.is_dir():
+        # The first downloader stored builds by tag. Keep those paths working.
+        for directory in sorted(root.iterdir()):
+            legacy = DEV_TAG.fullmatch(directory.name)
+            if legacy and sha.startswith(legacy.group(1)):
+                previous = directory / architecture / executable
+                if previous.is_file():
+                    return title, previous
+
     asset = next((asset for asset in release["assets"] if asset["name"] == filename), None)
     if asset is None:
         raise ValueError(f"{tag} has no Windows {architecture} download.")
@@ -41,11 +67,6 @@ def install_development(root, architecture, status):
             or not 0 < size <= MAX_DOWNLOAD):
         raise ValueError("The official release did not provide valid download verification data.")
 
-    executable = Path(filename).with_suffix(".exe").name
-    destination = root / tag / architecture
-    installed = destination / executable
-    if installed.is_file():
-        return tag, installed
     destination.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=destination.parent) as folder:
         archive = Path(folder) / filename
@@ -82,4 +103,4 @@ def install_development(root, architecture, status):
         except OSError:
             if not installed.is_file():
                 raise
-    return tag, installed
+    return title, installed
