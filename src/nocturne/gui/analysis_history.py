@@ -6,7 +6,7 @@ from collections import OrderedDict
 import chess
 from PySide6.QtCore import QTimer, Signal, Qt
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea,
-                              QPushButton, QComboBox, QLabel, QFrame)
+                              QPushButton, QComboBox, QLabel, QFrame, QSizePolicy)
 from .candidates import CandidatePanel
 from .moves import MoveText
 from ..snapshots import node_label
@@ -405,6 +405,7 @@ class AnalysisHistory(QWidget):
         self.set_focus(True)
         note = QLabel(f'Checking plies {self.min_ply}–{self.max_ply} in the displayed lines…')
         note.setWordWrap(True)
+        note.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         self.results.addWidget(note)
 
         def render():
@@ -423,7 +424,9 @@ class AnalysisHistory(QWidget):
             for entry in entries[:24]:
                 frame = QFrame()
                 frame.setObjectName('panel')
+                frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
                 card = QVBoxLayout(frame)
+                card.setSpacing(6)
                 description = QLabel(entry['text'])
                 description.setWordWrap(True)
                 description.setTextFormat(Qt.TextFormat.PlainText)
