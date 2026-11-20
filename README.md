@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.192 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.192/NocturneChess-0.5.7.192-Windows-x64-unsigned.zip).** Choosing a thread count turns off the optional one-thread checkpoint override. The Threads menu shows the confirmed engine count when it differs from the saved setting. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.191 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.191/NocturneChess-0.5.7.191-Windows-x64-unsigned.zip).** Stockfish development profiles show the Git commit date and short ID. The downloader reuses installed copies of the same commit, including builds saved by 190, and keeps distinct commits in separate profiles. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.190 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.190/NocturneChess-0.5.7.190-Windows-x64-unsigned.zip).** In UCI engine profiles, choose **Download latest Stockfish development build** to fetch and verify the official Windows prerelease and add it as a separate engine profile. Windows launch errors point to Windows Security notifications. Windows tests and packaged startup checks passed.
