@@ -1,0 +1,30 @@
+name: Publish 184 download
+on:
+  push:
+    branches: [publish/184-download]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for verified Windows build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: timeout 900 gh run watch 44683449541 --exit-status --interval 20
+      - uses: actions/download-artifact@v4
+        with:
+          name: NocturneChess-0.5.7.184-Windows-x64-unsigned
+          run-id: 44683449541
+          github-token: ${{ github.token }}
+          path: download
+      - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd download
+          zip -qr ../NocturneChess-0.5.7.184-Windows-x64-unsigned.zip .
+          gh release create v0.5.7.184 ../NocturneChess-0.5.7.184-Windows-x64-unsigned.zip --target e0237c7d2479a88841b525024c45d549fe051e17 --title "Nocturne Chess 0.5.7.184" --notes "Windows x64 build with a fix for locked GPU runtime files during Maia setup."
