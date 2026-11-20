@@ -179,3 +179,32 @@ class CheckpointTests(unittest.TestCase):
         board = chess.Board()
         moves = ['f2f3', 'e7e5', 'g2g4', 'd8h4']
         self.assertTrue(any('Mate' in text for _, text in tactic_patterns(board.fen(), moves)))
+
+    def test_delayed_recapture_is_not_a_sacrifice(self):
+        fen = 'rnbqkbnr/ppp1pppp/8/3p4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 2'
+        pv = ['e2e4', 'd5e4', 'b1c3', 'g8f6', 'c3e4']
+        self.assertFalse(any('sacrifice' in text for _, text in tactic_patterns(fen, pv, min_ply=1)))
+
+    def test_tactic_scan_merges_shared_lines_and_exposes_preview_actions(self):
+        from PySide6.QtTest import QTest
+        from PySide6.QtWidgets import QPushButton
+        widget = self.widget
+        widget.position('fork', '4k3/8/3r1q2/8/8/2N5/8/4K3 w - - 0 1', 1)
+        widget.min_ply = 1
+        widget.live = {rank: dict(pv=['c3e4'], multipv=rank, depth=12) for rank in (1, 2)}
+        previews, inserted = [], []
+        widget.preview.connect(lambda pv, ply, text: previews.append((pv, ply)))
+        widget.insert.connect(inserted.append)
+        widget.scan()
+        QTest.qWait(50)
+        self.assertFalse(widget.scanning)
+        self.assertIn('1 ideas in 2 lines', widget.results.itemAt(0).widget().text())
+        card = widget.results.itemAt(1).widget()
+        buttons = {button.text(): button for button in card.findChildren(QPushButton)}
+        buttons['Before idea'].click()
+        buttons['Show idea'].click()
+        buttons['Add line'].click()
+        self.assertEqual([ply for _, ply in previews], [0, 1])
+        self.assertEqual(inserted, [['c3e4']])
+        widget.cancel()
+        self.assertTrue(widget.result_scroll.isHidden())

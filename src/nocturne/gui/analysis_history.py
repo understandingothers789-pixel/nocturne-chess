@@ -1,14 +1,16 @@
 """Optional interactive node checkpoints and bounded, cancellable tactic scans."""
 from copy import deepcopy
+import re
 from collections import OrderedDict
 
 import chess
 from PySide6.QtCore import QTimer, Signal, Qt
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea,
-                              QPushButton, QComboBox, QLabel, QSizePolicy)
+                              QPushButton, QComboBox, QLabel, QFrame)
 from .candidates import CandidatePanel
 from .moves import MoveText
 from ..snapshots import node_label
+from ..engine.uci_types import score_label
 
 
 def exchange_description(white_lost, black_lost):
@@ -86,25 +88,27 @@ def tactic_patterns(fen, pv, plies=12, min_ply=4):
         color = board.turn
         piece = board.piece_at(move.from_square)
         san = board.san(move)
-        captured = board.piece_at(move.to_square)
         old_pins = {s for s in chess.SQUARES if board.color_at(s) == (not color)
                     and board.is_pinned(not color, s)}
         old_attacks = {(s, t) for s in chess.SQUARES if board.color_at(s) == color
                        and s != move.from_square for t in board.attacks(s)
                        if board.color_at(t) == (not color)}
         board.push(move)
-        prefix = f'{san} · ply {ply}'
+        prefix = f'{"White" if color else "Black"} plays {san} · ply {ply}'
         if board.is_checkmate():
             found.append((ply, f'Mate on this line · {prefix}'))
         targets = [s for s in board.attacks(move.to_square)
                    if board.piece_at(s) and board.color_at(s) != color
                    and values[board.piece_type_at(s)] > values[piece.piece_type]]
-        if len(targets) >= 2:
-            found.append((ply, f'Fork pattern · {prefix}'))
+        if len(targets) >= 2 and not board.is_pinned(color, move.to_square):
+            target_names = ', '.join(f'{chess.piece_name(board.piece_type_at(s))} on {chess.square_name(s)}'
+                                     for s in sorted(targets))
+            found.append((ply, f'Fork pattern · {prefix} · attacks {target_names}'))
         for square in chess.SQUARES:
             if (board.color_at(square) == (not color) and square not in old_pins
                     and board.is_pinned(not color, square)):
-                found.append((ply, f'Absolute pin pattern · {prefix}'))
+                found.append((ply, f'Absolute pin pattern · {prefix} · {chess.piece_name(board.piece_type_at(square))}'
+                              f' on {chess.square_name(square)} is pinned to its king'))
                 break
         revealed = [(s, t) for s in chess.SQUARES if board.color_at(s) == color
                     and s != move.to_square for t in board.attacks(s)
@@ -116,20 +120,26 @@ def tactic_patterns(fen, pv, plies=12, min_ply=4):
         attackers = board.attackers(color, board.king(not color))
         if board.is_check() and move.to_square not in attackers:
             found.append((ply, f'Discovered check · {prefix}'))
-        # Only flag an actual capture of the offered piece on the next ply;
-        # exclude equal exchanges and immediate material recovery.
-        if ply < len(pv) and not captured:
+        # Follow several replies to exclude ordinary delayed material recovery.
+        horizon = min(len(pv), plies, ply + 5)
+        if ply < horizon and not move.promotion:
             reply = board.parse_uci(pv[ply])
             if reply.to_square == move.to_square and board.is_capture(reply):
+                def balance(position):
+                    return sum(values[p.piece_type] * (1 if p.color == color else -1)
+                               for p in position.piece_map().values() if p.piece_type != chess.KING)
+
+                before = board.copy()
+                before.pop()
                 after = board.copy()
                 after.push(reply)
-                recovery = 0
-                if ply + 1 < len(pv):
-                    recapture = after.parse_uci(pv[ply + 1])
-                    victim = after.piece_at(recapture.to_square)
-                    recovery = values.get(victim.piece_type, 0) if victim else 0
-                if recovery < values[piece.piece_type]:
-                    found.append((ply, f'Possible {chess.piece_name(piece.piece_type)} sacrifice · {prefix}'))
+                for text in pv[ply + 1:horizon]:
+                    after.push_uci(text)
+                loss = balance(before) - balance(after)
+                if loss > 0 and not after.is_checkmate():
+                    found.append((ply, f'Possible {chess.piece_name(piece.piece_type)} sacrifice · {prefix}'
+                                  f' · accepted on this line; material deficit persists through ply {horizon}'
+                                  f' (about {loss} pawn units)'))
     return [(ply, text) for ply, text in found if ply >= min_ply]
 
 
@@ -172,7 +182,7 @@ class AnalysisHistory(QWidget):
         self.mode.currentIndexChanged.connect(self._mode_changed)
         row.addWidget(self.mode)
         self.find = QPushButton('Find tactics')
-        self.find.setToolTip('Stop analysis first. Check the configured ply range of each displayed line for tactical patterns and possible sacrifices; results are not engine verification.')
+        self.find.setToolTip('Stop analysis first. Review the displayed lines for sacrifices, material trades and tactical ideas. More details controls the first and last ply. A ply is one move by either player.')
         self.find.clicked.connect(self.scan)
         row.addWidget(self.find)
         self.reorder = QPushButton('Update move order')
@@ -190,8 +200,15 @@ class AnalysisHistory(QWidget):
         self.panel.set_maia(enabled=False)
         self.panel.hide()
         layout.addWidget(self.panel)
-        self.results = QVBoxLayout()
-        layout.addLayout(self.results)
+        self.result_scroll = QScrollArea()
+        self.result_scroll.setWidgetResizable(True)
+        self.result_scroll.setMaximumHeight(300)
+        self.result_scroll.hide()
+        result_body = QWidget()
+        self.results = QVBoxLayout(result_body)
+        self.results.setContentsMargins(0, 0, 0, 0)
+        self.result_scroll.setWidget(result_body)
+        layout.addWidget(self.result_scroll)
         self.poll = QTimer(self)
         self.poll.setInterval(250)
         self.poll.timeout.connect(self._availability)
@@ -344,6 +361,7 @@ class AnalysisHistory(QWidget):
         self.scanning = False
         self.find.setText('Find tactics')
         self._clear_layout(self.results)
+        self.result_scroll.hide()
 
     def scan(self):
         if self.scanning:
@@ -356,32 +374,88 @@ class AnalysisHistory(QWidget):
         self.find.setText('Cancel')
         token = self.scan_token
         tasks = iter(sorted(deepcopy(self.shown()).items()))
-        note = QLabel(f'Checking plies {self.min_ply}–{self.max_ply} per line. Pattern hints, not verified combinations.')
+        findings = {}
+        line_count = 0
+        truncated = 0
+        self.result_scroll.show()
+        note = QLabel(f'Checking plies {self.min_ply}–{self.max_ply} in the displayed lines…')
         note.setWordWrap(True)
         self.results.addWidget(note)
 
+        def render():
+            self.scanning = False
+            self.find.setText('Find tactics')
+            entries = sorted(findings.values(), key=lambda entry: (
+                0 if entry['text'].startswith('Mate') else
+                1 if 'sacrifice' in entry['text'] or entry['text'].startswith('Material imbalance') else 2,
+                entry['ply']))
+            note.setText(
+                f'{len(entries)} ideas in {line_count} lines · plies {self.min_ply}–{self.max_ply}. '
+                'These describe saved engine continuations. Alternative defenses and sacrifice soundness are unverified.'
+                + (f' {truncated} lines ended early at an invalid move.' if truncated else '')
+                + (' No ideas found in this range. Change First/Last tactic ply in More details to look earlier or deeper.'
+                   if not entries else ''))
+            for entry in entries[:24]:
+                frame = QFrame()
+                frame.setObjectName('panel')
+                card = QVBoxLayout(frame)
+                description = QLabel(entry['text'])
+                description.setWordWrap(True)
+                description.setTextFormat(Qt.TextFormat.PlainText)
+                card.addWidget(description)
+                source = QLabel('Lines ' + ', '.join(str(r) for r in entry['ranks'])
+                                + f" · {entry['root_move']} · depth {entry['depth']} · White eval {entry['evaluation']}")
+                source.setWordWrap(True)
+                card.addWidget(source)
+                actions = QHBoxLayout()
+                for title, ply in (('Before idea', entry['setup']),
+                                   ('Show idea', entry['ply'])):
+                    button = QPushButton(title)
+                    button.setToolTip('Preview this position on the small board.')
+                    button.clicked.connect(lambda checked=False, p=entry['pv'], n=ply, t=entry['text']:
+                                           self.preview.emit(p, n, t))
+                    actions.addWidget(button)
+                insert = QPushButton('Add line')
+                insert.setToolTip('Add the captured continuation as a variation in the current game.')
+                insert.clicked.connect(lambda checked=False, p=entry['pv']: self.insert.emit(p))
+                actions.addWidget(insert)
+                card.addLayout(actions)
+                self.results.addWidget(frame)
+            if len(entries) > 24:
+                self.results.addWidget(QLabel(f'Showing the first 24 of {len(entries)} ideas. Narrow the ply range to focus the scan.'))
+
         def step():
+            nonlocal line_count, truncated
             if token != self.scan_token or self.busy():
                 if token == self.scan_token:
                     self.cancel()
                 return
             task = next(tasks, None)
             if task is None:
-                self.scanning = False
-                self.find.setText('Find tactics')
+                render()
                 return
             rank, info = task
-            try:
-                hints = tactic_patterns(self.root, info['pv'], self.max_ply, self.min_ply)
-            except ValueError:
-                hints = []
-            if not hints:
-                self.results.addWidget(QLabel(f'Line {rank}: no clear pattern found within checked moves.'))
+            line_count += 1
+            board = chess.Board(self.root)
+            pv = []
+            for text in info.get('pv', []):
+                try:
+                    board.push_uci(text)
+                except ValueError:
+                    truncated += 1
+                    break
+                pv.append(text)
+            hints = tactic_patterns(self.root, pv, self.max_ply, self.min_ply)
             for ply, text in hints:
-                button = QPushButton(f'Line {rank}: {text}')
-                button.setToolTip(text)
-                button.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-                button.clicked.connect(lambda checked=False, p=info['pv'], n=ply: self.preview.emit(p, n, 'Tactic pattern'))
-                self.results.addWidget(button)
+                key = (tuple(pv[:ply]), text)
+                if key in findings:
+                    findings[key]['ranks'].append(rank)
+                    continue
+                sequence = re.search(r'plies (\d+)–', text)
+                setup = int(sequence.group(1)) - 1 if sequence else max(0, ply - 1)
+                findings[key] = dict(pv=pv, ply=ply, setup=setup, text=text,
+                                     ranks=[rank], depth=info.get('depth', '—'),
+                                     root_move=chess.Board(self.root).san(chess.Move.from_uci(pv[0])),
+                                     evaluation=score_label(info, self.turn) if 'score_type' in info else '—')
             QTimer.singleShot(0, self, step)
         QTimer.singleShot(0, self, step)
