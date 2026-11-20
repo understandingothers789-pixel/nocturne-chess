@@ -1,0 +1,30 @@
+name: Publish 189 download
+on:
+  push:
+    branches: [publish/189-download]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for verified Windows build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: timeout 1200 gh run watch 44798461732 --exit-status --interval 20
+      - uses: actions/download-artifact@v4
+        with:
+          name: NocturneChess-0.5.7.189-Windows-x64-unsigned
+          run-id: 44798461732
+          github-token: ${{ github.token }}
+          path: download
+      - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd download
+          zip -qr ../NocturneChess-0.5.7.189-Windows-x64-unsigned.zip .
+          gh release create v0.5.7.189 ../NocturneChess-0.5.7.189-Windows-x64-unsigned.zip --target 12dd87d44dfa3c0604a074dd96f024bfa0825bd9 --title "Nocturne Chess 0.5.7.189" --notes "Automatic per-profile UCI option discovery and compact tactic continuations."
