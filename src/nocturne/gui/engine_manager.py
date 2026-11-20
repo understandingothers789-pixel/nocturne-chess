@@ -4,6 +4,7 @@ from dataclasses import asdict
 from pathlib import Path
 from uuid import uuid4
 
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -39,6 +40,10 @@ class EngineManager(QDialog):
         self.connection.discovered.connect(self._discovered)
         self.connection.failed.connect(self._failed)
         self.widgets = {}
+        self._detect_id = None
+        self._detect_timer = QTimer(self)
+        self._detect_timer.setSingleShot(True)
+        self._detect_timer.timeout.connect(self._detect)
         layout = QVBoxLayout(self)
         self.selector = QComboBox()
         for p in self.profiles:
@@ -118,13 +123,38 @@ class EngineManager(QDialog):
                     value = w.text()
                 p["values"][name] = value
 
+    @staticmethod
+    def _signature(path):
+        try:
+            stat = Path(path).stat()
+            return f'{stat.st_size}:{stat.st_mtime_ns}'
+        except OSError:
+            return ''
+
     def _select(self):
+        self._detect_timer.stop()
+        self._detect_id = None
+        self.connection.close()
         self._remember()
         p = self._profile()
         self.selected = p["id"] if p else ""
         self.label.setText(p.get("label", p.get("name", "")) if p else "")
         self.path.setText(p["path"] if p else "")
         self._render(p.get("options", {}) if p else {})
+        self.diagnostics.clear()
+        if not p:
+            self.status.setText('Add an executable to discover its supported UCI options.')
+        elif (not p.get('options_detected') or not p.get('options_signature')
+              or p['options_signature'] != self._signature(p['path'])):
+            self.status.setText('Detecting supported options for this executable…')
+            self._detect_timer.start(0)
+        else:
+            self._ready_status(p)
+
+    def _ready_status(self, p):
+        count = len(p.get('options', {}))
+        self.status.setText(f"{p.get('name', 'Engine')} · {count} advertised options"
+                            + (' · This engine advertises no configurable options.' if not count else ''))
 
     def _render(self, options):
         while self.form.rowCount():
@@ -198,9 +228,11 @@ class EngineManager(QDialog):
             self.selector.removeItem(self.selector.currentIndex())
 
     def _detect(self):
+        self._detect_timer.stop()
         p = self._profile()
         if p:
             self._remember()
+            self._detect_id = p["id"]
             self.status.setText("Waiting for uci / readyok…")
             try:
                 self.connection.launch(p["path"])
@@ -209,12 +241,15 @@ class EngineManager(QDialog):
 
     def _discovered(self, data):
         p = self._profile()
-        if not p or p["path"] != data["path"]:
+        if (not p or self._detect_id != p["id"]
+                or Path(p["path"]).resolve() != Path(data["path"]).resolve()):
             return
+        self._remember()
         p["name"] = data["name"]
         p["options"] = {n: asdict(o) for n, o in data["options"].items()}
         p["options_detected"] = True
-        self.status.setText(data["name"] + " · ready · " + str(len(data["options"])) + " advertised options")
+        p['options_signature'] = self._signature(p['path'])
+        self._ready_status(p)
         self._render(p["options"])
         self.diagnostics.setPlainText("\n".join(self.connection.log))
 
@@ -242,5 +277,6 @@ class EngineManager(QDialog):
         self.accept()
 
     def done(self, result):
+        self._detect_timer.stop()
         self.connection.close()
         super().done(result)
