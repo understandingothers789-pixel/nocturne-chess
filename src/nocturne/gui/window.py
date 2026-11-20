@@ -1521,20 +1521,13 @@ class MainWindow(QMainWindow):
     def keyPressEvent(self, event):
         key, modifiers = event.key(), event.modifiers()
         brackets = (Qt.Key.Key_BracketLeft, Qt.Key.Key_BracketRight)
-        braces = (Qt.Key.Key_BraceLeft, Qt.Key.Key_BraceRight)
-        if (key in (*brackets, *braces)
-                and modifiers in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.ShiftModifier,
-                                  Qt.KeyboardModifier.ControlModifier)
+        if (key in brackets
+                and modifiers in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.ControlModifier)
                 and not isinstance(QApplication.focusWidget(), (QPlainTextEdit, QLineEdit))):
-            if modifiers == Qt.KeyboardModifier.ControlModifier:
-                setting = "auto_eval_nodes"
-            elif key in braces or modifiers == Qt.KeyboardModifier.ShiftModifier:
-                setting = "analysis_nodes"
-            else:
-                setting = "auto_play_nodes"
-            increase = key in (Qt.Key.Key_BracketRight, Qt.Key.Key_BraceRight)
             if not event.isAutoRepeat():
-                self._step_node_limit(setting, increase)
+                settings = (("analysis_nodes", "auto_eval_nodes") if modifiers == Qt.KeyboardModifier.ControlModifier
+                            else ("auto_play_nodes",))
+                self._step_node_limits(settings, key == Qt.Key.Key_BracketRight)
             event.accept()
             return
         # Qt can deliver keys before Windows has activated a newly shown
@@ -3529,7 +3522,19 @@ class MainWindow(QMainWindow):
         "auto_play_nodes": "Self-play nodes per move",
     }
 
-    def _step_node_limit(self, setting, increase):
+    def _step_node_limits(self, settings, increase):
+        targets = {setting: self._next_node_limit(setting, increase) for setting in settings}
+        changes = {setting: target for setting, target in targets.items()
+                   if target != self._current_node_limit(setting)}
+        if changes:
+            self._set_node_limits(changes)
+        message = " · ".join(
+            f"{self._NODE_LIMIT_LABELS[setting]}: " + (f"{target:,}" if target else "Unlimited")
+            for setting, target in targets.items()
+        )
+        self.statusBar().showMessage(message, 3000)
+
+    def _next_node_limit(self, setting, increase):
         current = self._current_node_limit(setting)
         presets = self._SELF_PLAY_NODE_STEPS if setting == "auto_play_nodes" else self._STANDARD_NODE_PRESETS
         # A normal analysis with no node cap can start from its last configured cap.
@@ -3541,25 +3546,25 @@ class MainWindow(QMainWindow):
             target = min((nodes for nodes in presets if nodes > current), default=current)
         else:
             target = max((nodes for nodes in presets if nodes < current), default=current)
-        if target != current:
-            self._set_node_limit(setting, target)
-        limit = f"{target:,}" if target else "Unlimited"
-        self.statusBar().showMessage(f"{self._NODE_LIMIT_LABELS[setting]} · {limit}", 3000)
+        return target
 
     def _set_auto_eval_limit(self, nodes):
         self._set_node_limit("auto_eval_nodes", nodes)
 
     def _set_node_limit(self, key, nodes):
-        self.config[key] = int(nodes)
-        if key == "analysis_nodes":
-            self.config["analysis_kind"] = "nodes" if nodes else "infinite"
-        if key == "auto_eval_nodes":
+        self._set_node_limits({key: int(nodes)})
+
+    def _set_node_limits(self, limits):
+        self.config.update(limits)
+        if "analysis_nodes" in limits:
+            self.config["analysis_kind"] = "nodes" if limits["analysis_nodes"] else "infinite"
+        if "auto_eval_nodes" in limits:
             self.config["auto_eval_limit_version"] = 2
         self._save()
         self._refresh_engine_menus()
         # A running normal search can adopt the new cap immediately. The two
         # batch modes read their caps when the next run starts.
-        if (key == "analysis_nodes" and self.analysis_mode and self._analysis_enabled
+        if ("analysis_nodes" in limits and self.analysis_mode and self._analysis_enabled
                 and not self._review and not self._auto_play_active):
             self._stop_engine()
             self._analysis_context = None
@@ -3602,9 +3607,9 @@ class MainWindow(QMainWindow):
         if key == "auto_play_nodes":
             menu.menuAction().setToolTip("[ lowers and ] raises the self-play node limit for the next move.")
         elif key == "auto_eval_nodes":
-            menu.menuAction().setToolTip("Ctrl+[ lowers and Ctrl+] raises the limit for the next auto-evaluation run.")
+            menu.menuAction().setToolTip("Ctrl+[ lowers and Ctrl+] raises the limits for Analyze and the next auto-evaluation run.")
         else:
-            menu.menuAction().setToolTip("Shift+[ lowers and Shift+] raises the node limit for Analyze.")
+            menu.menuAction().setToolTip("Ctrl+[ lowers and Ctrl+] raises the limits for Analyze and auto-evaluation together.")
         if current and current not in values:
             values = (current, *values)
         if allow_unlimited:
