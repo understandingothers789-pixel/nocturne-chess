@@ -1521,6 +1521,19 @@ class MainWindow(QMainWindow):
 
     def keyPressEvent(self, event):
         key, modifiers = event.key(), event.modifiers()
+        if (key in (Qt.Key.Key_Minus, Qt.Key.Key_Equal)
+                and modifiers == Qt.KeyboardModifier.NoModifier
+                and not isinstance(QApplication.focusWidget(), (QPlainTextEdit, QLineEdit))):
+            profile = self._profile()
+            option = profile.get("options", {}).get("MultiPV") if profile else None
+            if option:
+                if not event.isAutoRepeat():
+                    step = 1 if key == Qt.Key.Key_Equal else -1
+                    count = self._effective_multipv() + step
+                    if 1 <= count <= min(32, int(option["maximum"])):
+                        self._set_multipv(count, start_analysis=True)
+                event.accept()
+                return
         brackets = (Qt.Key.Key_BracketLeft, Qt.Key.Key_BracketRight)
         if (key in brackets
                 and modifiers in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.ControlModifier)
@@ -3506,15 +3519,16 @@ class MainWindow(QMainWindow):
         maximum = min(32, int(option["maximum"])) if option else (1 if profile and profile.get("options_detected") else 32)
         return max(1, min(maximum, self.config.get("multipv", 1)))
 
-    def _set_multipv(self, count):
+    def _set_multipv(self, count, *, start_analysis=False):
         profile = self._profile()
         option = profile.get("options", {}).get("MultiPV") if profile else None
         maximum = min(32, int(option["maximum"])) if option else 1
         if not 1 <= count <= maximum:
             self._error("MultiPV unavailable", f"Choose 1–{maximum} lines for this engine")
             return
-        self._cancel_review()
-        self._stop_engine()
+        if not start_analysis:
+            self._cancel_review()
+            self._stop_engine()
         self.config["multipv"] = count
         self.maia_controls.move_limit.setValue(count)
         self.maia_controls.all_moves.setText(f"Top {count} Maia moves")
@@ -3523,7 +3537,10 @@ class MainWindow(QMainWindow):
         self._clear_analysis_output()
         self._save()
         self._refresh_engine_menus()
-        self._schedule_engine()
+        if start_analysis:
+            self._start_analysis()
+        else:
+            self._schedule_engine()
 
     def _custom_multipv(self):
         profile = self._profile()
@@ -3761,6 +3778,7 @@ class MainWindow(QMainWindow):
         self._exclusive_menu_choices(self.multipv_menu)
         self.multipv_menu.addSeparator()
         self.multipv_menu.addAction("Custom…", self._custom_multipv)
+        self.multipv_menu.addAction("− / = · Change MultiPV and start analysis").setEnabled(False)
         self.multipv_menu.addAction("More lines divide search effort").setEnabled(False)
         self.multipv_menu.addAction(f"Display range: 1–{maximum}").setEnabled(False)
 

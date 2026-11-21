@@ -426,6 +426,25 @@ class QtIntegration(unittest.TestCase):
             self.wait_until(lambda: window.engine.connection.confirmed.get("Threads") == "8")
             self.assertIn("> setoption name Threads value 8", window.engine.connection.log)
 
+    def test_multipv_keys_start_and_restart_analysis(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            window.profiles = [self.profile()]
+            window.config.update(engine_id="simulator", analysis_kind="infinite", multipv=1)
+            window._apply_settings()
+            window._schedule_engine()
+            self.wait_until(lambda: bool(window.candidates.lines))
+            window._halt_analysis()
+            window.show()
+            QTest.keyClick(window, Qt.Key.Key_Equal)
+            self.wait_until(lambda: len(window.candidates.lines) == 2)
+            self.assertTrue(window.engine.busy)
+            self.assertEqual(window.engine.connection.confirmed["MultiPV"], "2")
+            QTest.keyClick(window, Qt.Key.Key_Minus)
+            self.wait_until(lambda: window.engine.connection.confirmed.get("MultiPV") == "1")
+            self.assertEqual(window.config["multipv"], 1)
+            self.assertTrue(window.engine.busy)
+
     def test_multipv_menu_controls_live_and_bounded_search_without_explore_mode(self):
         with self.workspace() as window:
             window.timer.stop()
