@@ -2357,7 +2357,9 @@ class MainWindow(QMainWindow):
         self.maia_controls.leela.blockSignals(True)
         self.maia_controls.leela.setChecked(self.config.get('leela_enabled', False))
         self.maia_controls.leela.blockSignals(False)
-        resume_leela = leela and not self.leela_panel.active and self._analysis_enabled
+        resume_leela = leela and self._analysis_enabled and (
+            not self.leela_panel.active or self.leela_panel._paused_by_user
+        ) and not self.leela_panel.stopped_explicitly
         self.leela_panel.active = leela
         self.maia_controls.rating.setVisible(not leela or self.config.get("maia_enabled", True))
         self.maia_controls.all_moves.setVisible(not leela or self.config.get("maia_enabled", True))
@@ -5579,6 +5581,9 @@ class MainWindow(QMainWindow):
             "options": dict(options),
             "multipv": count,
         }
+        if kind == "analysis" and self.leela_panel.active and self.leela_panel._paused_by_user:
+            if not self.leela_panel.stopped_explicitly and not self.config.get("leela_on_demand", False):
+                self.leela_panel.request(self.game, force=True, reuse_completed=True)
         self.engine_state.setText(self._active_engine_name() + " · connecting / analyzing")
         self.quick_analysis_button.setText("Pause auto-play" if self._auto_play_active else "Stop" if kind == "analysis" else "Analyze")
         self.board_view.interactive = kind == "analysis"

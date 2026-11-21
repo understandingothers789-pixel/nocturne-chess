@@ -128,6 +128,7 @@ class LeelaPanel(QWidget):
         self.root = Path(root) / 'leela'
         self.identity = None
         self._paused_by_user = False
+        self.stopped_explicitly = False
         self.follow_stockfish = False
         self._resume_after_setup = False
         self._startup_retried = False
@@ -315,7 +316,7 @@ class LeelaPanel(QWidget):
         restart.clicked.connect(lambda: self.request(self.game, force=True, follow_stockfish=self.follow_stockfish) if self.game else None)
         row.addWidget(restart)
         stop = QPushButton('Stop Leela')
-        stop.clicked.connect(self.pause_search)
+        stop.clicked.connect(lambda: self.pause_search(explicit=True))
         row.addWidget(stop)
         layout.addLayout(row)
         self.lines = {}
@@ -344,9 +345,10 @@ class LeelaPanel(QWidget):
         self.workload_summary.setText(f'Effective: batch {batch} · {threads} search thread(s) · {speed}. '
                                       'Lower workload means less analysis in a timed search. GPU power spikes are still possible.')
 
-    def pause_search(self, *, preserve_completed=False):
+    def pause_search(self, *, preserve_completed=False, explicit=False):
         if preserve_completed and self.identity in self.completed_cache:
             return
+        self.stopped_explicitly |= explicit
         self._paused_by_user = True
         self._resume_after_setup = False
         self.timer.stop()
@@ -448,6 +450,7 @@ class LeelaPanel(QWidget):
         self.follow_stockfish = follow_stockfish
         if force:
             self._paused_by_user = False
+            self.stopped_explicitly = False
         key = (game.board.fen(), tuple(m.uci() for m in game.moves[:game.cursor]),
                self.config['leela_side'], self.config['leela_rating'], self.config['leela_gap'],
                self.config['leela_seconds'], self.config['leela_device'],
@@ -479,7 +482,8 @@ class LeelaPanel(QWidget):
         self.completed_cache.discard(key)
         if (self.config.get('leela_on_demand', False) or self._paused_by_user) and not force:
             self.timer.stop()
-            self._status('Leela · on demand · click Analyze again to start')
+            reason = 'on demand' if self.config.get('leela_on_demand', False) else 'paused'
+            self._status(f'Leela · {reason} · click Analyze again to start')
             return
         self._status('Leela · waiting to analyze…')
         self.timer.start(200)

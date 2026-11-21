@@ -69,6 +69,9 @@ class LeelaLineTests(unittest.TestCase):
                 self.assertFalse(panel._paused_by_user)
                 panel.pause_search()
                 window._request_maia()
+                self.assertTrue(panel.timer.isActive())
+                panel.pause_search(explicit=True)
+                window._request_maia()
                 self.assertFalse(panel.timer.isActive())
             finally:
                 window.close()
