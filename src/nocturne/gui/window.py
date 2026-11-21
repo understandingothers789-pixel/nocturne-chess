@@ -2344,6 +2344,7 @@ class MainWindow(QMainWindow):
         self.maia_controls.leela.blockSignals(True)
         self.maia_controls.leela.setChecked(self.config.get('leela_enabled', False))
         self.maia_controls.leela.blockSignals(False)
+        resume_leela = leela and not self.leela_panel.active and self._analysis_enabled
         self.leela_panel.active = leela
         self.maia_controls.rating.setVisible(not leela or self.config.get("maia_enabled", True))
         self.maia_controls.all_moves.setVisible(not leela or self.config.get("maia_enabled", True))
@@ -2351,7 +2352,10 @@ class MainWindow(QMainWindow):
             self.config.get('show_maia_eval_bar', True) and not leela)
         if leela:
             if not (self._review and self._review.get("kind") == "auto_eval"):
-                self.leela_panel.request(self.game)
+                self.leela_panel.request(
+                    self.game, force=resume_leela and not self.config.get("leela_on_demand", False),
+                    reuse_completed=resume_leela,
+                )
         else:
             self.leela_panel.stop()
         self.maia.set_rating_range(self.config.get("maia_rating_min", 600), self.config.get("maia_rating_max", 3000))

@@ -36,6 +36,7 @@ class EngineController(QObject):
         self._limit_reached = False
         self._pv_stop_sent = False
         self._validated_pvs = OrderedDict()
+        self.startup_output_timeout = 3
         self._startup_watch = QTimer(self)
         self._startup_watch.setInterval(3000)
         self._startup_watch.timeout.connect(self._check_startup)
@@ -260,8 +261,8 @@ class EngineController(QObject):
         if self.connection.phase == "search" and not getattr(self.connection, "_first_output", False):
             # Count from dispatch, not from the earlier handshake or hash setup.
             import time
-            if time.perf_counter() - self.connection._search_started >= 3:
-                self._retry_startup("No engine output after three seconds")
+            if time.perf_counter() - self.connection._search_started >= self.startup_output_timeout:
+                self._retry_startup(f"No engine output after {self.startup_output_timeout} seconds")
 
     def _retry_startup(self, reason):
         if not self._busy or not self._startup_request:

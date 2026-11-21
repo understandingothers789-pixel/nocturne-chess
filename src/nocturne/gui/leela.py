@@ -130,6 +130,7 @@ class LeelaPanel(QWidget):
         self._paused_by_user = False
         self.follow_stockfish = False
         self._resume_after_setup = False
+        self._startup_retried = False
         self.game = None
         self.active = False
         self.exe = self.weights = ''
@@ -141,6 +142,7 @@ class LeelaPanel(QWidget):
         self._launched_batch = None
         self.engine = EngineController(self)
         self.engine.connection.timeout_ms = 120000
+        self.engine.startup_output_timeout = 30
         self.engine.message.connect(self._message)
         self.render_timer = QTimer(self)
         self.render_timer.setSingleShot(True)
@@ -461,6 +463,7 @@ class LeelaPanel(QWidget):
         self.engine.stop()
         self.render_timer.stop()
         self.identity = key
+        self._startup_retried = False
         self.lines = {}
         self.preview_end.emit()
         for moves, badge, frame in self.rows.values():
@@ -479,7 +482,7 @@ class LeelaPanel(QWidget):
             self._status('Leela · on demand · click Analyze again to start')
             return
         self._status('Leela · waiting to analyze…')
-        self.timer.start()
+        self.timer.start(200)
 
     def _start(self):
         if not self.active or not self.game or self._paused_by_user:
@@ -516,6 +519,7 @@ class LeelaPanel(QWidget):
                    'Threads': threads, 'NNCacheSize': 200000,
                    'NodesPerSecondLimit': nps,
                    'MinibatchSize': batch}
+        self._status('Leela · starting DirectML GPU analysis…')
         try:
             self.engine.start(self.game, AnalysisLimits(depth=128, seconds=cfg['leela_seconds'],
                                                          nodes=cfg['leela_nodes'] if cfg['leela_limit'] in ('nodes', 'both') else None),
@@ -525,9 +529,16 @@ class LeelaPanel(QWidget):
                               time_nodes_only=True,
                               arguments=['--backend=onnx-dml', f'--backend-opts=gpu={cfg["leela_device"]}',
                                          f'--minibatch-size={batch}', '--weights=' + self.weights])
-            self._status('Leela · DirectML GPU analysis')
         except (ValueError, OSError) as exc:
-            self._status('Leela: ' + str(exc))
+            self._startup_failure('Leela: ' + str(exc))
+
+    def _startup_failure(self, message):
+        if not self.lines and not self._startup_retried and self.active and not self._paused_by_user:
+            self._startup_retried = True
+            self._status(message + ' · retrying once…')
+            self.timer.start(1000)
+        else:
+            self._status(message)
 
     def _message(self, generation, kind, info):
         if (generation != self.engine.generation or not self.active or not self.identity or not self.game
@@ -547,8 +558,10 @@ class LeelaPanel(QWidget):
             self.render_timer.stop()
             self._render()
             nodes = max((line.get('nodes', 0) for line in self.lines.values()), default=0)
-            self._status('Leela · no analysis received · click Analyze again to retry' if not self.lines else
-                         'Leela · analysis complete' if nodes >= 10000 else
+            if not self.lines:
+                self._startup_failure('Leela · no analysis received')
+                return
+            self._status('Leela · analysis complete' if nodes >= 10000 else
                          'Leela · short search: increase the search limit for more reliable contempt results')
 
     def _wdl(self, info):

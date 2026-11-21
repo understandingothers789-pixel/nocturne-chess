@@ -41,11 +41,38 @@ class LeelaLineTests(unittest.TestCase):
                 panel.timer.stop()
                 panel._message(panel.engine.generation, 'result', {})
                 self.assertNotIn(panel.identity, panel.completed_cache)
+                self.assertTrue(panel.timer.isActive())
+                panel.timer.stop()
+                panel._message(panel.engine.generation, 'result', {})
+                self.assertFalse(panel.timer.isActive())
                 panel.request(game, force=True, reuse_completed=True)
                 self.assertTrue(panel.timer.isActive())
             finally:
                 panel.shutdown()
                 panel.deleteLater()
+                app.processEvents()
+
+    def test_enabling_leela_during_stockfish_analysis_resumes_startup(self):
+        from nocturne.gui.window import MainWindow
+
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as folder:
+            window = MainWindow(Path(folder))
+            try:
+                window.config.update(maia_enabled=False, leela_enabled=True)
+                window.analysis_mode = True
+                window._analysis_enabled = True
+                panel = window.leela_panel
+                self.assertTrue(panel._paused_by_user)
+                window._request_maia()
+                self.assertTrue(panel.timer.isActive())
+                self.assertFalse(panel._paused_by_user)
+                panel.pause_search()
+                window._request_maia()
+                self.assertFalse(panel.timer.isActive())
+            finally:
+                window.close()
+                window.deleteLater()
                 app.processEvents()
 
     def test_follow_board_flip_can_be_disabled_and_saved(self):
