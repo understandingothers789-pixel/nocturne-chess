@@ -113,6 +113,8 @@ class UciConnection(QObject):
             self.send("stop")
             self.phase = "stopping"
             self.timer.start(self.timeout_ms)
+        elif self.phase == "finishing":
+            self.running = None
         elif self.phase == "idle":
             self._prepare()
 
@@ -239,24 +241,34 @@ class UciConnection(QObject):
                 self.timer.start(self.timeout_ms)
             elif self.phase == "search" and self.running:
                 self.timer.stop()
-                self._emit_info()
                 generation = self.running[0]
+                # The last info callbacks can stop or queue another search.
+                # We already have bestmove, so no stop barrier is needed.
+                self.phase = "finishing"
+                self._emit_info()
+                if self.phase != "finishing":
+                    return
                 self.running = None
                 self.phase = "idle"
                 self.completed.emit(generation, line.split()[1])
-                if self.pending:
+                if self.pending and self.phase == "idle":
                     self._safe_prepare()
         elif self.phase == "search" and self.running:
             if info := parse_info(line):
                 if not getattr(self, "_first_output", False):
                     self._first_output = True
                     self.log.append(f"Timing: first search result {time.perf_counter() - getattr(self, '_search_started', time.perf_counter()):.3f} s")
+                running = self.running
                 if self.observe_nodes:
-                    self.observation.emit(self.running[0], info)
-                self._last_info[info["multipv"]] = (self.running[0], info)
+                    self.observation.emit(running[0], info)
+                    if self.running is not running:
+                        return
+                generation, rank = running[0], info["multipv"]
+                entry = (generation, info)
+                self._last_info[rank] = entry
                 if info.get("bound", "exact") == "exact":
-                    self._last_exact_info[info["multipv"]] = (self.running[0], info)
-                first = (self.running[0], info["multipv"])
+                    self._last_exact_info[rank] = entry
+                first = (generation, rank)
                 if first not in self._announced_ranks:
                     self._announced_ranks.add(first)
                     self._emit_info()

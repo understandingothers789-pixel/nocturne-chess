@@ -82,6 +82,67 @@ class SpeedPathTests(unittest.TestCase):
         connection.deleteLater()
         QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
+    def test_final_info_callback_can_queue_next_search(self):
+        from nocturne.gui.uci_connection import UciConnection
+
+        connection = UciConnection()
+        self.addCleanup(connection.close)
+        connection.phase = "search"
+        connection.running = (1, "position startpos", "go infinite", {}, "study")
+        completed = []
+        connection.completed.connect(lambda generation, move: completed.append((generation, move)))
+        with patch.object(connection, "send") as send:
+            connection._line("info depth 1 score cp 10 nodes 1 pv e2e4")
+            connection._line("info depth 2 score cp 20 nodes 2 pv e2e4")
+            connection.information.connect(
+                lambda *_: connection.request(2, "position startpos moves e2e4", "go infinite", {}, "study")
+            )
+            connection._line("bestmove e2e4")
+            self.assertEqual(completed, [(1, "e2e4")])
+            self.assertEqual(connection.phase, "ready")
+            self.assertNotIn(("stop",), [call.args for call in send.call_args_list])
+            connection._line("readyok")
+            self.assertEqual(connection.phase, "search")
+            self.assertEqual(connection.running[0], 2)
+
+    def test_info_observer_can_stop_the_search(self):
+        from nocturne.gui.uci_connection import UciConnection
+
+        connection = UciConnection()
+        self.addCleanup(connection.close)
+        connection.phase = "search"
+        connection.running = (1, "position startpos", "go infinite", {}, "study")
+        connection.observe_nodes = True
+        connection.observation.connect(lambda *_: connection.stop())
+        with patch.object(connection, "send"):
+            connection._line("info depth 1 score cp 10 nodes 1 pv e2e4")
+        self.assertEqual(connection.phase, "stopping")
+        self.assertFalse(connection._last_info)
+
+    def test_maia_forward_prefetch_yields_before_reading_the_rest_of_the_line(self):
+        from nocturne.gui.window import MainWindow
+
+        game = Game.from_pgn("1. e4 e5 2. Nf3 Nc6 *")
+        game.navigate(1)
+
+        class TrackedNodes(list):
+            reads = []
+
+            def __getitem__(self, index):
+                self.reads.append(index)
+                return super().__getitem__(index)
+
+        game.nodes = TrackedNodes(game.nodes)
+        histories = MainWindow._maia_histories(game, game.current_node, ["e2e4"])
+        self.assertEqual(game.nodes.reads, [])
+        self.assertEqual(next(histories), ["e2e4", "e7e5"])
+        self.assertNotIn(game._line_nodes[-1], game.nodes.reads)
+        self.assertEqual(list(histories), [
+            ["e2e4", "e7e5", "g1f3"],
+            ["e2e4", "e7e5", "g1f3", "b8c6"],
+            [],
+        ])
+
     def test_fast_pvs_match_rules_wrapper_and_leave_root_unchanged(self):
         cases = [
             (Board(), ['e2e4', 'e7e5', 'g1f3', 'illegal']),

@@ -205,6 +205,8 @@ class EngineController(QObject):
         if info.get("bound", "exact") == "exact":
             self.exact_lines[info["multipv"]] = info.copy()
         self.message.emit(generation, "info", info)
+        if generation != self.generation or not self._busy or self.connection.phase == "finishing":
+            return
         if self._managed_limits:
             nodes, depth, seconds = self._managed_limits
             self._limit_reached |= bool(
@@ -236,6 +238,8 @@ class EngineController(QObject):
         self._startup_watch.stop()
         self._startup_request = None
         self._flush_snapshot()
+        if generation != self.generation or not self._busy:
+            return
         self._busy = False
         try:
             if bestmove == "0000" and any(self.board.legal_moves()):

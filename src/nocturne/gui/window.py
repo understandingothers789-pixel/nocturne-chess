@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from html import escape
+from itertools import islice
 from pathlib import Path
 import random
 import os
@@ -2401,23 +2403,25 @@ class MainWindow(QMainWindow):
             return
         if enabled and self.analysis_mode:
             QTimer.singleShot(0, self, self._ensure_maia_gpu)
-            path = self.game.node_path(self.game.current_node)[1:]
-            self.maia.request(self.game.initial_fen, [self.game.nodes[n].move.uci() for n in path], rating, sweep=self.config.get("show_maia_insights", True))
+            game = self.game
+            node = game.current_node
+            moves = [game.nodes[n].move.uci() for n in game.node_path(node)[1:]]
+            self.maia.request(game.initial_fen, moves, rating, sweep=self.config.get("show_maia_insights", True))
             self.maia.foreground_busy = self._maia_background_blocked
-            continuation = []
-            moves = [self.game.nodes[n].move.uci() for n in path]
-            index = self.game.current_node
-            selected_future = iter(self.game._line_nodes[self.game.cursor + 1:])
-            while self.game.nodes[index].children:
-                index = next(selected_future, self.game.nodes[index].children[0])
-                continuation.append(self.game.nodes[index].move.uci())
-            # Cache forward from the selected position, then wrap to its ancestors.
-            # request() above always supersedes this background queue on navigation.
-            histories = (moves + continuation[:i] for i in range(1, len(continuation) + 1))
-            from itertools import chain
-            histories = chain(histories, (moves[:i] for i in range(len(moves))))
-            self.maia.prefetch(self.game.initial_fen, histories, rating)
+            self.maia.prefetch(game.initial_fen, self._maia_histories(game, node, moves), rating)
         self._maia_changed(self.maia.policies if enabled else {})
+
+    @staticmethod
+    def _maia_histories(game, node, moves):
+        # The GPU worker pulls these lazily. Navigation replaces the iterator.
+        history = moves.copy()
+        selected_future = islice(game._line_nodes, game.cursor + 1, None)
+        while game.nodes[node].children:
+            node = next(selected_future, game.nodes[node].children[0])
+            history.append(game.nodes[node].move.uci())
+            yield history.copy()
+        for length in range(len(moves)):
+            yield moves[:length]
 
     def _maia_background_blocked(self):
         # Only background predictions yield to Leela; the selected position
@@ -2581,26 +2585,29 @@ class MainWindow(QMainWindow):
         job = self._job
         if self._review and self._review.get("kind") == "auto_eval":
             job = self._review
-        if (not self._capture_history_enabled() or not job
-                or generation != job.get("generation") or generation != self.engine.generation
-                or job.get("identity") != self._position_identity()):
+        if (not job or generation != job.get("generation")
+                or generation != self.engine.generation or not self._capture_history_enabled()):
+            return
+        identity = self._position_identity()
+        if job.get("identity") != identity:
             return
         history = self.checkpoint_history
-        session = (generation, self._position_identity())
+        session = (generation, identity)
         if getattr(self, "_checkpoint_session", None) != session:
             history.position((self.game.id, position_key(self.game)), self.game.board.fen(), self.game.board.turn)
             self._checkpoint_session = session
             self._checkpoint_raw = {}
-            self._checkpoint_earlier = []
+            self._checkpoint_earlier = OrderedDict()
+            self._checkpoint_required = min(job.get("multipv", 1), self.game.board.native.legal_moves.count())
+        snapshot = info.copy()
         if info.get("pv"):
             root = info["pv"][0]
-            if self._checkpoint_earlier and self._checkpoint_earlier[0]["pv"][0] == root:
-                self._checkpoint_earlier[0] = info.copy()
-            else:
-                self._checkpoint_earlier = [info.copy()] + [value for value in self._checkpoint_earlier
-                                                          if value.get("pv", [None])[0] != root][:63]
-        self._checkpoint_raw[info["multipv"]] = info.copy()
-        required = min(job.get("multipv", 1), self.game.board.native.legal_moves.count())
+            self._checkpoint_earlier[root] = snapshot
+            self._checkpoint_earlier.move_to_end(root)
+            if len(self._checkpoint_earlier) > 64:
+                self._checkpoint_earlier.popitem(last=False)
+        self._checkpoint_raw[info["multipv"]] = snapshot
+        required = self._checkpoint_required
         if len(self._checkpoint_raw) < required:
             return
         nodes = info.get("nodes", 0)
@@ -2612,8 +2619,8 @@ class MainWindow(QMainWindow):
         lines = {rank: value for rank, value in lines.items() if value}
         if len(lines) == required:
             active_roots = {value["pv"][0] for value in lines.values() if value.get("pv")}
-            earlier = [value for value in self._checkpoint_earlier
-                       if value.get("pv") and value["pv"][0] not in active_roots][:max(0, 5 - required)]
+            earlier = islice((value for root, value in reversed(self._checkpoint_earlier.items())
+                              if root not in active_roots), max(0, 5 - required))
             for rank, value in enumerate(earlier, required + 1):
                 validated = self.engine._validated_info(value)
                 if validated:
