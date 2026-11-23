@@ -13,11 +13,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: timeout 1200 gh run watch 45148302550 --exit-status --interval 20
+        run: timeout 1200 gh run watch 45149180067 --exit-status --interval 20
       - uses: actions/download-artifact@v4
         with:
           name: NocturneChess-0.5.7.195-Windows-x64-unsigned
-          run-id: 45148302550
+          run-id: 45149180067
           github-token: ${{ github.token }}
           path: download
       - name: Package and upload
@@ -27,4 +27,4 @@ jobs:
         run: |
           cd download
           zip -qr ../NocturneChess-0.5.7.195-Windows-x64-unsigned.zip .
-          gh release create v0.5.7.195 ../NocturneChess-0.5.7.195-Windows-x64-unsigned.zip --target 05f72cc53df4590a431a853d976032e7ecf38004 --title "Nocturne Chess 0.5.7.195" --notes "Automatic Lichess endgame tablebase in the database explorer."
+          gh release create v0.5.7.195 ../NocturneChess-0.5.7.195-Windows-x64-unsigned.zip --target 2a75395a54474873fd29e949b7d750e16ef0a8ab --title "Nocturne Chess 0.5.7.195" --notes "Automatic Lichess endgame tablebase in the database explorer."
