@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.195 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.195/NocturneChess-0.5.7.195-Windows-x64-unsigned.zip).** The database explorer automatically shows Lichess Endgame Tablebase results for supported standard positions with up to seven pieces when online database lookups are enabled. It displays ranked moves, outcomes, and distance to a capture or pawn move. No Lichess token is needed. Includes the saved Stockfish thread count and analysis history scroll fixes. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.194 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.194/NocturneChess-0.5.7.194-Windows-x64-unsigned.zip).** Fixes search handoffs when the final engine update triggers a stop or restart. Reduces checkpoint capture overhead and prepares Maia’s future positions as the worker needs them. Includes the Leela fix for resuming after temporary pauses. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.193 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.193/NocturneChess-0.5.7.193-Windows-x64-unsigned.zip).** Press minus to lower MultiPV or equals to raise it. Both start analysis immediately when the count changes. Includes Leela startup fixes for enabling it during Stockfish analysis and a longer window for first GPU output. Windows tests and packaged startup checks passed.
