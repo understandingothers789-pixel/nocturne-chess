@@ -426,6 +426,27 @@ class QtIntegration(unittest.TestCase):
             self.wait_until(lambda: window.engine.connection.confirmed.get("Threads") == "8")
             self.assertIn("> setoption name Threads value 8", window.engine.connection.log)
 
+    def test_reopening_uses_saved_thread_count_after_finer_capture(self):
+        with self.workspace() as window:
+            window.timer.stop()
+            window.profiles = [self.profile()]
+            window.profiles[0]["values"]["Threads"] = 14
+            window.config.update(engine_id="simulator", checkpoint_background=True, checkpoint_precise=True)
+            window._save(force=True)
+            # Simulate settings saved by a version that persisted the override.
+            window.store.set("settings", window.config)
+            reopened = MainWindow(window.data_directory)
+            try:
+                reopened.timer.stop()
+                self.assertTrue(reopened.config["checkpoint_background"])
+                self.assertFalse(reopened.config["checkpoint_precise"])
+                reopened._start_analysis()
+                self.wait_until(lambda: reopened.engine.connection.confirmed.get("Threads") == "14")
+            finally:
+                reopened.close()
+                reopened.deleteLater()
+                self.app.processEvents()
+
     def test_multipv_keys_start_and_restart_analysis(self):
         with self.workspace() as window:
             window.timer.stop()

@@ -137,6 +137,8 @@ class MainWindow(QMainWindow):
         except (StorageError, OSError) as exc:
             self._storage_message = str(exc)
         self.config = normalize(self.store.get("settings", {}) if self.store else {})
+        # Finer capture is a temporary override of the engine profile.
+        self.config["checkpoint_precise"] = False
         # Keep the database source saved by the user. A first token entry
         # selects Masters below; later explicit source choices persist.
         self.profiles = self.store.get("engine_profiles", []) if self.store else []
@@ -2546,9 +2548,9 @@ class MainWindow(QMainWindow):
         background.setChecked(self.config.get("checkpoint_background", False))
         background.setToolTip("Save node checkpoints even when Analysis history is hidden. Open Analysis history later to browse them. This records available engine output without starting another search. Earlier milestones cannot be recovered after they have passed. History stays in memory for this app session.")
         layout.addWidget(background)
-        precise = QCheckBox("Use one engine thread for finer checkpoints")
+        precise = QCheckBox("Use one engine thread for finer checkpoints (this session)")
         precise.setChecked(self.config.get("checkpoint_precise", False))
-        precise.setToolTip("Use one Stockfish thread on the next search. A slower search gives the engine more time to report distinct variations near 1M, 2M, 4M and later checkpoints. Capture uses reported output and may miss milestones between updates. This reduces analysis speed. Choosing a setting in Engine → Threads turns this mode off.")
+        precise.setToolTip("Use one Stockfish thread on the next search. A slower search gives the engine more time to report distinct variations near 1M, 2M, 4M and later checkpoints. Capture uses reported output and may miss milestones between updates. This reduces analysis speed. Closing Nocturne or choosing a setting in Engine → Threads turns this mode off.")
         layout.addWidget(precise)
         form = QFormLayout()
         minimum, maximum = QSpinBox(), QSpinBox()
@@ -5047,7 +5049,7 @@ class MainWindow(QMainWindow):
             if state is not None:
                 state["window_geometry"] = bytes(self.saveGeometry().toBase64()).decode("ascii")
             self.store.set("workspace_layout", state)
-            self.store.set("settings", self.config)
+            self.store.set("settings", dict(self.config, checkpoint_precise=False))
             self.store.set("engine_profiles", self.profiles)
             studies = dict(self._study_games)
             studies[self.game.id] = self.game
