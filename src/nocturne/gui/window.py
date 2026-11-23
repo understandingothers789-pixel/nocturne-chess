@@ -5701,8 +5701,10 @@ class MainWindow(QMainWindow):
                 self._auto_play_active = False
                 self.quick_analysis_button.setText("Analyze")
                 self._resume_maia_after_auto_play()
+            elif self._auto_play_active:
+                self._schedule_engine(preserve_position_analysis=True)
             else:
-                delay = self.config.get("watch_delay_ms", 500) if self._auto_play_active or self.config.get("mode") == "ai_ai" else 80
+                delay = self.config.get("watch_delay_ms", 500) if self.config.get("mode") == "ai_ai" else 80
                 QTimer.singleShot(delay, self, lambda: self._schedule_engine(preserve_position_analysis=True))
         self._save(defer=True)
 

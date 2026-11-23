@@ -943,7 +943,7 @@ class QtIntegration(unittest.TestCase):
             window.timer.stop()
             window.autosave_timer.stop()
             window.profiles = [self.profile()]
-            window.config.update(mode="analysis", engine_id="simulator", auto_play_nodes=10_000_000)
+            window.config.update(mode="analysis", engine_id="simulator", auto_play_nodes=10_000_000, watch_delay_ms=3000)
             window.analysis_mode = True
             window._analysis_enabled = False
             window.game = Game.from_pgn("1.e4 *")
@@ -951,8 +951,10 @@ class QtIntegration(unittest.TestCase):
             window._refresh()
             window._start_auto_play()
             self.wait_until(lambda: len(window.game.moves) >= 2)
+            self.assertTrue(window.engine.busy)
+            self.assertEqual(window._job["identity"], window._position_identity())
+            self.wait_until(lambda: window.engine.connection.log.count("> go nodes 10000000") >= 2)
             window._halt_analysis()
-            self.assertIn("> go nodes 10000000", window.engine.connection.log)
             self.assertEqual(window.game.sans[0], "e4")
             self.assertGreaterEqual(len(window.game.moves), 2)
 
