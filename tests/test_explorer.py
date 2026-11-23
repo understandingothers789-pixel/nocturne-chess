@@ -322,7 +322,9 @@ class NetworkTests(unittest.TestCase):
         import chess
         from nocturne.gui.explorer_panel import OpeningExplorer
 
-        explorer = OpeningExplorer(Path(self.tmp.name) / "panel.db")
+        panel_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(panel_directory.cleanup)
+        explorer = OpeningExplorer(Path(panel_directory.name) / "panel.db")
         client = explorer.client
         self.addCleanup(explorer.deleteLater)
         self.addCleanup(explorer.close_client)
