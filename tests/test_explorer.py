@@ -73,7 +73,9 @@ class HttpFixture(QTcpServer):
         self.requests.append((time.monotonic(), path))
         params = parse_qs(urlsplit(path).query)
         fen = params.get("fen", params.get("board"))[0]
-        body = self.body if self.body is not None else json.dumps(statistics(fen)).encode()
+        body = self.body(path) if callable(self.body) else self.body
+        if body is None:
+            body = json.dumps(statistics(fen)).encode()
         response = (f"HTTP/1.1 {self.code} Response\r\nContent-Type: application/json\r\n"
                     f"Content-Length: {len(body)}\r\nRetry-After: 2\r\nConnection: close\r\n\r\n").encode() + body
 
@@ -315,6 +317,64 @@ class NetworkTests(unittest.TestCase):
         QTest.qWait(50)
         self.assertIsNone(self.client.reply)
         self.assertFalse(self.results)
+
+    def test_tablebase_panel_uses_public_endpoint_and_restores_opening_fallback(self):
+        import chess
+        from nocturne.gui.explorer_panel import OpeningExplorer
+
+        explorer = OpeningExplorer(Path(self.tmp.name) / "panel.db")
+        client = explorer.client
+        self.addCleanup(explorer.deleteLater)
+        self.addCleanup(explorer.close_client)
+        client.set_lichess_token("test_token")
+        client.base_url = self.server.base_url
+        client.debounce_ms = client.interval_ms = 0
+        client.network.setProxy(QNetworkProxy(QNetworkProxy.ProxyType.NoProxy))
+        fen = "4k3/6KP/8/8/8/8/7p/8 w - - 13 33"
+        board = Board(fen)
+        query = ExplorerQuery(fen, "tablebase")
+        with patch.object(client, "base_url", None):
+            official = client.request_for(query)
+            self.assertEqual(official.url().host(), "tablebase.lichess.ovh")
+            self.assertFalse(official.rawHeader("Authorization"))
+        self.assertTrue(query.fen.endswith("13 1"))
+        self.assertNotEqual(query.key, ExplorerQuery(fen.replace("13 33", "0 33"), "tablebase").key)
+
+        legal = list(chess.Board(fen).legal_moves)
+        legal.sort(key=lambda move: move.uci() != "h7h8q")
+        self.server.body = json.dumps({
+            "category": "win",
+            "moves": [{"uci": move.uci(), "san": "ignored", "category": "loss" if i == 0 else "draw",
+                       "dtz": -2 if i == 0 else 0} for i, move in enumerate(legal)],
+        }).encode()
+        explorer.set_position(board, "endgame", True, "masters", endgame=True)
+        self.wait_for(lambda: bool(explorer.rows))
+        self.assertEqual(urlsplit(self.server.requests[0][1]).path, "/standard")
+        self.assertEqual(explorer.title.text(), "Endgame Tablebase")
+        self.assertEqual([explorer.table.item(0, i).text() for i in range(3)], ["h8=Q+", "Win", "2"])
+
+        selected = []
+        explorer.move_selected.connect(lambda *args: selected.append(args))
+        explorer.table.setCurrentCell(0, 0)
+        QTest.keyClick(explorer.table, Qt.Key.Key_Return)
+        self.assertEqual(selected, [("endgame", "h7h8q")])
+
+        def unknown_tablebase(path):
+            if urlsplit(path).path == "/standard":
+                return b'{"category":"unknown","moves":[]}'
+            return None
+
+        self.server.body = unknown_tablebase
+        other = Board(fen.replace("13 33", "14 33"))
+        explorer.set_position(other, "other", True, "masters", endgame=True)
+        self.wait_for(lambda: explorer.query.source == "masters")
+        self.wait_for(lambda: bool(explorer.rows))
+        self.assertEqual([urlsplit(path).path for _, path in self.server.requests],
+                         ["/standard", "/standard", "/masters"])
+        explorer.set_position(other, "other", True, "masters", endgame=True)
+        self.assertEqual(explorer.query.source, "masters")
+        explorer.set_position(Board(), "opening", True, "masters", endgame=True)
+        self.assertEqual(explorer.query.source, "masters")
 
     def test_request_spacing(self):
         self.client.interval_ms = 90

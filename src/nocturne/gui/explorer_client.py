@@ -15,6 +15,7 @@ from ..explorer import CACHE_AGE, MAX_RESPONSE, parse_statistics
 class ExplorerClient(QObject):
     result = Signal(str, dict, str)
     status = Signal(str, str)
+    unavailable = Signal(str)
 
     def __init__(self, cache, parent=None, *, base_url=None, debounce_ms=350, interval_ms=1000, timeout_ms=10000):
         super().__init__(parent)
@@ -41,12 +42,12 @@ class ExplorerClient(QObject):
 
     @property
     def blocked_until(self):
-        service = "chessdb" if self.query and self.query.source == "chessdb" else "lichess"
+        service = self.query.source if self.query and self.query.source in ("chessdb", "tablebase") else "lichess"
         return self._service_deadlines.get(service, 0)
 
     @blocked_until.setter
     def blocked_until(self, value):
-        service = "chessdb" if self.query and self.query.source == "chessdb" else "lichess"
+        service = self.query.source if self.query and self.query.source in ("chessdb", "tablebase") else "lichess"
         self._service_deadlines[service] = value
 
     @property
@@ -181,7 +182,10 @@ class ExplorerClient(QObject):
     def _failed(self, message):
         if self.saved:
             message += " · showing saved statistics"
-        self.status.emit(self.query.key, message)
+        key = self.query.key
+        self.status.emit(key, message)
+        if not self.saved:
+            self.unavailable.emit(key)
 
     def close(self):
         self.cancel()

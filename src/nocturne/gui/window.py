@@ -1309,7 +1309,7 @@ class MainWindow(QMainWindow):
             # Retry coverage that may have stopped before authentication.
             self.opening_coverage.cancel()
             self._sync_explorer()
-            if self.explorer.query and self.explorer.query.source != "chessdb":
+            if self.explorer.query and self.explorer.query.source in ("lichess", "masters"):
                 self.explorer.refresh()
             self._save()
 
@@ -1323,7 +1323,7 @@ class MainWindow(QMainWindow):
         self.opening_coverage.cancel()
         self.opening_coverage.client.set_lichess_token("")
         self._set_lichess_token_warning(False)
-        if self.explorer.query and self.explorer.query.source != "chessdb":
+        if self.explorer.query and self.explorer.query.source in ("lichess", "masters"):
             self.explorer.client.cancel()
         self.config["explorer_source"] = "chessdb"
         self._sync_explorer()
@@ -1390,7 +1390,7 @@ class MainWindow(QMainWindow):
         self.explorer.set_position(self.game.board, self._position_identity(), lookup,
                                    self.config.get("explorer_source", "masters"),
                                    self.config.get("explorer_speed", "all"),
-                                   self.config.get("explorer_rating", 0))
+                                   self.config.get("explorer_rating", 0), endgame=active)
         if active and not self._explorer_active and self._dock_workspace is None:
             self.right_detail_splitter.setSizes([500, 220, 70])
         self._explorer_active = active
@@ -1457,8 +1457,10 @@ class MainWindow(QMainWindow):
         games = bool(enabled and explorer.query and explorer.query.source == "masters"
                      and explorer.identity == self._position_identity()
                      and explorer.statistics and explorer.statistics.get("total", 0) > 0)
-        show_explorer = enabled and (games if masters and tools else True)
-        show_meter = tools and not (masters and games)
+        endgame = bool(enabled and explorer.query and explorer.query.source == "tablebase"
+                       and explorer.identity == self._position_identity())
+        show_explorer = enabled and (endgame or games or not (masters and tools))
+        show_meter = tools and not (endgame or (masters and games))
         if explorer.isHidden() == show_explorer:
             explorer.setVisible(show_explorer)
         if self.blunder_scroll.isHidden() == show_meter:
@@ -1495,7 +1497,8 @@ class MainWindow(QMainWindow):
     def _sync_candidate_database(self):
         self._sync_explorer_meter()
         explorer = self.explorer
-        if (explorer.query and explorer.identity == self._position_identity()
+        if (explorer.query and explorer.query.source != "tablebase"
+                and explorer.identity == self._position_identity()
                 and self._candidate_identity == self._position_identity()):
             self.candidates.set_database(explorer.query, explorer.statistics, explorer.statistics_origin,
                                          explorer.statistics_status)
@@ -1521,7 +1524,9 @@ class MainWindow(QMainWindow):
             position.push(move)
         except ValueError:
             return
-        self._show_move_preview("explorer", position, move, "Opening database preview")
+        title = ("Endgame tablebase preview" if self.explorer.query and self.explorer.query.source == "tablebase"
+                 else "Opening database preview")
+        self._show_move_preview("explorer", position, move, title)
 
     def keyPressEvent(self, event):
         key, modifiers = event.key(), event.modifiers()

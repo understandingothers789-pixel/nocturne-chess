@@ -12,6 +12,7 @@ import chess
 
 EXPLORER_URL = "https://explorer.lichess.org"
 CHESSDB_URL = "https://www.chessdb.cn"
+TABLEBASE_URL = "https://tablebase.lichess.ovh"
 SPEEDS = ("ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence")
 RATINGS = (0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500)
 MAX_RESPONSE = 512 * 1024
@@ -26,7 +27,7 @@ class ExplorerQuery:
     rating: int = 0
 
     def __post_init__(self):
-        if self.source not in ("masters", "lichess", "chessdb") or self.speed not in ("all", *SPEEDS):
+        if self.source not in ("masters", "lichess", "chessdb", "tablebase") or self.speed not in ("all", *SPEEDS):
             raise ValueError("Unsupported explorer source or speed")
         if type(self.rating) is not int or self.rating not in RATINGS:
             raise ValueError("Unsupported rating group")
@@ -35,14 +36,19 @@ class ExplorerQuery:
             raise ValueError("Opening explorer supports standard chess positions")
         # Opening counts ignore counters; cloud analysis retains the fifty-move clock.
         fields = board.fen(en_passant="legal").split()
-        canonical = fields[:5] + ["1"] if self.source == "chessdb" else fields[:4] + ["0", "1"]
+        if self.source == "tablebase" and (fields[2] != "-" or board.occupied.bit_count() > 7):
+            raise ValueError("Tablebase requires at most seven pieces and no castling rights")
+        canonical = fields[:5] + ["1"] if self.source in ("chessdb", "tablebase") else fields[:4] + ["0", "1"]
         object.__setattr__(self, "fen", " ".join(canonical))
 
     @property
     def label(self):
-        return {"masters": "Lichess Masters", "lichess": "Lichess players", "chessdb": "ChessDB"}[self.source]
+        return {"masters": "Lichess Masters", "lichess": "Lichess players", "chessdb": "ChessDB",
+                "tablebase": "Lichess Endgame Tablebase"}[self.source]
 
     def url(self, base=None):
+        if self.source == "tablebase":
+            return (base or TABLEBASE_URL).rstrip("/") + "/standard?" + urlencode({"fen": self.fen})
         base = base or (CHESSDB_URL if self.source == "chessdb" else EXPLORER_URL)
         if self.source == "chessdb":
             return base.rstrip("/") + "/cdb.php?" + urlencode({
@@ -64,6 +70,8 @@ def parse_statistics(payload, query):
     """Never trust a remote SAN string or allow a database move to bypass rules."""
     if query.source == "chessdb":
         return parse_chessdb(payload, query)
+    if query.source == "tablebase":
+        return parse_tablebase(payload, query)
     if not isinstance(payload, dict) or not isinstance(payload.get("moves"), list):
         raise ValueError("Invalid opening statistics")
 
@@ -93,6 +101,51 @@ def parse_statistics(payload, query):
         if isinstance(opening, dict) else None
     )
     return result
+
+
+TABLEBASE_OUTCOMES = {
+    "win": "Win", "syzygy-win": "Syzygy win", "maybe-win": "Possible win",
+    "cursed-win": "Win without the 50-move rule", "draw": "Draw",
+    "blessed-loss": "Loss without the 50-move rule", "maybe-loss": "Possible loss",
+    "syzygy-loss": "Syzygy loss", "loss": "Loss", "unknown": "Unknown",
+}
+
+
+def tablebase_outcome(category, *, after_move=False):
+    # The API reports moves from the opponent's perspective after the move.
+    if after_move and category.endswith("win"):
+        category = "blessed-loss" if category == "cursed-win" else category[:-3] + "loss"
+    elif after_move and category.endswith("loss"):
+        category = "cursed-win" if category == "blessed-loss" else category[:-4] + "win"
+    return TABLEBASE_OUTCOMES[category]
+
+
+def parse_tablebase(payload, query):
+    if (not isinstance(payload, dict) or not isinstance(payload.get("category"), str)
+            or payload["category"] not in TABLEBASE_OUTCOMES or payload["category"] == "unknown"):
+        raise ValueError("No tablebase result for this position")
+    rows = payload.get("moves")
+    if not isinstance(rows, list) or len(rows) > 256:
+        raise ValueError("Invalid tablebase moves")
+    board = chess.Board(query.fen)
+    legal = set(board.legal_moves)
+    seen, moves = set(), []
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("uci"), str):
+            raise ValueError("Invalid tablebase move")
+        category, dtz = row.get("category"), row.get("dtz")
+        if not isinstance(category, str) or category not in TABLEBASE_OUTCOMES:
+            raise ValueError("Invalid tablebase outcome")
+        if dtz is not None and (type(dtz) is not int or abs(dtz) > 100_000):
+            raise ValueError("Invalid tablebase distance")
+        move = board.parse_uci(row["uci"])
+        if move not in legal or move in seen:
+            raise ValueError("Illegal or duplicate tablebase move")
+        seen.add(move)
+        moves.append(dict(uci=move.uci(), san=board.san(move), category=category, dtz=dtz))
+    if seen != legal:
+        raise ValueError("Incomplete tablebase result")
+    return dict(category=payload["category"], moves=moves)
 
 
 def parse_chessdb(payload, query):

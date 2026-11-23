@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QSizePolicy, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from ..explorer import ExplorerCache, ExplorerQuery, chessdb_score
+from ..explorer import ExplorerCache, ExplorerQuery, chessdb_score, tablebase_outcome
 from .explorer_client import ExplorerClient
 
 
@@ -44,7 +44,11 @@ class OpeningExplorer(QWidget):
         self.client = ExplorerClient(ExplorerCache(cache_path), self)
         self.client.result.connect(self._result)
         self.client.status.connect(self._status)
+        self.client.unavailable.connect(self._fallback_to_opening)
         self.query = None
+        self._opening_query = None
+        self._tablebase_query = None
+        self._failed_tablebase_key = None
         self.identity = None
         self.rows = []
         self.statistics = None
@@ -125,11 +129,13 @@ class OpeningExplorer(QWidget):
         self.setMaximumHeight(88 if empty else 16777215)
         self.compact_changed.emit(empty, previous_height)
 
-    def set_position(self, board, identity, enabled, source="masters", speed="all", rating=0):
+    def set_position(self, board, identity, enabled, source="masters", speed="all", rating=0, *, endgame=False):
         if not enabled:
             self._set_compact_empty(False)
             self.client.cancel()
             self.query = None
+            self._opening_query = self._tablebase_query = None
+            self._failed_tablebase_key = None
             self.identity = None
             self._clear_statistics()
             self.rows = []
@@ -144,6 +150,8 @@ class OpeningExplorer(QWidget):
         except ValueError as exc:
             self.client.cancel()
             self.query = None
+            self._opening_query = self._tablebase_query = None
+            self._failed_tablebase_key = None
             self._clear_statistics()
             self.rows = []
             self.table.setRowCount(0)
@@ -151,7 +159,18 @@ class OpeningExplorer(QWidget):
             self.summary.setText(str(exc))
             self.status_label.setText("No request sent")
             return
-        if self.query and self.query.key == query.key:
+        self._opening_query = query
+        self._tablebase_query = None
+        if endgame and board.native.occupied.bit_count() <= 7 and not board.native.castling_rights:
+            self._tablebase_query = ExplorerQuery(board.fen(), "tablebase")
+        if self._tablebase_query and self._tablebase_query.key != self._failed_tablebase_key:
+            query = self._tablebase_query
+        elif not self._tablebase_query:
+            self._failed_tablebase_key = None
+        self._load_query(query)
+
+    def _load_query(self, query, *, force=False):
+        if not force and self.query == query:
             return
         self._end_preview()
         self._set_compact_empty(False)
@@ -159,16 +178,35 @@ class OpeningExplorer(QWidget):
         self._clear_statistics()
         self.rows = []
         self.table.setRowCount(0)
-        self.title.setText("ChessDB · cloud analysis" if source == "chessdb" else "Masters" if source == "masters" else
-                           f"Lichess players · {speed} · " + (f"{rating}+" if rating else "all ratings"))
-        self.table.setHorizontalHeaderLabels(["Move", "Score · White", "Database note"] if source == "chessdb" else
-                                            ["Move", "Games", "White / Draw / Black"])
-        self.summary.setText("Cloud analysis · White's perspective" if source == "chessdb" else "Opening statistics · " + (
-            "master games" if source == "masters" else f"{speed} speeds · " + (f"{rating}+" if rating else "all ratings")))
-        self.client.load(query)
+        source, speed, rating = query.source, query.speed, query.rating
+        if source == "tablebase":
+            self.title.setText("Endgame Tablebase")
+            self.summary.setText("Lichess · results for the side to move")
+            self.table.setHorizontalHeaderLabels(["Move", "Outcome", "DTZ"])
+            self.table.horizontalHeaderItem(2).setToolTip(
+                "Distance in half-moves to a capture or pawn move, or mate, from the position after this move."
+            )
+        else:
+            self.title.setText("ChessDB · cloud analysis" if source == "chessdb" else "Masters" if source == "masters" else
+                               f"Lichess players · {speed} · " + (f"{rating}+" if rating else "all ratings"))
+            self.table.setHorizontalHeaderLabels(["Move", "Score · White", "Database note"] if source == "chessdb" else
+                                                ["Move", "Games", "White / Draw / Black"])
+            self.table.horizontalHeaderItem(2).setToolTip("")
+            self.summary.setText("Cloud analysis · White's perspective" if source == "chessdb" else "Opening statistics · " + (
+                "master games" if source == "masters" else f"{speed} speeds · " + (f"{rating}+" if rating else "all ratings")))
+        self.table.setAccessibleName("Endgame tablebase moves" if source == "tablebase" else "Opening database moves")
+        self.client.load(query, force=force)
+
+    def _fallback_to_opening(self, key):
+        if self.query and self.query.source == "tablebase" and self.query.key == key and self._opening_query:
+            self._failed_tablebase_key = key
+            self._load_query(self._opening_query)
 
     def refresh(self):
-        if self.query:
+        if self._tablebase_query and self.query != self._tablebase_query:
+            self._failed_tablebase_key = None
+            self._load_query(self._tablebase_query, force=True)
+        elif self.query:
             self.client.load(self.query, force=True)
 
     def _result(self, key, data, origin):
@@ -181,6 +219,19 @@ class OpeningExplorer(QWidget):
         self.statistics_changed.emit()
         self.rows = data["moves"]
         self.table.setRowCount(len(self.rows))
+        if self.query.source == "tablebase":
+            self._set_compact_empty(not bool(self.rows))
+            for i, row in enumerate(self.rows):
+                distance = "—" if row["dtz"] is None else str(abs(row["dtz"]))
+                values = (row["san"], tablebase_outcome(row["category"], after_move=True), distance)
+                for column, value in enumerate(values):
+                    self.table.setItem(i, column, QTableWidgetItem(value))
+            side = "White" if self.query.fen.split()[1] == "w" else "Black"
+            self.summary.setText(f"{side} to move · {tablebase_outcome(data['category'])}"
+                                 + (" · moves ranked by Lichess" if self.rows else " · no legal moves"))
+            self.status_label.setText(origin)
+            self._reserve_rows()
+            return
         if self.query.source == "chessdb":
             self._set_compact_empty(not bool(self.rows))
             for i, row in enumerate(self.rows):
