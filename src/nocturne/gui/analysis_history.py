@@ -153,6 +153,12 @@ def tactic_patterns(fen, pv, plies=12, min_ply=4):
     return [(ply, text) for ply, text in found if ply >= min_ply]
 
 
+class _RankingSelector(QComboBox):
+    def wheelEvent(self, event):
+        # Let the surrounding analysis panel scroll without changing the ranking.
+        event.ignore()
+
+
 class AnalysisHistory(QWidget):
     focus_changed = Signal(bool)
     viewing = Signal(bool)
@@ -190,7 +196,7 @@ class AnalysisHistory(QWidget):
         scroll.setWidget(self.tabs)
         layout.addWidget(scroll)
         row = QHBoxLayout()
-        self.mode = QComboBox()
+        self.mode = _RankingSelector()
         self.mode.addItems(['Rank at that time', 'Keep moves in place'])
         self.mode.currentIndexChanged.connect(self._mode_changed)
         row.addWidget(self.mode)
