@@ -448,6 +448,12 @@ class QtIntegration(unittest.TestCase):
                 self.app.processEvents()
 
     def test_multipv_keys_start_and_restart_analysis(self):
+        from PySide6.QtWidgets import QLineEdit, QWidget
+
+        class ConsumesKeys(QWidget):
+            def keyPressEvent(self, event):
+                event.accept()
+
         with self.workspace() as window:
             window.timer.stop()
             window.profiles = [self.profile()]
@@ -457,11 +463,16 @@ class QtIntegration(unittest.TestCase):
             self.wait_until(lambda: bool(window.candidates.lines))
             window._halt_analysis()
             window.show()
-            QTest.keyClick(window, Qt.Key.Key_Equal)
+            control = ConsumesKeys(window)
+            QTest.keyClick(control, Qt.Key.Key_Equal)
             self.wait_until(lambda: len(window.candidates.lines) == 2)
             self.assertTrue(window.engine.busy)
             self.assertEqual(window.engine.connection.confirmed["MultiPV"], "2")
-            QTest.keyClick(window, Qt.Key.Key_Minus)
+            editor = QLineEdit(window)
+            QTest.keyClick(editor, Qt.Key.Key_Minus)
+            self.assertEqual(editor.text(), "-")
+            self.assertEqual(window.config["multipv"], 2)
+            QTest.keyClick(control, Qt.Key.Key_Minus, Qt.KeyboardModifier.KeypadModifier)
             self.wait_until(lambda: window.engine.connection.confirmed.get("MultiPV") == "1")
             self.assertEqual(window.config["multipv"], 1)
             self.assertTrue(window.engine.busy)

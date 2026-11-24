@@ -218,6 +218,9 @@ class UciConnection(QObject):
             if initial:
                 self.log.append(f"Timing: launch and handshake {time.perf_counter() - self._launch_started:.3f} s")
                 self.discovered.emit({"path": self.path, "name": self.name, "options": self.options.copy()})
+            # Discovery/configuration callbacks may already have started preparation.
+            if self.phase != "idle":
+                return
             if self.pending:
                 if prepared and self.pending is prepared_request:
                     self.running, self.pending = self.pending, None

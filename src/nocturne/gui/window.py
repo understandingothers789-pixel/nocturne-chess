@@ -1530,19 +1530,6 @@ class MainWindow(QMainWindow):
 
     def keyPressEvent(self, event):
         key, modifiers = event.key(), event.modifiers()
-        if (key in (Qt.Key.Key_Minus, Qt.Key.Key_Equal)
-                and modifiers == Qt.KeyboardModifier.NoModifier
-                and not isinstance(QApplication.focusWidget(), (QPlainTextEdit, QLineEdit))):
-            profile = self._profile()
-            option = profile.get("options", {}).get("MultiPV") if profile else None
-            if option:
-                if not event.isAutoRepeat():
-                    step = 1 if key == Qt.Key.Key_Equal else -1
-                    count = self._effective_multipv() + step
-                    if 1 <= count <= min(32, int(option["maximum"])):
-                        self._set_multipv(count, start_analysis=True)
-                event.accept()
-                return
         brackets = (Qt.Key.Key_BracketLeft, Qt.Key.Key_BracketRight)
         if (key in brackets
                 and modifiers in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.ControlModifier)
@@ -1741,6 +1728,22 @@ class MainWindow(QMainWindow):
                 QToolTip.hideText()
         if self._closing:
             return super().eventFilter(watched, event)
+        if (event.type() == QEvent.Type.KeyPress
+                and isinstance(watched, QWidget) and watched.window() is self
+                and event.key() in (Qt.Key.Key_Minus, Qt.Key.Key_Equal)
+                and event.modifiers() in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.KeypadModifier)
+                and not isinstance(watched, (QPlainTextEdit, QLineEdit))
+                and not isinstance(QApplication.focusWidget(), (QPlainTextEdit, QLineEdit))):
+            profile = self._profile()
+            option = profile.get("options", {}).get("MultiPV") if profile else None
+            if option:
+                if not event.isAutoRepeat():
+                    step = 1 if event.key() == Qt.Key.Key_Equal else -1
+                    count = self._effective_multipv() + step
+                    if 1 <= count <= min(32, int(option["maximum"])):
+                        self._set_multipv(count, start_analysis=True)
+                event.accept()
+                return True
         if watched is getattr(self, "board_view", None) and event.type() == QEvent.Type.Resize:
             QTimer.singleShot(0, self, self._fit_analysis_columns)
         if (isinstance(watched, QWidget) and event.type() in (QEvent.Type.KeyPress, QEvent.Type.ShortcutOverride)
@@ -3554,7 +3557,7 @@ class MainWindow(QMainWindow):
         self._save()
         self._refresh_engine_menus()
         if start_analysis:
-            self._start_analysis()
+            self._start_analysis(reconfigure=True)
         else:
             self._schedule_engine()
 
@@ -5365,15 +5368,17 @@ class MainWindow(QMainWindow):
         if hasattr(self, "leela_panel"):
             self.leela_panel.pause_search(preserve_completed=True)
 
-    def _start_analysis(self):
+    def _start_analysis(self, *, reconfigure=False):
         self.paused = False
         self.pause_button.setText("Pause")
         self._cancel_review()
         self._stop_engine()
-        self._workspace(True, schedule=False)
-        self._clear_saved_analysis([self.game.current_node])
+        if not reconfigure or not self.analysis_mode:
+            self._workspace(True, schedule=False)
+        if not reconfigure:
+            self._clear_saved_analysis([self.game.current_node])
         self._analysis_enabled = True
-        if self.config.get("leela_enabled", False):
+        if self.config.get("leela_enabled", False) and not (reconfigure and self.leela_panel.engine.busy):
             self.leela_panel.active = True
             self.leela_panel.request(self.game, force=True, reuse_completed=True)
         self.tabs.setCurrentIndex(1)

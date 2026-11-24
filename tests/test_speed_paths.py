@@ -105,6 +105,23 @@ class SpeedPathTests(unittest.TestCase):
             self.assertEqual(connection.phase, "search")
             self.assertEqual(connection.running[0], 2)
 
+    def test_ready_callback_can_prepare_a_replacement_without_duplicate_barrier(self):
+        from nocturne.gui.uci_connection import UciConnection
+
+        connection = UciConnection()
+        self.addCleanup(connection.close)
+        connection.phase = "idle"
+        with patch.object(connection, "send") as send:
+            connection.request(1, "position startpos", "go infinite", {}, "study")
+            connection.configured.connect(
+                lambda: connection.request(2, "position startpos", "go infinite", {}, "study")
+            )
+            connection._line("readyok")
+            connection.configured.disconnect()
+            self.assertEqual([call.args for call in send.call_args_list].count(("isready",)), 2)
+            connection._line("readyok")
+            self.assertEqual(connection.running[0], 2)
+
     def test_info_observer_can_stop_the_search(self):
         from nocturne.gui.uci_connection import UciConnection
 
