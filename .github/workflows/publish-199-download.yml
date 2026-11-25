@@ -17,7 +17,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           while true; do
-            for run in 45718778363; do
+            for run in 45719211802; do
               conclusion=$(gh run view "$run" --json conclusion --jq .conclusion) || continue
               if [[ "$conclusion" == success ]]; then
                 echo "run_id=$run" >> "$GITHUB_OUTPUT"
@@ -39,4 +39,4 @@ jobs:
         run: |
           cd download
           zip -qr ../NocturneChess-0.5.7.199-Windows-x64-unsigned.zip .
-          gh release create v0.5.7.199 ../NocturneChess-0.5.7.199-Windows-x64-unsigned.zip --target c6207fa --title "Nocturne Chess 0.5.7.199" --notes "Adds board arrow layouts for candidate comparison, opening preparation and focused review."
+          gh release create v0.5.7.199 ../NocturneChess-0.5.7.199-Windows-x64-unsigned.zip --target 44afff039c1df5f9ccc8ea4bff182f61b26a2865 --title "Nocturne Chess 0.5.7.199" --notes "Adds board arrow layouts for candidate comparison, opening preparation and focused review."
