@@ -1,0 +1,30 @@
+name: Publish 198 download
+on:
+  push:
+    branches: [publish/198-download]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for verified Windows build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: timeout 1200 gh run watch 45662850210 --exit-status --interval 20
+      - uses: actions/download-artifact@v4
+        with:
+          name: NocturneChess-0.5.7.198-Windows-x64-unsigned
+          run-id: 45662850210
+          github-token: ${{ github.token }}
+          path: download
+      - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd download
+          zip -qr ../NocturneChess-0.5.7.198-Windows-x64-unsigned.zip .
+          gh release create v0.5.7.198 ../NocturneChess-0.5.7.198-Windows-x64-unsigned.zip --target f929aa0dbf986dbf4559ea81b3e7872c998b67f5 --title "Nocturne Chess 0.5.7.198" --notes "Find tactics highlights durable material tradeoffs and compensated deficits."
