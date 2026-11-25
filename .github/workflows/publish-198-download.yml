@@ -9,15 +9,27 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for verified Windows build
+      - name: Wait for the first verified Windows build
+        id: verified
+        timeout-minutes: 20
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: timeout 1200 gh run watch 45662850210 --exit-status --interval 20
+        run: |
+          while true; do
+            for run in 45662850210 45665365034; do
+              conclusion=$(gh run view "$run" --json conclusion --jq .conclusion) || continue
+              if [[ "$conclusion" == success ]]; then
+                echo "run_id=$run" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            done
+            sleep 20
+          done
       - uses: actions/download-artifact@v4
         with:
           name: NocturneChess-0.5.7.198-Windows-x64-unsigned
-          run-id: 45662850210
+          run-id: ${{ steps.verified.outputs.run_id }}
           github-token: ${{ github.token }}
           path: download
       - name: Package and upload
