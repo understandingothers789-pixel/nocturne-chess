@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 
 from ..explorer import ExplorerCache, ExplorerQuery, chessdb_score, tablebase_outcome
 from .explorer_client import ExplorerClient
+from .widgets import ElidedLabel
 
 
 class ResultsDelegate(QStyledItemDelegate):
@@ -61,7 +62,8 @@ class OpeningExplorer(QWidget):
         layout.setContentsMargins(0, 4, 0, 0)
         layout.setSpacing(3)
         header = QHBoxLayout()
-        self.title = QLabel("Database explorer")
+        self.title = ElidedLabel()
+        self.title.setText("Database explorer")
         self.title.setTextFormat(Qt.TextFormat.PlainText)
         self.title.setMinimumWidth(0)
         self.title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
@@ -105,9 +107,10 @@ class OpeningExplorer(QWidget):
         self.table.cellClicked.connect(self._click)
         self.table.cellEntered.connect(self._preview)
         layout.addWidget(self.table, 1)
-        self.status_label = QLabel("Online when enabled · service data")
+        self.status_label = ElidedLabel()
+        self.status_label.setText("Online when enabled · service data")
         self.status_label.setTextFormat(Qt.TextFormat.PlainText)
-        self.status_label.setWordWrap(True)
+        self.status_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.status_label.setObjectName("muted")
         layout.addWidget(self.status_label)
 
@@ -178,6 +181,7 @@ class OpeningExplorer(QWidget):
         self._clear_statistics()
         self.rows = []
         self.table.setRowCount(0)
+        self.table.setMinimumHeight(0)
         source, speed, rating = query.source, query.speed, query.rating
         if source == "tablebase":
             self.title.setText("Endgame Tablebase")
@@ -266,7 +270,18 @@ class OpeningExplorer(QWidget):
             table_height = self.table.horizontalHeader().height() + sum(
                 self.table.rowHeight(row) for row in range(visible_rows)) + 2 * self.table.frameWidth()
             self.table.setMinimumHeight(table_height + 3)
-            self.setMinimumHeight(self.minimumSizeHint().height())
+            self._fit_summary_height()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if event.oldSize().width() != event.size().width():
+            self._fit_summary_height()
+
+    def _fit_summary_height(self):
+        if not self._compact_empty:
+            height = max(170, self.layout().minimumHeightForWidth(self.width()))
+            if height != self.minimumHeight():
+                self.setMinimumHeight(height)
 
     def _status(self, key, message):
         if self.query and self.query.key == key:

@@ -5,10 +5,11 @@ from collections import OrderedDict
 
 import chess
 from PySide6.QtCore import QTimer, Signal, Qt
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea,
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QGridLayout, QHBoxLayout, QScrollArea,
                               QPushButton, QComboBox, QLabel, QFrame, QSizePolicy)
 from .candidates import CandidatePanel
 from .moves import MoveText
+from .widgets import ElidedLabel
 from ..snapshots import node_label
 from ..engine.uci_types import score_label
 
@@ -195,22 +196,24 @@ class AnalysisHistory(QWidget):
         self.tabs_layout.setContentsMargins(0, 0, 0, 0)
         scroll.setWidget(self.tabs)
         layout.addWidget(scroll)
-        row = QHBoxLayout()
+        self.controls = QGridLayout()
+        self._compact_controls = None
         self.mode = _RankingSelector()
         self.mode.addItems(['Rank at that time', 'Keep moves in place'])
         self.mode.currentIndexChanged.connect(self._mode_changed)
-        row.addWidget(self.mode)
         self.find = QPushButton('Find tactics')
         self.find.setToolTip('Stop analysis first. Review the displayed lines for sacrifices, material trades and tactical ideas. More details controls the first and last ply. A ply is one move by either player.')
         self.find.clicked.connect(self.scan)
-        row.addWidget(self.find)
         self.reorder = QPushButton('Update move order')
+        self.reorder.setAccessibleName('Update move order')
+        self.reorder.setToolTip('Use the current live ranking for the fixed move order.')
         self.reorder.clicked.connect(self._mode_changed)
         self.reorder.hide()
-        row.addWidget(self.reorder)
-        self.caption = QLabel('Viewing: Live')
-        row.addWidget(self.caption)
-        layout.addLayout(row)
+        self.caption = ElidedLabel()
+        self.caption.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        self.caption.setText('Viewing: Live')
+        layout.addLayout(self.controls)
+        self._arrange_controls(False)
         self.back = QPushButton('Back to analysis')
         self.back.setToolTip('Restore Stockfish and the panels below it. Tactic results remain available until the position or search changes.')
         self.back.clicked.connect(lambda: self.set_focus(False))
@@ -238,6 +241,27 @@ class AnalysisHistory(QWidget):
         self.poll.setInterval(250)
         self.poll.timeout.connect(self._availability)
         self._buttons()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._arrange_controls(event.size().width() < 490)
+
+    def _arrange_controls(self, compact):
+        if compact == self._compact_controls:
+            return
+        self._compact_controls = compact
+        self.reorder.setText("Reorder" if compact else "Update move order")
+        grid = self.controls
+        while grid.count():
+            grid.takeAt(0)
+        grid.addWidget(self.mode, 0, 0)
+        grid.addWidget(self.find, 0, 1)
+        if compact:
+            grid.addWidget(self.caption, 1, 0)
+            grid.addWidget(self.reorder, 1, 1)
+        else:
+            grid.addWidget(self.reorder, 0, 2)
+            grid.addWidget(self.caption, 0, 3)
 
     def showEvent(self, event):
         super().showEvent(event)

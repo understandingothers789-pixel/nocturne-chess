@@ -95,7 +95,7 @@ from .hover_preview import HoverPreview, MiniBoard
 from .wheel import WheelSteps
 from .workspace import DockWorkspace
 from .theme import ASSETS, palette, stylesheet
-from .widgets import AnalysisHeader, EvaluationBar, EvaluationGraph
+from .widgets import AnalysisHeader, EngineLineHeading, EvaluationBar, EvaluationGraph
 
 
 def label(text: str, style: str = "", wrap=False) -> QLabel:
@@ -494,26 +494,24 @@ class MainWindow(QMainWindow):
         self.engine_layout = QVBoxLayout(engine_detail)
         self.engine_layout.setContentsMargins(0, 0, 0, 0)
         self.engine_layout.setSpacing(0)
-        column_titles = QHBoxLayout()
-        column_titles.addWidget(label("STOCKFISH", "eyebrow"), 1)
         self.analysis_history_toggle = QPushButton("Analysis history")
         self.analysis_history_toggle.setCheckable(True)
         self.analysis_history_toggle.setFlat(True)
         self.analysis_history_toggle.setObjectName("historyToggle")
+        self.analysis_history_toggle.setAccessibleName("Analysis history")
         self.analysis_history_toggle.setStyleSheet("QPushButton#historyToggle {border:none; background:transparent; padding:2px 4px;} QPushButton#historyToggle:checked {border-bottom:2px solid #8cd2c3;}")
         self.analysis_history_toggle.setChecked(self.config.get("checkpoint_history", False))
         self.analysis_history_toggle.setToolTip("Capture interactive MultiPV checkpoints at 1M, 2M, 4M nodes and onward. A new search replaces this position’s checkpoints.")
-        column_titles.addWidget(self.analysis_history_toggle)
         history_details = QPushButton("More details")
         history_details.setFlat(True)
+        history_details.setAccessibleName("Analysis history options")
+        history_details.setToolTip("Set checkpoint capture and the range for finding tactics.")
         history_details.clicked.connect(self._checkpoint_details)
-        column_titles.addWidget(history_details)
-        column_titles.addSpacing(12)
         self.maia_column_title = label("MAIA · 1800", "maiaHeading")
         self.maia_column_title.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.maia_column_title.setMinimumWidth(90)
-        column_titles.addWidget(self.maia_column_title)
-        self.engine_layout.addLayout(column_titles)
+        self.engine_layout.addWidget(EngineLineHeading(
+            label("STOCKFISH", "eyebrow"), self.analysis_history_toggle, history_details, self.maia_column_title
+        ))
         self.pv_label = MoveText(auto_fit=True)
         self.pv_label.setAccessibleName("Principal variation moves")
         self.pv_label.preview_ended.connect(lambda: self._end_preview("pv"))
@@ -638,7 +636,6 @@ class MainWindow(QMainWindow):
         self.pgn_editor.setAccessibleName("PGN game text")
         self.pgn_editor.setPlaceholderText("1. e4 e5 2. Nf3 Nc6 *")
         self.pgn_editor.setMinimumHeight(100)
-        pgn_layout.addWidget(self.pgn_editor, 1)
         self.apply_pgn_button = button("Apply PGN", self._apply_pgn, "primary")
         self.load_pgn_button = button("Load current", self._load_current_pgn)
         for control in (self.apply_pgn_button, self.load_pgn_button):
@@ -655,6 +652,7 @@ class MainWindow(QMainWindow):
         pgn_actions.addWidget(self.apply_pgn_button)
         pgn_actions.addWidget(self.load_pgn_button)
         pgn_layout.addLayout(pgn_actions)
+        pgn_layout.addWidget(self.pgn_editor, 1)
         self.tabs.addTab(pgn_page, "PGN")
         self.review_panel = ReviewPanel()
         self.review_panel.seconds.setValue(self.config.get("review_seconds", 3))
@@ -4054,6 +4052,7 @@ class MainWindow(QMainWindow):
         destination = self.right_detail_splitter if right else self.candidate_splitter
         if destination.indexOf(insights.trends_card) < 0:
             destination.addWidget(insights.trends_card)
+            destination.setStretchFactor(destination.indexOf(insights.trends_card), 1)
         destination = self.right_detail_splitter if right else self.analysis_detail_splitter
         if destination.indexOf(self.blunder_scroll) < 0:
             destination.addWidget(self.blunder_scroll)
@@ -4069,6 +4068,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'leela_panel'):
             if self.candidate_splitter.indexOf(self.leela_panel) < 0:
                 self.candidate_splitter.addWidget(self.leela_panel)
+                self.candidate_splitter.setStretchFactor(self.candidate_splitter.indexOf(self.leela_panel), 1)
             self.leela_panel.setVisible(self.analysis_mode and self.config.get('leela_enabled', False))
         if self._dock_workspace is None:
             column = self.right_detail_splitter
@@ -4087,6 +4087,11 @@ class MainWindow(QMainWindow):
         self._protect_analysis_chart()
         self.game_line_panel.setVisible(not right)
         self._rating_game_line_swapped = True
+        lower_panels = tuple(self.candidate_splitter.widget(index) for index in range(1, self.candidate_splitter.count())
+                             if not self.candidate_splitter.widget(index).isHidden())
+        if lower_panels != getattr(self, "_candidate_lower_panels", None):
+            self._candidate_lower_panels = lower_panels
+            QTimer.singleShot(0, self, self._candidate_rows_changed)
 
     def _candidate_rows_changed(self):
         self._protect_analysis_chart()
@@ -4095,9 +4100,20 @@ class MainWindow(QMainWindow):
         self.candidates.layout.activate()
         height = sum(row[0].sizeHint().height() for row in self.candidates.rows.values()
                      if not row[0].isHidden())
-        total = self.candidate_splitter.height() - self.candidate_splitter.handleWidth()
+        splitter = self.candidate_splitter
+        lower = [index for index in range(1, splitter.count()) if not splitter.widget(index).isHidden()]
+        if not lower or self.candidates.isHidden():
+            return
+        total = splitter.height() - len(lower) * splitter.handleWidth()
         if total > height:
-            self.candidate_splitter.setSizes([height, total - height])
+            sizes = splitter.sizes()
+            weights = {index: max(1, sizes[index]) for index in lower}
+            sizes = [0] * splitter.count()
+            sizes[0] = height
+            total_weight = sum(weights.values())
+            for index, weight in weights.items():
+                sizes[index] = (total - height) * weight // total_weight
+            splitter.setSizes(sizes)
 
     def _protect_analysis_chart(self):
         if not hasattr(self, "blunder_scroll"):
@@ -4118,7 +4134,10 @@ class MainWindow(QMainWindow):
         # handles longer move lists rather than covering the rating chart.
         self.engine_scroll.setMinimumHeight(min(max(100, required),
                                                max(360, self.screen().availableGeometry().height() - 260)))
-        self.analysis_detail_splitter.setCollapsible(1, True)
+        meter_index = self.analysis_detail_splitter.indexOf(self.blunder_scroll)
+        if meter_index < 0:
+            return
+        self.analysis_detail_splitter.setCollapsible(meter_index, True)
         if (show and self.isVisible() and self.analysis_detail_splitter.height() > 200
                 and not getattr(self, "_analysis_meter_sized", False)):
             self._analysis_meter_sized = True
@@ -4271,12 +4290,15 @@ class MainWindow(QMainWindow):
             # Inactive review pages have wide minimum hints. Let the active
             # engine page fit its viewport rather than clipping the Maia column.
             compact = self.analysis_mode and self.tabs.currentIndex() == 1
+            for page_index in range(self.tabs.count()):
+                page = self.tabs.widget(page_index)
+                policy = (QSizePolicy.Policy.Preferred if page is self.tabs.currentWidget()
+                          else QSizePolicy.Policy.Ignored)
+                page.setSizePolicy(policy, policy)
             self.tabs.setSizePolicy(QSizePolicy.Policy.Ignored if compact else QSizePolicy.Policy.Preferred,
                                     QSizePolicy.Policy.Expanding)
             self.tabs.tabBar().setVisible(not self.analysis_mode or self.tabs.currentIndex() != 1)
-            self.panel.setVerticalScrollBarPolicy(
-                Qt.ScrollBarPolicy.ScrollBarAsNeeded if self.tabs.currentWidget() is getattr(self, "review_panel", None)
-                or not self.analysis_mode else Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.panel.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
             if self.tabs.currentWidget() is getattr(self, "review_panel", None):
                 self._update_review_panel()
             if self.tabs.currentWidget() is getattr(self, "raw_pgn_page", None):
@@ -5090,11 +5112,6 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(dialog)
         layout.addWidget(label("Saved PGNs & games", "title"))
         layout.addWidget(label("Games and studies are saved automatically on this device.", "muted", True))
-        layout.addWidget(button("Open PGN folder", self._open_pgn_folder))
-        special_actions = QHBoxLayout()
-        special_actions.addWidget(button("Save to Special Positions…", lambda: save_special()))
-        special_actions.addWidget(button("Open Special Positions folder", self._open_special_positions_folder))
-        layout.addLayout(special_actions)
         try:
             games = self.store.list_games()
         except StorageError as exc:
@@ -5103,11 +5120,26 @@ class MainWindow(QMainWindow):
         categories = QComboBox()
         categories.addItems(["Games", "Special Positions", "Bookmarks"])
         categories.setAccessibleName("Library category")
-        layout.addWidget(categories)
+        library_tools = QHBoxLayout()
+        library_tools.addWidget(categories, 1)
+
+        def open_category_folder():
+            if categories.currentIndex() == 1:
+                self._open_special_positions_folder()
+            else:
+                self._open_pgn_folder()
+
+        open_folder = button("Open folder", open_category_folder)
+        save_position = button("Save current position…", lambda: save_special())
+        save_position.setToolTip("Save the currently open game to Special Positions.")
+        library_tools.addWidget(open_folder)
+        library_tools.addWidget(save_position)
+        layout.addLayout(library_tools)
         content = QSplitter(Qt.Orientation.Horizontal)
         listing = QListWidget()
         listing.setMouseTracking(True)
-        listing.setMinimumWidth(300)
+        listing.setMinimumWidth(260)
+        listing.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         content.addWidget(listing)
 
         preview = QFrame()
@@ -5127,8 +5159,9 @@ class MainWindow(QMainWindow):
         move_preview = QVBoxLayout()
         preview_title = label("Select an item to preview", "subtitle", True)
         move_preview.addWidget(preview_title)
-        move_preview.addWidget(label("Click a move or scroll to preview a position · click blank space to return to the end",
-                                     "eyebrow", True))
+        preview_help = label("Click or scroll through the moves to preview a position. Click blank space to return to the end.",
+                             "muted", True)
+        move_preview.addWidget(preview_help)
         opening = SavedGameMoves()
         opening.position_selected.connect(lambda ply: show_game_position(ply))
         move_preview.addWidget(opening, 1)
@@ -5166,11 +5199,16 @@ class MainWindow(QMainWindow):
             except (StorageError, OSError, ValueError) as exc:
                 preview_game["game"] = None
                 opening.set_game(None)
-                mini_board.set_position(Board())
+                mini_board.hide()
+                preview_help.hide()
+                opening.show()
                 preview_title.setText("Cannot preview this game")
                 opening.setText(str(exc))
                 return
             preview_game["game"] = game
+            mini_board.show()
+            preview_help.show()
+            opening.show()
             entry = library_entries.get(game_id)
             opening.set_game(game, self._appearance_config().get("light", False),
                              at_cursor=bool(entry and entry[0] == 'bookmark'))
@@ -5193,14 +5231,20 @@ class MainWindow(QMainWindow):
             preview_game['game'] = None
             opening.set_game(None)
             preview_title.setText('Select an item to preview')
-            mini_board.set_position(Board())
+            mini_board.hide()
+            preview_help.hide()
+            opening.hide()
             category = categories.currentIndex()
+            open_folder.setVisible(category != 2)
+            open_folder.setToolTip("Open the Special Positions folder." if category == 1 else "Open the saved PGN folder.")
+            save_position.setVisible(category == 1)
             if category == 1:
                 directory = self.store.pgn_directory / 'Special Positions'
                 for path in sorted(directory.glob('*.pgn'), key=lambda p: p.name.casefold()):
                     key = 'special:' + str(path)
                     library_entries[key] = ('special', path)
                     item = QListWidgetItem(path.stem)
+                    item.setToolTip(path.stem)
                     item.setData(Qt.ItemDataRole.UserRole, key)
                     listing.addItem(item)
             else:
@@ -5228,12 +5272,17 @@ class MainWindow(QMainWindow):
                                 entries.append((key, bookmark.get('name', 'Bookmark') + ' · ' + record['title']))
                     for key, title in entries:
                         item = QListWidgetItem(title)
+                        item.setToolTip(title)
                         item.setData(Qt.ItemDataRole.UserRole, key)
                         listing.addItem(item)
             if listing.count():
                 listing.setCurrentRow(0)
             else:
-                preview_title.setText('No saved items in this category')
+                preview_title.setText((
+                    "No saved games yet.",
+                    "No Special Positions yet. Use Save current position to add one.",
+                    "No bookmarks yet. Use Tree → Bookmarks or Ctrl+B to mark a position.",
+                )[category])
 
         def save_special():
             if self._save_special_position() and categories.currentIndex() == 1:

@@ -37,6 +37,52 @@ class LayoutPolishTests(unittest.TestCase):
         QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         self.tmp.cleanup()
 
+    def test_compact_review_and_pgn_keep_primary_actions_inside_viewport(self):
+        from nocturne.core.game import Game
+
+        w = self.w
+        w.game = Game.from_pgn("1. e4 e5 2. Nf3 Nc6 *")
+        w.resize(1100, 700)
+        w._show_review()
+        QTest.qWait(60)
+        viewport = w.panel.viewport()
+        run = w.review_panel.run
+        self.assertTrue(run.isVisible())
+        self.assertTrue(viewport.rect().contains(run.mapTo(viewport, run.rect().bottomRight())))
+        self.assertFalse(w.review_panel.pause.isVisible())
+        for score, _ in w.review_panel.scores.values():
+            self.assertTrue(viewport.rect().contains(score.mapTo(viewport, score.rect().bottomRight())))
+
+        w._show_pgn()
+        QTest.qWait(60)
+        for button in (w.apply_pgn_button, w.load_pgn_button):
+            self.assertTrue(viewport.rect().contains(button.mapTo(viewport, button.rect().bottomRight())))
+            self.assertLess(button.mapTo(w.pgn_page, QPoint()).y(), w.pgn_editor.y())
+
+    def test_explorer_reserves_space_for_wrapped_opening_and_footer(self):
+        from nocturne.explorer import ExplorerQuery
+        from nocturne.gui.explorer_panel import OpeningExplorer
+
+        explorer = OpeningExplorer(Path(self.tmp.name) / "layout-cache.sqlite3")
+        try:
+            explorer.query = ExplorerQuery(self.w.game.board.fen())
+            explorer.resize(198, 330)
+            explorer.show()
+            moves = [dict(uci=uci, san=san, white=10, draws=5, black=5, total=20)
+                     for uci, san in (("e2e4", "e4"), ("d2d4", "d4"), ("g1f3", "Nf3"), ("c2c4", "c4"))]
+            explorer._result(explorer.query.key, {
+                "total": 200, "moves": moves,
+                "opening": {"eco": "C60", "name": "A very long opening name that wraps at compact window widths"},
+            }, "Cached · test result with a long status")
+            explorer.resize(198, 170)
+            QTest.qWait(40)
+            self.assertLess(explorer.summary.geometry().bottom(), explorer.table.y())
+            self.assertLess(explorer.table.geometry().bottom(), explorer.status_label.y())
+        finally:
+            explorer.close_client()
+            explorer.close()
+            explorer.deleteLater()
+
     def test_selected_move_detail_shares_coverage_row(self):
         meter = self.w.maia_insights.blunder
         meter.set_data({"e2e4": {"probability": .684, "category": "best", "loss": 14}}, {"e2e4": "e4"}, "test")

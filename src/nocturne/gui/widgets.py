@@ -4,8 +4,24 @@ import math
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal, QSize
 from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import QWidget, QGridLayout, QScrollArea, QSizePolicy
+from PySide6.QtWidgets import QWidget, QGridLayout, QHBoxLayout, QLabel, QScrollArea, QSizePolicy, QStylePainter
 from .theme import palette
+
+
+class ElidedLabel(QLabel):
+    """Show one line with the complete text available on hover."""
+
+    def setText(self, text):
+        super().setText(text)
+        self.setToolTip(text)
+
+    def paintEvent(self, event):
+        painter = QStylePainter(self)
+        text = self.fontMetrics().elidedText(
+            self.text(), Qt.TextElideMode.ElideRight, self.contentsRect().width()
+        )
+        painter.drawItemText(self.contentsRect(), int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
+                             self.palette(), self.isEnabled(), text, self.foregroundRole())
 
 
 class AnalysisHeader(QWidget):
@@ -53,6 +69,36 @@ class AnalysisHeader(QWidget):
             for column, widget in enumerate((self.state, self.review, self.evaluation)):
                 self.grid.addWidget(widget, 0, column)
             self.grid.setColumnStretch(0, 1)
+
+
+class EngineLineHeading(QWidget):
+    """Keep history actions and the Maia label readable on one line."""
+
+    def __init__(self, engine, history, details, maia, parent=None):
+        super().__init__(parent)
+        self.history, self.details = history, details
+        self._compact = None
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+        layout.addWidget(engine, 1)
+        layout.addWidget(history)
+        layout.addWidget(details)
+        layout.addSpacing(12)
+        layout.addWidget(maia)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self._set_compact(False)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._set_compact(event.size().width() < 365)
+
+    def _set_compact(self, compact):
+        if compact == self._compact:
+            return
+        self._compact = compact
+        self.history.setText("History" if compact else "Analysis history")
+        self.details.setText("Options" if compact else "More details")
 
 
 class EvaluationBar(QWidget):

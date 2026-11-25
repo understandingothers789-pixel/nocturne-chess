@@ -178,7 +178,9 @@ class RatingChart(QWidget):
             self.label_hits.append((label_rect, endpoint))
         if not self.policies:
             painter.setPen(QColor(colors["muted"]))
-            painter.drawText(plot, Qt.AlignmentFlag.AlignCenter, "Waiting for Maia predictions")
+            message = QRectF(8, plot.center().y() - 20, self.width() - 16, 40)
+            painter.drawText(message, int(Qt.AlignmentFlag.AlignCenter) | int(Qt.TextFlag.TextWordWrap),
+                             "Waiting for Maia predictions")
 
     def mouseMoveEvent(self, event):
         hit = next((data for rect, data in self.label_hits if rect.contains(event.position())), None)
@@ -257,24 +259,32 @@ class BlunderMeter(InsightCard):
         self.content.addLayout(summary)
         self.category_labels = {}
         self.move_labels = {}
-        columns = QGridLayout()
-        columns.setHorizontalSpacing(12)
-        columns.setVerticalSpacing(2)
-        for index, category in enumerate(CATEGORIES):
+        self.category_groups = []
+        self.category_grid = QGridLayout()
+        self.category_grid.setHorizontalSpacing(10)
+        self.category_grid.setVerticalSpacing(6)
+        self._category_columns = None
+        for category in CATEGORIES:
+            group = QWidget()
+            group_layout = QVBoxLayout(group)
+            group_layout.setContentsMargins(0, 0, 0, 0)
+            group_layout.setSpacing(2)
             name = QLabel(CATEGORY_NAMES[category])
             name.setWordWrap(True)
             value = QLabel("—")
-            columns.addWidget(name, 0, index)
-            columns.addWidget(value, 1, index)
-            columns.setColumnStretch(index, 1)
+            group_layout.addWidget(name)
+            group_layout.addWidget(value)
+            group_layout.addStretch()
+            self.category_groups.append(group)
             self.category_labels[category] = (name, value)
             if category != "unknown":
                 moves = QLabel("—")
                 moves.setObjectName("sectionNote")
                 moves.setWordWrap(True)
-                columns.addWidget(moves, 2, index)
+                group_layout.insertWidget(group_layout.count() - 1, moves)
                 self.move_labels[category] = moves
-        self.content.addLayout(columns)
+        self.content.addLayout(self.category_grid)
+        self._arrange_categories(4)
         self.coverage = QLabel("Waiting for Maia and Stockfish")
         self.coverage.setObjectName("sectionNote")
         self.coverage.setWordWrap(True)
@@ -289,6 +299,25 @@ class BlunderMeter(InsightCard):
         self.content.setSpacing(3)
         self.setToolTip(METHOD_NOTE)
         self.move.currentIndexChanged.connect(self.refresh_selection)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # In the right column the scroll area may be narrower than its child.
+        parent = self.parentWidget()
+        width = min(self.width(), parent.width()) if parent is not None else self.width()
+        self._arrange_categories(2 if width < 300 else 4)
+
+    def _arrange_categories(self, columns):
+        if columns == self._category_columns:
+            return
+        self._category_columns = columns
+        grid = self.category_grid
+        while grid.count():
+            grid.takeAt(0)
+        for column in range(4):
+            grid.setColumnStretch(column, int(column < columns))
+        for index, group in enumerate(self.category_groups):
+            grid.addWidget(group, index // columns, index % columns)
 
     def set_data(self, assessments, names, position_key):
         signature = (position_key, tuple(sorted(names.items())),

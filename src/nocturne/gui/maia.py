@@ -1,6 +1,6 @@
 """Compact Maia controls and the optional legal-move view inside analysis."""
 from PySide6.QtCore import Signal, Qt, QSize, QEvent
-from PySide6.QtWidgets import QStylePainter, QToolTip
+from PySide6.QtWidgets import QToolTip
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QCheckBox,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QGridLayout, QSizePolicy, QScrollArea, QSpinBox,
@@ -8,22 +8,7 @@ from PySide6.QtWidgets import (
 from ..maia import RATINGS, percentage
 from ..engine.uci_types import score_label
 from .wheel import WheelSteps
-
-
-class StatusLabel(QLabel):
-    """Keep live status updates from shifting the candidate rows below."""
-
-    def setText(self, text):
-        super().setText(text)
-        self.setToolTip(text)
-
-    def paintEvent(self, event):
-        painter = QStylePainter(self)
-        text = self.fontMetrics().elidedText(
-            self.text(), Qt.TextElideMode.ElideRight, self.contentsRect().width()
-        )
-        painter.drawItemText(self.contentsRect(), int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
-                             self.palette(), self.isEnabled(), text, self.foregroundRole())
+from .widgets import ElidedLabel
 
 
 class RatingDragBox(QComboBox):
@@ -82,7 +67,7 @@ class MaiaControls(QWidget):
         top = QGridLayout()
         top.setSpacing(6)
         self.tools_layout = top
-        self._narrow = None
+        self._layout_mode = None
         settings = QPushButton("Stockfish settings")
         settings.clicked.connect(self.settings_requested)
         self.settings_button = settings
@@ -93,6 +78,8 @@ class MaiaControls(QWidget):
         self.enabled.toggled.connect(self.enabled_changed)
         top.addWidget(self.enabled, 0, 1)
         self.rating = RatingDragBox()
+        self.rating.setMinimumWidth(104)
+        self.rating.setMaximumWidth(120)
         for rating in RATINGS:
             self.rating.addItem(f"{rating} Elo", rating)
         self.rating.setCurrentIndex(RATINGS.index(1800))
@@ -102,7 +89,7 @@ class MaiaControls(QWidget):
         top.addWidget(self.leela, 0, 3)
         top.setColumnStretch(3, 0)
         layout.addLayout(top)
-        self.status = StatusLabel()
+        self.status = ElidedLabel()
         self.status.setText("Maia-3 79M · local human-move predictions")
         self.status.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.status.setObjectName("sectionNote")
@@ -202,10 +189,11 @@ class MaiaControls(QWidget):
                 available = ancestor.viewport().width()
                 break
             ancestor = ancestor.parentWidget()
-        narrow = available < 560
-        if narrow == self._narrow:
+        mode = "wide" if available >= 560 else "medium" if available >= 350 else "compact"
+        if mode == self._layout_mode:
             return
-        self._narrow = narrow
+        self._layout_mode = mode
+        narrow = mode != "wide"
         fields = self.detail_fields_layout
         fields.removeWidget(self.range_controls)
         fields.addWidget(self.range_controls, 1 if narrow else 0, 0 if narrow else 1,
@@ -216,24 +204,22 @@ class MaiaControls(QWidget):
         layout = self.tools_layout
         while layout.count():
             layout.takeAt(0)
-        for column in range(6):
-            layout.setColumnStretch(column, 0)
-        if narrow:
-            layout.addWidget(self.enabled, 0, 0)
-            layout.addWidget(self.rating, 0, 1)
-            layout.addWidget(self.leela, 0, 2)
-            layout.addWidget(self.settings_button, 1, 0, 1, 2, Qt.AlignmentFlag.AlignLeft)
-            layout.setColumnStretch(1, 1)
-            layout.addWidget(self.all_moves, 2, 0)
-            layout.addWidget(self.details, 2, 1, Qt.AlignmentFlag.AlignRight)
+        if mode == "compact":
+            layout.addWidget(self.settings_button, 0, 0, 1, 2, Qt.AlignmentFlag.AlignLeft)
+            layout.addWidget(self.details, 0, 2, Qt.AlignmentFlag.AlignRight)
+            layout.addWidget(self.enabled, 1, 0, 1, 2)
+            layout.addWidget(self.rating, 1, 2, Qt.AlignmentFlag.AlignRight)
+            layout.addWidget(self.leela, 2, 0)
+            layout.addWidget(self.all_moves, 2, 1, 1, 2, Qt.AlignmentFlag.AlignRight)
+        elif mode == "medium":
+            for column, widget in enumerate((self.settings_button, self.enabled, self.rating)):
+                layout.addWidget(widget, 0, column, Qt.AlignmentFlag.AlignLeft)
+            for column, widget in enumerate((self.leela, self.all_moves, self.details)):
+                layout.addWidget(widget, 1, column, Qt.AlignmentFlag.AlignLeft)
         else:
-            layout.addWidget(self.settings_button, 0, 0)
-            layout.addWidget(self.enabled, 0, 1)
-            layout.addWidget(self.rating, 0, 2)
-            layout.addWidget(self.leela, 0, 3)
-            layout.setColumnStretch(3, 0)
-            layout.addWidget(self.all_moves, 0, 4)
-            layout.addWidget(self.details, 0, 5)
+            for column, widget in enumerate((self.settings_button, self.enabled, self.rating, self.leela,
+                                             self.all_moves, self.details)):
+                layout.addWidget(widget, 0, column)
 
     def _show_details(self, expanded):
         self.status.setVisible(expanded)

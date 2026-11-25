@@ -1,15 +1,16 @@
 """Opt-in game review with honest coverage and persistent per-move evidence."""
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView, QCheckBox, QDoubleSpinBox, QFrame, QHBoxLayout,
-    QHeaderView, QLabel, QProgressBar, QPushButton, QTableWidget, QTableWidgetItem,
+    QHeaderView, QLabel, QProgressBar, QPushButton, QSizePolicy, QTableWidget, QTableWidgetItem,
     QTextBrowser, QVBoxLayout, QWidget,
 )
 
 from ..review import ERRORS, LABELS, rows, summarize
 from ..engine.uci_types import score_label
+from .widgets import ElidedLabel
 
 
 class ReviewPanel(QWidget):
@@ -31,12 +32,13 @@ class ReviewPanel(QWidget):
         title = QLabel("Game Review")
         title.setObjectName("brand")
         heading.addWidget(title, 1)
-        back = QPushButton("Back to analysis")
+        back = QPushButton("Back to Engine")
         back.clicked.connect(self.back_requested)
         heading.addWidget(back)
         layout.addLayout(heading)
-        self.status = QLabel("Review the selected line with your UCI engine.")
-        self.status.setWordWrap(True)
+        self.status = ElidedLabel()
+        self.status.setText("Review the selected line with your UCI engine.")
+        self.status.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.status.setObjectName("muted")
         layout.addWidget(self.status)
         controls = QHBoxLayout()
@@ -46,6 +48,7 @@ class ReviewPanel(QWidget):
         self.seconds.setDecimals(2)
         self.seconds.setSuffix(" s / search")
         self.seconds.setAccessibleName("Game review seconds per search")
+        self.seconds.setToolTip("Time allowed for each engine search during this review.")
         self.run = QPushButton("Start review")
         self.run.setObjectName("primary")
         self.run.clicked.connect(lambda: self.run_requested.emit(self.seconds.value()))
@@ -68,10 +71,13 @@ class ReviewPanel(QWidget):
             caption.setObjectName("eyebrow")
             value.setObjectName("score")
             coverage.setObjectName("muted")
+            coverage.setWordWrap(True)
+            coverage.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+            card.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
             for widget in (caption, value, coverage):
                 inner.addWidget(widget)
             self.scores[key] = (value, coverage)
-            cards.addWidget(card)
+            cards.addWidget(card, 1)
         layout.addLayout(cards)
         self.counts = QLabel()
         self.counts.setWordWrap(True)
@@ -86,13 +92,17 @@ class ReviewPanel(QWidget):
         previous.clicked.connect(lambda: self._key_moment(-1))
         following.clicked.connect(lambda: self._key_moment(1))
         biggest.clicked.connect(lambda: self._key_moment(0))
-        for widget in (previous, following, biggest):
-            widget.setToolTip("Jump to a reviewed inaccuracy, mistake or blunder on the selected line.")
+        for widget, caption in ((previous, "Previous"), (following, "Next"), (biggest, "Biggest")):
+            widget.setAccessibleName(widget.text())
+            widget.setToolTip(widget.text() + " on the selected line, including inaccuracies and blunders.")
+            widget.setText(caption)
             moments.addWidget(widget)
         layout.addLayout(moments)
         self.table = QTableWidget(0, 5)
         self.table.setMinimumHeight(105)
-        self.table.setHorizontalHeaderLabels(["Move", "Quality", "Accuracy", "Chance loss", "Best move"])
+        self.table.setHorizontalHeaderLabels(["Move", "Quality", "Accuracy", "Loss", "Best"])
+        self.table.horizontalHeaderItem(3).setToolTip("Estimated chance loss in percentage points.")
+        self.table.horizontalHeaderItem(4).setToolTip("Engine’s preferred move.")
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -101,6 +111,7 @@ class ReviewPanel(QWidget):
         for column in range(5):
             self.table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.Stretch)
         self.table.cellClicked.connect(self._clicked)
+        self.table.installEventFilter(self)
         layout.addWidget(self.table, 1)
         self.detail = QTextBrowser()
         self.detail.setMaximumHeight(190)
@@ -122,6 +133,10 @@ class ReviewPanel(QWidget):
         self.entries = rows(game)
         total = summarize(self.entries)
         active = state is not None
+        self.run.setVisible(not active)
+        self.seconds.setVisible(not active)
+        self.pause.setVisible(active)
+        self.cancel.setVisible(active)
         self.run.setEnabled(not active and bool(self.entries))
         self.run.setText("Start review" if profile else "Choose engine…")
         self.seconds.setEnabled(not active)
@@ -143,9 +158,11 @@ class ReviewPanel(QWidget):
         for color, (value, coverage) in self.scores.items():
             summary = summarize(self.entries, color)
             value.setText(f"{summary['accuracy']:.1f}%" if summary["accuracy"] is not None else "—")
+            mistakes, blunders = (summary["counts"][label] for label in ("Mistake", "Blunder"))
             coverage.setText(f"{summary['reviewed']}/{summary['total']} reviewed" +
                              (" · partial" if summary["reviewed"] < summary["total"] else "") +
-                             f"\n{summary['counts']['Mistake']} mistakes · {summary['counts']['Blunder']} blunders")
+                             f"\n{mistakes} mistake{'s' if mistakes != 1 else ''} · "
+                             f"{blunders} blunder{'s' if blunders != 1 else ''}")
         self.counts.setText("  ·  ".join(f"{label} {total['counts'][label]}" for label in LABELS))
         signature = (game.id, game.current_node, light, tuple((e["node"], e["san"], repr(e["record"])) for e in self.entries))
         if self._signature != signature:
@@ -168,6 +185,7 @@ class ReviewPanel(QWidget):
             for column, text in enumerate(values):
                 item = QTableWidgetItem(text)
                 item.setData(Qt.ItemDataRole.UserRole, entry["node"])
+                item.setToolTip(text)
                 if column == 1 and record:
                     colors = (["#3c6b90", "#3c6b90", "#666666", "#91733c", "#ae613d", "#ad4848"]
                               if getattr(self, "_light", False) else
@@ -191,6 +209,13 @@ class ReviewPanel(QWidget):
             entry = next((e for e in ordered if (nodes.index(e["node"]) - index) * direction > 0), ordered[0])
         self.move_requested.emit(entry["node"])
         self._show_detail()
+
+    def eventFilter(self, watched, event):
+        if (watched is self.table and event.type() == QEvent.Type.KeyPress
+                and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)):
+            self._clicked(self.table.currentRow(), self.table.currentColumn())
+            return True
+        return super().eventFilter(watched, event)
 
     def _clicked(self, row, column):
         item = self.table.item(row, 0)

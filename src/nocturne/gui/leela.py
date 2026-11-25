@@ -167,6 +167,7 @@ class LeelaPanel(QWidget):
         layout.addWidget(details)
         settings = QWidget()
         form = QFormLayout(settings)
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.side = QComboBox()
         self.side.addItems(['White', 'Black'])
         self.side.setCurrentIndex(0 if config['leela_side'] == 'white' else 1)
@@ -179,7 +180,8 @@ class LeelaPanel(QWidget):
         self.opponent.setValue(config['leela_rating'] - config['leela_gap'])
         side_row = QHBoxLayout()
         side_row.addWidget(self.side)
-        switch_side = QPushButton('⇄ Switch')
+        switch_side = QPushButton('Switch')
+        switch_side.setStyleSheet('padding: 5px 6px;')
         switch_side.setToolTip('Switch White and Black, keeping the ratings and advantage.')
         switch_side.clicked.connect(lambda: self.side.setCurrentIndex(1 - self.side.currentIndex()))
         side_row.addWidget(switch_side)
@@ -203,7 +205,7 @@ class LeelaPanel(QWidget):
         self.nodes.setRange(1, 2000000000)
         self.nodes.setGroupSeparatorShown(True)
         self.nodes.setValue(config['leela_nodes'])
-        self.auto_gpu = QCheckBox('Automatically select discrete GPU (prefer Radeon)')
+        self.auto_gpu = QCheckBox('Auto-select discrete GPU')
         self.auto_gpu.setChecked(config['leela_gpu_auto'])
         self.gpu_info = QLabel('Backend: ONNX DirectML GPU · adapter detected when Leela starts')
         self.gpu_info.setWordWrap(True)
@@ -259,7 +261,7 @@ class LeelaPanel(QWidget):
             (self.gap, self.gap, 'Rating difference between the selected side and its opponent. Positive means the selected side is stronger.'),
             (time_row, self.seconds, 'Maximum time Leela spends analyzing each position, in seconds.'),
             (node_row, self.nodes, 'Maximum number of positions Leela searches for each analysis.'),
-            (self.batch, self.batch, 'Number of positions sent to the GPU together. Larger batches may improve throughput, but use more video memory and can affect search efficiency. Default: 16.'),
+            (self.batch, self.batch, 'Number of positions sent to the GPU together. Larger batches may improve throughput, but use more video memory and can affect search efficiency. Default: 8.'),
             (self.gpu_info, self.gpu_info, 'Shows the GPU backend and selected adapter used for Leela analysis.'),
             (self.device, self.device, 'Choose the DirectML GPU adapter index when automatic GPU selection is off.'),
         ]
@@ -274,6 +276,7 @@ class LeelaPanel(QWidget):
         layout.addWidget(settings)
         settings.hide()
         details.toggled.connect(settings.setVisible)
+        details.toggled.connect(self._fit_wrapped_height)
         self.side.currentIndexChanged.connect(self._settings)
         self.rating.valueChanged.connect(self._settings)
         self.gap.valueChanged.connect(self._settings)
@@ -320,6 +323,19 @@ class LeelaPanel(QWidget):
         row.addWidget(stop)
         layout.addLayout(row)
         self.lines = {}
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if event.oldSize().width() != event.size().width():
+            self._fit_wrapped_height()
+
+    def _fit_wrapped_height(self):
+        # QSplitter uses the minimum height, which otherwise ignores rows
+        # wrapped by the form at the panel’s current width.
+        layout = self.layout()
+        height = max(0, layout.minimumHeightForWidth(self.width()))
+        if self.minimumHeight() != height:
+            self.setMinimumHeight(height)
 
     def _sync_limit_controls(self):
         self.seconds.setEnabled(self.time_enabled.isChecked())
