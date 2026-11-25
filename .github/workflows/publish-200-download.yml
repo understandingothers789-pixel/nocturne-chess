@@ -17,7 +17,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           while true; do
-            for run in 45722740123; do
+            for run in 45722889488; do
               conclusion=$(gh run view "$run" --json conclusion --jq .conclusion) || continue
               if [[ "$conclusion" == success ]]; then
                 echo "run_id=$run" >> "$GITHUB_OUTPUT"
@@ -39,4 +39,4 @@ jobs:
         run: |
           cd download
           zip -qr ../NocturneChess-0.5.7.200-Windows-x64-unsigned.zip .
-          gh release create v0.5.7.200 ../NocturneChess-0.5.7.200-Windows-x64-unsigned.zip --target 9d5aef7792fe6f8e7d69c5203fa3046ce15ebc54 --title "Nocturne Chess 0.5.7.200" --notes "Adds Stockfish-only Lichess and Nibbler arrow presets, plus the three pairwise engine and model layouts."
+          gh release create v0.5.7.200 ../NocturneChess-0.5.7.200-Windows-x64-unsigned.zip --target 2bbc1cdbc44edf5bd4d400dcfc93105965810e24 --title "Nocturne Chess 0.5.7.200" --notes "Adds Stockfish-only Lichess and Nibbler arrow presets, plus the three pairwise engine and model layouts."
