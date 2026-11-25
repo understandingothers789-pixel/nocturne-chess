@@ -136,48 +136,58 @@ class RenderingTests(unittest.TestCase):
             self.assertEqual([(move, rank) for move, rank, color in rods], [(moves[1], 1), (moves[0], 2)])
             self.assertEqual([color for move, rank, color in rods], list(curve_colors(light)[:2]))
 
-    def test_board_arrow_layouts_show_distinct_sources_and_ignore_stale_explorer_rows(self):
-        from types import SimpleNamespace
-
+    def test_board_arrow_presets_hide_other_sources_and_merge_pair_agreement(self):
         from nocturne.gui.window import MainWindow
 
         directory = self.enterContext(tempfile.TemporaryDirectory())
         window = MainWindow(Path(directory))
         self.addCleanup(window.close)
         board = window.board_view
-        move = board.legal_by_uci["e2e4"]
-        entries = [(move, 1, "+0.2")]
-        board.set_recommendations(entries)
-        board.set_maia_recommendations([(move, 0.6, "best")])
-        board.leela_recommendations = [(move, 1)]
-        window._explorer_active = True
-        window.explorer.query = SimpleNamespace(source="masters")
-        window.explorer.identity = window._position_identity()
-        window.explorer.statistics = {"moves": [{"uci": "e2e4"}, {"uci": "d2d4"}, {"uci": "a1a8"}]}
+        e4, d4, c4, nf3, nc3 = [
+            board.legal_by_uci[uci] for uci in ("e2e4", "d2d4", "c2c4", "g1f3", "b1c3")
+        ]
         board.resize(420, 420)
-        for key, expected in (
-            ("nibbler", ["S1", "L1", "M1"]),
-            ("lichess", ["S1", "L1", "M1"]),
-            ("opening", ["S1", "D1", "D2", "L1", "M1"]),
-            ("focus", ["S1"]),
+        board.set_recommendations([
+            (e4, 1, "+0.40", 0, ("cp", 40, (160, 800, 40))),
+            (d4, 2, "+0.35", 5, ("cp", 35, None)),
+            (c4, 3, "−4.00", 440, ("cp", -400, None)),
+        ])
+        board.set_maia_recommendations([(nf3, 0.55, "best"), (e4, 0.35, "best")])
+        board.leela_recommendations = [(e4, 1), (nc3, 2)]
+        board.branch_moves = [c4]
+        clicks = []
+        board.move_requested.disconnect(window._human_move)
+        board.move_requested.connect(clicks.append)
+        for key in ("lichess", "nibbler"):
+            window.board_arrow_actions[key].trigger()
+            board.overlays = True
+            with patch.object(board, "_draw_maia_rods", side_effect=AssertionError), \
+                    patch.object(board, "_draw_paired_arrows", side_effect=AssertionError):
+                with_arrows = board.grab().toImage()
+            self.assertFalse(board._smart_request(nf3.to_sq, None))
+            self.assertTrue(board._smart_request(e4.to_sq, None))
+            self.assertEqual(clicks[-1], e4)
+            board.overlays = False
+            self.assertNotEqual(with_arrows, board.grab().toImage())
+        self.assertEqual([(move, width) for move, width, _ in board._lichess_arrows()], [(e4, 15), (d4, 12)])
+        self.assertEqual([(move, label) for move, _, label in board._nibbler_arrows()], [(e4, "56"), (d4, "55")])
+
+        for key, expected, unique in (
+            ("stockfish-leela", ["Stockfish", "Leela"], {d4, nc3}),
+            ("stockfish-maia", ["Stockfish", "Maia"], {d4, nf3}),
+            ("leela-maia", ["Leela", "Maia"], {nc3, nf3}),
         ):
             window.board_arrow_actions[key].trigger()
-            self.assertEqual([name for _, name, _, _ in board._styled_arrows(entries)], expected)
+            arrows = board._paired_arrows()
+            self.assertEqual(set(arrows), unique | {e4})
+            self.assertEqual([source for source, _ in arrows[e4]], expected)
             self.assertEqual(sum(action.isChecked() for action in window.board_arrow_actions.values()), 1)
             self.assertEqual(window.store.get("settings")["board_arrow_layout"], key)
+            self.assertTrue(all(name in window.board_arrow_key.text() for name in expected))
             board.overlays = True
             with_arrows = board.grab().toImage()
             board.overlays = False
             self.assertNotEqual(with_arrows, board.grab().toImage())
-        window.board_arrow_actions["opening"].trigger()
-        window.explorer.identity = None
-        window._sync_explorer_arrows()
-        self.assertEqual(board.explorer_arrows, ())
-        window.explorer.identity = window._position_identity()
-        window.explorer.query.source = "tablebase"
-        window._sync_explorer_arrows()
-        self.assertEqual([label for _, label in board.explorer_arrows], ["T1", "T2"])
-        window.explorer.query = None
 
     def test_vertical_candidate_transition_keeps_preview_until_real_exit(self):
         panel = CandidatePanel(MoveText(auto_fit=True))

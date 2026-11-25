@@ -4,7 +4,12 @@ import math
 from .maia import RATINGS as MAIA_RATINGS
 from .pieces import DEFAULT_PIECE_SET, PIECE_SET_NAMES
 
-BOARD_ARROW_LAYOUTS = ("classic", "nibbler", "lichess", "opening", "focus")
+BOARD_ARROW_PAIRS = {
+    "stockfish-leela": ("Stockfish", "Leela"),
+    "stockfish-maia": ("Stockfish", "Maia"),
+    "leela-maia": ("Leela", "Maia"),
+}
+BOARD_ARROW_LAYOUTS = ("classic", "lichess", "nibbler", *BOARD_ARROW_PAIRS)
 
 DEFAULTS = {
     "mode": "analysis",

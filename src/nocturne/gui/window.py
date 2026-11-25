@@ -70,11 +70,11 @@ from ..core.variation import mainline
 from ..core.notation import pgn_clock
 from ..core.notation import parse_san
 from ..engine.uci_types import AnalysisLimits as SearchLimits, score_label, plot_score_label as score_text
-from ..settings import DEFAULTS, normalize
+from ..settings import BOARD_ARROW_PAIRS, DEFAULTS, normalize
 from ..analysis_jobs import checkpoint as checkpoint_job, restore as restore_job
 from ..snapshots import position_key
 from ..storage import Store, StorageError
-from .board import BoardWidget
+from .board import ARROW_SOURCE_COLORS, BoardWidget
 from .dialogs import NewGameDialog, SettingsDialog, TextDialog
 from .engine import EngineController
 from .engine_manager import EngineManager
@@ -402,12 +402,15 @@ class MainWindow(QMainWindow):
         board_tools = QHBoxLayout()
         self.board_hint = label("Drag a piece or select a square", "muted", True)
         board_tools.addWidget(self.board_hint)
+        self.board_arrow_key = label("", "muted")
+        self.board_arrow_key.setToolTip("Each color identifies a source. A two-color arrow means both sources suggest the same move.")
+        board_tools.addWidget(self.board_arrow_key)
         board_tools.addStretch()
         board_tools.addWidget(button("⇅  Flip", self._flip, "quiet"))
         board_tools.addWidget(button("Copy FEN", self._copy_fen, "quiet"))
         guide = button("?", self._show_board_guide, "quiet")
         guide.setAccessibleName("Board symbols guide")
-        guide.setToolTip("Click to learn what the Stockfish arrows, numbered Maia rods and percentages mean.")
+        guide.setToolTip("Click to learn what the arrow layouts, board symbols and percentages mean.")
         guide.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips)
         guide.setToolTipDuration(15000)
         self.board_guide_button = guide
@@ -889,20 +892,21 @@ class MainWindow(QMainWindow):
             self.display_actions[key] = action
         self.board_arrow_menu = display.addMenu("Board arrow layout")
         self.board_arrow_menu.menuAction().setToolTip(
-            "Choose how Stockfish, Maia, Leela, saved continuations and explorer moves look on the board."
+            "Choose the arrow design and which analysis sources appear on the board."
         )
         self.board_arrow_actions = {}
-        for key, title, tip in (
-            ("classic", "Nocturne classic", "The original Stockfish arrows and numbered model rods."),
-            ("nibbler", "Nibbler-inspired", "Slim arrows for comparing candidates without obscuring the pieces. "
-             "S is Stockfish, M is Maia, and L is Leela. The number is the rank within that source."),
-            ("lichess", "Lichess-inspired", "Broader translucent arrows with a larger head. "
-             "S is Stockfish, M is Maia, and L is Leela."),
-            ("opening", "Opening prep", "Shows up to three explorer moves alongside up to two candidates per engine "
-             "or model. D is database rank and T is Lichess tablebase order. Uses the loaded explorer results."),
-            ("focus", "Focus · one arrow", "Shows just the strongest available suggestion, preferring Stockfish, "
-             "then Leela, then Maia, then a saved continuation."),
-        ):
+        choices = (
+            ("classic", "Nocturne Classic", "The original Nocturne arrows and numbered model rods."),
+            ("lichess", "Lichess", "Stockfish only. A pale blue lead arrow and gray alternatives sized by evaluation gap."),
+            ("nibbler", "Nibbler", "Stockfish only. The round markers show expected score from the side to move."),
+        )
+        for key, title, tip in (*choices, *(
+            (key, " + ".join(names),
+             f"Compare up to two suggestions each from {' and '.join(names)}. Agreement draws one two-color arrow.")
+            for key, names in BOARD_ARROW_PAIRS.items()
+        )):
+            if key == "stockfish-leela":
+                self.board_arrow_menu.addSeparator()
             action = add(self.board_arrow_menu, title,
                          lambda checked, layout=key: self._set_board_arrow_layout(layout) if checked else None)
             action.setCheckable(True)
@@ -1285,10 +1289,19 @@ class MainWindow(QMainWindow):
 
     def _set_board_arrow_layout(self, layout):
         self.config["board_arrow_layout"] = layout
-        self.board_view.arrow_layout = layout
-        self._sync_explorer_arrows()
-        self.board_view.update()
+        self._apply_board_arrow_layout()
         self._save()
+
+    def _apply_board_arrow_layout(self):
+        layout = self.config["board_arrow_layout"]
+        self.board_view.arrow_layout = layout
+        self.board_arrow_actions[layout].setChecked(True)
+        names = BOARD_ARROW_PAIRS.get(layout, ())
+        self.board_arrow_key.setText(" &nbsp; ".join(
+            f'<span style="color:{ARROW_SOURCE_COLORS[name]}">●</span> {name}' for name in names
+        ))
+        self.board_arrow_key.setVisible(bool(names))
+        self.board_view.update()
 
     def _set_candidate_arrow_threshold(self, key, pawns):
         self.config[key] = round(float(pawns) * 100)
@@ -1524,7 +1537,6 @@ class MainWindow(QMainWindow):
 
     def _sync_candidate_database(self):
         self._sync_explorer_meter()
-        self._sync_explorer_arrows()
         explorer = self.explorer
         if (explorer.query and explorer.query.source != "tablebase"
                 and explorer.identity == self._position_identity()
@@ -1533,20 +1545,6 @@ class MainWindow(QMainWindow):
                                          explorer.statistics_status)
         else:
             self.candidates.set_database()
-
-    def _sync_explorer_arrows(self):
-        explorer = self.explorer
-        if (self.board_view.arrow_layout != "opening" or not self._explorer_active
-                or not explorer.query or explorer.identity != self._position_identity()):
-            self.board_view.set_explorer_arrows("", ())
-            return
-        source = "T" if explorer.query.source == "tablebase" else "D"
-        statistics = explorer.statistics or {}
-        legal = self.board_view.legal_by_uci
-        moves = dict.fromkeys(
-            legal[row["uci"]] for row in statistics.get("moves", ()) if row["uci"] in legal
-        )
-        self.board_view.set_explorer_arrows(source, islice(moves, 3))
 
     def _explorer_move(self, identity, text):
         if not self.analysis_mode or not self._explorer_active or identity != self._position_identity():
@@ -2591,9 +2589,11 @@ class MainWindow(QMainWindow):
                 inferior_ranks.add(rank)
             try:
                 loss = max(0, best - line["score"]) if best is not None and line.get("score") is not None else None
+                kind, value = line.get("score_type"), line.get("score_value")
+                score = (kind, value, line.get("wdl")) if kind in ("cp", "mate") and type(value) is int else None
                 entries.append((self.board_view.legal_by_uci.get(line["pv"][0]) or
                                 self.game.board.parse_uci(line["pv"][0]), rank,
-                                score_label(line, self.game.board.turn), loss))
+                                score_label(line, self.game.board.turn), loss, score))
             except (ValueError, IndexError):
                 continue
         self.board_view.set_recommendations(entries, inferior_ranks=inferior_ranks)
@@ -4031,8 +4031,7 @@ class MainWindow(QMainWindow):
             self._render_telemetry(self._last_info, self._last_info_turn)
         self.tablebase_label.setVisible(self.maia_controls.details.isChecked())
         self.board_view.smart_move = self.config.get("smart_move", True)
-        self.board_view.arrow_layout = self.config["board_arrow_layout"]
-        self.board_arrow_actions[self.board_view.arrow_layout].setChecked(True)
+        self._apply_board_arrow_layout()
         self.board_view.candidate_style = self.config.get("candidate_style", "lines")
         for key, action in self.marker_actions.items():
             action.setChecked(key == self.board_view.candidate_style)
@@ -4217,7 +4216,12 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         text = QLabel(
-            "<h3>→ Stockfish arrows</h3>"
+            "<h3>Arrow layouts</h3>"
+            "<p>Find the presets under <b>Display → Board arrow layout</b>. The Lichess preset shows the "
+            "leading Stockfish move in pale blue with gray alternatives. The Nibbler preset uses round "
+            "markers with Stockfish's expected score for the side to move. In pair layouts, use the key "
+            "below the board. A two-color arrow shows agreement.</p>"
+            "<h3>→ Stockfish arrows in Nocturne Classic</h3>"
             "<p>Blue is the top engine recommendation; gray arrows are other candidates. "
             "With candidate loss colors enabled, green, yellow and red show loss relative to the best move.</p>"
             "<h3>① Numbered rods: Maia or Leela</h3>"
