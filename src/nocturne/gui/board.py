@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 
 from PySide6.QtCore import QEasingCurve, QPointF, QRectF, QSize, Qt, QVariantAnimation, Signal
 from PySide6.QtGui import QColor, QFont, QIcon, QMouseEvent, QPainter, QPainterPath, QPainterPathStroker, QPen, QPixmap, QPolygonF
@@ -62,6 +63,8 @@ class BoardWidget(QWidget):
         self.smart_move = False
         self.maia_recommendations = []
         self.leela_recommendations = []
+        self.explorer_arrows = ()
+        self.arrow_layout = "classic"
         self.maia_recommendation_fen = None
         self.maia_arrows_enabled = True
         self.candidate_style = "lines"
@@ -152,6 +155,7 @@ class BoardWidget(QWidget):
         self.legal_by_uci = {move.uci(): move for move in self.legal}
         self.maia_recommendations = []
         self.leela_recommendations = []
+        self.explorer_arrows = ()
         self.maia_recommendation_fen = None
         self.best_move = None
         self.game_move = None
@@ -220,6 +224,12 @@ class BoardWidget(QWidget):
         self.game_move = move if move in self.legal else None
         if self.recommendation_fen is None:
             self.recommendation_fen = self.board.fen()
+
+    def set_explorer_arrows(self, source, moves):
+        entries = tuple((move, f"{source}{rank}") for rank, move in enumerate(moves, 1))
+        if entries != self.explorer_arrows:
+            self.explorer_arrows = entries
+            self.update()
 
     def _destination(self, move):
         return (
@@ -421,6 +431,108 @@ class BoardWidget(QWidget):
             painter.setFont(font)
             painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, str(rank))
 
+    def _styled_arrows(self, entries):
+        """Yield sources in priority order so paint can keep the leaders on top."""
+        layout = self.arrow_layout
+        limit = 2 if layout == "opening" else None
+        colors = curve_colors(self.light)
+        for move, rank, _ in entries[:limit]:
+            loss = self.recommendation_losses.get(move)
+            color = (candidate_loss_color(loss, self.candidate_arrow_green_cp, self.candidate_arrow_yellow_cp)
+                     if self.candidate_loss_arrows and loss is not None else
+                     QColor("#3584cf" if rank == 1 else "#697b8d"))
+            yield move, f"S{rank}", color, rank == 1
+            if layout == "focus":
+                return
+        if layout == "opening":
+            for move, label in self.explorer_arrows:
+                yield move, label, QColor("#8c57b4" if label.startswith("T") else "#a66816"), label.endswith("1")
+        for move, rank in self.leela_recommendations[:limit]:
+            yield move, f"L{rank}", QColor("#a658b5"), rank == 1
+            if layout == "focus":
+                return
+        if self.maia_arrows_enabled:
+            for rank, (move, _, _) in enumerate(self.maia_recommendations[:limit], 1):
+                yield move, f"M{rank}", QColor(colors[(rank - 1) % len(colors)]), rank == 1
+                if layout == "focus":
+                    return
+        for move in self.branch_moves[:limit]:
+            yield move, "", QColor("#827560"), False
+            if layout == "focus":
+                return
+
+    def _draw_styled_arrows(self, painter, entries, unit):
+        broad = self.arrow_layout == "lichess"
+        paths = defaultdict(list)
+        labels = defaultdict(list)
+        for move, label, color, leader in self._styled_arrows(entries):
+            destination = self._destination(move)
+            if move.from_sq == destination:
+                continue
+            if not label and (move.from_sq, destination) in paths:
+                continue
+            paths[move.from_sq, destination].append((color, leader, label))
+            if label:
+                labels[destination].append((label, color))
+        for (source, destination), arrows in reversed(paths.items()):
+            start, target = self.square_rect(source).center(), self.square_rect(destination).center()
+            delta = target - start
+            length = math.hypot(delta.x(), delta.y())
+            direction = delta / length
+            normal = QPointF(-direction.y(), direction.x())
+            for index in reversed(range(len(arrows))):
+                color, leader, label = arrows[index]
+                offset = (index - (len(arrows) - 1) / 2) * unit * min(0.18, 0.55 / len(arrows))
+                origin = start + normal * offset
+                width = unit * ((0.16 if leader else 0.105) if broad else (0.075 if leader else 0.044))
+                if len(arrows) > 1:
+                    width = min(width, unit * 0.23 / len(arrows) + unit * 0.025)
+                head = unit * (0.32 if broad else 0.20)
+                tip = length - unit * (0.12 if broad else 0.22)
+                tail = unit * (0.10 if broad else 0.30)
+                shaft = QPainterPath()
+                shaft.moveTo(tail, 0)
+                shaft.lineTo(tip - head * 0.7, 0)
+                stroker = QPainterPathStroker()
+                stroker.setWidth(width)
+                stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+                point = QPainterPath()
+                point.moveTo(tip, 0)
+                point.lineTo(tip - head, -width * 1.55)
+                point.lineTo(tip - head, width * 1.55)
+                point.closeSubpath()
+                shape = stroker.createStroke(shaft).united(point)
+                painter.save()
+                painter.translate(origin)
+                painter.rotate(math.degrees(math.atan2(delta.y(), delta.x())))
+                color.setAlpha((126 if broad else 222) if label else 100)
+                painter.setBrush(color)
+                painter.setPen(Qt.PenStyle.NoPen if broad or not label else QPen(QColor(24, 31, 40, 175), 1))
+                painter.drawPath(shape)
+                painter.restore()
+        font = QFont("Segoe UI")
+        font.setBold(True)
+        font.setPixelSize(max(8, int(unit * 0.13)))
+        painter.setFont(font)
+        for destination, badges in labels.items():
+            square = self.square_rect(destination)
+            columns = 2 if len(badges) >= 4 else len(badges)
+            visible = badges if len(badges) <= 4 else [
+                *badges[:3], (f"+{len(badges) - 3}", QColor("#697b8d"))
+            ]
+            width = (unit - 4) / max(2, columns)
+            height = max(11, unit * 0.19)
+            for index, (label, color) in enumerate(visible):
+                row, column = divmod(index, columns)
+                badge = QRectF(square.center().x() + (column - columns / 2) * width,
+                               square.top() + 2 + row * (height + 1), width - 1, height)
+                color.setAlpha(255)
+                painter.setBrush(QColor("#1c2632"))
+                painter.setPen(QPen(color, 1))
+                painter.drawRoundedRect(badge, 3, 3)
+                painter.setPen(QColor("#f3f6fa"))
+                painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, label)
+
     @staticmethod
     def last_move_color(base):
         # Keep the square's hue/saturation. Move HSV brightness by ten points,
@@ -508,7 +620,7 @@ class BoardWidget(QWidget):
                 self._piece(painter, piece, QRectF(pos.x(), pos.y(), unit, unit))
         # Stockfish uses the familiar Lichess arrows; Maia's colored rods and
         # likelihood ranks sit above them when both models suggest a move.
-        if not preview and self.overlays:
+        if not preview and self.overlays and self.arrow_layout == "classic":
             entries = self.recommendations or ([(self.best_move, 1, "")] if self.best_move else [])
             for move, rank, _ in reversed(entries):
                 loss = self.recommendation_losses.get(move)
@@ -520,11 +632,14 @@ class BoardWidget(QWidget):
             self._candidate_arrow_color = None
         for src, dst in () if preview else self.arrows:
             self._arrow(painter, src, dst, QColor(232, 175, 79, 200), unit)
-        if not preview and self.overlays:
+        if not preview and self.overlays and self.arrow_layout == "classic":
             for move in self.branch_moves:
                 self._arrow(painter, move.from_sq, self._destination(move), QColor(153, 137, 106, 65), unit, subtle=True)
             if self.maia_arrows_enabled or self.leela_recommendations:
                 self._draw_maia_rods(painter, unit)
+        if not preview and self.overlays and self.arrow_layout != "classic":
+            entries = self.recommendations or ([(self.best_move, 1, "")] if self.best_move else [])
+            self._draw_styled_arrows(painter, entries, unit)
         if not preview and self._drag_pos is not None and self._pressed is not None:
             piece = self.board.cells[self._pressed]
             if piece:

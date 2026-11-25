@@ -136,6 +136,49 @@ class RenderingTests(unittest.TestCase):
             self.assertEqual([(move, rank) for move, rank, color in rods], [(moves[1], 1), (moves[0], 2)])
             self.assertEqual([color for move, rank, color in rods], list(curve_colors(light)[:2]))
 
+    def test_board_arrow_layouts_show_distinct_sources_and_ignore_stale_explorer_rows(self):
+        from types import SimpleNamespace
+
+        from nocturne.gui.window import MainWindow
+
+        with tempfile.TemporaryDirectory() as directory:
+            window = MainWindow(Path(directory))
+            self.addCleanup(window.close)
+            board = window.board_view
+            move = board.legal_by_uci["e2e4"]
+            entries = [(move, 1, "+0.2")]
+            board.set_recommendations(entries)
+            board.set_maia_recommendations([(move, 0.6, "best")])
+            board.leela_recommendations = [(move, 1)]
+            window._explorer_active = True
+            window.explorer.query = SimpleNamespace(source="masters")
+            window.explorer.identity = window._position_identity()
+            window.explorer.statistics = {"moves": [{"uci": "e2e4"}, {"uci": "d2d4"}, {"uci": "a1a8"}]}
+            board.resize(420, 420)
+            for key, expected in (
+                ("nibbler", ["S1", "L1", "M1"]),
+                ("lichess", ["S1", "L1", "M1"]),
+                ("opening", ["S1", "D1", "D2", "L1", "M1"]),
+                ("focus", ["S1"]),
+            ):
+                window.board_arrow_actions[key].trigger()
+                self.assertEqual([name for _, name, _, _ in board._styled_arrows(entries)], expected)
+                self.assertEqual(sum(action.isChecked() for action in window.board_arrow_actions.values()), 1)
+                self.assertEqual(window.store.get("settings")["board_arrow_layout"], key)
+                board.overlays = True
+                with_arrows = board.grab().toImage()
+                board.overlays = False
+                self.assertNotEqual(with_arrows, board.grab().toImage())
+            window.board_arrow_actions["opening"].trigger()
+            window.explorer.identity = None
+            window._sync_explorer_arrows()
+            self.assertEqual(board.explorer_arrows, ())
+            window.explorer.identity = window._position_identity()
+            window.explorer.query.source = "tablebase"
+            window._sync_explorer_arrows()
+            self.assertEqual([label for _, label in board.explorer_arrows], ["T1", "T2"])
+            window.explorer.query = None
+
     def test_vertical_candidate_transition_keeps_preview_until_real_exit(self):
         panel = CandidatePanel(MoveText(auto_fit=True))
         self.addCleanup(panel.close)

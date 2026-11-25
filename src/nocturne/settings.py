@@ -4,6 +4,8 @@ import math
 from .maia import RATINGS as MAIA_RATINGS
 from .pieces import DEFAULT_PIECE_SET, PIECE_SET_NAMES
 
+BOARD_ARROW_LAYOUTS = ("classic", "nibbler", "lichess", "opening", "focus")
+
 DEFAULTS = {
     "mode": "analysis",
     "engine_cpu_budget": 100,
@@ -84,6 +86,7 @@ DEFAULTS = {
     "show_maia_eval_bar": True,
     "smart_move": True,
     "candidate_style": "lines",
+    "board_arrow_layout": "classic",
     "candidate_loss_arrows": False,
     "candidate_arrow_green_cp": 20,
     "candidate_arrow_yellow_cp": 50,
@@ -126,6 +129,7 @@ def normalize(data) -> dict:
         "layout": ("classic", "analysis-left"),
         "analysis_kind": ("infinite", "explore", "bounded", "nodes"),
         "candidate_style": ("arrows", "lines"),
+        "board_arrow_layout": BOARD_ARROW_LAYOUTS,
         "explorer_source": ("masters", "lichess", "chessdb"),
         "explorer_speed": ("all", "ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence"),
         "explorer_rating": (0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500),

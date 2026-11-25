@@ -887,6 +887,28 @@ class MainWindow(QMainWindow):
             action = add(display, text, lambda checked, k=key: self._set_display(k, checked))
             action.setCheckable(True)
             self.display_actions[key] = action
+        self.board_arrow_menu = display.addMenu("Board arrow layout")
+        self.board_arrow_menu.menuAction().setToolTip(
+            "Choose how Stockfish, Maia, Leela, saved continuations and explorer moves look on the board."
+        )
+        self.board_arrow_actions = {}
+        for key, title, tip in (
+            ("classic", "Nocturne classic", "The original Stockfish arrows and numbered model rods."),
+            ("nibbler", "Nibbler-inspired", "Slim arrows for comparing candidates without obscuring the pieces. "
+             "S is Stockfish, M is Maia, and L is Leela. The number is the rank within that source."),
+            ("lichess", "Lichess-inspired", "Broader translucent arrows with a larger head. "
+             "S is Stockfish, M is Maia, and L is Leela."),
+            ("opening", "Opening prep", "Shows up to three explorer moves alongside up to two candidates per engine "
+             "or model. D is database rank and T is Lichess tablebase order. Uses the loaded explorer results."),
+            ("focus", "Focus · one arrow", "Shows just the strongest available suggestion, preferring Stockfish, "
+             "then Leela, then Maia, then a saved continuation."),
+        ):
+            action = add(self.board_arrow_menu, title,
+                         lambda checked, layout=key: self._set_board_arrow_layout(layout) if checked else None)
+            action.setCheckable(True)
+            action.setToolTip(tip)
+            self.board_arrow_actions[key] = action
+        self._exclusive_menu_choices(self.board_arrow_menu)
         self.stockfish_arrow_menu = display.addMenu("Stockfish arrows by eval loss")
         self.stockfish_arrow_display_menu = display
         self.stockfish_arrow_action = self.stockfish_arrow_menu.menuAction()
@@ -1261,6 +1283,13 @@ class MainWindow(QMainWindow):
         self._apply_settings()
         self._save()
 
+    def _set_board_arrow_layout(self, layout):
+        self.config["board_arrow_layout"] = layout
+        self.board_view.arrow_layout = layout
+        self._sync_explorer_arrows()
+        self.board_view.update()
+        self._save()
+
     def _set_candidate_arrow_threshold(self, key, pawns):
         self.config[key] = round(float(pawns) * 100)
         if key == "candidate_arrow_green_cp" and self.config["candidate_arrow_yellow_cp"] < self.config[key]:
@@ -1495,6 +1524,7 @@ class MainWindow(QMainWindow):
 
     def _sync_candidate_database(self):
         self._sync_explorer_meter()
+        self._sync_explorer_arrows()
         explorer = self.explorer
         if (explorer.query and explorer.query.source != "tablebase"
                 and explorer.identity == self._position_identity()
@@ -1503,6 +1533,20 @@ class MainWindow(QMainWindow):
                                          explorer.statistics_status)
         else:
             self.candidates.set_database()
+
+    def _sync_explorer_arrows(self):
+        explorer = self.explorer
+        if (self.board_view.arrow_layout != "opening" or not self._explorer_active
+                or not explorer.query or explorer.identity != self._position_identity()):
+            self.board_view.set_explorer_arrows("", ())
+            return
+        source = "T" if explorer.query.source == "tablebase" else "D"
+        statistics = explorer.statistics or {}
+        legal = self.board_view.legal_by_uci
+        moves = dict.fromkeys(
+            legal[row["uci"]] for row in statistics.get("moves", ()) if row["uci"] in legal
+        )
+        self.board_view.set_explorer_arrows(source, islice(moves, 3))
 
     def _explorer_move(self, identity, text):
         if not self.analysis_mode or not self._explorer_active or identity != self._position_identity():
@@ -3987,6 +4031,8 @@ class MainWindow(QMainWindow):
             self._render_telemetry(self._last_info, self._last_info_turn)
         self.tablebase_label.setVisible(self.maia_controls.details.isChecked())
         self.board_view.smart_move = self.config.get("smart_move", True)
+        self.board_view.arrow_layout = self.config["board_arrow_layout"]
+        self.board_arrow_actions[self.board_view.arrow_layout].setChecked(True)
         self.board_view.candidate_style = self.config.get("candidate_style", "lines")
         for key, action in self.marker_actions.items():
             action.setChecked(key == self.board_view.candidate_style)
