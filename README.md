@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.198 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.198/NocturneChess-0.5.7.198-Windows-x64-unsigned.zip).** Find tactics prioritizes lasting material imbalances and compensated deficits. It shows exchanges such as a minor piece for three pawns and flags deficits of two or more points when the side down material is evaluated above −1.00. Cached position scores take priority over root line scores. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.197 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.197/NocturneChess-0.5.7.197-Windows-x64-unsigned.zip).** Improves compact analysis controls and history, gives Leela a tighter layout under Stockfish, and fits Game Review controls and score cards to narrow windows. PGN actions stay above the editor, the explorer footer stays clear of move rows, and the library shows actions for the selected category. Includes the F11 and MultiPV fixes from 196. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.196 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.196/NocturneChess-0.5.7.196-Windows-x64-unsigned.zip).** F11 self-play immediately starts each next search at the configured node limit. The minus and equals shortcuts apply MultiPV directly from analysis controls, preserve saved checkpoints, and restart the search. Windows tests and packaged startup checks passed.
