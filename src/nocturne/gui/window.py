@@ -534,7 +534,8 @@ class MainWindow(QMainWindow):
         self.checkpoint_history = AnalysisHistory(
             lambda: self.engine.busy or bool(self._review) or self._auto_play_active
             or (hasattr(self, "leela_panel") and
-                (self.leela_panel.engine.busy or self.leela_panel.timer.isActive())), self)
+                (self.leela_panel.engine.busy or self.leela_panel.timer.isActive())), self,
+            position_scores=self._cached_line_scores)
         self.engine_layout.addWidget(self.checkpoint_history)
         self.checkpoint_history.focus_changed.connect(self._focus_tactics)
         self.checkpoint_history.viewing.connect(lambda viewing: self.candidates.setVisible(not viewing))
@@ -2478,6 +2479,23 @@ class MainWindow(QMainWindow):
                 recommendations.append((move, result["probability"], result["category"]))
         self.board_view.set_maia_recommendations(recommendations, enabled=self.config.get("maia_arrows", True))
 
+    def _cached_line_scores(self, pv):
+        """Return exact White scores for positions already evaluated in this study."""
+        scores = {}
+        node = self.game.nodes[self.game.current_node]
+        for ply, move in enumerate(pv, 1):
+            child = next((self.game.nodes[index] for index in node.children
+                          if self.game.nodes[index].move.uci() == move), None)
+            if child is None:
+                break
+            node = child
+            analysis = node.analysis
+            value = analysis.get("white_value")
+            if (analysis.get("score_type") == "cp" and analysis.get("bound", "exact") == "exact"
+                    and type(value) is int and not analysis.get("focus")):
+                scores[ply] = value
+        return scores
+
     def _preview_maia_line(self, pv, ply, name):
         position = self.game.board.copy()
         last = None
@@ -2573,7 +2591,7 @@ class MainWindow(QMainWindow):
         form.addRow(first_label, minimum)
         form.addRow(last_label, maximum)
         layout.addLayout(form)
-        note = QLabel("Tactics are pattern hints, not verified combinations. Settings apply to the next scan; engine thread changes apply to the next search.")
+        note = QLabel("Tactics scans saved lines for teaching positions. Material already on the board can appear regardless of the first ply setting. Changes apply to the next scan or search.")
         note.setWordWrap(True)
         layout.addWidget(note)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)

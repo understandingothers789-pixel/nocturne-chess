@@ -6,6 +6,7 @@ from pathlib import Path
 import chess
 from PySide6.QtWidgets import QApplication
 from nocturne.gui.analysis_history import AnalysisHistory, tactic_patterns, exchange_description, material_imbalances
+from nocturne.tactic_studies import material_studies
 
 
 def line(move, rank=1, nodes=1_000_000):
@@ -227,6 +228,43 @@ class CheckpointTests(unittest.TestCase):
         moves.move_hovered.emit(2)
         self.assertEqual(previews, [2])
 
+    def test_teaching_positions_include_three_pawns_for_a_piece_at_root(self):
+        from PySide6.QtTest import QTest
+
+        fen = "7k/ppp5/8/8/8/8/8/K1B5 w - - 0 1"
+        pv = ["c1d2", "h8g8"]
+        widget = self.widget
+        widget.position("imbalanced", fen, 1)
+        widget.live = {1: dict(pv=pv, multipv=1, depth=18, score_type="cp", score_value=20)}
+        previews = []
+        widget.preview.connect(lambda _pv, ply, _name: previews.append(ply))
+        widget.scan()
+        QTest.qWait(50)
+        button, _ = widget._tactic_details[0]
+        self.assertIn("minor piece for 3 pawns · Current position", button.text())
+        button.click()
+        self.assertEqual(previews, [0])
+
+    def test_compensated_deficit_prefers_cached_score_and_requires_stable_material(self):
+        fen = "2r4k/8/7n/8/8/3B4/8/R6K w - - 0 1"
+        pv = ["d3c4", "c8c4", "h1g1", "h8g8"]
+        options = dict(first_ply=1, last_ply=12)
+        self.assertFalse(list(material_studies(fen, pv, 0, {2: -100}, **options)))
+        self.assertFalse(list(material_studies(fen, pv, None, {}, **options)))
+        self.assertFalse(list(material_studies(fen, pv[:2], 0, {}, **options)))
+        study, = material_studies(fen, pv, -250, {2: -99}, **options)
+        self.assertEqual((study.title, study.ply, study.setup), ("White down 3 points", 2, 1))
+        self.assertTrue(study.verified_eval)
+        self.assertIn("Cached position eval for White: -0.99", study.description)
+        candidate, = material_studies(fen, pv, 0, {}, **options)
+        self.assertIn("Root line eval", candidate.description)
+
+        fen = "7k/8/8/8/8/8/PP6/K7 b - - 0 1"
+        self.assertFalse(list(material_studies(fen, ["h8g8", "a1b1"], 100, {}, **options)))
+        study, = material_studies(fen, ["h8g8", "a1b1"], -120, {}, **options)
+        self.assertEqual(study.title, "Black down 2 points")
+        self.assertIn("for Black: +1.20", study.description)
+
     def test_delayed_recapture_is_not_a_sacrifice(self):
         fen = 'rnbqkbnr/ppp1pppp/8/3p4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 2'
         pv = ['e2e4', 'd5e4', 'b1c3', 'g8f6', 'c3e4']
@@ -245,7 +283,7 @@ class CheckpointTests(unittest.TestCase):
         widget.scan()
         QTest.qWait(50)
         self.assertFalse(widget.scanning)
-        self.assertIn('1 ideas in 2 lines', widget.results.itemAt(0).widget().text())
+        self.assertIn('1 idea in 2 lines', widget.results.itemAt(0).widget().text())
         card = widget.results.itemAt(1).widget()
         buttons = {button.text(): button for button in card.findChildren(QPushButton)}
         buttons['Before idea'].click()

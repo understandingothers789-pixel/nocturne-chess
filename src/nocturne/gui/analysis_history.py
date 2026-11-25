@@ -11,6 +11,7 @@ from .candidates import CandidatePanel
 from .moves import MoveText
 from .widgets import ElidedLabel
 from ..snapshots import node_label
+from ..tactic_studies import material_studies
 from ..engine.uci_types import score_label
 
 
@@ -78,12 +79,12 @@ def material_imbalances(fen, pv, plies=12, min_ply=4):
     return results
 
 
-def tactic_patterns(fen, pv, plies=12, min_ply=4):
+def tactic_patterns(fen, pv, plies=12, min_ply=4, *, material_hints=True):
     """Conservative pattern hints, not engine proof of a sound combination."""
     board = chess.Board(fen)
     values = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
               chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 100}
-    found = material_imbalances(fen, pv, plies, min_ply)
+    found = material_imbalances(fen, pv, plies, min_ply) if material_hints else []
     for ply, uci in enumerate(pv[:plies], 1):
         move = board.parse_uci(uci)
         color = board.turn
@@ -133,7 +134,7 @@ def tactic_patterns(fen, pv, plies=12, min_ply=4):
             found.append((ply, f'Discovered check · {prefix}'))
         # Follow several replies to exclude ordinary delayed material recovery.
         horizon = min(len(pv), plies, ply + 5)
-        if ply < horizon and not move.promotion:
+        if material_hints and ply < horizon and not move.promotion:
             reply = board.parse_uci(pv[ply])
             if reply.to_square == move.to_square and board.is_capture(reply):
                 def balance(position):
@@ -167,9 +168,10 @@ class AnalysisHistory(QWidget):
     preview_end = Signal()
     insert = Signal(list)
 
-    def __init__(self, busy, parent=None):
+    def __init__(self, busy, parent=None, *, position_scores=None):
         super().__init__(parent)
         self.busy = busy
+        self.position_scores = position_scores or (lambda pv: {})
         self.records = OrderedDict()
         self.key = None
         self.session = None
@@ -202,7 +204,7 @@ class AnalysisHistory(QWidget):
         self.mode.addItems(['Rank at that time', 'Keep moves in place'])
         self.mode.currentIndexChanged.connect(self._mode_changed)
         self.find = QPushButton('Find tactics')
-        self.find.setToolTip('Stop analysis first. Review the displayed lines for sacrifices, material trades and tactical ideas. More details controls the first and last ply. A ply is one move by either player.')
+        self.find.setToolTip('Stop analysis first. Find lasting material imbalances, compensation and tactical motifs in the current position and displayed lines. More details controls the first and last ply. A ply is one move by either player.')
         self.find.clicked.connect(self.scan)
         self.reorder = QPushButton('Update move order')
         self.reorder.setAccessibleName('Update move order')
@@ -463,13 +465,16 @@ class AnalysisHistory(QWidget):
             self.scanning = False
             self.find.setText('Find tactics')
             entries = sorted(findings.values(), key=lambda entry: (
-                0 if entry['text'].startswith('Mate') else
-                1 if 'sacrifice' in entry['text'] or entry['text'].startswith('Material imbalance') else 2,
-                entry['ply']))
-            note.setText(f'{len(entries)} ideas in {line_count} lines · plies {self.min_ply}–{self.max_ply}. Select a row to explore.'
+                0 if entry['study'] else 1 if entry['text'].startswith('Mate') else 2,
+                not entry['verified_eval'], entry['ply']))
+            idea_label = 'idea' if len(entries) == 1 else 'ideas'
+            lines_label = 'line' if line_count == 1 else 'lines'
+            note.setText(f'{len(entries)} {idea_label} in {line_count} {lines_label} · plies {self.min_ply}–{self.max_ply}. Select a row to explore.'
                          + (f' {truncated} lines truncated.' if truncated else '')
                          + (' No ideas found; adjust the ply range in More details.' if not entries else ''))
-            note.setToolTip('Pattern hints from saved continuations. Alternative defenses and sacrifice soundness are unverified.')
+            note.setToolTip('Material ideas require a lasting imbalance in the saved continuation. '
+                            'For deficits of at least two points, the side behind needs an eval above −1.00. '
+                            'The root line score is used when no cached evaluation exists for the resulting position.')
             for entry in entries[:24]:
                 frame = QFrame()
                 frame.setObjectName('panel')
@@ -477,9 +482,9 @@ class AnalysisHistory(QWidget):
                 card = QVBoxLayout(frame)
                 card.setSpacing(6)
                 card.setContentsMargins(6, 3, 6, 3)
-                kind = entry['text'].split(' · ')[0].replace(' pattern', '')
-                row_button = QPushButton(f"{kind} · ply {entry['ply']} · {entry['move']} · lines "
-                                         + ', '.join(str(r) for r in entry['ranks']))
+                where = f"ply {entry['ply']} · {entry['move']}" if entry['ply'] else "Current position"
+                ranks = ', '.join(str(r) for r in entry['ranks'])
+                row_button = QPushButton(f"{entry['title']} · {where} · lines {ranks}")
                 row_button.setCheckable(True)
                 row_button.setStyleSheet('text-align:left;')
                 row_button.setToolTip(entry['text'])
@@ -491,7 +496,7 @@ class AnalysisHistory(QWidget):
                 description.setWordWrap(True)
                 description.setTextFormat(Qt.TextFormat.PlainText)
                 detail_layout.addWidget(description)
-                source = QLabel(f"Showing line {entry['ranks'][0]} · {entry['root_move']} · depth {entry['depth']} · White eval {entry['evaluation']}")
+                source = QLabel(f"Showing line {entry['source_rank']} · {entry['root_move']} · depth {entry['depth']} · Root White eval {entry['evaluation']}")
                 source.setWordWrap(True)
                 detail_layout.addWidget(source)
                 board = chess.Board(self.root)
@@ -543,30 +548,54 @@ class AnalysisHistory(QWidget):
             pv = []
             for text in info.get('pv', []):
                 try:
-                    board.push_uci(text)
+                    move = board.parse_uci(text)
+                    if not move:
+                        raise ValueError("Null move in PV")
+                    board.push(move)
                 except ValueError:
                     truncated += 1
                     break
                 pv.append(text)
-            hints = tactic_patterns(self.root, pv, self.max_ply, self.min_ply)
-            for ply, text in hints:
-                # Group the same move/motif even when earlier quiet moves were
-                # played in a different order. Keep one representative PV.
-                normalized = re.sub(r'ply \d+', 'ply', text)
-                key = (pv[ply - 1], normalized)
-                if key in findings:
-                    if rank not in findings[key]['ranks']:
-                        findings[key]['ranks'].append(rank)
-                    continue
-                sequence = re.search(r'plies (\d+)–', text)
-                setup = int(sequence.group(1)) - 1 if sequence else max(0, ply - 1)
-                at_idea = chess.Board(self.root)
-                for uci in pv[:ply - 1]:
+            if not pv:
+                QTimer.singleShot(0, self, step)
+                return
+            root = chess.Board(self.root)
+            cp = info.get('score_value')
+            white_score = (cp if root.turn else -cp) if (
+                info.get('score_type') == 'cp' and info.get('bound', 'exact') == 'exact' and type(cp) is int
+            ) else None
+            studies = list(material_studies(
+                self.root, pv, white_score, self.position_scores(pv[:self.max_ply]),
+                first_ply=self.min_ply, last_ply=self.max_ply,
+            ))
+
+            def add(key, ply, setup, title, text, *, study=False, verified_eval=False):
+                previous = findings.get(key)
+                if previous:
+                    if rank not in previous['ranks']:
+                        previous['ranks'].append(rank)
+                    if not verified_eval or previous['verified_eval']:
+                        return
+                ranks = previous['ranks'] if previous else [rank]
+                at_idea = root.copy(stack=False)
+                for uci in pv[:max(0, ply - 1)]:
                     at_idea.push_uci(uci)
-                findings[key] = dict(pv=pv, ply=ply, setup=setup, text=text,
-                                     move=at_idea.san(chess.Move.from_uci(pv[ply - 1])),
-                                     ranks=[rank], depth=info.get('depth', '—'),
-                                     root_move=chess.Board(self.root).san(chess.Move.from_uci(pv[0])),
-                                     evaluation=score_label(info, self.turn) if 'score_type' in info else '—')
+                findings[key] = dict(
+                    pv=pv, ply=ply, setup=setup, title=title, text=text,
+                    move=at_idea.san(chess.Move.from_uci(pv[ply - 1])) if ply else '',
+                    ranks=ranks, source_rank=rank, depth=info.get('depth', '—'),
+                    study=study, verified_eval=verified_eval,
+                    root_move=root.san(chess.Move.from_uci(pv[0])),
+                    evaluation=score_label(info, self.turn) if 'score_type' in info else '—',
+                )
+
+            for idea in studies:
+                add(('material', idea.signature), idea.ply, idea.setup, idea.title, idea.description,
+                    study=True, verified_eval=idea.verified_eval)
+            for ply, text in tactic_patterns(self.root, pv, self.max_ply, self.min_ply, material_hints=False):
+                # Group the same move and motif across reordered continuations.
+                normalized = re.sub(r'ply \d+', 'ply', text)
+                title = text.split(' · ')[0].replace(' pattern', '')
+                add((pv[ply - 1], normalized), ply, ply - 1, title, text)
             QTimer.singleShot(0, self, step)
         QTimer.singleShot(0, self, step)
