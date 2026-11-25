@@ -1,0 +1,30 @@
+name: Publish 197 download
+on:
+  push:
+    branches: [publish/197-download]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for verified Windows build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: timeout 1200 gh run watch 45591365508 --exit-status --interval 20
+      - uses: actions/download-artifact@v4
+        with:
+          name: NocturneChess-0.5.7.197-Windows-x64-unsigned
+          run-id: 45591365508
+          github-token: ${{ github.token }}
+          path: download
+      - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd download
+          zip -qr ../NocturneChess-0.5.7.197-Windows-x64-unsigned.zip .
+          gh release create v0.5.7.197 ../NocturneChess-0.5.7.197-Windows-x64-unsigned.zip --target e7bf030c8e1b1f5cf717cf4e55ea5f4a1a9b21a5 --title "Nocturne Chess 0.5.7.197" --notes "Responsive analysis, game review, PGN, database, and library controls."
