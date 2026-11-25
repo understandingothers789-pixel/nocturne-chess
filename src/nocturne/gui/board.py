@@ -489,18 +489,34 @@ class BoardWidget(QWidget):
 
     def _draw_lichess_arrows(self, painter, unit):
         entries = list(self._lichess_arrows())
+        if not entries:
+            return
         directions = defaultdict(set)
         for source, destination in [*((move.from_sq, move.to_sq) for move, _, _ in entries), *self.arrows]:
             delta = self.square_rect(destination).center() - self.square_rect(source).center()
             if source != destination:
                 slot = math.floor(math.atan2(delta.y(), delta.x()) * 8 / math.pi + 0.5) % 16
                 directions[destination].add(slot)
+        # Lichess fades the SVG overlay as a whole after applying each brush's opacity.
+        rect, _ = self._geometry()
+        ratio = painter.device().devicePixelRatioF()
+        layer = QPixmap(math.ceil(rect.width() * ratio), math.ceil(rect.height() * ratio))
+        layer.setDevicePixelRatio(ratio)
+        layer.fill(Qt.GlobalColor.transparent)
+        arrows = QPainter(layer)
+        arrows.setRenderHint(QPainter.RenderHint.Antialiasing)
+        arrows.translate(-rect.topLeft())
         for move, width, color in entries:
             slots = directions[move.to_sq]
             shortened = any((slot + step) % 16 in slots for slot in slots for step in (1, 2, 3))
             color.setAlphaF(0.4 if width == 15 else 0.35)
-            self._stockfish_arrow(painter, move.from_sq, move.to_sq, unit, color=color,
+            self._stockfish_arrow(arrows, move.from_sq, move.to_sq, unit, color=color,
                                   brush_width=width, shortened=shortened)
+        arrows.end()
+        painter.save()
+        painter.setOpacity(0.6)
+        painter.drawPixmap(rect.topLeft(), layer)
+        painter.restore()
         for move, _, _ in entries:
             if move.promotion:
                 square = self.square_rect(move.to_sq)
