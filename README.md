@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.200 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.200/NocturneChess-0.5.7.200-Windows-x64-unsigned.zip).** Display → Board arrow layout includes Nocturne Classic, Stockfish-only Lichess and Nibbler presets, and three two-source comparisons. The comparison layouts show up to two suggestions per source and draw one two-color arrow for a shared move. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.199 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.199/NocturneChess-0.5.7.199-Windows-x64-unsigned.zip).** Display → Board arrow layout adds Nibbler-inspired, Lichess-inspired, Opening prep, and Focus layouts alongside Nocturne classic. Separate paths and source ranks make overlapping suggestions easier to compare. Opening prep displays loaded database or tablebase moves on the board. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.198 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.198/NocturneChess-0.5.7.198-Windows-x64-unsigned.zip).** Find tactics prioritizes lasting material imbalances and compensated deficits. It shows exchanges such as a minor piece for three pawns and flags deficits of two or more points when the side down material is evaluated above −1.00. Cached position scores take priority over root line scores. Windows tests and packaged startup checks passed.
