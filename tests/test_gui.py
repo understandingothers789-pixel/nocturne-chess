@@ -136,9 +136,14 @@ class GuiTests(unittest.TestCase):
         self.assertIn("Lichess players", markers[2])
         cursor = window.analysis_history.document().find("e4")
         cursor.setPosition(cursor.selectionStart())
-        QTest.mouseMove(window.analysis_history.viewport(), window.analysis_history.cursorRect(cursor).center())
-        self.assertIn("ChessDB Cloud Analysis", window.analysis_history.viewport().toolTip())
-        self.assertIn("Lichess Masters", window.analysis_history.viewport().toolTip())
+        viewport = window.analysis_history.viewport()
+        point = window.analysis_history.cursorRect(cursor).center()
+        # At high DPI the offscreen platform's virtual screen can be smaller than the window.
+        event = QMouseEvent(QEvent.Type.MouseMove, QPointF(point), QPointF(viewport.mapToGlobal(point)),
+                            Qt.MouseButton.NoButton, Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier)
+        QApplication.sendEvent(viewport, event)
+        self.assertIn("ChessDB Cloud Analysis", viewport.toolTip())
+        self.assertIn("Lichess Masters", viewport.toolTip())
 
     def test_named_bookmarks_persist_navigate_and_follow_variation_deletion(self):
         window = self.window

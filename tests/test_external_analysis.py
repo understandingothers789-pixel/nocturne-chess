@@ -152,7 +152,9 @@ class QtIntegration(unittest.TestCase):
         pid = controller.connection.process.processId()
         self.assertEqual(controller.lines[1]["pv"][0], "e2e4")
         game.play(game.board.parse_uci("e2e4"))
-        new = controller.start(game, limits, sys.executable, arguments=[SIMULATOR])
+        executable = Path(sys.executable)
+        alternate_path = executable.parent / ".." / executable.parent.name / executable.name
+        new = controller.start(game, limits, str(alternate_path), arguments=[SIMULATOR])
         self.wait_until(lambda: any(g == new and k == "result" for g, k, p in messages))
         self.assertEqual(controller.connection.process.processId(), pid)
         self.assertEqual(controller.connection.applied["Threads"], "1")
@@ -161,6 +163,10 @@ class QtIntegration(unittest.TestCase):
         log = "\n".join(controller.connection.log)
         self.assertIn("> stop", log)
         self.assertIn("> isready", log)
+        new = controller.start(game, limits, sys.executable, arguments=[SIMULATOR, "single-pv"])
+        self.wait_until(lambda: any(g == new and k == "result" for g, k, p in messages))
+        self.assertNotEqual(controller.connection.process.processId(), pid)
+        self.assertNotIn("MultiPV", controller.connection.options)
 
     def test_short_pvs_extend_after_limit_and_complete_all_ranks(self):
         controller = EngineController()

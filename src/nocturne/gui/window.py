@@ -210,7 +210,6 @@ class MainWindow(QMainWindow):
         self._lab = None
         self._benchmark_report = None
         self._last_info = None
-        self._last_info_turn = 1
         self._history_signature = None
         self._analysis_layout_active = None
         self._dock_workspace = None
@@ -526,7 +525,6 @@ class MainWindow(QMainWindow):
         self.candidates.action.connect(self._candidate_action)
         self.candidates.changed.connect(self._sync_candidate_markers)
         self.candidates.layout_changed.connect(self._candidate_rows_changed)
-        self.candidates.changed.connect(self._queue_secondary_analysis)
         self.candidate_splitter = QSplitter(Qt.Orientation.Vertical)
         self.candidate_splitter.setChildrenCollapsible(False)
         self.candidate_splitter.setHandleWidth(7)
@@ -3592,7 +3590,7 @@ class MainWindow(QMainWindow):
             # Discovery occurs before the first ready request is prepared. Apply
             # the automatic default there without canceling self-play or review.
             if (connection.pending is not None and connection.phase == "idle"
-                    and connection.path == str(Path(profile["path"]).absolute())):
+                    and connection.matches_engine(profile["path"], profile.get("arguments"))):
                 connection.pending[3]["Hash"] = target
         self._save()
 
@@ -3860,8 +3858,10 @@ class MainWindow(QMainWindow):
     def _engine_discovered(self, data):
         from dataclasses import asdict
 
-        matching = [p for p in self.profiles if Path(p["path"]).resolve() == Path(data["path"]).resolve()]
-        profile = next((p for p in matching if p is self._profile()), next(iter(matching), None))
+        connection = self.engine.connection
+        active = self._profile()
+        matching = [p for p in self.profiles if connection.matches_engine(p["path"], p.get("arguments"))]
+        profile = next((p for p in matching if p is active), next(iter(matching), None))
         if profile:
             profile["name"] = data["name"]
             profile["options"] = {n: asdict(o) for n, o in data["options"].items()}
@@ -4024,7 +4024,7 @@ class MainWindow(QMainWindow):
                                                  and not self.config.get("leela_enabled", False))
         self.candidates.set_detailed(self.config.get("details", False))
         if self._last_info:
-            self._render_telemetry(self._last_info, self._last_info_turn)
+            self._render_telemetry(self._last_info)
         self.tablebase_label.setVisible(self.maia_controls.details.isChecked())
         self.board_view.smart_move = self.config.get("smart_move", True)
         self._apply_board_arrow_layout()
@@ -5542,11 +5542,7 @@ class MainWindow(QMainWindow):
         profile = self._profile()
         if profile and getattr(self, "engine", None):
             connection = self.engine.connection
-            try:
-                same_engine = bool(connection.path) and Path(connection.path).resolve() == Path(profile["path"]).resolve()
-            except (OSError, KeyError, TypeError):
-                same_engine = False
-            if same_engine and connection.name:
+            if connection.matches_engine(profile["path"], profile.get("arguments")) and connection.name:
                 return connection.name
         if profile:
             return profile.get("name") or Path(profile["path"]).stem
@@ -5738,7 +5734,6 @@ class MainWindow(QMainWindow):
         self._pv_root = None
         self._pv_moves = []
         self._last_info = None
-        self._last_info_turn = 1
         self._pv_identity = None
         self.eval_label.setText("—")
         self.telemetry.setText("Waiting for engine output")
@@ -5837,6 +5832,7 @@ class MainWindow(QMainWindow):
             return
         if "score_type" in info and info.get("multipv", 1) > job.get("multipv", self._effective_multipv()):
             return
+        identity = self._position_identity()
         self.candidates.set_multipv(self._effective_multipv())
         if "score_type" in info:
             if store:
@@ -5848,8 +5844,9 @@ class MainWindow(QMainWindow):
                         self.checkpoint_history._render()
                 if info.get("bound", "exact") == "exact":
                     job.setdefault("exact_lines", {})[rank] = info.copy()
-            self._candidate_identity = self._position_identity()
-            self._sync_candidate_database()
+            if self._candidate_identity != identity:
+                self._candidate_identity = identity
+                self._sync_candidate_database()
             self.candidates.update_line(
                 info, job["turn"], self._appearance_config().get("light", False), self.config.get("details", False)
             )
@@ -5858,19 +5855,14 @@ class MainWindow(QMainWindow):
                     self._store_analysis(self.game, self.game.current_node, job["lines"][1], job["turn"], job)
                 return
         self._last_info = info.copy()
-        self._last_info_turn = job["turn"]
         if store and "score_type" in info:
             self._store_analysis(self.game, self.game.current_node, info, job["turn"], job)
             self._queue_secondary_analysis()
         white_score = info["score"] * job["turn"]
-        self.eval_label.setText(
-            score_label(info, job["turn"]) if "score_type" in info else score_text(white_score)
-        )
+        evaluation = score_label(info, job["turn"]) if "score_type" in info else score_text(white_score)
+        self.eval_label.setText(evaluation)
         self.eval_bar.set_score(white_score)
-        evaluation = (score_label(info, job["turn"]) if "score_type" in info
-                      else score_text(white_score))
-        self._render_telemetry(info, job["turn"], evaluation)
-        identity = self._position_identity()
+        self._render_telemetry(info)
         texts = tuple(info.get("pv", [])[:128])
         if identity != self._pv_identity or texts != getattr(self, "_pv_texts", None):
             position = self.game.board.native.copy(stack=False)
@@ -5892,15 +5884,11 @@ class MainWindow(QMainWindow):
             self.board_view.best_move = first
             self.board_view.update()
 
-    def _render_telemetry(self, info, turn=1, evaluation=None):
+    def _render_telemetry(self, info):
         colors = palette(self._appearance_config().get("light", False))
         depth = str(info["depth"])
         if self.config.get("show_seldepth", False):
             depth += f"/{info['seldepth']}"
-        if evaluation is None:
-            evaluation = (score_label(info, turn) if "score_type" in info
-                          else score_text(info.get("score", 0) * turn))
-
         def metric(label_text, value):
             return (
                 f'<span style="color:{colors["metadata"]};">{label_text} </span>'

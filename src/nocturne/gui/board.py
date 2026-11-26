@@ -108,6 +108,8 @@ class BoardWidget(QWidget):
         self._renderer_sets = {}
         self._piece_pixmaps = {}
         self._piece_pixmap_size = None
+        self._lichess_layer_key = None
+        self._lichess_layer = None
         self.piece_set = ""
         self.set_piece_set(DEFAULT_PIECE_SET)
         self._animation = QVariantAnimation(self)
@@ -151,8 +153,8 @@ class BoardWidget(QWidget):
         edge = max(0, min(self.width(), self.height()) - 12)
         return QRectF((self.width() - edge) / 2, (self.height() - edge) / 2, edge, edge), edge / 8
 
-    def square_rect(self, square: int) -> QRectF:
-        rect, unit = self._geometry()
+    def square_rect(self, square: int, geometry=None) -> QRectF:
+        rect, unit = self._geometry() if geometry is None else geometry
         file, rank = square & 7, square >> 4
         col, row = (7 - file, rank) if self.flipped else (file, 7 - rank)
         return QRectF(rect.x() + col * unit, rect.y() + row * unit, unit, unit)
@@ -493,6 +495,27 @@ class BoardWidget(QWidget):
         entries = list(self._lichess_arrows())
         if not entries:
             return
+        rect, _ = self._geometry()
+        ratio = painter.device().devicePixelRatioF()
+        key = (rect, ratio, self.flipped, frozenset(self.arrows),
+               tuple((move, width, color.rgba()) for move, width, color in entries))
+        if key != self._lichess_layer_key:
+            self._lichess_layer = self._render_lichess_layer(entries, rect, ratio, unit)
+            self._lichess_layer_key = key
+        painter.save()
+        painter.setOpacity(0.6)
+        painter.drawPixmap(rect.topLeft(), self._lichess_layer)
+        painter.restore()
+        for move, _, _ in entries:
+            if move.promotion:
+                square = self.square_rect(move.to_sq)
+                square.adjust(unit * 0.1, unit * 0.1, -unit * 0.1, -unit * 0.1)
+                painter.save()
+                painter.setOpacity(0.3)
+                self._renderers[self.board.turn * move.promotion].render(painter, square)
+                painter.restore()
+
+    def _render_lichess_layer(self, entries, rect, ratio, unit):
         directions = defaultdict(set)
         for source, destination in [*((move.from_sq, move.to_sq) for move, _, _ in entries), *self.arrows]:
             delta = self.square_rect(destination).center() - self.square_rect(source).center()
@@ -500,8 +523,6 @@ class BoardWidget(QWidget):
                 slot = math.floor(math.atan2(delta.y(), delta.x()) * 8 / math.pi + 0.5) % 16
                 directions[destination].add(slot)
         # Lichess fades the SVG overlay as a whole after applying each brush's opacity.
-        rect, _ = self._geometry()
-        ratio = painter.device().devicePixelRatioF()
         layer = QPixmap(math.ceil(rect.width() * ratio), math.ceil(rect.height() * ratio))
         layer.setDevicePixelRatio(ratio)
         layer.fill(Qt.GlobalColor.transparent)
@@ -514,18 +535,7 @@ class BoardWidget(QWidget):
             self._stockfish_arrow(arrows, move.from_sq, move.to_sq, unit, color=color,
                                   brush_width=width, shortened=shortened)
         arrows.end()
-        painter.save()
-        painter.setOpacity(0.6)
-        painter.drawPixmap(rect.topLeft(), layer)
-        painter.restore()
-        for move, _, _ in entries:
-            if move.promotion:
-                square = self.square_rect(move.to_sq)
-                square.adjust(unit * 0.1, unit * 0.1, -unit * 0.1, -unit * 0.1)
-                painter.save()
-                painter.setOpacity(0.3)
-                self._renderers[self.board.turn * move.promotion].render(painter, square)
-                painter.restore()
+        return layer
 
     def _nibbler_arrows(self):
         for move, rank, _ in self._stockfish_entries():
@@ -700,7 +710,8 @@ class BoardWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-        rect, unit = self._geometry()
+        geometry = self._geometry()
+        rect, unit = geometry
         painter.setPen(Qt.PenStyle.NoPen)
         colors = palette(self.light)
         painter.setBrush(QColor(colors["border"]))
@@ -709,10 +720,10 @@ class BoardWidget(QWidget):
         clip.addRoundedRect(rect, 8, 8)
         painter.save()
         painter.setClipPath(clip)
-        light, dark = BOARD_THEMES.get(self.theme, BOARD_THEMES["Classic"])
-        for square in SQUARES:
-            square_rect = self.square_rect(square)
-            base = QColor(dark if ((square >> 4) + (square & 7)) % 2 == 0 else light)
+        light, dark = map(QColor, BOARD_THEMES.get(self.theme, BOARD_THEMES["Classic"]))
+        squares = [(square, self.square_rect(square, geometry)) for square in SQUARES]
+        for square, square_rect in squares:
+            base = dark if ((square >> 4) + (square & 7)) % 2 == 0 else light
             if last_move and square in (last_move.from_sq, last_move.to_sq):
                 base = self.last_move_color(base)
             painter.fillRect(square_rect, base)
@@ -740,13 +751,13 @@ class BoardWidget(QWidget):
                     painter.setPen(Qt.PenStyle.NoPen)
                     painter.setBrush(QColor(30, 30, 30, 95))
                     painter.drawEllipse(target.center(), unit * 0.135, unit * 0.135)
-        for square in SQUARES:
+        for square, square_rect in squares:
             piece = board.cells[square]
             if not piece or (not preview and self._drag_pos is not None and square == self._pressed):
                 continue
             if not preview and self._anim_move and square == self._anim_move.to_sq:
                 continue
-            self._piece(painter, piece, self.square_rect(square))
+            self._piece(painter, piece, square_rect)
         if not preview and self._anim_move:
             a = self.square_rect(self._anim_move.from_sq).topLeft()
             b = self.square_rect(self._anim_move.to_sq).topLeft()

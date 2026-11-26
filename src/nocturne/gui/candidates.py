@@ -58,6 +58,7 @@ class CandidatePanel(QWidget):
         self.show_line_depth = False
         self.show_details = False
         self.database = None
+        self._database_moves = {}
         self.details = {}
         self.lines = {}
         self.retained_lines = {}
@@ -515,6 +516,10 @@ class CandidatePanel(QWidget):
         if value == self.database:
             return
         self.database = value
+        self._database_moves = {}
+        if query and data:
+            for row in data["moves"]:
+                self._database_moves.setdefault(row["uci"], row)
         for rank in self.rows:
             self._render_header(rank)
 
@@ -570,7 +575,8 @@ class CandidatePanel(QWidget):
                 else:
                     source += " · Loading"
             else:
-                row = next((row for row in data["moves"] if info.get("pv") and row["uci"] == info["pv"][0]), None)
+                pv = info.get("pv")
+                row = self._database_moves.get(pv[0]) if pv else None
                 if query.source == "chessdb":
                     cloud_score = " · DB White " + blue(chessdb_score(row["score"], query.fen) if row else "—")
                 elif row and 0 < row["total"] <= data["total"]:

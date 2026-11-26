@@ -192,6 +192,9 @@ class RenderingTests(unittest.TestCase):
 
     def test_lichess_gray_arrows_match_reference_svg_widths_and_opacity(self):
         board = BoardWidget()
+        self.addCleanup(board.close)
+        board.arrow_layout = "lichess"
+        board.resize(450, 450)
         moves = [board.legal_by_uci[uci] for uci in ("e2e4", "a2a3", "g2g3", "b1c3")]
         board.set_recommendations([
             (move, rank, "", -cp, ("cp", cp, None))
@@ -199,6 +202,16 @@ class RenderingTests(unittest.TestCase):
         ])
         self.assertEqual([(width / 64, color.alpha()) for _, width, color in board._lichess_arrows()],
                          [(0.234375, 102), (0.1875, 102), (0.171875, 102), (0.171875, 102)])
+        with patch.object(board, "_render_lichess_layer", wraps=board._render_lichess_layer) as render:
+            normal = board.grab().toImage()
+            self.assertEqual(board.grab().toImage(), normal)
+            render.assert_called_once()
+            board.flipped = True
+            self.assertNotEqual(board.grab().toImage(), normal)
+            self.assertEqual(render.call_count, 2)
+            board.set_recommendations([(moves[0], 1, "")])
+            board.grab()
+            self.assertEqual(render.call_count, 3)
 
     def test_vertical_candidate_transition_keeps_preview_until_real_exit(self):
         panel = CandidatePanel(MoveText(auto_fit=True))

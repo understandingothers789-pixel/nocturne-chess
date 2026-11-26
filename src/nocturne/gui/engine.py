@@ -1,6 +1,5 @@
 """Desktop external-engine controller. No custom engine is used by the GUI."""
 
-from pathlib import Path
 from collections import OrderedDict
 
 from PySide6.QtCore import QObject, QTimer, Signal
@@ -102,7 +101,7 @@ class EngineController(QObject):
         if tablebase_path:
             desired["SyzygyPath"] = tablebase_path
         desired["UCI_Chess960"] = bool(getattr(self.board, "chess960", False))
-        if (self.connection.path != str(Path(external).absolute()) or not self.connection.alive
+        if (not self.connection.matches_engine(external, arguments) or not self.connection.alive
                 or self.connection.phase in ("failed", "closed")):
             self.connection.launch(external, arguments)
         position = "position fen " + game.initial_fen

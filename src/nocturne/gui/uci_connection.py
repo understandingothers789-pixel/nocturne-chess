@@ -61,6 +61,10 @@ class UciConnection(QObject):
     def alive(self):
         return self.process.state() != QProcess.ProcessState.NotRunning
 
+    def matches_engine(self, path, arguments=None):
+        return (os.path.normcase(self.path) == os.path.normcase(os.path.abspath(Path(path).expanduser()))
+                and self.process.arguments() == list(arguments or []))
+
     def launch(self, path, arguments=None):
         path = os.path.abspath(Path(path).expanduser())
         if not Path(path).is_file() or (os.name != "nt" and not os.access(path, os.X_OK)):
