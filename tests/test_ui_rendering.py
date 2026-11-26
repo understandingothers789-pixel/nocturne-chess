@@ -152,7 +152,7 @@ class RenderingTests(unittest.TestCase):
             (d4, 2, "+0.35", 5, ("cp", 35, None)),
             (c4, 3, "−4.00", 440, ("cp", -400, None)),
         ])
-        board.set_maia_recommendations([(nf3, 0.55, "best"), (e4, 0.35, "best")])
+        board.set_maia_recommendations([(nf3, 0.4, "best"), (c4, 0.35, "best"), (e4, 0.2, "best")])
         board.leela_recommendations = [(e4, 1), (nc3, 2)]
         board.branch_moves = [c4]
         clicks = []
@@ -170,24 +170,35 @@ class RenderingTests(unittest.TestCase):
             board.overlays = False
             self.assertNotEqual(with_arrows, board.grab().toImage())
         self.assertEqual([(move, width) for move, width, _ in board._lichess_arrows()], [(e4, 15), (d4, 12)])
-        self.assertEqual([(move, label) for move, _, label in board._nibbler_arrows()], [(e4, "56"), (d4, "55")])
+        self.assertEqual([(move, color.name(), label) for move, color, label in board._nibbler_arrows()],
+                         [(e4, "#66aaaa", "56"), (d4, "#66aa66", "55"), (c4, "#cccc66", "9")])
 
         for key, expected, unique in (
-            ("stockfish-leela", ["Stockfish", "Leela"], {d4, nc3}),
-            ("stockfish-maia", ["Stockfish", "Maia"], {d4, nf3}),
-            ("leela-maia", ["Leela", "Maia"], {nc3, nf3}),
+            ("stockfish-leela", [("Stockfish", 1), ("Leela", 1)], {d4, nc3}),
+            ("stockfish-maia", [("Stockfish", 1), ("Maia", 3)], {d4, nf3, c4}),
+            ("leela-maia", [("Leela", 1), ("Maia", 3)], {nc3, nf3, c4}),
         ):
             window.board_arrow_actions[key].trigger()
             arrows = board._paired_arrows()
             self.assertEqual(set(arrows), unique | {e4})
-            self.assertEqual([source for source, _ in arrows[e4]], expected)
+            self.assertEqual(arrows[e4], expected)
             self.assertEqual(sum(action.isChecked() for action in window.board_arrow_actions.values()), 1)
             self.assertEqual(window.store.get("settings")["board_arrow_layout"], key)
-            self.assertTrue(all(name in window.board_arrow_key.text() for name in expected))
+            self.assertTrue(all(name in window.board_arrow_key.text() for name, _ in expected))
             board.overlays = True
             with_arrows = board.grab().toImage()
             board.overlays = False
             self.assertNotEqual(with_arrows, board.grab().toImage())
+
+    def test_lichess_gray_arrows_match_reference_svg_widths_and_opacity(self):
+        board = BoardWidget()
+        moves = [board.legal_by_uci[uci] for uci in ("e2e4", "a2a3", "g2g3", "b1c3")]
+        board.set_recommendations([
+            (move, rank, "", -cp, ("cp", cp, None))
+            for rank, (move, cp) in enumerate(zip(moves, (0, -10, -22, -22)), 1)
+        ])
+        self.assertEqual([(width / 64, color.alpha()) for _, width, color in board._lichess_arrows()],
+                         [(0.234375, 102), (0.1875, 102), (0.171875, 102), (0.171875, 102)])
 
     def test_vertical_candidate_transition_keeps_preview_until_real_exit(self):
         panel = CandidatePanel(MoveText(auto_fit=True))

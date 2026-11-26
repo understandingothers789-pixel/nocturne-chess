@@ -875,6 +875,14 @@ class QtIntegration(unittest.TestCase):
             self.assertEqual(len(window.board_view.recommendations), 3)
             self.assertEqual(window.game.nodes[0].analysis["timestamp"], timestamp)
             self.assertFalse(window.engine.busy)
+            window.board_arrow_actions["nibbler"].trigger()
+            three = list(window.board_view._nibbler_arrows())
+            self.assertEqual(len(three), 3)
+            window._set_multipv(1)
+            self.assertEqual(list(window.board_view._nibbler_arrows()), three[:1])
+            window._set_multipv(3)
+            self.assertEqual(list(window.board_view._nibbler_arrows()), three)
+            self.assertFalse(window.engine.busy)
 
     def test_live_bound_finish_keeps_latest_candidates_in_saved_cache(self):
         with self.workspace() as window:

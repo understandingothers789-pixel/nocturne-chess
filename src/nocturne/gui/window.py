@@ -403,7 +403,7 @@ class MainWindow(QMainWindow):
         self.board_hint = label("Drag a piece or select a square", "muted", True)
         board_tools.addWidget(self.board_hint)
         self.board_arrow_key = label("", "muted")
-        self.board_arrow_key.setToolTip("Each color identifies a source. A two-color arrow means both sources suggest the same move.")
+        self.board_arrow_key.setToolTip("Each color identifies a source. The number is the move's rank for that source.")
         board_tools.addWidget(self.board_arrow_key)
         board_tools.addStretch()
         board_tools.addWidget(button("⇅  Flip", self._flip, "quiet"))
@@ -898,11 +898,13 @@ class MainWindow(QMainWindow):
         choices = (
             ("classic", "Nocturne Classic", "The original Nocturne arrows and numbered model rods."),
             ("lichess", "Lichess", "Stockfish only. A pale blue lead arrow and gray alternatives sized by evaluation gap."),
-            ("nibbler", "Nibbler", "Stockfish only. The round markers show expected score from the side to move."),
+            ("nibbler", "Nibbler", "Stockfish only. Rod colors follow MultiPV rank. "
+             "The round markers show expected score from the side to move."),
         )
         for key, title, tip in (*choices, *(
             (key, " + ".join(names),
-             f"Compare up to two suggestions each from {' and '.join(names)}. Agreement draws one two-color arrow.")
+             f"Compare the top two moves from {' and '.join(names)}. Each color shows its own rank, "
+             "including on shared moves.")
             for key, names in BOARD_ARROW_PAIRS.items()
         )):
             if key == "stockfish-leela":
@@ -2585,6 +2587,8 @@ class MainWindow(QMainWindow):
         best = self.candidates.lines.get(1, {}).get("score")
         inferior_ranks = set()
         for rank, line in self.candidates.lines.items():
+            if rank > self.candidates.multipv:
+                continue
             if best is not None and line.get("score") is not None and best - line["score"] >= 50:
                 inferior_ranks.add(rank)
             try:
@@ -3619,6 +3623,8 @@ class MainWindow(QMainWindow):
         if start_analysis:
             self._start_analysis(reconfigure=True)
         else:
+            if self.analysis_mode and not self._analysis_enabled:
+                self._restore_position_analysis()
             self._schedule_engine()
 
     def _custom_multipv(self):
@@ -4219,8 +4225,9 @@ class MainWindow(QMainWindow):
             "<h3>Arrow layouts</h3>"
             "<p>Find the presets under <b>Display → Board arrow layout</b>. The Lichess preset shows the "
             "leading Stockfish move in pale blue with gray alternatives. The Nibbler preset uses round "
-            "markers with Stockfish's expected score for the side to move. In pair layouts, use the key "
-            "below the board. A two-color arrow shows agreement.</p>"
+            "markers with Stockfish's expected score for the side to move and colors for each MultiPV rank. "
+            "In pair layouts, each number shows the rank for the source in that color. "
+            "A two-color arrow shows agreement.</p>"
             "<h3>→ Stockfish arrows in Nocturne Classic</h3>"
             "<p>Blue is the top engine recommendation; gray arrows are other candidates. "
             "With candidate loss colors enabled, green, yellow and red show loss relative to the best move.</p>"
