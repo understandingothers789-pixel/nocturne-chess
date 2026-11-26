@@ -476,6 +476,17 @@ class QtIntegration(unittest.TestCase):
             self.wait_until(lambda: window.engine.connection.confirmed.get("MultiPV") == "1")
             self.assertEqual(window.config["multipv"], 1)
             self.assertTrue(window.engine.busy)
+            QTest.keyClick(control, Qt.Key.Key_Plus, Qt.KeyboardModifier.ShiftModifier)
+            self.wait_until(lambda: len(window.board_view.recommendations) == 2)
+            self.assertEqual(window.engine.connection.confirmed["MultiPV"], "2")
+            self.assertEqual([a.data() for a in window.multipv_menu.actions() if a.isChecked()], [2])
+            next(a for a in window.multipv_menu.actions() if a.data() == 4).trigger()
+            self.wait_until(lambda: len(window.board_view.recommendations) == 4)
+            self.assertEqual(window.engine.connection.confirmed["MultiPV"], "4")
+            QTest.keyClick(control, Qt.Key.Key_Minus)
+            self.wait_until(lambda: len(window.board_view.recommendations) == 3)
+            self.assertEqual(window.engine.connection.confirmed["MultiPV"], "3")
+            self.assertEqual([a.data() for a in window.multipv_menu.actions() if a.isChecked()], [3])
 
     def test_multipv_menu_controls_live_and_bounded_search_without_explore_mode(self):
         with self.workspace() as window:
@@ -517,9 +528,8 @@ class QtIntegration(unittest.TestCase):
             self.assertEqual(len(window.board_view.recommendations), 5)
             window._halt_analysis()
             window._set_multipv(2)
-            self.assertFalse(window.board_view.recommendations)
-            self.assertIsNone(window.board_view.best_move)
-            self.assertFalse(window.engine.busy)
+            self.wait_until(lambda: not window.engine.busy and len(window.board_view.recommendations) == 2)
+            self.assertEqual(window.engine.connection.confirmed["MultiPV"], "2")
             self.assertEqual(window.config["multipv"], 2)
             self.assertEqual(window.store.get("settings")["multipv"], 2)
 
@@ -879,10 +889,13 @@ class QtIntegration(unittest.TestCase):
             three = list(window.board_view._nibbler_arrows())
             self.assertEqual(len(three), 3)
             window._set_multipv(1)
-            self.assertEqual(list(window.board_view._nibbler_arrows()), three[:1])
+            self.wait_until(lambda: not window.engine.busy and len(list(window.board_view._nibbler_arrows())) == 1)
+            self.assertEqual([color.name() for _, color, _ in window.board_view._nibbler_arrows()],
+                             [three[0][1].name()])
             window._set_multipv(3)
-            self.assertEqual(list(window.board_view._nibbler_arrows()), three)
-            self.assertFalse(window.engine.busy)
+            self.wait_until(lambda: not window.engine.busy and len(list(window.board_view._nibbler_arrows())) == 3)
+            self.assertEqual([color.name() for _, color, _ in window.board_view._nibbler_arrows()],
+                             [color.name() for _, color, _ in three])
 
     def test_live_bound_finish_keeps_latest_candidates_in_saved_cache(self):
         with self.workspace() as window:

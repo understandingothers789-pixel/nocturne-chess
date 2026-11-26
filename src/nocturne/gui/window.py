@@ -1773,18 +1773,18 @@ class MainWindow(QMainWindow):
             return super().eventFilter(watched, event)
         if (event.type() == QEvent.Type.KeyPress
                 and isinstance(watched, QWidget) and watched.window() is self
-                and event.key() in (Qt.Key.Key_Minus, Qt.Key.Key_Equal)
-                and event.modifiers() in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.KeypadModifier)
+                and event.key() in (Qt.Key.Key_Minus, Qt.Key.Key_Underscore, Qt.Key.Key_Equal, Qt.Key.Key_Plus)
+                and not event.modifiers() & ~(Qt.KeyboardModifier.ShiftModifier | Qt.KeyboardModifier.KeypadModifier)
                 and not isinstance(watched, (QPlainTextEdit, QLineEdit))
                 and not isinstance(QApplication.focusWidget(), (QPlainTextEdit, QLineEdit))):
             profile = self._profile()
             option = profile.get("options", {}).get("MultiPV") if profile else None
             if option:
                 if not event.isAutoRepeat():
-                    step = 1 if event.key() == Qt.Key.Key_Equal else -1
+                    step = 1 if event.key() in (Qt.Key.Key_Equal, Qt.Key.Key_Plus) else -1
                     count = self._effective_multipv() + step
                     if 1 <= count <= min(32, int(option["maximum"])):
-                        self._set_multipv(count, start_analysis=True)
+                        self._set_multipv(count)
                 event.accept()
                 return True
         if watched is getattr(self, "board_view", None) and event.type() == QEvent.Type.Resize:
@@ -3602,30 +3602,20 @@ class MainWindow(QMainWindow):
         maximum = min(32, int(option["maximum"])) if option else (1 if profile and profile.get("options_detected") else 32)
         return max(1, min(maximum, self.config.get("multipv", 1)))
 
-    def _set_multipv(self, count, *, start_analysis=False):
+    def _set_multipv(self, count):
         profile = self._profile()
         option = profile.get("options", {}).get("MultiPV") if profile else None
         maximum = min(32, int(option["maximum"])) if option else 1
         if not 1 <= count <= maximum:
             self._error("MultiPV unavailable", f"Choose 1–{maximum} lines for this engine")
             return
-        if not start_analysis:
-            self._cancel_review()
-            self._stop_engine()
         self.config["multipv"] = count
         self.maia_controls.move_limit.setValue(count)
         self.maia_controls.all_moves.setText(f"Top {count} Maia moves")
         self.config.pop("searchmoves", None)
         self._analysis_context = None
-        self._clear_analysis_output()
-        self._save()
         self._refresh_engine_menus()
-        if start_analysis:
-            self._start_analysis(reconfigure=True)
-        else:
-            if self.analysis_mode and not self._analysis_enabled:
-                self._restore_position_analysis()
-            self._schedule_engine()
+        self._start_analysis(reconfigure=True)
 
     def _custom_multipv(self):
         profile = self._profile()
@@ -3863,7 +3853,7 @@ class MainWindow(QMainWindow):
         self._exclusive_menu_choices(self.multipv_menu)
         self.multipv_menu.addSeparator()
         self.multipv_menu.addAction("Custom…", self._custom_multipv)
-        self.multipv_menu.addAction("− / = · Change MultiPV and start analysis").setEnabled(False)
+        self.multipv_menu.addAction("− / = (+) · Change MultiPV and restart analysis").setEnabled(False)
         self.multipv_menu.addAction("More lines divide search effort").setEnabled(False)
         self.multipv_menu.addAction(f"Display range: 1–{maximum}").setEnabled(False)
 
@@ -5499,7 +5489,9 @@ class MainWindow(QMainWindow):
         self._stop_engine()
         if not reconfigure or not self.analysis_mode:
             self._workspace(True, schedule=False)
-        if not reconfigure:
+        if reconfigure:
+            self._clear_analysis_output()
+        else:
             self._clear_saved_analysis([self.game.current_node])
         self._analysis_enabled = True
         if self.config.get("leela_enabled", False) and not (reconfigure and self.leela_panel.engine.busy):
