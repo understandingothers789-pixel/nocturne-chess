@@ -17,7 +17,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           while true; do
-            for run in 45725536518; do
+            for run in 45760323987; do
               conclusion=$(gh run view "$run" --json conclusion --jq .conclusion) || continue
               if [[ "$conclusion" == success ]]; then
                 echo "run_id=$run" >> "$GITHUB_OUTPUT"
@@ -39,4 +39,4 @@ jobs:
         run: |
           cd download
           zip -qr ../NocturneChess-0.5.7.201-Windows-x64-unsigned.zip .
-          gh release create v0.5.7.201 ../NocturneChess-0.5.7.201-Windows-x64-unsigned.zip --target 22b87b80027d28ef60a69baa5df1b5819950a2ac --title "Nocturne Chess 0.5.7.201" --notes "Matches Lichess gray brush opacity, tracks MultiPV in Nibbler, and adds source ranks to paired arrows."
+          gh release create v0.5.7.201 ../NocturneChess-0.5.7.201-Windows-x64-unsigned.zip --target 7aab96f7fcf3ea71d1f7ad41b9c719a90aecdddf --title "Nocturne Chess 0.5.7.201" --notes "Matches Lichess gray brush opacity, tracks MultiPV in Nibbler, adds source ranks to paired arrows, and synchronizes MultiPV controls."
