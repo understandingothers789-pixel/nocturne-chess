@@ -1,0 +1,42 @@
+name: Publish 201 download
+on:
+  push:
+    branches: [publish/201-download]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for the first verified Windows build
+        id: verified
+        timeout-minutes: 45
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          while true; do
+            for run in 45725536518; do
+              conclusion=$(gh run view "$run" --json conclusion --jq .conclusion) || continue
+              if [[ "$conclusion" == success ]]; then
+                echo "run_id=$run" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            done
+            sleep 20
+          done
+      - uses: actions/download-artifact@v4
+        with:
+          name: NocturneChess-0.5.7.201-Windows-x64-unsigned
+          run-id: ${{ steps.verified.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: download
+      - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd download
+          zip -qr ../NocturneChess-0.5.7.201-Windows-x64-unsigned.zip .
+          gh release create v0.5.7.201 ../NocturneChess-0.5.7.201-Windows-x64-unsigned.zip --target 22b87b80027d28ef60a69baa5df1b5819950a2ac --title "Nocturne Chess 0.5.7.201" --notes "Matches Lichess gray brush opacity, tracks MultiPV in Nibbler, and adds source ranks to paired arrows."
