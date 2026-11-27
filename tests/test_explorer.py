@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from PySide6.QtCore import QTimer, Qt, QUrl
+from PySide6.QtCore import QTimer, Qt, QUrl, QUrlQuery
 from PySide6.QtNetwork import QAbstractSocket, QHostAddress, QNetworkProxy, QNetworkRequest, QTcpServer
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
@@ -20,7 +20,7 @@ from nocturne.core.game import Game
 from nocturne.core.rules import Board
 from nocturne.explorer import ExplorerCache, ExplorerQuery, RATINGS, chessdb_score, parse_statistics
 from nocturne.gui.explorer_client import ExplorerClient
-from nocturne.gui.explorer_dialogs import ExplorerFiltersDialog, ExplorerGamesDialog
+from nocturne.gui.explorer_dialogs import ExplorerFiltersDialog, ExplorerGamesDialog, lichess_game_url
 from nocturne.gui.window import MainWindow
 
 
@@ -294,6 +294,12 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(bytes(masters.rawHeader("Authorization")), b"Bearer test-token")
         self.assertEqual(players.url().host(), "lichess.org")
         self.assertFalse(players.hasRawHeader("Authorization"))
+        master_link = lichess_game_url(query, "pFFH80NC", flipped=True)
+        self.assertEqual(master_link.host(), "lichess.org")
+        self.assertEqual(master_link.path(), "/import/master/pFFH80NC/black")
+        self.assertEqual(QUrlQuery(master_link).queryItemValue("fen", QUrl.ComponentFormattingOption.FullyDecoded), query.fen)
+        online_link = lichess_game_url(ExplorerQuery(query.fen, "lichess"), "abcdefgh")
+        self.assertEqual(online_link.path(), "/game/abcdefgh/white")
         dialog = ExplorerGamesDialog(self.client, query)
         self.addCleanup(dialog.deleteLater)
         dialog.load()
@@ -301,6 +307,9 @@ class NetworkTests(unittest.TestCase):
         self.assertIn("Example White (2500)", dialog.table.item(0, 1).text())
         self.assertEqual(dialog.table.item(0, 3).text(), "c5")
         self.assertEqual(dialog.table.item(0, 5).text(), "2024-10")
+        with patch("nocturne.gui.explorer_dialogs.QDesktopServices.openUrl", return_value=True) as browser:
+            dialog.open_lichess.click()
+            self.assertEqual(browser.call_args.args[0].path(), "/import/master/abcdefgh/white")
         self.assertIn("since=2021-01", self.server.requests[0][1])
         self.assertIn("topGames=15", self.server.requests[0][1])
         mock_request = QNetworkRequest(QUrl(self.server.base_url + "/masters/pgn/abcdefgh"))
@@ -309,6 +318,25 @@ class NetworkTests(unittest.TestCase):
             self.wait_for(lambda: dialog.game is not None)
         self.assertEqual(dialog.game.cursor, 1)
         self.assertEqual(dialog.game.sans, ["e4", "c5", "Nf3", "d6"])
+
+    def test_games_dialog_combines_played_move_and_sample_list_filters(self):
+        query = ExplorerQuery(self.query.fen, "lichess", include_games=True)
+        first = {"id": "abcdefgh", "uci": "e2e4", "winner": "white",
+                 "white": {"name": "White", "rating": 2500}, "black": {"name": "Black", "rating": 2400}}
+        second = first | {"id": "abcd1234", "uci": "d2d4"}
+        data = parse_statistics(statistics(query.fen) | {"topGames": [first], "recentGames": [first, second]}, query)
+        dialog = ExplorerGamesDialog(self.client, query)
+        self.addCleanup(dialog.deleteLater)
+        dialog._result(query.key, data, "Cached · Lichess players")
+        self.assertEqual(dialog.table.rowCount(), 2)
+        self.assertEqual(dialog.table.item(0, 0).text(), "Top, Recent")
+        dialog.list_filter.setCurrentIndex(dialog.list_filter.findData("Recent"))
+        dialog.move_filter.setCurrentIndex(dialog.move_filter.findData("d2d4"))
+        self.assertEqual(dialog.table.rowCount(), 1)
+        self.assertEqual(dialog.table.item(0, 3).text(), "d4")
+        dialog.list_filter.setCurrentIndex(dialog.list_filter.findData("Top"))
+        self.assertEqual(dialog.table.rowCount(), 0)
+        self.assertFalse(dialog.open_lichess.isEnabled())
 
     def test_chessdb_json_adapter_and_semantic_rate_limit(self):
         query = ExplorerQuery(self.query.fen, "chessdb")

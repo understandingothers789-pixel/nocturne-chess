@@ -575,6 +575,7 @@ class MainWindow(QMainWindow):
         self.explorer = OpeningExplorer(self.data_directory / "opening-cache.sqlite3")
         self.explorer.statistics_changed.connect(self._sync_candidate_database)
         self.explorer.compact_changed.connect(self._resize_empty_explorer)
+        self.explorer.minimum_height_changed.connect(self._protect_analysis_chart)
         self.explorer.client.status.connect(self._lichess_connection_status)
         self.explorer.move_selected.connect(self._explorer_move)
         self.explorer.move_hovered.connect(self._preview_explorer)
@@ -1469,6 +1470,7 @@ class MainWindow(QMainWindow):
         if self._explorer_active and not active:
             self.explorer._end_preview()
         self._sync_explorer_meter()
+        self.explorer.flipped = self.board_view.flipped
         self.explorer.set_position(self.game.board, self._position_identity(), lookup,
                                    self.config.get("explorer_source", "masters"),
                                    self.config.get("explorer_speed", "all"),
@@ -1827,8 +1829,10 @@ class MainWindow(QMainWindow):
                         self._set_multipv(count)
                 event.accept()
                 return True
-        if watched is getattr(self, "board_view", None) and event.type() == QEvent.Type.Resize:
-            QTimer.singleShot(0, self, self._fit_analysis_columns)
+        if event.type() == QEvent.Type.Resize:
+            insights = getattr(self, "maia_insights", None)
+            if watched is getattr(self, "board_view", None) or (insights and watched is insights.viewport()):
+                QTimer.singleShot(0, self, self._fit_analysis_columns)
         if (isinstance(watched, QWidget) and event.type() in (QEvent.Type.KeyPress, QEvent.Type.ShortcutOverride)
                 and event.key() == Qt.Key.Key_Escape):
             # Modal settings and popups consume Escape themselves. Stop the
@@ -4222,7 +4226,26 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "blunder_scroll"):
             return
         trends = self.maia_insights.trends_card
+        chart = self.maia_insights.chart
         show = not trends.isHidden()
+        trends.layout().activate()
+        chart_minimum = 320
+        graph_minimum = 60
+        column = self.right_detail_splitter
+        if (self._dock_workspace is None and show and column.indexOf(trends) >= 0
+                and not self.explorer.isHidden() and self.explorer.table.rowCount()):
+            visible = [column.widget(i) for i in range(column.count()) if not column.widget(i).isHidden()]
+            peers = [widget for widget in visible if widget not in (trends, self.graph)]
+            reserved = sum(max(widget.minimumHeight(), widget.minimumSizeHint().height()) for widget in peers)
+            chrome = trends.minimumSizeHint().height() - chart.minimumHeight()
+            room = (self.maia_insights.viewport().height() - reserved - chrome
+                    - column.handleWidth() * (len(visible) - 1))
+            if self.graph in visible:
+                graph_minimum = min(60, max(32, room - 96))
+                room -= graph_minimum
+            chart_minimum = max(96, min(320, room))
+        self.graph.setMinimumHeight(graph_minimum)
+        chart.setMinimumHeight(chart_minimum)
         trends.layout().activate()
         required = trends.minimumSizeHint().height() if show else 0
         trends.setMinimumHeight(required)
@@ -4988,6 +5011,7 @@ class MainWindow(QMainWindow):
 
     def _flip(self):
         self.board_view.flip()
+        self.explorer.flipped = self.board_view.flipped
         self.leela_panel.follow_board_flip(self.board_view.flipped)
         self.eval_bar.flipped = self.board_view.flipped
         self.eval_bar.update()

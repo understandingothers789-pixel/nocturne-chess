@@ -3,15 +3,27 @@
 from dataclasses import replace
 
 import chess
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import QTimer, Qt, QUrl, QUrlQuery
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtNetwork import QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
-    QAbstractItemView, QCheckBox, QDialog, QDialogButtonBox, QFormLayout, QGridLayout, QGroupBox,
-    QHeaderView, QLabel, QLineEdit, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QAbstractItemView, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QGridLayout, QGroupBox,
+    QHBoxLayout, QHeaderView, QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout,
 )
 
 from ..core.game import Game
-from ..explorer import MAX_RESPONSE, RATINGS, rating_band, valid_explorer_month
+from ..explorer import GAME_ID, MAX_RESPONSE, RATINGS, rating_band, valid_explorer_month
+
+
+def lichess_game_url(query, game_id, flipped=False):
+    if query.source not in ("masters", "lichess") or not GAME_ID.fullmatch(game_id):
+        raise ValueError("Invalid Lichess game")
+    path = "import/master" if query.source == "masters" else "game"
+    url = QUrl(f"https://lichess.org/{path}/{game_id}/{'black' if flipped else 'white'}")
+    params = QUrlQuery()
+    params.addQueryItem("fen", query.fen)
+    url.setQuery(params)
+    return url
 
 
 class ExplorerFiltersDialog(QDialog):
@@ -80,11 +92,14 @@ class ExplorerFiltersDialog(QDialog):
 
 
 class ExplorerGamesDialog(QDialog):
-    def __init__(self, client, query, parent=None):
+    def __init__(self, client, query, parent=None, *, flipped=False):
         super().__init__(parent)
         self.client = client
         self.query = replace(query, include_games=True)
         self.game = None
+        self.flipped = flipped
+        self.change_filters = False
+        self.samples = []
         self.rows = []
         self.reply = None
         self.setWindowTitle(f"Games from {query.label}")
@@ -93,10 +108,26 @@ class ExplorerGamesDialog(QDialog):
         filters = [query.speed, query.rating_label] if query.source == "lichess" else []
         if query.date_label:
             filters.append(query.date_label)
-        if filters:
-            summary = QLabel(" · ".join(filters))
-            summary.setWordWrap(True)
-            layout.addWidget(summary)
+        summary = QLabel(" · ".join(filters) if filters else "All dates")
+        summary.setWordWrap(True)
+        summary.setObjectName("muted")
+        layout.addWidget(summary)
+        filter_row = QHBoxLayout()
+        self.move_filter = QComboBox()
+        self.move_filter.setAccessibleName("Played move")
+        self.list_filter = QComboBox()
+        self.list_filter.setAccessibleName("Sample list")
+        for combo, label in ((self.move_filter, "Move"), (self.list_filter, "List")):
+            combo.addItem(f"All {label.lower()}s", "")
+            filter_row.addWidget(QLabel(label))
+            filter_row.addWidget(combo, 1)
+            combo.currentIndexChanged.connect(self._render_rows)
+        explorer_filters = QPushButton("Explorer filters…")
+        explorer_filters.setToolTip("Change the date and rating filters used to fetch game samples.")
+        explorer_filters.clicked.connect(self._edit_explorer_filters)
+        explorer_filters.setVisible(parent is not None)
+        filter_row.addWidget(explorer_filters)
+        layout.addLayout(filter_row)
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(["List", "White", "Black", "Played", "Result", "Date"])
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -118,6 +149,10 @@ class ExplorerGamesDialog(QDialog):
         self.open_game = buttons.addButton("Open in new tab", QDialogButtonBox.ButtonRole.ActionRole)
         self.open_game.setEnabled(False)
         self.open_game.clicked.connect(self._open_game)
+        self.open_lichess = buttons.addButton("View on Lichess ↗", QDialogButtonBox.ButtonRole.ActionRole)
+        self.open_lichess.setToolTip("Open this game in your browser at the position being explored.")
+        self.open_lichess.setEnabled(False)
+        self.open_lichess.clicked.connect(self._view_on_lichess)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
         client.result.connect(self._result)
@@ -130,44 +165,88 @@ class ExplorerGamesDialog(QDialog):
     def _result(self, key, data, origin):
         if key != self.query.key:
             return
-        rows = {}
+        samples = {}
         for name, games in (
             ("Top", data.get("topGames", [])), ("Recent", data.get("recentGames", [])),
             ("Example", [row["game"] for row in data["moves"] if "game" in row]),
         ):
             for game in games:
-                rows.setdefault(game["id"], (name, game))
-        self.rows = list(rows.values())
+                sample = samples.setdefault(game["id"], ([], game))
+                if name not in sample[0]:
+                    sample[0].append(name)
+        self.samples = list(samples.values())
+        moves = dict(sorted({game["uci"]: game["san"] for _, game in self.samples}.items(), key=lambda pair: pair[1]))
+        lists = {name for names, _ in self.samples for name in names}
+        self._set_filter_choices(self.move_filter, "All moves", [(san, uci) for uci, san in moves.items()])
+        self._set_filter_choices(
+            self.list_filter, "All lists", [(name, name) for name in ("Top", "Recent", "Example") if name in lists]
+        )
+        self._render_rows()
+        self._status(key, origin)
+
+    @staticmethod
+    def _set_filter_choices(combo, title, choices):
+        selected = combo.currentData()
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem(title, "")
+        for text, value in choices:
+            combo.addItem(text, value)
+        combo.setCurrentIndex(max(0, combo.findData(selected)))
+        combo.setEnabled(bool(choices))
+        combo.blockSignals(False)
+
+    def _render_rows(self):
+        move, category = self.move_filter.currentData(), self.list_filter.currentData()
+        selected = self._selected_sample()
+        self.rows = [(names, game) for names, game in self.samples
+                     if (not move or game["uci"] == move) and (not category or category in names)]
         self.table.setRowCount(len(self.rows))
-        for index, (name, game) in enumerate(self.rows):
+        for index, (names, game) in enumerate(self.rows):
             players = [f"{p['name']} ({p['rating']})" if p["rating"] else p["name"]
                        for p in (game["white"], game["black"])]
             result = {"white": "1–0", "black": "0–1", None: "½–½"}[game["winner"]]
             date = game["month"] or str(game["year"] or "—")
-            for column, value in enumerate((name, *players, game["san"], result, date)):
+            for column, value in enumerate((", ".join(names), *players, game["san"], result, date)):
                 item = QTableWidgetItem(value)
                 item.setToolTip(value)
                 self.table.setItem(index, column, item)
         if self.rows:
-            self.table.selectRow(0)
-        self._status(key, origin)
+            row = next((index for index, (_, game) in enumerate(self.rows) if game is selected), 0)
+            self.table.selectRow(row)
+        self._sync_button()
 
     def _status(self, key, message):
         if key != self.query.key or self.reply:
             return
         if message.startswith(("Live ·", "Cached ·")):
-            message = (f"{len(self.rows)} game samples · {message}" if self.rows
+            message = (f"{len(self.samples)} game samples · {message}" if self.samples
                        else "Lichess returned no game samples for this position and filters.")
         self.status.setText(message)
 
     def _sync_button(self):
-        self.open_game.setEnabled(self.reply is None and 0 <= self.table.currentRow() < len(self.rows))
+        selected = self._selected_sample() is not None
+        self.open_game.setEnabled(self.reply is None and selected)
+        self.open_lichess.setEnabled(selected)
+
+    def _selected_sample(self):
+        row = self.table.currentRow()
+        return self.rows[row][1] if 0 <= row < len(self.rows) else None
+
+    def _view_on_lichess(self):
+        if (sample := self._selected_sample()) and not QDesktopServices.openUrl(
+            lichess_game_url(self.query, sample["id"], self.flipped)
+        ):
+            self.status.setText("Could not open the default browser.")
+
+    def _edit_explorer_filters(self):
+        self.change_filters = True
+        self.reject()
 
     def _open_game(self, *_):
-        selected = self.table.currentRow()
-        if self.reply or not 0 <= selected < len(self.rows):
+        sample = self._selected_sample()
+        if self.reply or not sample:
             return
-        sample = self.rows[selected][1]
         request = self.client.game_request(self.query.source, sample["id"])
         reply = self.reply = self.client.network.get(request)
         body = bytearray()

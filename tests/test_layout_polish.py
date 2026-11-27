@@ -59,7 +59,7 @@ class LayoutPolishTests(unittest.TestCase):
             self.assertTrue(viewport.rect().contains(button.mapTo(viewport, button.rect().bottomRight())))
             self.assertLess(button.mapTo(w.pgn_page, QPoint()).y(), w.pgn_editor.y())
 
-    def test_explorer_reserves_space_for_wrapped_opening_and_footer(self):
+    def test_explorer_reserves_five_full_rows_and_footer_at_compact_width(self):
         from nocturne.explorer import ExplorerQuery
         from nocturne.gui.explorer_panel import OpeningExplorer
 
@@ -69,15 +69,19 @@ class LayoutPolishTests(unittest.TestCase):
             explorer.resize(198, 330)
             explorer.show()
             moves = [dict(uci=uci, san=san, white=10, draws=5, black=5, total=20)
-                     for uci, san in (("e2e4", "e4"), ("d2d4", "d4"), ("g1f3", "Nf3"), ("c2c4", "c4"))]
+                     for uci, san in (("e2e4", "e4"), ("d2d4", "d4"), ("g1f3", "Nf3"),
+                                      ("c2c4", "c4"), ("g2g3", "g3"), ("b2b3", "b3"))]
             explorer._result(explorer.query.key, {
                 "total": 200, "moves": moves,
                 "opening": {"eco": "C60", "name": "A very long opening name that wraps at compact window widths"},
             }, "Cached · test result with a long status")
             explorer.resize(198, 170)
             QTest.qWait(40)
+            fifth = explorer.table.visualItemRect(explorer.table.item(4, 0))
+            self.assertTrue(explorer.table.viewport().rect().contains(fifth))
             self.assertLess(explorer.summary.geometry().bottom(), explorer.table.y())
             self.assertLess(explorer.table.geometry().bottom(), explorer.status_label.y())
+            self.assertIn("A very long opening name", explorer.summary.toolTip())
         finally:
             explorer.close_client()
             explorer.close()

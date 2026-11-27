@@ -3,7 +3,7 @@
 from PySide6.QtCore import QEvent, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (
-    QAbstractItemView, QDialog, QHBoxLayout, QHeaderView, QLabel, QPushButton,
+    QAbstractItemView, QDialog, QHBoxLayout, QHeaderView, QPushButton,
     QSizePolicy, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
@@ -36,6 +36,7 @@ class ResultsDelegate(QStyledItemDelegate):
 class OpeningExplorer(QWidget):
     statistics_changed = Signal()
     compact_changed = Signal(bool, int)
+    minimum_height_changed = Signal()
     move_selected = Signal(object, str)
     move_hovered = Signal(object, str)
     preview_ended = Signal()
@@ -60,11 +61,13 @@ class OpeningExplorer(QWidget):
         self.statistics_status = ""
         self._hover = None
         self._compact_empty = False
+        self.flipped = False
         self.setMinimumHeight(170)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 4, 0, 0)
         layout.setSpacing(3)
         header = QHBoxLayout()
+        self._header = header
         self.title = ElidedLabel()
         self.title.setText("Database explorer")
         self.title.setTextFormat(Qt.TextFormat.PlainText)
@@ -93,9 +96,9 @@ class OpeningExplorer(QWidget):
         header.addWidget(refresh)
         header.addWidget(close)
         layout.addLayout(header)
-        self.summary = QLabel("Database → Masters or Lichess players")
+        self.summary = ElidedLabel("Database → Masters or Lichess players")
         self.summary.setTextFormat(Qt.TextFormat.PlainText)
-        self.summary.setWordWrap(True)
+        self.summary.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         layout.addWidget(self.summary)
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["Move", "Games", "White / Draw / Black"])
@@ -110,6 +113,8 @@ class OpeningExplorer(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setShowGrid(False)
+        self.table.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerItem)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.table.setToolTip("Click a move or select a row and press Enter to play it. Hover over a move to preview it.")
         self.table.setMouseTracking(True)
         self.table.viewport().setMouseTracking(True)
@@ -233,10 +238,12 @@ class OpeningExplorer(QWidget):
     def _show_games(self):
         if not self.query or self.query.source not in ("masters", "lichess") or not self.statistics:
             return
-        dialog = ExplorerGamesDialog(self.client, self.query, self)
+        dialog = ExplorerGamesDialog(self.client, self.query, self, flipped=self.flipped)
         dialog.load()
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.game_import_requested.emit(dialog.game)
+        elif dialog.change_filters:
+            self.filters_requested.emit()
         dialog.deleteLater()
 
     def _result(self, key, data, origin):
@@ -295,23 +302,24 @@ class OpeningExplorer(QWidget):
 
     def _reserve_rows(self):
         self.layout().activate()
-        visible_rows = min(4, self.table.rowCount())
+        visible_rows = min(5, self.table.rowCount())
         if visible_rows:
-            table_height = self.table.horizontalHeader().height() + sum(
+            table_height = self.table.horizontalHeader().sizeHint().height() + sum(
                 self.table.rowHeight(row) for row in range(visible_rows)) + 2 * self.table.frameWidth()
-            self.table.setMinimumHeight(table_height + 3)
-            self._fit_summary_height()
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        if event.oldSize().width() != event.size().width():
+            self.table.setMinimumHeight(table_height)
             self._fit_summary_height()
 
     def _fit_summary_height(self):
         if not self._compact_empty:
-            height = max(170, self.layout().minimumHeightForWidth(self.width()))
+            layout = self.layout()
+            margins = layout.contentsMargins()
+            height = (self._header.sizeHint().height() + self.summary.sizeHint().height()
+                      + self.table.minimumHeight() + self.status_label.sizeHint().height()
+                      + margins.top() + margins.bottom() + 3 * layout.spacing())
+            height = max(170, height)
             if height != self.minimumHeight():
                 self.setMinimumHeight(height)
+                self.minimum_height_changed.emit()
 
     def _status(self, key, message):
         if self.query and self.query.key == key:
