@@ -550,10 +550,11 @@ class BoardWidget(QWidget):
             anchor = end - direction * unit * (0.29 if destinations[move.to_sq] > 1 else 0.0)
             width = max(size, metrics.horizontalAdvance(str(rank)) + 5)
             step = max(width, size) + 2
-            shifts = (QPointF(), normal * step, -normal * step, -direction * step,
-                      (-direction + normal) * step, (-direction - normal) * step, -direction * (2 * step))
-            for shift in shifts:
-                center = anchor + shift
+            offsets = ((0, 0), (0, 1), (0, -1), (-1, 0), (-1, 1), (-1, -1), (1, 0), (1, 1), (1, -1),
+                       (-2, 0), (-2, 1), (-2, -1), (0, 2), (0, -2), (2, 0), (2, 1), (2, -1),
+                       (-1, 2), (-1, -2), (1, 2), (1, -2))
+            for along, across in offsets:
+                center = anchor + (direction * along + normal * across) * step
                 left = min(max(center.x() - width / 2, bounds.left()), bounds.right() - width)
                 top = min(max(center.y() - size / 2, bounds.top()), bounds.bottom() - size)
                 badge = QRectF(left, top, width, size)

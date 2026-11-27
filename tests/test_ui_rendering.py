@@ -231,12 +231,27 @@ class RenderingTests(unittest.TestCase):
         arrows = list(board._lichess_arrows())
         self.assertEqual([move.uci() for move, _, _ in arrows], ["b1d2", "f1d2"])
         rect, unit = board._geometry()
+        font = board.font()
+        font.setPixelSize(9)
+        metrics = QFontMetrics(font)
         for flipped in (False, True):
             board.flipped = flipped
-            placements = board._lichess_rank_positions(arrows, rect, unit, 13, QFontMetrics(board.font()))
+            placements = board._lichess_rank_positions(arrows, rect, unit, 13, metrics)
             self.assertEqual([rank for rank, _ in placements], [1, 2])
             self.assertFalse(placements[0][1].intersects(placements[1][1]))
             self.assertTrue(all(rect.contains(badge) for _, badge in placements))
+
+        board.set_position(Board("1n2kbnr/r5pp/p2pb3/1pp1pP2/1Q6/2N1PP1P/PPP1PR2/R1B1KBN1 b k - 3 14"))
+        moves = ("e6c4 e6f5 e8e7 g8h6 a7c7 e8f7 c5c4 e8d8 g8e7 h7h5 d6d5 h7h6 e8d7 e6f7 f8e7 e6b3 "
+                 "e6d7 a7e7 e5e4 a7b7 a6a5 e6c8 a7f7 b8d7 c5b4 a7d7 g7g6 e6d5 e6a2 b8c6 a7a8 g8f6").split()
+        board.set_recommendations([(board.legal_by_uci[uci], rank, "") for rank, uci in enumerate(moves, 1)])
+        arrows = list(board._lichess_arrows())
+        for flipped in (False, True):
+            board.flipped = flipped
+            placements = board._lichess_rank_positions(arrows, rect, unit, 13, metrics)
+            self.assertEqual([rank for rank, _ in placements], list(range(1, 33)))
+            self.assertFalse(any(badge.intersects(previous) for index, (_, badge) in enumerate(placements)
+                                 for _, previous in placements[:index]))
 
     def test_vertical_candidate_transition_keeps_preview_until_real_exit(self):
         panel = CandidatePanel(MoveText(auto_fit=True))
