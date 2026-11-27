@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.205 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.205/NocturneChess-0.5.7.205-Windows-x64-unsigned.zip?download=1).** Lichess Explorer adds month ranges, rating bands, and sample games that open in a new study tab. Lichess ranked circles and Nibbler MultiPV share Nibbler's palette. Board arrow presets explain their cutoffs, and the evaluation bar uses a Lichess-style gauge. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.204 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.204/NocturneChess-0.5.7.204-Windows-x64-unsigned.zip?download=1).** Nibbler uses the upstream Stockfish arrow colors, expected-score circles, and score-loss cutoff. Nibbler · MultiPV brings back the earlier Nocturne design with thin rods and numbered circles for the selected candidate lines. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.203 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.203/NocturneChess-0.5.7.203-Windows-x64-unsigned.zip?download=1).** Display → Board arrow layout → Lichess · ranked adds small numbers to visible Stockfish arrows in best-to-worst order. Labels separate when arrows share a destination. Windows tests and packaged startup checks passed.
@@ -742,18 +744,22 @@ ordered by game count, separately from engine rankings. Results show raw game
 counts and a White / Draw / Black results bar, with an opening name when the
 service supplies one. These are historical results, not engine scores.
 
-**Database → Lichess game speed / rating groups** filters player games; Masters
-has its own unfiltered data. The player endpoint aggregates rated Lichess games,
-including strong players; “Amateurs” does not imply an exclusive strength range.
-Standard chess is supported; Chess960 database lookup is explicitly unavailable.
-Game lists/individual game downloads are not included in this release.
+**Filters** on the explorer, or **Database → Lichess date and rating filters…**,
+sets an inclusive month range for Masters and Lichess players. Player games
+also support selecting multiple rating bands. **Games** shows the top or recent
+samples returned for the current position and filters, with players, ratings,
+the played move, the result, and the date when available. Select a game and
+choose **Open in new tab** to download its PGN and jump to the matching position.
+The player endpoint aggregates rated Lichess games, including strong players.
+The explorer supports standard chess.
 
 The explorer starts disabled. When enabled, it sends the current position and
 chosen filters to the selected online database, including the [Lichess opening explorer](https://lichess.org/api#tag/Opening-Explorer).
 Without a session token, Nocturne starts with **ChessDB · cloud analysis**, which
 needs no login. Entering a Lichess token switches from ChessDB to Masters;
-clearing the token returns to ChessDB. Tokens are session-only, so reopening
-the application selects ChessDB again. Database lookup stays off unless enabled.
+clearing the token returns to ChessDB. The Lichess access token is stored
+locally and used for authenticated explorer requests. Database lookup stays off
+unless enabled.
 
 With statistics enabled, coverage is checked in the selected database. Masters,
 Lichess players and ChessDB save separate departure markers with the study.
@@ -817,8 +823,10 @@ moving pieces or using the engine. Service availability and data coverage vary.
   circles, and colors based on expected-score loss. Nibbler · MultiPV restores
   the thin rods and rank circles from the earlier Nocturne design pictured above.
   It draws every available candidate in the selected MultiPV count. The leader
-  is teal, other moves are green, and moves at least half a pawn behind are yellow.
-  Both presets show the highest-ranked marker when moves share a destination.
+  is teal. Alternatives are green below 2 percentage points of expected-score
+  loss, yellow from 2 to under 4, and red from 4 onward. Lichess · ranked uses
+  these same colors for its rank circles. The arrow preset tooltips explain
+  which lines are shown and what their colors mean.
 - Candidate rows show actual cp/mate/bound scores, depths, nodes and engine WDL
   where supplied. Scores and WDL are oriented to White. No cp-to-probability or
   Leela policy/visit statistics are invented. The evaluation bar uses a display
