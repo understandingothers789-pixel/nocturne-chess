@@ -896,6 +896,7 @@ class MainWindow(QMainWindow):
         choices = (
             ("classic", "Nocturne Classic", "The original Nocturne arrows and numbered model rods."),
             ("lichess", "Lichess", "Stockfish only. A pale blue lead arrow and gray alternatives sized by evaluation gap."),
+            ("lichess-ranked", "Lichess · ranked", "The same Lichess arrows, numbered from best to worst among the moves shown."),
             ("nibbler", "Nibbler", "Stockfish only. Rod colors follow MultiPV rank. "
              "The round markers show expected score from the side to move."),
         )
@@ -4214,7 +4215,8 @@ class MainWindow(QMainWindow):
         text = QLabel(
             "<h3>Arrow layouts</h3>"
             "<p>Find the presets under <b>Display → Board arrow layout</b>. The Lichess preset shows the "
-            "leading Stockfish move in pale blue with gray alternatives. The Nibbler preset uses round "
+            "leading Stockfish move in pale blue with gray alternatives. Lichess · ranked numbers the arrows "
+            "from best to worst. The Nibbler preset uses round "
             "markers with Stockfish's expected score for the side to move and colors for each MultiPV rank. "
             "In pair layouts, each number shows the rank for the source in that color. "
             "A two-color arrow shows agreement.</p>"

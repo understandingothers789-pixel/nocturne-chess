@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtCore import QCoreApplication, QEvent, QPoint, QPointF, Qt, QUrl
-from PySide6.QtGui import QMouseEvent, QWheelEvent
+from PySide6.QtGui import QFontMetrics, QMouseEvent, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QScrollArea
 
@@ -158,8 +158,9 @@ class RenderingTests(unittest.TestCase):
         clicks = []
         board.move_requested.disconnect(window._human_move)
         board.move_requested.connect(clicks.append)
-        for key in ("lichess", "nibbler"):
+        for key in ("lichess", "lichess-ranked", "nibbler"):
             window.board_arrow_actions[key].trigger()
+            self.assertEqual(window.store.get("settings")["board_arrow_layout"], key)
             board.overlays = True
             with patch.object(board, "_draw_maia_rods", side_effect=AssertionError), \
                     patch.object(board, "_draw_paired_arrows", side_effect=AssertionError):
@@ -206,12 +207,36 @@ class RenderingTests(unittest.TestCase):
             normal = board.grab().toImage()
             self.assertEqual(board.grab().toImage(), normal)
             render.assert_called_once()
+            board.arrow_layout = "lichess-ranked"
+            self.assertNotEqual(board.grab().toImage(), normal)
+            render.assert_called_once()
             board.flipped = True
             self.assertNotEqual(board.grab().toImage(), normal)
             self.assertEqual(render.call_count, 2)
             board.set_recommendations([(moves[0], 1, "")])
             board.grab()
             self.assertEqual(render.call_count, 3)
+
+    def test_lichess_ranks_number_visible_moves_and_separate_shared_destinations(self):
+        from nocturne.core.rules import Board
+
+        board = BoardWidget()
+        self.addCleanup(board.close)
+        board.resize(330, 330)
+        board.set_position(Board("4k3/8/8/8/8/8/8/1N2KN2 w - - 0 1"))
+        board.set_recommendations([
+            (board.legal_by_uci[uci], rank, "", -score, ("cp", score, None))
+            for rank, (uci, score) in enumerate((("b1d2", 0), ("b1a3", -400), ("f1d2", -5)), 1)
+        ])
+        arrows = list(board._lichess_arrows())
+        self.assertEqual([move.uci() for move, _, _ in arrows], ["b1d2", "f1d2"])
+        rect, unit = board._geometry()
+        for flipped in (False, True):
+            board.flipped = flipped
+            placements = board._lichess_rank_positions(arrows, rect, unit, 13, QFontMetrics(board.font()))
+            self.assertEqual([rank for rank, _ in placements], [1, 2])
+            self.assertFalse(placements[0][1].intersects(placements[1][1]))
+            self.assertTrue(all(rect.contains(badge) for _, badge in placements))
 
     def test_vertical_candidate_transition_keeps_preview_until_real_exit(self):
         panel = CandidatePanel(MoveText(auto_fit=True))

@@ -270,7 +270,7 @@ class BoardWidget(QWidget):
         if self.arrow_layout != "classic":
             if not self.overlays or not self.interactive or self.preview_board is not None:
                 return False
-            if self.arrow_layout == "lichess":
+            if self.arrow_layout in ("lichess", "lichess-ranked"):
                 candidates = [move for move, _, _ in self._lichess_arrows()]
                 destinations = [move.to_sq for move in candidates]
             elif self.arrow_layout == "nibbler":
@@ -514,6 +514,54 @@ class BoardWidget(QWidget):
                 painter.setOpacity(0.3)
                 self._renderers[self.board.turn * move.promotion].render(painter, square)
                 painter.restore()
+        if self.arrow_layout == "lichess-ranked":
+            self._draw_lichess_ranks(painter, entries, rect, unit)
+
+    def _draw_lichess_ranks(self, painter, entries, rect, unit):
+        size = max(13.0, min(24.0, unit * 0.21))
+        font = QFont("Segoe UI")
+        font.setWeight(QFont.Weight.DemiBold)
+        font.setPixelSize(max(9, round(size * 0.67)))
+        painter.setFont(font)
+        metrics = painter.fontMetrics()
+        placements = self._lichess_rank_positions(entries, rect, unit, size, metrics)
+        for rank, badge in placements:
+            painter.setPen(QPen(QColor(245, 248, 251, 105), 0.8))
+            painter.setBrush(QColor(25, 49, 81, 222) if rank == 1 else QColor(43, 48, 53, 205))
+            painter.drawRoundedRect(badge, size / 2, size / 2)
+            painter.setPen(QColor("#f5f8fb"))
+            painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, str(rank))
+
+    def _lichess_rank_positions(self, entries, rect, unit, size, metrics):
+        destinations = defaultdict(int)
+        for move, _, _ in entries:
+            destinations[move.to_sq] += 1
+        bounds = rect.adjusted(3, 3, -3, -3)
+        placements = []
+        for rank, (move, _, _) in enumerate(entries, 1):
+            start = self.square_rect(move.from_sq).center()
+            end = self.square_rect(move.to_sq).center()
+            delta = end - start
+            length = math.hypot(delta.x(), delta.y())
+            if not length:
+                continue
+            direction = delta / length
+            normal = QPointF(-direction.y(), direction.x())
+            anchor = end - direction * unit * (0.29 if destinations[move.to_sq] > 1 else 0.0)
+            width = max(size, metrics.horizontalAdvance(str(rank)) + 5)
+            step = max(width, size) + 2
+            shifts = (QPointF(), normal * step, -normal * step, -direction * step,
+                      (-direction + normal) * step, (-direction - normal) * step, -direction * (2 * step))
+            for shift in shifts:
+                center = anchor + shift
+                left = min(max(center.x() - width / 2, bounds.left()), bounds.right() - width)
+                top = min(max(center.y() - size / 2, bounds.top()), bounds.bottom() - size)
+                badge = QRectF(left, top, width, size)
+                gap = badge.adjusted(-1, -1, 1, 1)
+                if all(not gap.intersects(other) for _, other in placements):
+                    break
+            placements.append((rank, badge))
+        return placements
 
     def _render_lichess_layer(self, entries, rect, ratio, unit):
         directions = defaultdict(set)
@@ -784,7 +832,7 @@ class BoardWidget(QWidget):
             if self.maia_arrows_enabled or self.leela_recommendations:
                 self._draw_maia_rods(painter, unit)
         if not preview and self.overlays:
-            if self.arrow_layout == "lichess":
+            if self.arrow_layout in ("lichess", "lichess-ranked"):
                 self._draw_lichess_arrows(painter, unit)
             elif self.arrow_layout == "nibbler":
                 self._draw_nibbler_arrows(painter, unit)
