@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.206 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.206/NocturneChess-0.5.7.206-Windows-x64-unsigned.zip?download=1).** The opening explorer reserves space for five complete moves. The Games dialog filters by played move and sample list, and opens selected games on Lichess at the position being explored. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.205 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.205/NocturneChess-0.5.7.205-Windows-x64-unsigned.zip?download=1).** Lichess Explorer adds month ranges, rating bands, and sample games that open in a new study tab. Lichess ranked circles and Nibbler MultiPV share Nibbler's palette. Board arrow presets explain their cutoffs, and the evaluation bar uses a Lichess-style gauge. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.204 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.204/NocturneChess-0.5.7.204-Windows-x64-unsigned.zip?download=1).** Nibbler uses the upstream Stockfish arrow colors, expected-score circles, and score-loss cutoff. Nibbler · MultiPV brings back the earlier Nocturne design with thin rods and numbered circles for the selected candidate lines. Windows tests and packaged startup checks passed.
@@ -742,14 +744,19 @@ the live position; hovering a move previews it, and clicking inserts that move
 as a variation while preserving existing continuations. Database moves are
 ordered by game count, separately from engine rankings. Results show raw game
 counts and a White / Draw / Black results bar, with an opening name when the
-service supplies one. These are historical results, not engine scores.
+service supplies one. The explorer reserves room for the first five moves when
+available. Scroll the table for more moves, or hover over a shortened opening
+name to read it in full. These are historical results, not engine scores.
 
 **Filters** on the explorer, or **Database → Lichess date and rating filters…**,
 sets an inclusive month range for Masters and Lichess players. Player games
-also support selecting multiple rating bands. **Games** shows the top or recent
-samples returned for the current position and filters, with players, ratings,
-the played move, the result, and the date when available. Select a game and
-choose **Open in new tab** to download its PGN and jump to the matching position.
+also support selecting multiple rating bands. **Games** shows the samples
+returned for the current position and filters, with players, ratings, the
+played move, the result, and the date when available. Filter the list by played
+move or sample type, or choose **Explorer filters…** to change the date and
+rating settings. Select a game and choose **View on Lichess** to open it in
+your browser at the position being explored. **Open in new tab** downloads
+the PGN and opens it at the matching position in Nocturne.
 The player endpoint aggregates rated Lichess games, including strong players.
 The explorer supports standard chess.
 
