@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.204 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.204/NocturneChess-0.5.7.204-Windows-x64-unsigned.zip?download=1).** Nibbler uses the upstream Stockfish arrow colors, expected-score circles, and score-loss cutoff. Nibbler · MultiPV brings back the earlier Nocturne design with thin rods and numbered circles for the selected candidate lines. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.203 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.203/NocturneChess-0.5.7.203-Windows-x64-unsigned.zip?download=1).** Display → Board arrow layout → Lichess · ranked adds small numbers to visible Stockfish arrows in best-to-worst order. Labels separate when arrows share a destination. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.202 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.202/NocturneChess-0.5.7.202-Windows-x64-unsigned.zip?download=1).** Reuses the Lichess arrow layer and reduces repeated work in board painting, analysis updates, and database move lookup. Equivalent executable paths reuse the running UCI process, and changing launch arguments starts the correct engine profile. Windows tests and packaged startup checks passed.
@@ -810,12 +812,13 @@ moving pieces or using the engine. Service availability and data coverage vary.
 - A selected piece takes priority. Manual promotions still offer a piece chooser;
   clicking a recommended promotion uses that exact engine move. Every execution
   checks the live position and legal moves. Alt+1/2/3 execute those candidates.
-- **Display → Candidate markers** selects **Arrows · Lichess style** or
-  **Lines · Nibbler style**. Markers follow the selected MultiPV count, with a
-  small translucent rank marker. Thin, muted strokes and small arrowheads keep
-  the pieces clear, including on compact boards. A shared square shows its highest rank. Changing
-  MultiPV clears old recommendations while the new lines arrive. Analysis
-  overlays and Smart Move can each be switched off independently.
+- **Display → Board arrow layout** includes **Nibbler** and **Nibbler · MultiPV**.
+  Nibbler follows the upstream Stockfish defaults for rod size, expected-score
+  circles, and colors based on expected-score loss. Nibbler · MultiPV restores
+  the thin rods and rank circles from the earlier Nocturne design pictured above.
+  It draws every available candidate in the selected MultiPV count. The leader
+  is teal, other moves are green, and moves at least half a pawn behind are yellow.
+  Both presets show the highest-ranked marker when moves share a destination.
 - Candidate rows show actual cp/mate/bound scores, depths, nodes and engine WDL
   where supplied. Scores and WDL are oriented to White. No cp-to-probability or
   Leela policy/visit statistics are invented. The evaluation bar uses a display
