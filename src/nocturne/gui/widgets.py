@@ -2,7 +2,7 @@
 
 import math
 
-from PySide6.QtCore import QPointF, QRectF, Qt, Signal, QSize
+from PySide6.QtCore import QEasingCurve, QPointF, QRectF, Qt, Signal, QSize, QVariantAnimation
 from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QWidget, QGridLayout, QHBoxLayout, QLabel, QScrollArea, QSizePolicy, QStylePainter
 from .theme import palette
@@ -104,13 +104,34 @@ class EngineLineHeading(QWidget):
 class EvaluationBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedWidth(23)
+        self.setFixedWidth(25)
+        self.setAccessibleName("Board evaluation bar")
         self.score: int | None = None
         self.flipped = False
+        self.light = False
         self.board_view = None
+        self._fraction = 0.5
+        self._slide = QVariantAnimation(self)
+        self._slide.setDuration(210)
+        self._slide.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._slide.valueChanged.connect(self._slide_to)
 
     def set_score(self, score: int | None):
+        if self.score == score:
+            return
         self.score = score
+        self._slide.stop()
+        if score is not None:
+            cp = (math.copysign((21 - min(10, 30000 - abs(score))) * 100, score)
+                  if 29001 <= abs(score) <= 30000 else max(-1000, min(1000, score)))
+            fraction = (1 + math.tanh(0.00184104 * cp)) / 2
+            self._slide.setStartValue(self._fraction)
+            self._slide.setEndValue(fraction)
+            self._slide.start()
+        self.update()
+
+    def _slide_to(self, fraction):
+        self._fraction = fraction
         self.update()
 
     def paintEvent(self, event):
@@ -118,24 +139,29 @@ class EvaluationBar(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         if self.board_view is not None:
             board_rect, _ = self.board_view._geometry()
-            rect = QRectF(5, board_rect.y(), 12, board_rect.height())
+            rect = QRectF(3, board_rect.y(), self.width() - 6, board_rect.height())
         else:
-            rect = QRectF(5, 24, 12, self.height() - 48)
+            rect = QRectF(3, 6, self.width() - 6, self.height() - 12)
         path = QPainterPath()
-        path.addRoundedRect(rect, 5, 5)
+        path.addRoundedRect(rect, 4, 4)
+        if self.score is None:
+            p.setOpacity(0.5)
         p.setClipPath(path)
-        p.fillRect(rect, QColor("#282828"))
-        fraction = 0.5 if self.score is None else 1 / (1 + math.exp(-max(-2000, min(2000, self.score)) / 250))
-        if self.flipped:
-            white = QRectF(rect.x(), rect.y(), rect.width(), rect.height() * fraction)
-        else:
-            white = QRectF(
-                rect.x(), rect.bottom() - rect.height() * fraction, rect.width(), rect.height() * fraction
-            )
-        p.fillRect(white, QColor("#f2f2f0") if self.score is not None else QColor("#898989"))
+        p.fillRect(rect, QColor("#606060" if self.light else "#444444"))
+        height = rect.height() * self._fraction
+        white = QRectF(rect.x(), rect.y() if self.flipped else rect.bottom() - height, rect.width(), height)
+        p.fillRect(white, QColor("#ffffff" if self.light else "#c0c0c0"))
+        for tick in range(1, 8):
+            y = rect.top() + rect.height() * tick / 8
+            if tick == 4:
+                p.setPen(QPen(QColor("#479ed0"), 3))
+            else:
+                p.setPen(QPen(QColor(120, 120, 120, 125), 1))
+            p.drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y))
         p.setClipping(False)
-        p.setPen(QPen(QColor("#999999"), 1))
-        p.drawLine(QPointF(2, rect.center().y()), QPointF(20, rect.center().y()))
+        p.setPen(QPen(QColor(0, 0, 0, 60), 1))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(path)
 
 
 class EvaluationGraph(QWidget):

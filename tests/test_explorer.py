@@ -11,8 +11,8 @@ from urllib.parse import parse_qs, urlsplit
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from PySide6.QtCore import QTimer, Qt
-from PySide6.QtNetwork import QAbstractSocket, QHostAddress, QNetworkProxy, QTcpServer
+from PySide6.QtCore import QTimer, Qt, QUrl
+from PySide6.QtNetwork import QAbstractSocket, QHostAddress, QNetworkProxy, QNetworkRequest, QTcpServer
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
@@ -20,6 +20,7 @@ from nocturne.core.game import Game
 from nocturne.core.rules import Board
 from nocturne.explorer import ExplorerCache, ExplorerQuery, RATINGS, chessdb_score, parse_statistics
 from nocturne.gui.explorer_client import ExplorerClient
+from nocturne.gui.explorer_dialogs import ExplorerFiltersDialog, ExplorerGamesDialog
 from nocturne.gui.window import MainWindow
 
 
@@ -72,9 +73,9 @@ class HttpFixture(QTcpServer):
         path = peer._request.split(b" ")[1].decode()
         self.requests.append((time.monotonic(), path))
         params = parse_qs(urlsplit(path).query)
-        fen = params.get("fen", params.get("board"))[0]
         body = self.body(path) if callable(self.body) else self.body
         if body is None:
+            fen = params.get("fen", params.get("board"))[0]
             body = json.dumps(statistics(fen)).encode()
         response = (f"HTTP/1.1 {self.code} Response\r\nContent-Type: application/json\r\n"
                     f"Content-Length: {len(body)}\r\nRetry-After: 2\r\nConnection: close\r\n\r\n").encode() + body
@@ -181,6 +182,25 @@ class DataTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ExplorerQuery(root, **kwargs)
 
+    def test_advanced_filters_and_game_samples_have_separate_cache_keys(self):
+        fen = Game().board.fen()
+        players = ExplorerQuery(fen, "lichess", "rapid", since="2024-02", until="2025-06",
+                                groups=(2200, 1600, 2200), include_games=True)
+        params = parse_qs(urlsplit(players.url()).query)
+        self.assertEqual(params["ratings"], ["1600,2200"])
+        self.assertEqual(params["since"], ["2024-02"])
+        self.assertEqual(params["until"], ["2025-06"])
+        self.assertEqual(params["recentGames"], ["4"])
+        masters = ExplorerQuery(fen, since="2024-02", groups=(1600,), include_games=True)
+        params = parse_qs(urlsplit(masters.url()).query)
+        self.assertNotIn("ratings", params)
+        self.assertEqual(params["topGames"], ["15"])
+        self.assertNotEqual(masters.key, ExplorerQuery(fen, since="2024-02").key)
+        self.assertNotEqual(ExplorerQuery(fen, since="2024-02").key, ExplorerQuery(fen).key)
+        self.assertEqual(ExplorerQuery(fen, "chessdb", since="2024-02").key, ExplorerQuery(fen, "chessdb").key)
+        with self.assertRaises(ValueError):
+            ExplorerQuery(fen, since="2025-02", until="2024-02")
+
     def test_response_recomputes_san_and_rejects_illegal_or_invalid_counts(self):
         query = ExplorerQuery(Game().board.fen())
         result = parse_statistics(statistics(query.fen), query)
@@ -256,6 +276,39 @@ class NetworkTests(unittest.TestCase):
         self.assertTrue(self.results[-1][2].startswith("Cached"))
         QTest.qWait(30)
         self.assertEqual(len(self.server.requests), 1)
+
+    def test_game_samples_and_pgn_use_current_position_and_only_official_token_scope(self):
+        board = Board()
+        board.play_uci("e2e4")
+        query = ExplorerQuery(board.fen(), "masters", since="2021-01")
+        game = {"id": "abcdefgh", "uci": "c7c5", "san": "untrusted SAN", "winner": None,
+                "white": {"name": "Example White", "rating": 2500}, "black": {"name": "Example Black", "rating": 2510},
+                "month": "2024-10", "year": 2024}
+        pgn = b'[Event "Example"]\n[Result "1/2-1/2"]\n\n1. e4 c5 2. Nf3 d6 1/2-1/2\n'
+        payload = statistics(query.fen) | {"topGames": [game, game | {"id": "../bad"}, game | {"uci": "c5c7"}]}
+        self.server.body = lambda path: pgn if path.endswith("/pgn/abcdefgh") else json.dumps(payload).encode()
+        self.client.set_lichess_token("test-token")
+        masters = self.client.game_request("masters", "abcdefgh")
+        players = self.client.game_request("lichess", "abcdefgh")
+        self.assertEqual(masters.url().host(), "explorer.lichess.org")
+        self.assertEqual(bytes(masters.rawHeader("Authorization")), b"Bearer test-token")
+        self.assertEqual(players.url().host(), "lichess.org")
+        self.assertFalse(players.hasRawHeader("Authorization"))
+        dialog = ExplorerGamesDialog(self.client, query)
+        self.addCleanup(dialog.deleteLater)
+        dialog.load()
+        self.wait_for(lambda: dialog.table.rowCount() == 1)
+        self.assertIn("Example White (2500)", dialog.table.item(0, 1).text())
+        self.assertEqual(dialog.table.item(0, 3).text(), "c5")
+        self.assertEqual(dialog.table.item(0, 5).text(), "2024-10")
+        self.assertIn("since=2021-01", self.server.requests[0][1])
+        self.assertIn("topGames=15", self.server.requests[0][1])
+        mock_request = QNetworkRequest(QUrl(self.server.base_url + "/masters/pgn/abcdefgh"))
+        with patch.object(self.client, "game_request", return_value=mock_request):
+            dialog.open_game.click()
+            self.wait_for(lambda: dialog.game is not None)
+        self.assertEqual(dialog.game.cursor, 1)
+        self.assertEqual(dialog.game.sans, ["e4", "c5", "Nf3", "d6"])
 
     def test_chessdb_json_adapter_and_semantic_rate_limit(self):
         query = ExplorerQuery(self.query.fen, "chessdb")
@@ -390,6 +443,15 @@ class CachedGuiTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
+
+    def test_filters_dialog_accepts_disjoint_bands_and_rejects_inverted_dates(self):
+        dialog = ExplorerFiltersDialog("lichess", "2025-01", "2024-12", 0, (1600, 2200))
+        self.addCleanup(dialog.deleteLater)
+        dialog.accept()
+        self.assertIn("first month", dialog.message.text())
+        dialog.last_month.setText("2025-06")
+        dialog.accept()
+        self.assertEqual(dialog.values, ("2025-01", "2025-06", (1600, 2200)))
 
     def test_empty_explorer_collapses_and_expands_again_when_moves_return(self):
         from nocturne.gui.explorer_panel import OpeningExplorer

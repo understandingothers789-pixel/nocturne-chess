@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 from pathlib import Path
+import re
 import sqlite3
 import time
 from urllib.parse import urlencode
@@ -17,6 +18,17 @@ SPEEDS = ("ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondenc
 RATINGS = (0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500)
 MAX_RESPONSE = 512 * 1024
 CACHE_AGE = 86400
+GAME_ID = re.compile(r"[A-Za-z0-9]{8}")
+
+
+def valid_explorer_month(month):
+    return isinstance(month, str) and (not month or bool(re.fullmatch(r"[1-9][0-9]{3}-(0[1-9]|1[0-2])", month)))
+
+
+def rating_groups(values):
+    if not isinstance(values, (list, tuple)) or any(type(value) is not int or value not in RATINGS for value in values):
+        raise ValueError("Unsupported rating band")
+    return tuple(sorted(set(values)))
 
 
 @dataclass(frozen=True)
@@ -25,12 +37,27 @@ class ExplorerQuery:
     source: str = "masters"
     speed: str = "all"
     rating: int = 0
+    since: str = ""
+    until: str = ""
+    groups: tuple[int, ...] = ()
+    include_games: bool = False
 
     def __post_init__(self):
         if self.source not in ("masters", "lichess", "chessdb", "tablebase") or self.speed not in ("all", *SPEEDS):
             raise ValueError("Unsupported explorer source or speed")
         if type(self.rating) is not int or self.rating not in RATINGS:
             raise ValueError("Unsupported rating group")
+        if self.source in ("masters", "lichess"):
+            if not valid_explorer_month(self.since) or not valid_explorer_month(self.until):
+                raise ValueError("Enter months as YYYY-MM")
+            if self.since and self.until and self.since > self.until:
+                raise ValueError("The first month must be on or before the last month")
+        else:
+            object.__setattr__(self, "since", "")
+            object.__setattr__(self, "until", "")
+            object.__setattr__(self, "include_games", False)
+        groups = rating_groups(self.groups) if self.source == "lichess" else ()
+        object.__setattr__(self, "groups", groups)
         board = chess.Board(self.fen)
         if not board.is_valid() or any(c not in "KQkq-" for c in self.fen.split()[2]):
             raise ValueError("Opening explorer supports standard chess positions")
@@ -46,6 +73,18 @@ class ExplorerQuery:
         return {"masters": "Lichess Masters", "lichess": "Lichess players", "chessdb": "ChessDB",
                 "tablebase": "Lichess Endgame Tablebase"}[self.source]
 
+    @property
+    def date_label(self):
+        if self.since and self.until:
+            return f"{self.since}–{self.until}"
+        return f"From {self.since}" if self.since else f"Through {self.until}" if self.until else ""
+
+    @property
+    def rating_label(self):
+        if self.groups and self.groups != RATINGS:
+            return ", ".join(rating_band(value) for value in self.groups)
+        return f"{self.rating}+" if self.rating and not self.groups else "all ratings"
+
     def url(self, base=None):
         if self.source == "tablebase":
             return (base or TABLEBASE_URL).rstrip("/") + "/standard?" + urlencode({"fen": self.fen})
@@ -54,16 +93,53 @@ class ExplorerQuery:
             return base.rstrip("/") + "/cdb.php?" + urlencode({
                 "action": "queryall", "board": self.fen, "json": 1, "learn": 0, "showall": 0,
             })
-        params = {"fen": self.fen, "moves": 12, "topGames": 0}
+        params = {"fen": self.fen, "moves": 12, "topGames": (15 if self.source == "masters" else 4)
+                  if self.include_games else 0}
+        if self.since:
+            params["since"] = self.since
+        if self.until:
+            params["until"] = self.until
         if self.source == "lichess":
-            params.update(variant="standard", recentGames=0,
+            params.update(variant="standard", recentGames=4 if self.include_games else 0,
                           speeds=",".join(SPEEDS if self.speed == "all" else (self.speed,)),
-                          ratings=",".join(str(r) for r in RATINGS if r >= self.rating))
+                          ratings=",".join(map(str, self.groups or tuple(r for r in RATINGS if r >= self.rating))))
         return base.rstrip("/") + "/" + self.source + "?" + urlencode(params)
 
     @property
     def key(self):
         return hashlib.sha256(self.url().encode()).hexdigest()
+
+
+def rating_band(value):
+    index = RATINGS.index(value)
+    return f"{value}–{RATINGS[index + 1] - 1}" if index + 1 < len(RATINGS) else f"{value}+"
+
+
+def _game_sample(row, board, uci=None):
+    if not isinstance(row, dict) or not isinstance(row.get("id"), str) or not GAME_ID.fullmatch(row["id"]):
+        return None
+    move_text = uci or row.get("uci")
+    if not isinstance(move_text, str):
+        return None
+    try:
+        move = board.parse_uci(move_text)
+    except ValueError:
+        return None
+    if not move:
+        return None
+    game = {"id": row["id"], "uci": move.uci(), "san": board.san(move),
+            "winner": row.get("winner") if row.get("winner") in ("white", "black") else None}
+    month, year = row.get("month"), row.get("year")
+    game["month"] = month if valid_explorer_month(month) else ""
+    game["year"] = year if type(year) is int and 1000 <= year <= 9999 else None
+    for color in ("white", "black"):
+        player = row.get(color)
+        if not isinstance(player, dict) or not isinstance(player.get("name"), str):
+            return None
+        rating = player.get("rating")
+        game[color] = {"name": " ".join(player["name"].split())[:120],
+                       "rating": rating if type(rating) is int and 0 < rating <= 5000 else None}
+    return game
 
 
 def parse_statistics(payload, query):
@@ -93,13 +169,24 @@ def parse_statistics(payload, query):
         if not move or move not in board.legal_moves or move in seen:
             raise ValueError("Illegal or duplicate database move")
         seen.add(move)
-        moves.append(dict(counts(row), uci=move.uci(), san=board.san(move)))
+        move_row = dict(counts(row), uci=move.uci(), san=board.san(move))
+        if query.include_games and (game := _game_sample(row.get("game"), board, move.uci())):
+            move_row["game"] = game
+        moves.append(move_row)
     result["moves"] = sorted(moves, key=lambda row: -row["total"])[:12]
     opening = payload.get("opening")
     result["opening"] = (
         {"eco": str(opening.get("eco", ""))[:8], "name": str(opening.get("name", ""))[:200]}
         if isinstance(opening, dict) else None
     )
+    if query.include_games:
+        for name, limit in (("topGames", 15 if query.source == "masters" else 4), ("recentGames", 4)):
+            rows = payload.get(name)
+            games = {}
+            for row in rows[:64] if isinstance(rows, list) else ():
+                if game := _game_sample(row, board):
+                    games.setdefault(game["id"], game)
+            result[name] = list(games.values())[:limit]
     return result
 
 

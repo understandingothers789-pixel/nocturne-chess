@@ -3,12 +3,13 @@
 from PySide6.QtCore import QEvent, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (
-    QAbstractItemView, QHBoxLayout, QHeaderView, QLabel, QPushButton,
+    QAbstractItemView, QDialog, QHBoxLayout, QHeaderView, QLabel, QPushButton,
     QSizePolicy, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from ..explorer import ExplorerCache, ExplorerQuery, chessdb_score, tablebase_outcome
 from .explorer_client import ExplorerClient
+from .explorer_dialogs import ExplorerGamesDialog
 from .widgets import ElidedLabel
 
 
@@ -39,6 +40,8 @@ class OpeningExplorer(QWidget):
     move_hovered = Signal(object, str)
     preview_ended = Signal()
     close_requested = Signal()
+    filters_requested = Signal()
+    game_import_requested = Signal(object)
 
     def __init__(self, cache_path, parent=None):
         super().__init__(parent)
@@ -68,6 +71,15 @@ class OpeningExplorer(QWidget):
         self.title.setMinimumWidth(0)
         self.title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         header.addWidget(self.title, 1)
+        self.filters_button = QPushButton("Filters")
+        self.filters_button.setToolTip("Filter opening statistics by month and, for Lichess players, rating band.")
+        self.filters_button.clicked.connect(self.filters_requested)
+        self.games_button = QPushButton("Games")
+        self.games_button.setToolTip("Browse games that reached this position with the current filters.")
+        self.games_button.clicked.connect(self._show_games)
+        for button in (self.filters_button, self.games_button):
+            button.hide()
+            header.addWidget(button)
         refresh = QPushButton("↻")
         refresh.setAccessibleName("Refresh database explorer")
         refresh.setToolTip("Fetch fresh statistics for this position. Saved results remain available while loading.")
@@ -118,6 +130,10 @@ class OpeningExplorer(QWidget):
         self.statistics = None
         self.statistics_origin = ""
         self.statistics_status = ""
+        supported = bool(self.query and self.query.source in ("masters", "lichess"))
+        self.filters_button.setVisible(supported)
+        self.games_button.setVisible(supported)
+        self.games_button.setEnabled(False)
         self.statistics_changed.emit()
 
     def _set_compact_empty(self, empty):
@@ -132,7 +148,8 @@ class OpeningExplorer(QWidget):
         self.setMaximumHeight(88 if empty else 16777215)
         self.compact_changed.emit(empty, previous_height)
 
-    def set_position(self, board, identity, enabled, source="masters", speed="all", rating=0, *, endgame=False):
+    def set_position(self, board, identity, enabled, source="masters", speed="all", rating=0, *,
+                     endgame=False, since="", until="", groups=()):
         if not enabled:
             self._set_compact_empty(False)
             self.client.cancel()
@@ -149,7 +166,7 @@ class OpeningExplorer(QWidget):
         try:
             if board.chess960:
                 raise ValueError("Opening explorer supports standard chess; Chess960 is unavailable")
-            query = ExplorerQuery(board.fen(), source, speed, rating)
+            query = ExplorerQuery(board.fen(), source, speed, rating, since, until, groups)
         except ValueError as exc:
             self.client.cancel()
             self.query = None
@@ -182,7 +199,7 @@ class OpeningExplorer(QWidget):
         self.rows = []
         self.table.setRowCount(0)
         self.table.setMinimumHeight(0)
-        source, speed, rating = query.source, query.speed, query.rating
+        source, speed = query.source, query.speed
         if source == "tablebase":
             self.title.setText("Endgame Tablebase")
             self.summary.setText("Lichess · results for the side to move")
@@ -192,12 +209,12 @@ class OpeningExplorer(QWidget):
             )
         else:
             self.title.setText("ChessDB · cloud analysis" if source == "chessdb" else "Masters" if source == "masters" else
-                               f"Lichess players · {speed} · " + (f"{rating}+" if rating else "all ratings"))
+                               f"Lichess players · {speed} · {query.rating_label}")
             self.table.setHorizontalHeaderLabels(["Move", "Score · White", "Database note"] if source == "chessdb" else
                                                 ["Move", "Games", "White / Draw / Black"])
             self.table.horizontalHeaderItem(2).setToolTip("")
             self.summary.setText("Cloud analysis · White's perspective" if source == "chessdb" else "Opening statistics · " + (
-                "master games" if source == "masters" else f"{speed} speeds · " + (f"{rating}+" if rating else "all ratings")))
+                "master games" if source == "masters" else f"{speed} speeds · {query.rating_label}"))
         self.table.setAccessibleName("Endgame tablebase moves" if source == "tablebase" else "Opening database moves")
         self.client.load(query, force=force)
 
@@ -212,6 +229,15 @@ class OpeningExplorer(QWidget):
             self._load_query(self._tablebase_query, force=True)
         elif self.query:
             self.client.load(self.query, force=True)
+
+    def _show_games(self):
+        if not self.query or self.query.source not in ("masters", "lichess") or not self.statistics:
+            return
+        dialog = ExplorerGamesDialog(self.client, self.query, self)
+        dialog.load()
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.game_import_requested.emit(dialog.game)
+        dialog.deleteLater()
 
     def _result(self, key, data, origin):
         if not self.query or self.query.key != key:
@@ -258,7 +284,11 @@ class OpeningExplorer(QWidget):
             self.table.setItem(i, 2, item)
         opening = data.get("opening")
         name = (opening["eco"] + " · " + opening["name"] + " · ") if opening else ""
-        self.summary.setText(name + f"{data['total']:,} games · most played first" if data["total"] else "No games found for this position and filters")
+        message = name + f"{data['total']:,} games · most played first" if data["total"] else "No games found for this position and filters"
+        if self.query.date_label:
+            message += f" · {self.query.date_label}"
+        self.summary.setText(message)
+        self.games_button.setEnabled(bool(data["total"]))
         self.status_label.setText(origin)
 
         self._reserve_rows()

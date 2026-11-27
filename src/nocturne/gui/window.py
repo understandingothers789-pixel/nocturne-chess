@@ -83,6 +83,7 @@ from .candidates import CandidatePanel
 from .review_panel import ReviewPanel
 from ..review import classify, chance
 from .explorer_panel import OpeningExplorer
+from .explorer_dialogs import ExplorerFiltersDialog
 from .opening_coverage import OpeningCoverage
 from .snapshot_dialog import SnapshotDialog
 from .analysis_history import AnalysisHistory
@@ -579,6 +580,8 @@ class MainWindow(QMainWindow):
         self.explorer.move_hovered.connect(self._preview_explorer)
         self.explorer.preview_ended.connect(lambda: self._end_preview("explorer"))
         self.explorer.close_requested.connect(lambda: self._set_explorer_option("explorer_enabled", False))
+        self.explorer.filters_requested.connect(self._explorer_filters_dialog)
+        self.explorer.game_import_requested.connect(lambda game: self._import_studies([game]))
         self.analysis_detail_splitter.addWidget(self.explorer)
         self.explorer.hide()
         self._explorer_active = False
@@ -893,19 +896,27 @@ class MainWindow(QMainWindow):
             "Choose the arrow design and which analysis sources appear on the board."
         )
         self.board_arrow_actions = {}
+        loss_colors = ("Teal marks the leader. Alternatives are green below 2 percentage points of expected-score "
+                       "loss, yellow from 2 to under 4, and red from 4 onward.")
+        lichess_cutoff = ("Stockfish only. The top arrow is pale blue. Gray alternatives thin as Lichess's estimated "
+                          "winning-chance loss grows and are hidden at 20 percentage points or more.")
         choices = (
-            ("classic", "Nocturne Classic", "The original Nocturne arrows and numbered model rods."),
-            ("lichess", "Lichess", "Stockfish only. A pale blue lead arrow and gray alternatives sized by evaluation gap."),
-            ("lichess-ranked", "Lichess · ranked", "The same Lichess arrows, numbered from best to worst among the moves shown."),
-            ("nibbler", "Nibbler", "Stockfish only. Colors reflect expected-score loss, and the circles show expected "
-             "score for the side to move. Moves at least 10 percentage points behind the leader are hidden."),
-            ("nibbler-multipv", "Nibbler · MultiPV", "Thin rods and rank circles for every available Stockfish line. "
-             "The leader is teal, alternatives are green, and moves at least half a pawn behind are yellow."),
+            ("classic", "Nocturne Classic", "Shows every available Stockfish MultiPV line with no evaluation cutoff. "
+             "Numbered rods show Leela ranks when available, or Maia ranks for moves above 10% predicted popularity. "
+             "Saved continuation arrows follow the separate Display setting."),
+            ("lichess", "Lichess", lichess_cutoff),
+            ("lichess-ranked", "Lichess · ranked", lichess_cutoff + " Circles number visible arrows from best to worst. "
+             "Their backgrounds use Nibbler's expected-score colors. " + loss_colors),
+            ("nibbler", "Nibbler", "Stockfish only. Circles show expected score for the side to move. Alternatives at "
+             "least 10 percentage points behind the leader are hidden. " + loss_colors),
+            ("nibbler-multipv", "Nibbler · MultiPV", "Thin rods and rank circles for every available Stockfish line "
+             "within the MultiPV count. There is no score cutoff. " + loss_colors),
         )
         for key, title, tip in (*choices, *(
             (key, " + ".join(names),
              f"Compare the top two moves from {' and '.join(names)}. Each color shows its own rank, "
-             "including on shared moves.")
+             "including on shared moves. Stockfish and Leela have no score cutoff. "
+             + ("Maia uses moves above 10% predicted popularity." if "Maia" in names else ""))
             for key, names in BOARD_ARROW_PAIRS.items()
         )):
             if key == "stockfish-leela":
@@ -1077,6 +1088,10 @@ class MainWindow(QMainWindow):
             action.setCheckable(True)
             self.explorer_actions[("explorer_rating", value)] = action
         self.explorer_filter_menus = (speeds, ratings)
+        self.explorer_filters_action = add(database, "Lichess date and rating filters…", self._explorer_filters_dialog)
+        self.explorer_filters_action.setToolTip(
+            "Choose an inclusive month range for either Lichess database and exact rating bands for Lichess player games."
+        )
         database.addSeparator()
         self.lichess_token_action = QAction(database)
         self.lichess_token_row = QPushButton(database)
@@ -1406,12 +1421,33 @@ class MainWindow(QMainWindow):
 
     def _set_explorer_option(self, key, value):
         self.config[key] = value
+        if key == "explorer_rating":
+            self.config["explorer_rating_groups"] = ()
         if key == "explorer_enabled" and value:
             self.config["explorer_statistics"] = True
             self._workspace(True)
             self.tabs.setCurrentIndex(1)
         self._sync_explorer()
         self._save()
+
+    def _explorer_filters(self):
+        return dict(since=self.config["explorer_since"], until=self.config["explorer_until"],
+                    groups=self.config["explorer_rating_groups"])
+
+    def _explorer_filters_dialog(self):
+        source = self.config["explorer_source"]
+        if source not in ("masters", "lichess"):
+            return
+        dialog = ExplorerFiltersDialog(source, self.config["explorer_since"], self.config["explorer_until"],
+                                       self.config["explorer_rating"], self.config["explorer_rating_groups"], self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            since, until, groups = dialog.values
+            self.config.update(explorer_since=since, explorer_until=until)
+            if source == "lichess":
+                self.config.update(explorer_rating=0, explorer_rating_groups=groups)
+            self._sync_explorer()
+            self._save()
+        dialog.deleteLater()
 
     def _sync_explorer(self):
         if not hasattr(self, "explorer") or self._closing:
@@ -1425,7 +1461,9 @@ class MainWindow(QMainWindow):
             self.explorer_enabled_action.setChecked(enabled)
             self.explorer_statistics_action.setChecked(bool(self.config.get("explorer_statistics")))
             for (key, value), action in self.explorer_actions.items():
-                action.setChecked(self.config.get(key) == value)
+                action.setChecked(self.config.get(key) == value
+                                  and not (key == "explorer_rating" and self.config["explorer_rating_groups"]))
+            self.explorer_filters_action.setEnabled(self.config["explorer_source"] in ("masters", "lichess"))
             for menu in self.explorer_filter_menus:
                 menu.setEnabled(self.config.get("explorer_source") == "lichess")
         if self._explorer_active and not active:
@@ -1434,7 +1472,7 @@ class MainWindow(QMainWindow):
         self.explorer.set_position(self.game.board, self._position_identity(), lookup,
                                    self.config.get("explorer_source", "masters"),
                                    self.config.get("explorer_speed", "all"),
-                                   self.config.get("explorer_rating", 0), endgame=active)
+                                   self.config.get("explorer_rating", 0), endgame=active, **self._explorer_filters())
         if active and not self._explorer_active and self._dock_workspace is None:
             self.right_detail_splitter.setSizes([500, 220, 70])
         self._explorer_active = active
@@ -1448,7 +1486,7 @@ class MainWindow(QMainWindow):
         if self._book_highlight_enabled():
             signature = coverage.signature(self.game, self.config.get("explorer_source", "chessdb"),
                                            self.config.get("explorer_speed", "all"),
-                                           self.config.get("explorer_rating", 0))
+                                           self.config.get("explorer_rating", 0), **self._explorer_filters())
             if coverage.context != signature:
                 self._scan_opening_coverage(force=False)
         elif coverage.running:
@@ -1464,7 +1502,7 @@ class MainWindow(QMainWindow):
             self.game, self.config.get("explorer_source", "masters"),
             self.config.get("explorer_speed", "all"), self.config.get("explorer_rating", 0),
             self.explorer.client._lichess_token,
-            force=force,
+            force=force, **self._explorer_filters(),
         )
 
     def _update_opening_coverage(self):
@@ -1472,7 +1510,8 @@ class MainWindow(QMainWindow):
             return
         coverage = self.opening_coverage
         signature = coverage.signature(self.game, self.config.get("explorer_source", "masters"),
-                                       self.config.get("explorer_speed", "all"), self.config.get("explorer_rating", 0))
+                                       self.config.get("explorer_speed", "all"), self.config.get("explorer_rating", 0),
+                                       **self._explorer_filters())
         if coverage.context is not None and coverage.context != signature:
             coverage.cancel()
         text = escape(coverage.message)
@@ -3946,6 +3985,8 @@ class MainWindow(QMainWindow):
         self.telemetry.setStyleSheet(f"color: {palette(light)['metadata']};")
         self.telemetry.setTextFormat(Qt.TextFormat.RichText)
         self.graph.light = self.board_view.light = light
+        self.eval_bar.light = light
+        self.eval_bar.update()
         self.graph.setVisible(self.config.get("show_eval_graph", True))
         self._sync_docked_visibility()
         self.graph.update()
@@ -4379,7 +4420,8 @@ class MainWindow(QMainWindow):
         departure = self.opening_coverage.departure if self._book_highlight_enabled() else None
         markers = (self.opening_coverage.markers(
             self.game, allow_lichess=self.explorer.client.has_lichess_token,
-            speed=self.config.get("explorer_speed", "all"), rating=self.config.get("explorer_rating", 0))
+            speed=self.config.get("explorer_speed", "all"), rating=self.config.get("explorer_rating", 0),
+            **self._explorer_filters())
             if self.config.get("explorer_statistics") else {})
         self.analysis_history.set_moves(tokens, self.game.current_node, self._appearance_config().get("light", False),
                                         book_departure=departure if departure else None, book_departures=markers)
@@ -5071,10 +5113,13 @@ class MainWindow(QMainWindow):
                 from ..core.notation import read_pgns, write_pgn
 
                 games = [Game.from_pgn(write_pgn(parsed)) for parsed in read_pgns(text)]
-            game = games[0]
         except ValueError as exc:
             self._error("Cannot import", str(exc))
             return False
+        self._import_studies(games)
+        return True
+
+    def _import_studies(self, games):
         self._save()
         self._stop_engine()
         self._cancel_review()
@@ -5086,7 +5131,7 @@ class MainWindow(QMainWindow):
                     self.store.save(imported, autosave=False)
                 except StorageError as exc:
                     self.statusBar().showMessage(str(exc))
-        self.game = game
+        self.game = games[0]
         self.game.metadata["mode"] = "analysis"
         self._history_signature = None
         self._workspace(True)
@@ -5094,7 +5139,6 @@ class MainWindow(QMainWindow):
         self.paused = False
         self._refresh()
         self._save(force=True)
-        return True
 
     def _save_special_position(self):
         if not self.store:

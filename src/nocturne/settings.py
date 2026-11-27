@@ -1,6 +1,7 @@
 """Validate persisted preferences before they cross into UI or search limits."""
 
 import math
+from .explorer import rating_groups, valid_explorer_month
 from .maia import RATINGS as MAIA_RATINGS
 from .pieces import DEFAULT_PIECE_SET, PIECE_SET_NAMES
 
@@ -108,6 +109,9 @@ DEFAULTS = {
     "explorer_source_user_set": False,
     "explorer_speed": "all",
     "explorer_rating": 0,
+    "explorer_rating_groups": (),
+    "explorer_since": "",
+    "explorer_until": "",
     "engine_id": "",
     "analysis_nodes": 1_000_000_000,
     "analysis_limit_version": 2,
@@ -148,6 +152,13 @@ def normalize(data) -> dict:
             continue
         if data.get(key) in options:
             result[key] = data[key]
+    since, until = data.get("explorer_since", ""), data.get("explorer_until", "")
+    if valid_explorer_month(since) and valid_explorer_month(until) and (not since or not until or since <= until):
+        result.update(explorer_since=since, explorer_until=until)
+    try:
+        result["explorer_rating_groups"] = rating_groups(data.get("explorer_rating_groups", ()))
+    except ValueError:
+        pass
     # Upgrade the old default once; later explicit palette choices are retained.
     if data.get("appearance_version") != 1 and data.get("theme", "Forest") == "Forest":
         result["theme"] = "Classic"

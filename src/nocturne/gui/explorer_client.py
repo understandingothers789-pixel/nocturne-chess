@@ -9,7 +9,7 @@ from PySide6.QtCore import QObject, QTimer, QUrl, Signal, Qt
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkProxyFactory, QNetworkReply, QNetworkRequest
 
 from .. import __version__
-from ..explorer import CACHE_AGE, MAX_RESPONSE, parse_statistics
+from ..explorer import CACHE_AGE, EXPLORER_URL, GAME_ID, MAX_RESPONSE, parse_statistics
 
 
 class ExplorerClient(QObject):
@@ -61,10 +61,20 @@ class ExplorerClient(QObject):
         self._lichess_token = token
 
     def request_for(self, query):
-        request = QNetworkRequest(QUrl(query.url(self.base_url)))
-        request.setRawHeader(b"Accept", b"application/json")
+        return self._request(query.url(self.base_url), b"application/json", query.source in ("masters", "lichess"))
+
+    def game_request(self, source, game_id):
+        if source not in ("masters", "lichess") or not GAME_ID.fullmatch(game_id):
+            raise ValueError("Invalid Lichess game")
+        url = (f"{EXPLORER_URL}/masters/pgn/{game_id}" if source == "masters"
+               else f"https://lichess.org/game/export/{game_id}?clocks=false&evals=false")
+        return self._request(url, b"application/x-chess-pgn", source == "masters")
+
+    def _request(self, url, accept, lichess_explorer):
+        request = QNetworkRequest(QUrl(url))
+        request.setRawHeader(b"Accept", accept)
         request.setRawHeader(b"User-Agent", f"NocturneChess/{__version__} (database explorer)".encode())
-        official_lichess = (query.source in ("masters", "lichess") and request.url().scheme() == "https"
+        official_lichess = (lichess_explorer and request.url().scheme() == "https"
                             and request.url().host() == "explorer.lichess.org" and request.url().port(443) == 443)
         if official_lichess and self._lichess_token:
             request.setRawHeader(b"Authorization", b"Bearer " + self._lichess_token.encode())

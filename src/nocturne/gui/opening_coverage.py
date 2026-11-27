@@ -5,7 +5,7 @@ import time
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from ..core.rules import Board
-from ..explorer import CACHE_AGE, RATINGS, SPEEDS, ExplorerCache, ExplorerQuery
+from ..explorer import CACHE_AGE, RATINGS, SPEEDS, ExplorerCache, ExplorerQuery, rating_groups, valid_explorer_month
 from .explorer_client import ExplorerClient
 
 
@@ -24,11 +24,12 @@ class OpeningCoverage(QObject):
         self._generation = 0
 
     @staticmethod
-    def signature(game, source, speed, rating):
+    def signature(game, source, speed, rating, *, since="", until="", groups=()):
         speed, rating = (speed, rating) if source == "lichess" else ("all", 0)
         path = tuple((node, game.nodes[node].move.uci() if game.nodes[node].move else "")
                      for node in game._line_nodes)
-        return game.id, game.initial_fen, path, source, speed, rating
+        return (game.id, game.initial_fen, path, source, speed, rating, since if source != "chessdb" else "",
+                until if source != "chessdb" else "", rating_groups(groups) if source == "lichess" else ())
 
     @staticmethod
     def _records(game):
@@ -36,7 +37,7 @@ class OpeningCoverage(QObject):
         if not isinstance(records, list):
             return []
         now = time.time()
-        return [r for r in records[-64:] if isinstance(r, dict)
+        valid = [r for r in records[-64:] if isinstance(r, dict)
                 and r.get("source") in ("masters", "lichess", "chessdb")
                 and r.get("initial_fen") == game.initial_fen
                 and r.get("speed") in ("all", *SPEEDS)
@@ -47,16 +48,29 @@ class OpeningCoverage(QObject):
                      and 0 <= r["departure"] <= len(r["line"]))
                 and isinstance(r.get("message"), str) and len(r["message"]) <= 1000
                 and type(r.get("stamp")) in (int, float) and 0 <= now - r["stamp"] < CACHE_AGE]
+        result = []
+        for record in valid:
+            since, until = record.get("since", ""), record.get("until", "")
+            if not valid_explorer_month(since) or not valid_explorer_month(until) or (since and until and since > until):
+                continue
+            try:
+                groups = rating_groups(record.get("groups", ()))
+            except ValueError:
+                continue
+            result.append(dict(record, since=since, until=until, groups=list(groups)))
+        return result
 
     @classmethod
-    def markers(cls, game, *, allow_lichess=True, speed="all", rating=0):
+    def markers(cls, game, *, allow_lichess=True, speed="all", rating=0, since="", until="", groups=()):
         """Resolve saved UCI paths anew, so editing/reindexing cannot move a marker."""
         markers = {}
         for record in cls._records(game):
             source, ply = record["source"], record["departure"]
             if not ply or (source != "chessdb" and not allow_lichess):
                 continue
-            if source == "lichess" and (record["speed"], record["rating"]) != (speed, rating):
+            if source != "chessdb" and (record["since"], record["until"]) != (since, until):
+                continue
+            if source == "lichess" and (record["speed"], record["rating"], tuple(record["groups"])) != (speed, rating, groups):
                 continue
             node = 0
             for uci in record["line"][:ply]:
@@ -66,7 +80,7 @@ class OpeningCoverage(QObject):
                     break
             if node is None:
                 continue
-            query = ExplorerQuery(game.initial_fen, source, record["speed"], record["rating"])
+            query = ExplorerQuery(game.initial_fen, source, record["speed"], record["rating"], since, until, groups)
             label = cls._label(query)
             text = (f"{label}: first position with no stored cloud analysis (unknown)"
                     if source == "chessdb" else f"{label}: first position with no games found")
@@ -77,15 +91,14 @@ class OpeningCoverage(QObject):
     def _label(query):
         if query.source == "chessdb":
             return "ChessDB Cloud Analysis"
-        if query.source == "lichess":
-            filters = (query.speed if query.speed != "all" else "all speeds",
-                       f"{query.rating}+ rating" if query.rating else "all ratings")
-            return "Lichess players (" + ", ".join(filters) + ")"
-        return query.label
+        filters = [query.speed if query.speed != "all" else "all speeds", query.rating_label] if query.source == "lichess" else []
+        if query.date_label:
+            filters.append(query.date_label)
+        return query.label + (" (" + ", ".join(filters) + ")" if filters else "")
 
-    def start(self, game, source="masters", speed="all", rating=0, token="", *, force=False):
+    def start(self, game, source="masters", speed="all", rating=0, token="", *, force=False, since="", until="", groups=()):
         self.cancel()
-        self.context = self.signature(game, source, speed, rating)
+        self.context = self.signature(game, source, speed, rating, since=since, until=until, groups=groups)
         self.game = game
         self.items = []
         board = Board(game.initial_fen)
@@ -96,11 +109,12 @@ class OpeningCoverage(QObject):
                 self.message = "Opening coverage is available for standard chess."
                 self.changed.emit()
                 return
-            self.items.append((node_id, ExplorerQuery(board.fen(), source, speed, rating)))
+            self.items.append((node_id, ExplorerQuery(board.fen(), source, speed, rating, since, until, groups)))
         query = self.items[0][1]
         self.source_label = self._label(query)
         self.record_key = dict(source=source, speed=speed if source == "lichess" else "all",
                                rating=rating if source == "lichess" else 0, initial_fen=game.initial_fen,
+                               since=query.since, until=query.until, groups=list(query.groups),
                                line=[game.nodes[node].move.uci() for node in game._line_nodes[1:]])
         self.client.set_lichess_token(token)
         self.index = 0

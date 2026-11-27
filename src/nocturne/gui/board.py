@@ -524,11 +524,12 @@ class BoardWidget(QWidget):
         painter.setFont(font)
         metrics = painter.fontMetrics()
         placements = self._lichess_rank_positions(entries, rect, unit, size, metrics)
+        colors = self._nibbler_candidate_colors(move for move, _, _ in entries)
         for rank, badge in placements:
-            painter.setPen(QPen(QColor(245, 248, 251, 105), 0.8))
-            painter.setBrush(QColor(25, 49, 81, 222) if rank == 1 else QColor(43, 48, 53, 205))
+            painter.setPen(QPen(QColor(35, 41, 44, 165), 0.8))
+            painter.setBrush(colors[rank - 1][0])
             painter.drawRoundedRect(badge, size / 2, size / 2)
-            painter.setPen(QColor("#f5f8fb"))
+            painter.setPen(QColor("#171c1e"))
             painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, str(rank))
 
     def _lichess_rank_positions(self, entries, rect, unit, size, metrics):
@@ -585,24 +586,28 @@ class BoardWidget(QWidget):
         arrows.end()
         return layer
 
-    def _nibbler_arrows(self):
+    def _nibbler_candidate_colors(self, moves):
         best_value = None
-        for index, (move, rank, _) in enumerate(self._stockfish_entries()):
-            if self.arrow_layout == "nibbler-multipv":
-                loss = self.recommendation_losses.get(move, 0)
-                color = QColor("#66aaaa" if index == 0 else "#cccc66" if loss >= 50 else "#66aa66")
-                yield move, color, str(rank)
-                continue
+        colors = []
+        for index, move in enumerate(moves):
             score = self.recommendation_scores.get(move)
             value = _nibbler_expectation(score) if score is not None else None
             if index == 0:
                 best_value = value
-                color = QColor("#66aaaa")
-            else:
-                loss = best_value - value if best_value is not None and value is not None else 0
-                if loss >= 0.10:
-                    continue
-                color = QColor("#66aa66" if loss < 0.02 else "#cccc66" if loss < 0.04 else "#cc6666")
+            loss = round(best_value - value, 12) if best_value is not None and value is not None else 0
+            color = "#66aaaa" if index == 0 else "#66aa66" if loss < 0.02 else "#cccc66" if loss < 0.04 else "#cc6666"
+            colors.append((QColor(color), loss, value))
+        return colors
+
+    def _nibbler_arrows(self):
+        entries = self._stockfish_entries()
+        colors = self._nibbler_candidate_colors(move for move, _, _ in entries)
+        for (move, rank, _), (color, loss, value) in zip(entries, colors):
+            if self.arrow_layout == "nibbler-multipv":
+                yield move, color, str(rank)
+                continue
+            if loss >= 0.10:
+                continue
             label = "?" if value is None else str(min(99 if value < 1 else 100, math.floor(value * 100 + 0.5)))
             yield move, color, label
 

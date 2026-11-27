@@ -17,6 +17,7 @@ from nocturne.gui.candidates import CandidatePanel
 from nocturne.gui.moves import MoveText
 from nocturne.gui.study_tabs import StudyTabBar
 from nocturne.gui.theme import stylesheet
+from nocturne.gui.widgets import EvaluationBar
 
 
 class RenderingTests(unittest.TestCase):
@@ -32,6 +33,21 @@ class RenderingTests(unittest.TestCase):
         self.assertNotEqual(yellow, red)
         self.assertEqual(green.alpha(), 158)
         self.assertEqual(candidate_loss_color(40, 35, 45), yellow)
+
+    def test_evaluation_bar_marks_the_midpoint_and_flips_with_the_board(self):
+        bar = EvaluationBar()
+        self.addCleanup(bar.close)
+        bar.resize(25, 240)
+        bar.set_score(300)
+        bar._slide.setCurrentTime(bar._slide.duration())
+        self.assertGreater(bar._fraction, 0.5)
+        for flipped in (False, True):
+            bar.flipped = flipped
+            image = bar.grab().toImage()
+            scale = image.devicePixelRatio()
+            self.assertEqual(image.pixelColor(round(12 * scale), round(120 * scale)).name(), "#479ed0")
+            self.assertEqual(image.pixelColor(round(12 * scale), round((20 if flipped else 220) * scale)).name(),
+                             "#c0c0c0")
 
     def setUp(self):
         self._existing_windows = set(self.app.topLevelWidgets())
@@ -175,7 +191,7 @@ class RenderingTests(unittest.TestCase):
                          [(e4, "#66aaaa", "56"), (d4, "#66aa66", "55")])
         window.board_arrow_actions["nibbler-multipv"].trigger()
         self.assertEqual([(move, color.name(), label) for move, color, label in board._nibbler_arrows()],
-                         [(e4, "#66aaaa", "1"), (d4, "#66aa66", "2"), (c4, "#cccc66", "3")])
+                         [(e4, "#66aaaa", "1"), (d4, "#66aa66", "2"), (c4, "#cc6666", "3")])
 
         for key, expected, unique in (
             ("stockfish-leela", [("Stockfish", 1), ("Leela", 1)], {d4, nc3}),
