@@ -891,7 +891,7 @@ class QtIntegration(unittest.TestCase):
             self.assertEqual(len(window.board_view.recommendations), 3)
             self.assertEqual(window.game.nodes[0].analysis["timestamp"], timestamp)
             self.assertFalse(window.engine.busy)
-            window.board_arrow_actions["nibbler"].trigger()
+            window.board_arrow_actions["nibbler-multipv"].trigger()
             three = list(window.board_view._nibbler_arrows())
             self.assertEqual(len(three), 3)
             window._set_multipv(1)

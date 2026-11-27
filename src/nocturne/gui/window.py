@@ -897,8 +897,10 @@ class MainWindow(QMainWindow):
             ("classic", "Nocturne Classic", "The original Nocturne arrows and numbered model rods."),
             ("lichess", "Lichess", "Stockfish only. A pale blue lead arrow and gray alternatives sized by evaluation gap."),
             ("lichess-ranked", "Lichess · ranked", "The same Lichess arrows, numbered from best to worst among the moves shown."),
-            ("nibbler", "Nibbler", "Stockfish only. Rod colors follow MultiPV rank. "
-             "The round markers show expected score from the side to move."),
+            ("nibbler", "Nibbler", "Stockfish only. Colors reflect expected-score loss, and the circles show expected "
+             "score for the side to move. Moves at least 10 percentage points behind the leader are hidden."),
+            ("nibbler-multipv", "Nibbler · MultiPV", "Thin rods and rank circles for every available Stockfish line. "
+             "The leader is teal, alternatives are green, and moves at least half a pawn behind are yellow."),
         )
         for key, title, tip in (*choices, *(
             (key, " + ".join(names),
@@ -4217,7 +4219,7 @@ class MainWindow(QMainWindow):
             "<p>Find the presets under <b>Display → Board arrow layout</b>. The Lichess preset shows the "
             "leading Stockfish move in pale blue with gray alternatives. Lichess · ranked numbers the arrows "
             "from best to worst. The Nibbler preset uses round "
-            "markers with Stockfish's expected score for the side to move and colors for each MultiPV rank. "
+            "markers with Stockfish's expected score for the side to move. Nibbler · MultiPV shows the rank of every available line. "
             "In pair layouts, each number shows the rank for the source in that color. "
             "A two-color arrow shows agreement.</p>"
             "<h3>→ Stockfish arrows in Nocturne Classic</h3>"

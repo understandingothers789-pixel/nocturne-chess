@@ -18,7 +18,6 @@ from .maia_colors import curve_colors
 from .theme import BOARD_THEMES, palette
 
 ARROW_SOURCE_COLORS = {"Stockfish": "#2866ad", "Leela": "#9b4168", "Maia": "#a96317"}
-NIBBLER_RANK_COLORS = ("#66aaaa", "#66aa66", "#cccc66", "#cc6666", "#ae95cb")
 
 
 def _lichess_chance(score):
@@ -273,7 +272,7 @@ class BoardWidget(QWidget):
             if self.arrow_layout in ("lichess", "lichess-ranked"):
                 candidates = [move for move, _, _ in self._lichess_arrows()]
                 destinations = [move.to_sq for move in candidates]
-            elif self.arrow_layout == "nibbler":
+            elif self.arrow_layout in ("nibbler", "nibbler-multipv"):
                 candidates = [move for move, _, _ in self._nibbler_arrows()]
                 destinations = [self._nibbler_destination(move) for move in candidates]
             else:
@@ -587,12 +586,25 @@ class BoardWidget(QWidget):
         return layer
 
     def _nibbler_arrows(self):
-        for move, rank, _ in self._stockfish_entries():
+        best_value = None
+        for index, (move, rank, _) in enumerate(self._stockfish_entries()):
+            if self.arrow_layout == "nibbler-multipv":
+                loss = self.recommendation_losses.get(move, 0)
+                color = QColor("#66aaaa" if index == 0 else "#cccc66" if loss >= 50 else "#66aa66")
+                yield move, color, str(rank)
+                continue
             score = self.recommendation_scores.get(move)
             value = _nibbler_expectation(score) if score is not None else None
-            color = NIBBLER_RANK_COLORS[(rank - 1) % len(NIBBLER_RANK_COLORS)]
+            if index == 0:
+                best_value = value
+                color = QColor("#66aaaa")
+            else:
+                loss = best_value - value if best_value is not None and value is not None else 0
+                if loss >= 0.10:
+                    continue
+                color = QColor("#66aa66" if loss < 0.02 else "#cccc66" if loss < 0.04 else "#cc6666")
             label = "?" if value is None else str(min(99 if value < 1 else 100, math.floor(value * 100 + 0.5)))
-            yield move, QColor(color), label
+            yield move, color, label
 
     def _nibbler_destination(self, move):
         if getattr(self.board, "chess960", False) and self.board.cells[move.to_sq] * self.board.turn > 0:
@@ -602,6 +614,9 @@ class BoardWidget(QWidget):
     def _draw_nibbler_arrows(self, painter, unit):
         paths = []
         markers = {}
+        multipv = self.arrow_layout == "nibbler-multipv"
+        shaft = max(2.0, unit * 0.046) if multipv else 8
+        radius = max(7.0, unit * 0.125) if multipv else 12
         for move, color, label in self._nibbler_arrows():
             destination = self._nibbler_destination(move)
             start = self.square_rect(move.from_sq).center()
@@ -613,17 +628,21 @@ class BoardWidget(QWidget):
                 markers.setdefault(destination, (target, color, label))
         paths.sort(key=lambda path: (path[0] - path[1]).manhattanLength(), reverse=True)
         for start, target, color in paths:
-            painter.setPen(QPen(color, 8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
+            stroke = QColor(color)
+            if multipv:
+                stroke.setAlpha(170)
+            painter.setPen(QPen(stroke, shaft, Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
             painter.drawLine(start, target)
         font = QFont("Arial")
-        font.setPixelSize(18)
+        font.setPixelSize(max(9, round(radius * 1.25)) if multipv else 18)
         painter.setFont(font)
         for target, color, label in markers.values():
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(color)
-            painter.drawEllipse(target, 12, 12)
+            painter.drawEllipse(target, radius, radius)
             painter.setPen(Qt.GlobalColor.black)
-            painter.drawText(QRectF(target.x() - 12, target.y() - 11, 24, 24), Qt.AlignmentFlag.AlignCenter, label)
+            badge = QRectF(target.x() - radius, target.y() - radius + 1, radius * 2, radius * 2)
+            painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, label)
 
     def _paired_arrows(self):
         picks = {
@@ -835,7 +854,7 @@ class BoardWidget(QWidget):
         if not preview and self.overlays:
             if self.arrow_layout in ("lichess", "lichess-ranked"):
                 self._draw_lichess_arrows(painter, unit)
-            elif self.arrow_layout == "nibbler":
+            elif self.arrow_layout in ("nibbler", "nibbler-multipv"):
                 self._draw_nibbler_arrows(painter, unit)
             elif self.arrow_layout in BOARD_ARROW_PAIRS:
                 self._draw_paired_arrows(painter, unit)

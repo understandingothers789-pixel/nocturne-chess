@@ -172,7 +172,10 @@ class RenderingTests(unittest.TestCase):
             self.assertNotEqual(with_arrows, board.grab().toImage())
         self.assertEqual([(move, width) for move, width, _ in board._lichess_arrows()], [(e4, 15), (d4, 12)])
         self.assertEqual([(move, color.name(), label) for move, color, label in board._nibbler_arrows()],
-                         [(e4, "#66aaaa", "56"), (d4, "#66aa66", "55"), (c4, "#cccc66", "9")])
+                         [(e4, "#66aaaa", "56"), (d4, "#66aa66", "55")])
+        window.board_arrow_actions["nibbler-multipv"].trigger()
+        self.assertEqual([(move, color.name(), label) for move, color, label in board._nibbler_arrows()],
+                         [(e4, "#66aaaa", "1"), (d4, "#66aa66", "2"), (c4, "#cccc66", "3")])
 
         for key, expected, unique in (
             ("stockfish-leela", [("Stockfish", 1), ("Leela", 1)], {d4, nc3}),
@@ -190,6 +193,19 @@ class RenderingTests(unittest.TestCase):
             with_arrows = board.grab().toImage()
             board.overlays = False
             self.assertNotEqual(with_arrows, board.grab().toImage())
+
+    def test_nibbler_defaults_use_expected_score_loss_for_arrow_colors(self):
+        board = BoardWidget()
+        self.addCleanup(board.close)
+        board.arrow_layout = "nibbler"
+        moves = ("e2e4", "d2d4", "g1f3", "b1c3", "c2c4")
+        board.set_recommendations([
+            (board.legal_by_uci[uci], rank, "", None, ("cp", 0, (win, 0, 1000 - win)))
+            for rank, (uci, win) in enumerate(zip(moves, (600, 590, 570, 550, 490)), 1)
+        ])
+        self.assertEqual([(move.uci(), color.name(), label) for move, color, label in board._nibbler_arrows()],
+                         list(zip(moves, ("#66aaaa", "#66aa66", "#cccc66", "#cc6666"),
+                                  ("60", "59", "57", "55"))))
 
     def test_lichess_gray_arrows_match_reference_svg_widths_and_opacity(self):
         board = BoardWidget()
