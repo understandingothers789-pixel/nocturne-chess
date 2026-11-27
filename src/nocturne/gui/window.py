@@ -403,7 +403,6 @@ class MainWindow(QMainWindow):
         self.board_hint = label("Drag a piece or select a square", "muted", True)
         board_tools.addWidget(self.board_hint)
         self.board_arrow_key = label("", "muted")
-        self.board_arrow_key.setToolTip("Each color identifies a source. The number is the move's rank for that source.")
         board_tools.addWidget(self.board_arrow_key)
         board_tools.addStretch()
         board_tools.addWidget(button("⇅  Flip", self._flip, "quiet"))
@@ -903,20 +902,25 @@ class MainWindow(QMainWindow):
                           "winning-chance loss grows and are hidden at 20 percentage points or more.")
         choices = (
             ("classic", "Nocturne Classic", "Shows every available Stockfish MultiPV line with no evaluation cutoff. "
+             "Stockfish circles show signed centipawns from White’s perspective. "
              "Numbered rods show Leela ranks when available, or Maia ranks for moves above 10% predicted popularity. "
              "Saved continuation arrows follow the separate Display setting."),
             ("lichess", "Lichess", lichess_cutoff),
             ("lichess-ranked", "Lichess · ranked", lichess_cutoff + " Circles number visible arrows from best to worst. "
              "Their backgrounds use Nibbler's expected-score colors. " + loss_colors),
-            ("nibbler", "Nibbler", "Stockfish only. Circles show expected score for the side to move. Alternatives at "
-             "least 10 percentage points behind the leader are hidden. " + loss_colors),
+            ("lichess-evaluation", "Lichess · evaluation", lichess_cutoff + " Circles show signed centipawns from "
+             "White’s perspective, using the same colors as Lichess · ranked. " + loss_colors),
+            ("nibbler", "Nibbler", "Stockfish only. Circles show centipawns from White’s perspective. Alternatives at "
+             "least 10 percentage points behind the leader in expected score are hidden. " + loss_colors),
             ("nibbler-multipv", "Nibbler · MultiPV", "Thin rods and rank circles for every available Stockfish line "
              "within the MultiPV count. There is no score cutoff. " + loss_colors),
         )
         for key, title, tip in (*choices, *(
             (key, " + ".join(names),
-             f"Compare the top two moves from {' and '.join(names)}. Each color shows its own rank, "
-             "including on shared moves. Stockfish and Leela have no score cutoff. "
+             f"Compare the top two moves from {' and '.join(names)}. "
+             + ("Stockfish shows signed centipawns from White’s perspective and the other source shows rank. "
+                if "Stockfish" in names else "Each source shows its own rank. ")
+             + "Shared moves show both labels. Stockfish and Leela have no score cutoff. "
              + ("Maia uses moves above 10% predicted popularity." if "Maia" in names else ""))
             for key, names in BOARD_ARROW_PAIRS.items()
         )):
@@ -1319,6 +1323,10 @@ class MainWindow(QMainWindow):
         self.board_arrow_key.setText(" &nbsp; ".join(
             f'<span style="color:{ARROW_SOURCE_COLORS[name]}">●</span> {name}' for name in names
         ))
+        self.board_arrow_key.setToolTip(
+            "Stockfish shows evaluation from White’s perspective. Maia and Leela show move ranks."
+            if "Stockfish" in names else "Each color shows the move’s rank for that source."
+        )
         self.board_arrow_key.setVisible(bool(names))
         self.board_view.update()
 
@@ -4282,12 +4290,13 @@ class MainWindow(QMainWindow):
             "<h3>Arrow layouts</h3>"
             "<p>Find the presets under <b>Display → Board arrow layout</b>. The Lichess preset shows the "
             "leading Stockfish move in pale blue with gray alternatives. Lichess · ranked numbers the arrows "
-            "from best to worst. The Nibbler preset uses round "
-            "markers with Stockfish's expected score for the side to move. Nibbler · MultiPV shows the rank of every available line. "
-            "In pair layouts, each number shows the rank for the source in that color. "
-            "A two-color arrow shows agreement.</p>"
+            "from best to worst. Lichess · evaluation and Nibbler show Stockfish evaluations. "
+            "Nibbler · MultiPV shows the rank of every available line. In pair layouts, Stockfish shows its "
+            "evaluation and Maia and Leela show their ranks. A two-color arrow shows agreement.</p>"
             "<h3>→ Stockfish arrows in Nocturne Classic</h3>"
-            "<p>Blue is the top engine recommendation; gray arrows are other candidates. "
+            "<p>Blue is the top engine recommendation and gray arrows are other candidates. "
+            "Stockfish circles show a signed evaluation from White’s perspective, such as +263 for +2.63, "
+            "-004 for −0.04, or -M4 for Black to mate in four. Extreme scores show 9.99+ or -9.99-. "
             "With candidate loss colors enabled, green, yellow and red show loss relative to the best move.</p>"
             "<h3>① Numbered rods: Maia or Leela</h3>"
             "<p>For Maia, <b>1 means the most likely human move</b> at the selected rating. "

@@ -825,15 +825,18 @@ moving pieces or using the engine. Service availability and data coverage vary.
 - A selected piece takes priority. Manual promotions still offer a piece chooser;
   clicking a recommended promotion uses that exact engine move. Every execution
   checks the live position and legal moves. Alt+1/2/3 execute those candidates.
-- **Display → Board arrow layout** includes **Nibbler** and **Nibbler · MultiPV**.
-  Nibbler follows the upstream Stockfish defaults for rod size, expected-score
-  circles, and colors based on expected-score loss. Nibbler · MultiPV restores
-  the thin rods and rank circles from the earlier Nocturne design pictured above.
-  It draws every available candidate in the selected MultiPV count. The leader
-  is teal. Alternatives are green below 2 percentage points of expected-score
-  loss, yellow from 2 to under 4, and red from 4 onward. Lichess · ranked uses
-  these same colors for its rank circles. The arrow preset tooltips explain
-  which lines are shown and what their colors mean.
+- **Display → Board arrow layout** offers three Lichess presets. **Lichess**
+  shows arrows alone, **Lichess · ranked** adds move ranks, and **Lichess · evaluation**
+  adds signed Stockfish scores in the same colors. **Nocturne Classic** puts
+  Stockfish scores in circles along its arrows and shows ranks on Maia or Leela
+  rods. In pair layouts, each color identifies a source. Stockfish shows a
+  score such as `+263` or `-004`, from White's perspective, and Maia and Leela
+  show ranks. Shared arrows display both labels.
+- **Nibbler** displays compact Stockfish scores. **Nibbler · MultiPV** uses
+  thin rods and rank circles for every available candidate in the selected
+  MultiPV count. The leader is teal. Alternatives are green below 2 percentage
+  points of expected-score loss, yellow from 2 to under 4, and red from 4 onward.
+  The arrow preset tooltips explain which lines are shown and what their colors mean.
 - Candidate rows show actual cp/mate/bound scores, depths, nodes and engine WDL
   where supplied. Scores and WDL are oriented to White. No cp-to-probability or
   Leela policy/visit statistics are invented. The evaluation bar uses a display

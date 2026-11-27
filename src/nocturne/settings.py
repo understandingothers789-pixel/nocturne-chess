@@ -10,7 +10,8 @@ BOARD_ARROW_PAIRS = {
     "stockfish-maia": ("Stockfish", "Maia"),
     "leela-maia": ("Leela", "Maia"),
 }
-BOARD_ARROW_LAYOUTS = ("classic", "lichess", "lichess-ranked", "nibbler", "nibbler-multipv", *BOARD_ARROW_PAIRS)
+LICHESS_ARROW_LAYOUTS = ("lichess", "lichess-ranked", "lichess-evaluation")
+BOARD_ARROW_LAYOUTS = ("classic", *LICHESS_ARROW_LAYOUTS, "nibbler", "nibbler-multipv", *BOARD_ARROW_PAIRS)
 
 DEFAULTS = {
     "mode": "analysis",

@@ -174,7 +174,7 @@ class RenderingTests(unittest.TestCase):
         clicks = []
         board.move_requested.disconnect(window._human_move)
         board.move_requested.connect(clicks.append)
-        for key in ("lichess", "lichess-ranked", "nibbler"):
+        for key in ("lichess", "lichess-ranked", "lichess-evaluation", "nibbler"):
             window.board_arrow_actions[key].trigger()
             self.assertEqual(window.store.get("settings")["board_arrow_layout"], key)
             board.overlays = True
@@ -188,10 +188,18 @@ class RenderingTests(unittest.TestCase):
             self.assertNotEqual(with_arrows, board.grab().toImage())
         self.assertEqual([(move, width) for move, width, _ in board._lichess_arrows()], [(e4, 15), (d4, 12)])
         self.assertEqual([(move, color.name(), label) for move, color, label in board._nibbler_arrows()],
-                         [(e4, "#66aaaa", "56"), (d4, "#66aa66", "55")])
+                         [(e4, "#66aaaa", "40"), (d4, "#66aa66", "35")])
         window.board_arrow_actions["nibbler-multipv"].trigger()
         self.assertEqual([(move, color.name(), label) for move, color, label in board._nibbler_arrows()],
                          [(e4, "#66aaaa", "1"), (d4, "#66aa66", "2"), (c4, "#cc6666", "3")])
+
+        window.board_arrow_actions["classic"].trigger()
+        board.overlays = True
+        with patch.object(board, "_draw_stockfish_badges", wraps=board._draw_stockfish_badges) as draw:
+            board.grab()
+        self.assertTrue(draw.call_args.kwargs["occupied"])
+        self.assertEqual([board._stockfish_badge_label(move) for move, _, _ in draw.call_args.args[1]],
+                         ["+040", "+035", "-400"])
 
         for key, expected, unique in (
             ("stockfish-leela", [("Stockfish", 1), ("Leela", 1)], {d4, nc3}),
@@ -202,6 +210,8 @@ class RenderingTests(unittest.TestCase):
             arrows = board._paired_arrows()
             self.assertEqual(set(arrows), unique | {e4})
             self.assertEqual(arrows[e4], expected)
+            self.assertEqual(board._paired_badge_labels(e4, arrows[e4]),
+                             [(source, "+040" if source == "Stockfish" else str(rank)) for source, rank in expected])
             self.assertEqual(sum(action.isChecked() for action in window.board_arrow_actions.values()), 1)
             self.assertEqual(window.store.get("settings")["board_arrow_layout"], key)
             self.assertTrue(all(name in window.board_arrow_key.text() for name, _ in expected))
@@ -221,7 +231,28 @@ class RenderingTests(unittest.TestCase):
         ])
         self.assertEqual([(move.uci(), color.name(), label) for move, color, label in board._nibbler_arrows()],
                          list(zip(moves, ("#66aaaa", "#66aa66", "#cccc66", "#cc6666"),
-                                  ("60", "59", "57", "55"))))
+                                  ("0", "0", "0", "0"))))
+
+    def test_nibbler_labels_use_white_centipawns_and_mate_distance(self):
+        board = BoardWidget()
+        self.addCleanup(board.close)
+        board.arrow_layout = "nibbler"
+        for turn in (1, -1):
+            if turn == -1:
+                position = board.board.copy()
+                position.play_uci("e2e4")
+                board.set_position(position)
+            move = board.legal_by_uci["d2d4" if turn == 1 else "e7e5"]
+            for kind, value, expected in (
+                ("cp", 63, "63"), ("cp", 263, "263"), ("cp", -450, "-450"),
+                ("cp", 999, "999"), ("cp", -999, "-999"),
+                ("cp", 1000, "9.99+"), ("cp", -1000, "-9.99-"),
+                ("mate", 4, "M4"), ("mate", -4, "-M4"),
+            ):
+                board.set_recommendations([(move, 1, "", None, (kind, value * turn, None))])
+                self.assertEqual(next(board._nibbler_arrows())[2], expected)
+            board.set_recommendations([(move, 1, "", None, ("cp", -4 * turn, None))])
+            self.assertEqual(board._stockfish_badge_label(move), "-004")
 
     def test_lichess_gray_arrows_match_reference_svg_widths_and_opacity(self):
         board = BoardWidget()
@@ -240,7 +271,12 @@ class RenderingTests(unittest.TestCase):
             self.assertEqual(board.grab().toImage(), normal)
             render.assert_called_once()
             board.arrow_layout = "lichess-ranked"
-            self.assertNotEqual(board.grab().toImage(), normal)
+            ranked = board.grab().toImage()
+            self.assertNotEqual(ranked, normal)
+            board.arrow_layout = "lichess-evaluation"
+            evaluation = board.grab().toImage()
+            self.assertNotEqual(evaluation, normal)
+            self.assertNotEqual(evaluation, ranked)
             render.assert_called_once()
             board.flipped = True
             self.assertNotEqual(board.grab().toImage(), normal)

@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QMenu, QWidget
 
 from ..core.board import Board, Move, PIECE_CHARS, SQUARES
 from ..pieces import DEFAULT_PIECE_SET, PIECE_SET_NAMES, piece_path as asset_path
-from ..settings import BOARD_ARROW_PAIRS
+from ..settings import BOARD_ARROW_PAIRS, LICHESS_ARROW_LAYOUTS
 from .wheel import WheelSteps
 from .maia_colors import curve_colors
 from .theme import BOARD_THEMES, palette
@@ -269,7 +269,7 @@ class BoardWidget(QWidget):
         if self.arrow_layout != "classic":
             if not self.overlays or not self.interactive or self.preview_board is not None:
                 return False
-            if self.arrow_layout in ("lichess", "lichess-ranked"):
+            if self.arrow_layout in LICHESS_ARROW_LAYOUTS:
                 candidates = [move for move, _, _ in self._lichess_arrows()]
                 destinations = [move.to_sq for move in candidates]
             elif self.arrow_layout in ("nibbler", "nibbler-multipv"):
@@ -456,12 +456,14 @@ class BoardWidget(QWidget):
             painter.setPen(QPen(color, max(2.0, unit * 0.065), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
             painter.drawLine(start, end)
         # Keep the most likely badge visible when two moves share a target.
+        badges = []
         for move, rank, marker in reversed(entries):
             if best_rank[self._destination(move)] != rank:
                 continue
             center = self.square_rect(self._destination(move)).center()
             diameter = max(13.0, unit * 0.245)
             badge = QRectF(center.x() - diameter / 2, center.y() - diameter / 2, diameter, diameter)
+            badges.append(badge)
             color = QColor(marker)
             color.setAlpha(250)
             painter.setBrush(color)
@@ -472,6 +474,7 @@ class BoardWidget(QWidget):
             font.setPixelSize(max(9, int(diameter * 0.62)))
             painter.setFont(font)
             painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, str(rank))
+        return badges
 
     def _stockfish_entries(self):
         return self.recommendations or ([(self.best_move, 1, "")] if self.best_move else [])
@@ -515,6 +518,11 @@ class BoardWidget(QWidget):
                 painter.restore()
         if self.arrow_layout == "lichess-ranked":
             self._draw_lichess_ranks(painter, entries, rect, unit)
+        elif self.arrow_layout == "lichess-evaluation":
+            colors = self._nibbler_candidate_colors(move for move, _, _ in entries)
+            self._draw_stockfish_badges(painter, [
+                (move, move.to_sq, color) for (move, _, _), (color, _) in zip(entries, colors)
+            ], unit)
 
     def _draw_lichess_ranks(self, painter, entries, rect, unit):
         size = max(13.0, min(24.0, unit * 0.21))
@@ -532,12 +540,76 @@ class BoardWidget(QWidget):
             painter.setPen(QColor("#171c1e"))
             painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, str(rank))
 
+    def _stockfish_badge_label(self, move, *, compact=False):
+        score = self.recommendation_scores.get(move)
+        if score is None:
+            return "?"
+        kind, value, _ = score
+        value *= self.board.turn
+        if kind == "mate":
+            return f"{'-' if value < 0 else ''}M{abs(value)}"
+        if value > 999:
+            return "9.99+"
+        if value < -999:
+            return "-9.99-"
+        return str(value) if compact else f"{value:+04d}"
+
+    def _draw_stockfish_badges(self, painter, entries, unit, *, inset=0, occupied=()):
+        font = QFont("Segoe UI")
+        font.setWeight(QFont.Weight.DemiBold)
+        font.setPixelSize(max(10, min(15, round(unit * 0.15))))
+        painter.setFont(font)
+        metrics = painter.fontMetrics()
+        bounds = self._geometry()[0].adjusted(3, 3, -3, -3)
+        rod_badges = occupied
+        occupied = list(occupied)
+        for move, destination, color in entries:
+            if move.from_sq == destination:
+                continue
+            label = self._stockfish_badge_label(move)
+            size = max(unit * 0.24, metrics.horizontalAdvance(label) + 7)
+            start = self.square_rect(move.from_sq).center()
+            target = self.square_rect(destination).center()
+            delta = target - start
+            direction = delta / math.hypot(delta.x(), delta.y())
+            distance = inset * unit
+            for rod in rod_badges:
+                if rod.contains(target):
+                    clearance = (size + rod.width()) / 2 + 2
+                    distance = max(distance, clearance / max(abs(direction.x()), abs(direction.y())))
+                    break
+            badge = self._place_arrow_badge(target - direction * distance, direction, size, size, bounds, occupied)
+            painter.setPen(QPen(QColor(35, 41, 44, 175), 0.8))
+            painter.setBrush(color)
+            painter.drawEllipse(badge)
+            painter.setPen(QColor("#171c1e" if color.lightnessF() > 0.48 else "#ffffff"))
+            painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, label)
+
+    @staticmethod
+    def _place_arrow_badge(anchor, direction, width, height, bounds, occupied):
+        normal = QPointF(-direction.y(), direction.x())
+        step = max(width, height) + 2
+        offsets = ((0, 0), (0, 1), (0, -1), (-1, 0), (-1, 1), (-1, -1), (1, 0), (1, 1), (1, -1),
+                   (-2, 0), (-2, 1), (-2, -1), (0, 2), (0, -2), (2, 0), (2, 1), (2, -1),
+                   (-1, 2), (-1, -2), (1, 2), (1, -2))
+        for along, across in offsets:
+            center = anchor + (direction * along + normal * across) * step
+            left = min(max(center.x() - width / 2, bounds.left()), bounds.right() - width)
+            top = min(max(center.y() - height / 2, bounds.top()), bounds.bottom() - height)
+            badge = QRectF(left, top, width, height)
+            gap = badge.adjusted(-1, -1, 1, 1)
+            if all(not gap.intersects(other) for other in occupied):
+                break
+        occupied.append(badge)
+        return badge
+
     def _lichess_rank_positions(self, entries, rect, unit, size, metrics):
         destinations = defaultdict(int)
         for move, _, _ in entries:
             destinations[move.to_sq] += 1
         bounds = rect.adjusted(3, 3, -3, -3)
         placements = []
+        occupied = []
         for rank, (move, _, _) in enumerate(entries, 1):
             start = self.square_rect(move.from_sq).center()
             end = self.square_rect(move.to_sq).center()
@@ -546,21 +618,9 @@ class BoardWidget(QWidget):
             if not length:
                 continue
             direction = delta / length
-            normal = QPointF(-direction.y(), direction.x())
             anchor = end - direction * unit * (0.29 if destinations[move.to_sq] > 1 else 0.0)
             width = max(size, metrics.horizontalAdvance(str(rank)) + 5)
-            step = max(width, size) + 2
-            offsets = ((0, 0), (0, 1), (0, -1), (-1, 0), (-1, 1), (-1, -1), (1, 0), (1, 1), (1, -1),
-                       (-2, 0), (-2, 1), (-2, -1), (0, 2), (0, -2), (2, 0), (2, 1), (2, -1),
-                       (-1, 2), (-1, -2), (1, 2), (1, -2))
-            for along, across in offsets:
-                center = anchor + (direction * along + normal * across) * step
-                left = min(max(center.x() - width / 2, bounds.left()), bounds.right() - width)
-                top = min(max(center.y() - size / 2, bounds.top()), bounds.bottom() - size)
-                badge = QRectF(left, top, width, size)
-                gap = badge.adjusted(-1, -1, 1, 1)
-                if all(not gap.intersects(other) for _, other in placements):
-                    break
+            badge = self._place_arrow_badge(anchor, direction, width, size, bounds, occupied)
             placements.append((rank, badge))
         return placements
 
@@ -596,20 +656,19 @@ class BoardWidget(QWidget):
                 best_value = value
             loss = round(best_value - value, 12) if best_value is not None and value is not None else 0
             color = "#66aaaa" if index == 0 else "#66aa66" if loss < 0.02 else "#cccc66" if loss < 0.04 else "#cc6666"
-            colors.append((QColor(color), loss, value))
+            colors.append((QColor(color), loss))
         return colors
 
     def _nibbler_arrows(self):
         entries = self._stockfish_entries()
         colors = self._nibbler_candidate_colors(move for move, _, _ in entries)
-        for (move, rank, _), (color, loss, value) in zip(entries, colors):
+        for (move, rank, _), (color, loss) in zip(entries, colors):
             if self.arrow_layout == "nibbler-multipv":
                 yield move, color, str(rank)
                 continue
             if loss >= 0.10:
                 continue
-            label = "?" if value is None else str(min(99 if value < 1 else 100, math.floor(value * 100 + 0.5)))
-            yield move, color, label
+            yield move, color, self._stockfish_badge_label(move, compact=True)
 
     def _nibbler_destination(self, move):
         if getattr(self.board, "chess960", False) and self.board.cells[move.to_sq] * self.board.turn > 0:
@@ -639,14 +698,16 @@ class BoardWidget(QWidget):
             painter.setPen(QPen(stroke, shaft, Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
             painter.drawLine(start, target)
         font = QFont("Arial")
-        font.setPixelSize(max(9, round(radius * 1.25)) if multipv else 18)
-        painter.setFont(font)
         for target, color, label in markers.values():
+            font.setPixelSize(max(9, round(radius * 1.25)) if multipv else 18 if len(label) < 3 else 13)
+            painter.setFont(font)
+            marker_radius = max(radius, (painter.fontMetrics().horizontalAdvance(label) + 6) / 2)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(color)
-            painter.drawEllipse(target, radius, radius)
+            painter.drawEllipse(target, marker_radius, marker_radius)
             painter.setPen(Qt.GlobalColor.black)
-            badge = QRectF(target.x() - radius, target.y() - radius + 1, radius * 2, radius * 2)
+            diameter = marker_radius * 2
+            badge = QRectF(target.x() - marker_radius, target.y() - marker_radius + 1, diameter, diameter)
             painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, label)
 
     def _paired_arrows(self):
@@ -659,6 +720,10 @@ class BoardWidget(QWidget):
         pair = [(source, dict(reversed(picks[source]))) for source in BOARD_ARROW_PAIRS[self.arrow_layout]]
         moves = dict.fromkeys(move for source, _ in pair for move, _ in picks[source][:2])
         return {move: [(source, ranks[move]) for source, ranks in pair if move in ranks] for move in moves}
+
+    def _paired_badge_labels(self, move, sources):
+        return [(source, self._stockfish_badge_label(move) if source == "Stockfish" else str(rank))
+                for source, rank in sources]
 
     def _draw_paired_arrows(self, painter, unit):
         arrows = self._paired_arrows()
@@ -713,43 +778,42 @@ class BoardWidget(QWidget):
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawPolygon(shape)
             painter.restore()
-            badges.append((badge_center, direction, sources))
+            badges.append((badge_center, direction, self._paired_badge_labels(move, sources)))
 
         # Place the stronger and shared badges first when different moves end on one square.
-        for center, direction, sources in reversed(badges):
-            diameter = max(13.0, unit * 0.24)
-            width = diameter * (1.85 if len(sources) == 2 else 1)
-            bubble = QRectF(center.x() - width / 2, center.y() - diameter / 2, width, diameter)
-            normal = QPointF(-direction.y(), direction.x())
-            for shift in (QPointF(), normal * diameter, -normal * diameter, -direction * diameter):
-                candidate = bubble.translated(shift)
-                if not any(candidate.intersects(placed) for placed in occupied):
-                    bubble = candidate
-                    break
-            occupied.append(bubble.adjusted(-1, -1, 1, 1))
-            self._draw_arrow_ranks(painter, bubble, sources)
+        bounds = self._geometry()[0].adjusted(3, 3, -3, -3)
+        diameter = max(13.0, unit * 0.24)
+        font = QFont("Segoe UI")
+        font.setBold(True)
+        font.setPixelSize(max(9, min(15, round(diameter * 0.64))))
+        painter.setFont(font)
+        metrics = painter.fontMetrics()
+        for center, direction, labels in reversed(badges):
+            shared = len(labels) > 1
+            widths = [max(diameter * (0.925 if shared else 1), metrics.horizontalAdvance(label) + 8)
+                      for _, label in labels]
+            width = sum(widths)
+            bubble = self._place_arrow_badge(center, direction, width, diameter if shared else width,
+                                             bounds, occupied)
+            self._draw_paired_badge(painter, bubble, labels, widths)
 
     @staticmethod
-    def _draw_arrow_ranks(painter, bubble, sources):
-        outline = QColor("#fff2df")
+    def _draw_paired_badge(painter, bubble, labels, widths):
         shape = QPainterPath()
         radius = bubble.height() / 2
         shape.addRoundedRect(bubble, radius, radius)
-        font = QFont("Segoe UI")
-        font.setBold(True)
-        font.setPixelSize(max(9, round(bubble.height() * 0.64)))
-        painter.setFont(font)
-        width = bubble.width() / len(sources)
         painter.save()
         painter.setClipPath(shape, Qt.ClipOperation.IntersectClip)
-        for index, (source, rank) in enumerate(sources):
-            part = QRectF(bubble.left() + width * index, bubble.top(), width, bubble.height())
+        left = bubble.left()
+        for (source, label), width in zip(labels, widths):
+            part = QRectF(left, bubble.top(), width, bubble.height())
             painter.fillRect(part, QColor(ARROW_SOURCE_COLORS[source]))
             painter.setPen(Qt.GlobalColor.white)
-            painter.drawText(part, Qt.AlignmentFlag.AlignCenter, str(rank))
+            painter.drawText(part, Qt.AlignmentFlag.AlignCenter, label)
+            left += width
         painter.restore()
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.setPen(QPen(outline, 1))
+        painter.setPen(QPen(QColor("#fff2df"), 1))
         painter.drawPath(shape)
 
     @staticmethod
@@ -841,23 +905,30 @@ class BoardWidget(QWidget):
         # Stockfish uses the familiar Lichess arrows; Maia's colored rods and
         # likelihood ranks sit above them when both models suggest a move.
         if not preview and self.overlays and self.arrow_layout == "classic":
+            stockfish_badges = []
             for move, rank, _ in reversed(self._stockfish_entries()):
                 loss = self.recommendation_losses.get(move)
                 color = (candidate_loss_color(loss, self.candidate_arrow_green_cp,
                                               self.candidate_arrow_yellow_cp)
                          if self.candidate_loss_arrows and loss is not None else None)
                 self._candidate_arrow_color = color
-                self._stockfish_arrow(painter, move.from_sq, self._destination(move), unit, top=rank == 1)
+                destination = self._destination(move)
+                self._stockfish_arrow(painter, move.from_sq, destination, unit, top=rank == 1)
+                badge_color = QColor(color or ("#2866ad" if rank == 1 else "#595f65"))
+                badge_color.setAlpha(245)
+                stockfish_badges.append((move, destination, badge_color))
             self._candidate_arrow_color = None
         for src, dst in () if preview else self.arrows:
             self._arrow(painter, src, dst, QColor(232, 175, 79, 200), unit)
         if not preview and self.overlays and self.arrow_layout == "classic":
             for move in self.branch_moves:
                 self._arrow(painter, move.from_sq, self._destination(move), QColor(153, 137, 106, 65), unit, subtle=True)
-            if self.maia_arrows_enabled or self.leela_recommendations:
-                self._draw_maia_rods(painter, unit)
+            rod_badges = (self._draw_maia_rods(painter, unit)
+                          if self.maia_arrows_enabled or self.leela_recommendations else ())
+            self._draw_stockfish_badges(painter, stockfish_badges[::-1], unit, inset=0.43,
+                                        occupied=rod_badges)
         if not preview and self.overlays:
-            if self.arrow_layout in ("lichess", "lichess-ranked"):
+            if self.arrow_layout in LICHESS_ARROW_LAYOUTS:
                 self._draw_lichess_arrows(painter, unit)
             elif self.arrow_layout in ("nibbler", "nibbler-multipv"):
                 self._draw_nibbler_arrows(painter, unit)
