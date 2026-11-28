@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.212 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.212/NocturneChess-0.5.7.212-Windows-x64-unsigned.zip?download=1).** Fresh rebuild of 211, including full-game Lichess analysis at the selected move. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.211 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.211/NocturneChess-0.5.7.211-Windows-x64-unsigned.zip?download=1).** The explorer’s Lichess button opens the full game at the selected move. If the PGN cannot fit in a Lichess analysis link, Nocturne copies the full PGN for pasting. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.210 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.210/NocturneChess-0.5.7.210-Windows-x64-unsigned.zip?download=1).** The explorer filter fields open calendars, and the Database selector gives direct access to Lichess player rating bands. A new explorer header button opens the current game or position on Lichess. Windows tests and packaged startup checks passed.
