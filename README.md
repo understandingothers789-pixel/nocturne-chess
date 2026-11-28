@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.211 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.211/NocturneChess-0.5.7.211-Windows-x64-unsigned.zip?download=1).** The explorer’s Lichess button opens the full game at the selected move. If the PGN cannot fit in a Lichess analysis link, Nocturne copies the full PGN for pasting. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.210 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.210/NocturneChess-0.5.7.210-Windows-x64-unsigned.zip?download=1).** The explorer filter fields open calendars, and the Database selector gives direct access to Lichess player rating bands. A new explorer header button opens the current game or position on Lichess. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.209 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.209/NocturneChess-0.5.7.209-Windows-x64-unsigned.zip?download=1).** The build generates and checks the final `NocturneChess.exe` directly and reports its Authenticode status. Includes compact PGN import and Stockfish evaluation labels. Windows tests and packaged startup checks passed.
@@ -761,8 +763,9 @@ name to read it in full. These are historical results, not engine scores.
 **Filters** on the explorer, or **Database → Lichess date and rating filters…**,
 sets an inclusive month range. Click either date field to open a calendar,
 or type the month. Choose **Lichess players** in the dialog to select rating
-bands. The **↗** button in the explorer header opens the current game or
-position on Lichess. **Games** shows the samples
+bands. The **↗** button in the explorer header opens the full game on Lichess
+at the selected move. When a game is too large for the link, Nocturne copies
+the PGN and opens Lichess analysis so you can paste it. **Games** shows the samples
 returned for the current position and filters, with players, ratings, the
 played move, the result, and the date when available. Filter the list by played
 move or sample type, or choose **Explorer filters…** to change the date and
