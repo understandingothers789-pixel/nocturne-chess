@@ -1,0 +1,42 @@
+name: Publish 209 download
+on:
+  push:
+    branches: [publish/209-download]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for the first verified Windows build
+        id: verified
+        timeout-minutes: 45
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          while true; do
+            for run in 46098346789; do
+              conclusion=$(gh run view "$run" --json conclusion --jq .conclusion) || continue
+              if [[ "$conclusion" == success ]]; then
+                echo "run_id=$run" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            done
+            sleep 20
+          done
+      - uses: actions/download-artifact@v4
+        with:
+          name: NocturneChess-0.5.7.209-Windows-x64-unsigned
+          run-id: ${{ steps.verified.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: download
+      - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd download
+          zip -qr ../NocturneChess-0.5.7.209-Windows-x64-unsigned.zip .
+          gh release create v0.5.7.209 ../NocturneChess-0.5.7.209-Windows-x64-unsigned.zip --target 07871ed3a1c5787d519428727b639cfc4277cda5 --title "Nocturne Chess 0.5.7.209" --notes "Builds and validates NocturneChess.exe directly. Includes compact PGN import and Stockfish evaluation labels."
