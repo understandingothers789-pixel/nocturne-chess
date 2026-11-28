@@ -1480,6 +1480,7 @@ class MainWindow(QMainWindow):
             self.explorer._end_preview()
         self._sync_explorer_meter()
         self.explorer.flipped = self.board_view.flipped
+        self.explorer.game = self.game
         game_id = self.game.metadata.get("lichess_game_id", self.game.headers.get("LichessId", ""))
         self.explorer.lichess_game_id = game_id if isinstance(game_id, str) else ""
         self.explorer.lichess_game_source = (

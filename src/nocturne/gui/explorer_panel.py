@@ -1,9 +1,11 @@
 """Compact opening statistics, separate from engine ranking and evaluation."""
 
+from urllib.parse import quote
+
 from PySide6.QtCore import QEvent, QRectF, Qt, QUrl, Signal
 from PySide6.QtGui import QColor, QDesktopServices, QPainter
 from PySide6.QtWidgets import (
-    QAbstractItemView, QDialog, QHBoxLayout, QHeaderView, QPushButton,
+    QAbstractItemView, QApplication, QDialog, QHBoxLayout, QHeaderView, QPushButton,
     QSizePolicy, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
@@ -62,6 +64,7 @@ class OpeningExplorer(QWidget):
         self._hover = None
         self._compact_empty = False
         self.flipped = False
+        self.game = None
         self.lichess_game_id = ""
         self.lichess_game_source = "masters"
         self.setMinimumHeight(170)
@@ -85,7 +88,7 @@ class OpeningExplorer(QWidget):
         self.lichess_button = QPushButton("↗")
         self.lichess_button.setFixedWidth(36)
         self.lichess_button.setAccessibleName("Open on Lichess")
-        self.lichess_button.setToolTip("Open the current game on Lichess, or open this position on its analysis board.")
+        self.lichess_button.setToolTip("Open the current game and its moves on the Lichess analysis board.")
         self.lichess_button.clicked.connect(self._open_lichess)
         for button in (self.filters_button, self.games_button, self.lichess_button):
             button.hide()
@@ -246,13 +249,33 @@ class OpeningExplorer(QWidget):
     def _open_lichess(self):
         if not self.query or self.query.source not in ("masters", "lichess"):
             return
-        if GAME_ID.fullmatch(self.lichess_game_id):
+        color = "?color=black" if self.flipped else ""
+        paste_pgn = None
+        if self.game and len(self.game.nodes) > 1:
+            game = self.game
+            if game.current_node != game.mainline_node(game.cursor):
+                game = game.fork_for_analysis()
+                game.promote_current_line()
+            pgn = game.pgn()
+            encoded = quote(pgn, safe="")
+            if len(encoded) <= 5000 and "_" not in pgn:
+                board = self.game.board
+                ply = (board.fullmove - 1) * 2 + (board.turn == -1)
+                url = QUrl.fromEncoded(f"https://lichess.org/analysis/pgn/{encoded}{color}#{ply}".encode("ascii"))
+            else:
+                paste_pgn = pgn
+                url = QUrl(f"https://lichess.org/analysis{color}#menu")
+        elif GAME_ID.fullmatch(self.lichess_game_id):
             url = lichess_game_url(self.query, self.lichess_game_id, self.flipped, source=self.lichess_game_source)
         else:
             fen = self.query.fen.replace(" ", "_")
-            url = QUrl(f"https://lichess.org/analysis/standard/{fen}" + ("?color=black" if self.flipped else ""))
+            url = QUrl(f"https://lichess.org/analysis/standard/{fen}{color}")
+        if paste_pgn is not None:
+            QApplication.clipboard().setText(paste_pgn)
         if not QDesktopServices.openUrl(url):
             self.status_label.setText("Could not open the default browser.")
+        elif paste_pgn is not None:
+            self.status_label.setText("PGN copied. Paste it into the PGN box on Lichess.")
 
     def _show_games(self):
         if not self.query or self.query.source not in ("masters", "lichess") or not self.statistics:

@@ -509,6 +509,25 @@ class CachedGuiTests(unittest.TestCase):
                     explorer.lichess_game_id = "pFFH80NC"
                     explorer.lichess_button.click()
                     self.assertEqual(open_url.call_args.args[0].path(), "/import/master/pFFH80NC/white")
+                    game = Game.from_pgn("1. e4 (1. d4 d5) e5 2. Nf3 Nc6 *")
+                    explorer.game = game
+                    game.select_node(game.mainline_node(2))
+                    explorer.lichess_button.click()
+                    url = open_url.call_args.args[0]
+                    self.assertEqual(url.fragment(), "2")
+                    self.assertEqual(Game.from_pgn(url.path().removeprefix("/analysis/pgn/")).sans,
+                                     ["e4", "e5", "Nf3", "Nc6"])
+                    game.select_node(game.nodes[0].children[1])
+                    explorer.lichess_button.click()
+                    url = open_url.call_args.args[0]
+                    self.assertEqual(url.fragment(), "1")
+                    self.assertEqual(Game.from_pgn(url.path().removeprefix("/analysis/pgn/")).sans,
+                                     ["d4", "d5"])
+                    self.assertEqual(game.nodes[game.nodes[0].children[0]].san, "e4")
+                    game.nodes[0].comment = "A" * 6000
+                    explorer.lichess_button.click()
+                    self.assertEqual(open_url.call_args.args[0].path(), "/analysis")
+                    self.assertIn("A" * 6000, QApplication.clipboard().text())
             finally:
                 explorer.close_client()
                 explorer.deleteLater()
