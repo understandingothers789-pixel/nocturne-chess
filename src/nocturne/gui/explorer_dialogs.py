@@ -3,11 +3,11 @@
 from dataclasses import replace
 
 import chess
-from PySide6.QtCore import QTimer, Qt, QUrl, QUrlQuery
+from PySide6.QtCore import QDate, QTimer, Qt, QUrl, QUrlQuery
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtNetwork import QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
-    QAbstractItemView, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QGridLayout, QGroupBox,
+    QAbstractItemView, QCalendarWidget, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QGridLayout, QGroupBox,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout,
 )
 
@@ -15,15 +15,49 @@ from ..core.game import Game
 from ..explorer import GAME_ID, MAX_RESPONSE, RATINGS, rating_band, valid_explorer_month
 
 
-def lichess_game_url(query, game_id, flipped=False):
-    if query.source not in ("masters", "lichess") or not GAME_ID.fullmatch(game_id):
+def lichess_game_url(query, game_id, flipped=False, *, source=None):
+    source = source or query.source
+    if source not in ("masters", "lichess") or not GAME_ID.fullmatch(game_id):
         raise ValueError("Invalid Lichess game")
-    path = "import/master" if query.source == "masters" else "game"
+    path = "import/master" if source == "masters" else "game"
     url = QUrl(f"https://lichess.org/{path}/{game_id}/{'black' if flipped else 'white'}")
     params = QUrlQuery()
     params.addQueryItem("fen", query.fen)
     url.setQuery(params)
     return url
+
+
+class MonthField(QLineEdit):
+    def __init__(self, value):
+        super().__init__(value)
+        self.setPlaceholderText("YYYY-MM or leave blank")
+        self.setMaxLength(7)
+        self.setToolTip("Click to choose a month, or type YYYY-MM. Leave blank for an open date range.")
+        self.calendar = QCalendarWidget(self)
+        self.calendar.setWindowFlags(Qt.WindowType.Popup)
+        self.calendar.clicked.connect(self._choose_month)
+        self.calendar.activated.connect(self._choose_month)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Down and event.modifiers() == Qt.KeyboardModifier.AltModifier:
+            self._show_calendar()
+        else:
+            super().keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._show_calendar()
+
+    def _show_calendar(self):
+        selected = QDate.fromString(self.text() + "-01", "yyyy-MM-dd")
+        self.calendar.setSelectedDate(selected if selected.isValid() else QDate.currentDate())
+        self.calendar.move(self.mapToGlobal(self.rect().bottomLeft()))
+        self.calendar.show()
+
+    def _choose_month(self, date):
+        self.setText(date.toString("yyyy-MM"))
+        self.calendar.hide()
 
 
 class ExplorerFiltersDialog(QDialog):
@@ -33,26 +67,31 @@ class ExplorerFiltersDialog(QDialog):
         self.resize(400, 0)
         layout = QVBoxLayout(self)
         form = QFormLayout()
-        self.first_month = QLineEdit(since)
-        self.last_month = QLineEdit(until)
-        self.first_month.setPlaceholderText("YYYY-MM or leave blank")
-        self.last_month.setPlaceholderText("YYYY-MM or leave blank")
-        self.first_month.setMaxLength(7)
-        self.last_month.setMaxLength(7)
+        self.source = QComboBox()
+        self.source.addItem("Masters", "masters")
+        self.source.addItem("Lichess players", "lichess")
+        self.source.setCurrentIndex(self.source.findData(source))
+        form.addRow("Database", self.source)
+        self.first_month = MonthField(since)
+        self.last_month = MonthField(until)
         form.addRow("From month", self.first_month)
         form.addRow("Through month", self.last_month)
         layout.addLayout(form)
         self.bands = {}
-        if source == "lichess":
-            ratings = QGroupBox("Rating bands")
-            grid = QGridLayout(ratings)
-            selected = groups or tuple(value for value in RATINGS if value >= rating)
-            for index, value in enumerate(RATINGS):
-                box = QCheckBox(rating_band(value))
-                box.setChecked(value in selected)
-                self.bands[value] = box
-                grid.addWidget(box, index // 3, index % 3)
-            layout.addWidget(ratings)
+        self.rating_box = QGroupBox("Rating bands")
+        grid = QGridLayout(self.rating_box)
+        selected = groups or tuple(value for value in RATINGS if value >= rating)
+        for index, value in enumerate(RATINGS):
+            box = QCheckBox(rating_band(value))
+            box.setChecked(value in selected)
+            self.bands[value] = box
+            grid.addWidget(box, index // 3, index % 3)
+        layout.addWidget(self.rating_box)
+        self.rating_note = QLabel("Choose Lichess players to filter by rating. Masters supports date filters.")
+        self.rating_note.setWordWrap(True)
+        layout.addWidget(self.rating_note)
+        self.source.currentIndexChanged.connect(self._sync_source)
+        self._sync_source()
         self.message = QLabel()
         self.message.setWordWrap(True)
         self.message.setTextFormat(Qt.TextFormat.PlainText)
@@ -66,6 +105,11 @@ class ExplorerFiltersDialog(QDialog):
         buttons.rejected.connect(self.reject)
         buttons.button(QDialogButtonBox.StandardButton.Reset).clicked.connect(self._reset)
         layout.addWidget(buttons)
+
+    def _sync_source(self):
+        player_games = self.source.currentData() == "lichess"
+        self.rating_box.setEnabled(player_games)
+        self.rating_note.setVisible(not player_games)
 
     def _reset(self):
         self.first_month.clear()
@@ -81,7 +125,7 @@ class ExplorerFiltersDialog(QDialog):
             message = "Enter months as YYYY-MM."
         elif since and until and since > until:
             message = "The first month must be on or before the last month."
-        elif self.bands and not groups:
+        elif self.source.currentData() == "lichess" and not groups:
             message = "Select at least one rating band."
         else:
             self.values = since, until, () if groups == RATINGS else groups
@@ -289,6 +333,7 @@ class ExplorerGamesDialog(QDialog):
             self.status.setText("Lichess returned an unreadable game PGN.")
             return
         self.game = game
+        game.metadata.update(lichess_game_id=sample["id"], lichess_game_source=self.query.source)
         self.accept()
 
     def _select_position(self, game, sample):

@@ -1,15 +1,15 @@
 """Compact opening statistics, separate from engine ranking and evaluation."""
 
-from PySide6.QtCore import QEvent, QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QPainter
+from PySide6.QtCore import QEvent, QRectF, Qt, QUrl, Signal
+from PySide6.QtGui import QColor, QDesktopServices, QPainter
 from PySide6.QtWidgets import (
     QAbstractItemView, QDialog, QHBoxLayout, QHeaderView, QPushButton,
     QSizePolicy, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from ..explorer import ExplorerCache, ExplorerQuery, chessdb_score, tablebase_outcome
+from ..explorer import GAME_ID, ExplorerCache, ExplorerQuery, chessdb_score, tablebase_outcome
 from .explorer_client import ExplorerClient
-from .explorer_dialogs import ExplorerGamesDialog
+from .explorer_dialogs import ExplorerGamesDialog, lichess_game_url
 from .widgets import ElidedLabel
 
 
@@ -62,6 +62,8 @@ class OpeningExplorer(QWidget):
         self._hover = None
         self._compact_empty = False
         self.flipped = False
+        self.lichess_game_id = ""
+        self.lichess_game_source = "masters"
         self.setMinimumHeight(170)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 4, 0, 0)
@@ -80,7 +82,12 @@ class OpeningExplorer(QWidget):
         self.games_button = QPushButton("Games")
         self.games_button.setToolTip("Browse games that reached this position with the current filters.")
         self.games_button.clicked.connect(self._show_games)
-        for button in (self.filters_button, self.games_button):
+        self.lichess_button = QPushButton("↗")
+        self.lichess_button.setFixedWidth(36)
+        self.lichess_button.setAccessibleName("Open on Lichess")
+        self.lichess_button.setToolTip("Open the current game on Lichess, or open this position on its analysis board.")
+        self.lichess_button.clicked.connect(self._open_lichess)
+        for button in (self.filters_button, self.games_button, self.lichess_button):
             button.hide()
             header.addWidget(button)
         refresh = QPushButton("↻")
@@ -138,6 +145,7 @@ class OpeningExplorer(QWidget):
         supported = bool(self.query and self.query.source in ("masters", "lichess"))
         self.filters_button.setVisible(supported)
         self.games_button.setVisible(supported)
+        self.lichess_button.setVisible(supported)
         self.games_button.setEnabled(False)
         self.statistics_changed.emit()
 
@@ -234,6 +242,17 @@ class OpeningExplorer(QWidget):
             self._load_query(self._tablebase_query, force=True)
         elif self.query:
             self.client.load(self.query, force=True)
+
+    def _open_lichess(self):
+        if not self.query or self.query.source not in ("masters", "lichess"):
+            return
+        if GAME_ID.fullmatch(self.lichess_game_id):
+            url = lichess_game_url(self.query, self.lichess_game_id, self.flipped, source=self.lichess_game_source)
+        else:
+            fen = self.query.fen.replace(" ", "_")
+            url = QUrl(f"https://lichess.org/analysis/standard/{fen}" + ("?color=black" if self.flipped else ""))
+        if not QDesktopServices.openUrl(url):
+            self.status_label.setText("Could not open the default browser.")
 
     def _show_games(self):
         if not self.query or self.query.source not in ("masters", "lichess") or not self.statistics:

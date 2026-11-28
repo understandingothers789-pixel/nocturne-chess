@@ -1451,7 +1451,8 @@ class MainWindow(QMainWindow):
                                        self.config["explorer_rating"], self.config["explorer_rating_groups"], self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             since, until, groups = dialog.values
-            self.config.update(explorer_since=since, explorer_until=until)
+            source = dialog.source.currentData()
+            self.config.update(explorer_since=since, explorer_until=until, explorer_source=source)
             if source == "lichess":
                 self.config.update(explorer_rating=0, explorer_rating_groups=groups)
             self._sync_explorer()
@@ -1479,6 +1480,16 @@ class MainWindow(QMainWindow):
             self.explorer._end_preview()
         self._sync_explorer_meter()
         self.explorer.flipped = self.board_view.flipped
+        game_id = self.game.metadata.get("lichess_game_id", self.game.headers.get("LichessId", ""))
+        self.explorer.lichess_game_id = game_id if isinstance(game_id, str) else ""
+        self.explorer.lichess_game_source = (
+            "lichess" if self.game.metadata.get("lichess_game_source") == "lichess" else "masters"
+        )
+        if not self.explorer.lichess_game_id:
+            site = QUrl(self.game.headers.get("Site", ""))
+            if site.scheme() in ("https", "http") and site.host() == "lichess.org":
+                self.explorer.lichess_game_id = site.path().removeprefix("/game/").strip("/").split("/")[0]
+                self.explorer.lichess_game_source = "lichess"
         self.explorer.set_position(self.game.board, self._position_identity(), lookup,
                                    self.config.get("explorer_source", "masters"),
                                    self.config.get("explorer_speed", "all"),

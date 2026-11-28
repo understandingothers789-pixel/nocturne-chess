@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from PySide6.QtCore import QTimer, Qt, QUrl, QUrlQuery
+from PySide6.QtCore import QDate, QTimer, Qt, QUrl, QUrlQuery
 from PySide6.QtNetwork import QAbstractSocket, QHostAddress, QNetworkProxy, QNetworkRequest, QTcpServer
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
@@ -480,6 +480,38 @@ class CachedGuiTests(unittest.TestCase):
         dialog.last_month.setText("2025-06")
         dialog.accept()
         self.assertEqual(dialog.values, ("2025-01", "2025-06", (1600, 2200)))
+
+    def test_masters_calendar_and_player_rating_controls(self):
+        dialog = ExplorerFiltersDialog("masters", "", "", 0, ())
+        self.addCleanup(dialog.deleteLater)
+        dialog.show()
+        self.assertFalse(dialog.bands[1600].isEnabled())
+        QTest.mouseClick(dialog.first_month, Qt.MouseButton.LeftButton)
+        self.assertTrue(dialog.first_month.calendar.isVisible())
+        dialog.first_month.calendar.clicked.emit(QDate(2025, 4, 24))
+        self.assertEqual(dialog.first_month.text(), "2025-04")
+        self.assertFalse(dialog.first_month.calendar.isVisible())
+        dialog.source.setCurrentIndex(dialog.source.findData("lichess"))
+        self.assertTrue(dialog.bands[1600].isEnabled())
+        dialog.close()
+
+    def test_explorer_header_links_to_game_or_current_position(self):
+        from nocturne.gui.explorer_panel import OpeningExplorer
+
+        with tempfile.TemporaryDirectory() as directory:
+            explorer = OpeningExplorer(Path(directory) / "cache.sqlite3")
+            try:
+                explorer.query = ExplorerQuery(Game().board.fen())
+                explorer._clear_statistics()
+                with patch("nocturne.gui.explorer_panel.QDesktopServices.openUrl", return_value=True) as open_url:
+                    explorer.lichess_button.click()
+                    self.assertTrue(open_url.call_args.args[0].path().startswith("/analysis/standard/"))
+                    explorer.lichess_game_id = "pFFH80NC"
+                    explorer.lichess_button.click()
+                    self.assertEqual(open_url.call_args.args[0].path(), "/import/master/pFFH80NC/white")
+            finally:
+                explorer.close_client()
+                explorer.deleteLater()
 
     def test_empty_explorer_collapses_and_expands_again_when_moves_return(self):
         from nocturne.gui.explorer_panel import OpeningExplorer
