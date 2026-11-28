@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.209 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.209/NocturneChess-0.5.7.209-Windows-x64-unsigned.zip?download=1).** The build generates and checks the final `NocturneChess.exe` directly and reports its Authenticode status. Includes compact PGN import and Stockfish evaluation labels. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.208 rebuild for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.208/NocturneChess-0.5.7.208-Windows-x64-unsigned-rebuild.zip?download=1).** Fresh build of the same 208 source, including compact PGN import and the Stockfish evaluation arrow layouts. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.208 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.208/NocturneChess-0.5.7.208-Windows-x64-unsigned.zip?download=1).** PGN import recovers compact numbered Chessgames.com scores with missing spaces between SAN moves. Copy or save the imported game to export standard PGN. Includes the board arrow updates from 207. Windows tests and packaged startup checks passed.
