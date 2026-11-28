@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.207 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.207/NocturneChess-0.5.7.207-Windows-x64-unsigned.zip?download=1).** Nocturne Classic and paired layouts show Stockfish evaluation badges alongside Maia and Leela ranks. The new Lichess · evaluation preset adds scores to the standard Lichess arrows. Nibbler shows centipawns and mate scores in its circles. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.206 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.206/NocturneChess-0.5.7.206-Windows-x64-unsigned.zip?download=1).** The opening explorer reserves space for five complete moves. The Games dialog filters by played move and sample list, and opens selected games on Lichess at the position being explored. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.205 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.205/NocturneChess-0.5.7.205-Windows-x64-unsigned.zip?download=1).** Lichess Explorer adds month ranges, rating bands, and sample games that open in a new study tab. Lichess ranked circles and Nibbler MultiPV share Nibbler's palette. Board arrow presets explain their cutoffs, and the evaluation bar uses a Lichess-style gauge. Windows tests and packaged startup checks passed.
@@ -866,6 +868,10 @@ branch arrows and compact/detailed statistics are configurable. Manual annotatio
 use right-click squares and right-drag arrows. Board images can be exported as PNG.
 
 ## Studies, PGN and Chess960
+
+**File → Enter FEN / PGN…** accepts compact numbered scores copied from
+Chessgames.com, such as `1.e4c52.Nf3d6`. Nocturne checks the recovered moves
+for legality and exports standard PGN when you copy or save the game.
 
 Paste PGN or FEN directly, edit PGN in the side tab, open files, or drop PGNs onto
 the window. Multiple games open in separate study tabs and are saved to the library.

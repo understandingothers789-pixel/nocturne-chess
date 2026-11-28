@@ -8,6 +8,42 @@ import re
 from .board import Board, KING, PAWN, PIECE_CHARS, START_FEN, Move, square_name
 
 
+_PGN_RESULT = r"(?:1-0|0-1|1/2-1/2|\*)"
+_COMPACT_SAN = (
+    r"(?:[O0]-[O0](?:-[O0])?|[KQRBN][a-h]??[1-8]??x?[a-h][1-8]"
+    r"|(?:[a-h]x)?[a-h](?:[2-7]|[18]=?[QRBN]))[+#]?[!?]{0,2}"
+)
+_COMPACT_FULLMOVE = re.compile(
+    rf"(?P<number>[1-9]\d{{0,4}})\.\s*(?P<white>{_COMPACT_SAN})"
+    rf"(?:\s*(?:(?P=number)\.\.\.\s*)?(?P<black>{_COMPACT_SAN}))?"
+    rf"\s*(?=[1-9]\d{{0,4}}\.|{_PGN_RESULT}|\Z)"
+)
+_COMPACT_HEADERS = re.compile(r"(?:\[[^\r\n]+\][ \t]*\r?\n\s*)*")
+
+
+def _expand_compact_pgn(text: str) -> str | None:
+    """Recover numbered, unannotated SAN pasted without move separators."""
+    text = text.strip()
+    fullmoves = []
+    joined = False
+    headers = _COMPACT_HEADERS.match(text)
+    cursor = headers.end()
+    while match := _COMPACT_FULLMOVE.match(text, cursor):
+        number, white, black = match.groups()
+        if int(number) != len(fullmoves) + 1:
+            return None
+        if black is not None:
+            joined |= match.end("white") == match.start("black")
+        fullmoves.append(f"{number}. {white}" + (f" {black}" if black else ""))
+        cursor = match.end()
+        if black is None:
+            break
+    result = text[cursor:]
+    if joined and (not result or re.fullmatch(_PGN_RESULT, result)):
+        return headers[0] + " ".join([*fullmoves, result or "*"])
+    return None
+
+
 def san(board: Board, move: Move, legal: list[Move] | None = None) -> str:
     if hasattr(board, "native"):
         from .rules import native
@@ -134,7 +170,7 @@ def _validate_structure(text):
 
 def read_pgn(text: str) -> PgnGame:
     body = _validate_structure(text)
-    if len(re.findall(r"(?<!\S)(?:1-0|0-1|1/2-1/2|\*)(?!\S)", body)) > 1:
+    if len(re.findall(rf"(?<!\S){_PGN_RESULT}(?!\S)", body)) > 1:
         raise ValueError("Import one PGN game at a time")
     games = read_pgns(text)
     if len(games) != 1:
@@ -150,9 +186,18 @@ def read_pgns(text):
     if len(text) > 4_000_000:
         raise ValueError("PGN exceeds the 4 MB import limit")
     _validate_structure(text)
-    stream = io.StringIO(text.lstrip("\ufeff"))
+    text = text.lstrip("\ufeff")
+    stream = io.StringIO(text)
     games = []
-    while (source := chess.pgn.read_game(stream)) is not None:
+    while True:
+        start = stream.tell()
+        source = chess.pgn.read_game(stream)
+        if source is None:
+            break
+        if source.errors:
+            compact = _expand_compact_pgn(text[start:stream.tell()])
+            if compact:
+                source = chess.pgn.read_game(io.StringIO(compact))
         if source.errors:
             raise ValueError(str(source.errors[0]))
         if source.headers.get("Variant", "Standard").lower() not in (

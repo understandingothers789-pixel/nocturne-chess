@@ -165,6 +165,31 @@ class RulesTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     read_pgn(text)
 
+    def test_chessgames_compact_score_round_trips_as_standard_pgn(self):
+        compact = (
+            "1.e4c52.Nf3d63.d4cxd44.Nxd4Nf65.Nc3a66.Bc4e67.Bb3b58.O-OBb79.f4Nc6"
+            "10.Nxc6Bxc611.f5e512.Qd3Be713.Bg5Qb6+14.Kh1O-O15.Bxf6Bxf616.Bd5Rac8"
+            "17.Bxc6Rxc618.Rad1Rfc819.Nd5Qd820.c3Be721.Ra1f622.a4Rb823.Nxe7+1-0"
+        )
+        expected = (
+            "e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Bc4 e6 Bb3 b5 O-O Bb7 f4 Nc6 Nxc6 Bxc6 "
+            "f5 e5 Qd3 Be7 Bg5 Qb6+ Kh1 O-O Bxf6 Bxf6 Bd5 Rac8 Bxc6 Rxc6 Rad1 Rfc8 "
+            "Nd5 Qd8 c3 Be7 Ra1 f6 a4 Rb8 Nxe7+"
+        ).split()
+        game = Game.from_pgn(compact)
+        self.assertEqual(game.sans, expected)
+        pgn = game.pgn()
+        self.assertIn('[Result "1-0"]', pgn)
+        self.assertTrue(pgn.strip().endswith("23. Nxe7+ 1-0"))
+        self.assertEqual(Game.from_pgn(pgn).sans, expected)
+        tagged = Game.from_pgn('[Event "Copied score"]\n\n' + compact)
+        self.assertEqual(tagged.headers["Event"], "Copied score")
+        self.assertEqual(tagged.sans, expected)
+
+        for invalid in ("1.e4e42.Nf3Nc6*", "1.e4c53.Nf3d6*", "1.e4c5 1-0 trailing text"):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                read_pgn(invalid)
+
     def test_pgn_clock_annotations_are_parsed_and_round_trip(self):
         self.assertEqual(pgn_clock("[%clk 0:04:59.3]"), (299.3, "0:04:59.3"))
         self.assertEqual(pgn_clock("[%clk 12:03:04]"), (43384.0, "12:03:04"))
