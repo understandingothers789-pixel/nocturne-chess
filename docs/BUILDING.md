@@ -893,7 +893,7 @@ the installed python-chess Python source and notices.
 
 Outputs:
 
-- `dist/Nocturne/Nocturne.exe`: windowed native GUI plus `_internal` shared libraries.
+- `dist/Nocturne/NocturneChess.exe`: windowed native GUI plus `_internal` shared libraries.
 - `dist/Nocturne-0.5.7.15-source.zip`: source, tests, documentation, rules-library source.
 
 No C compiler is required for the new external-only GUI. The prior custom UCI

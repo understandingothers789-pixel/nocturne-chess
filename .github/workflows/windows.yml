@@ -38,10 +38,10 @@ jobs:
         run: python scripts/run_tests_isolated.py
       - name: Build Windows apps and run packaged smoke checks
         run: python scripts/build_windows.py --build-only --skip-tests
-      - name: Name and check Nocturne Chess executable
+      - name: Check release executable and report Authenticode status
         shell: pwsh
         run: |
-          Move-Item dist/Nocturne/Nocturne.exe dist/Nocturne/NocturneChess.exe
+          Get-AuthenticodeSignature dist/Nocturne/NocturneChess.exe | Select-Object Status, StatusMessage
           $application = Start-Process -FilePath (Resolve-Path dist/Nocturne/NocturneChess.exe) -ArgumentList "--smoke-test" -Wait -PassThru
           if ($application.ExitCode -ne 0) { throw "Nocturne Chess startup check failed" }
       - name: Upload unsigned Windows test build

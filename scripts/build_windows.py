@@ -10,7 +10,7 @@ import tomllib
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-APPLICATIONS = ("Nocturne",)
+APPLICATIONS = {"Nocturne": "NocturneChess.exe"}
 NATIVE_SUFFIXES = frozenset((".exe", ".dll", ".pyd"))
 LAUNCHER_SUFFIXES = frozenset(
     (".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".wsf", ".wsh", ".hta", ".scr", ".com")
@@ -26,12 +26,12 @@ def run(arguments, **kwargs):
 
 
 def smoke_test(dist: Path):
-    run([dist / "Nocturne" / "Nocturne.exe", "--smoke-test"], timeout=90)
+    run([dist / "Nocturne" / APPLICATIONS["Nocturne"], "--smoke-test"], timeout=90)
     fixture = ROOT / "tests" / "fixtures" / "uci_simulator.py"
     if fixture.is_file():
         run(
             [
-                dist / "Nocturne" / "Nocturne.exe",
+                dist / "Nocturne" / APPLICATIONS["Nocturne"],
                 "--smoke-test",
                 "--smoke-engine",
                 (ROOT / ".venv-build" / "Scripts" / "python.exe")
@@ -80,9 +80,9 @@ def build_only(skip_tests=False):
 def verify_release_files(dist: Path, signtool: str) -> list[Path]:
     """Use Windows SDK Authenticode verification, including certificate trust."""
     files = []
-    for name in APPLICATIONS:
+    for name, executable in APPLICATIONS.items():
         directory = dist / name
-        if not (directory / f"{name}.exe").is_file():
+        if not (directory / executable).is_file():
             raise BuildError(f"Missing application executable: {name}")
         if directory.is_symlink():
             raise BuildError("Release directories must not be symbolic links")

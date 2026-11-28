@@ -25,7 +25,7 @@ gui = Analysis(
 )
 gui_pyz = PYZ(gui.pure)
 gui_exe = EXE(
-    gui_pyz, gui.scripts, [], exclude_binaries=True, name='Nocturne',
+    gui_pyz, gui.scripts, [], exclude_binaries=True, name='NocturneChess' if on_windows else 'Nocturne',
     debug=False, bootloader_ignore_signals=False, strip=False, upx=False,
     console=False, disable_windowed_traceback=False,
     icon=str(root / 'src/nocturne/assets/icon.ico') if on_windows else None,

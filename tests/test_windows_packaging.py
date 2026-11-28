@@ -26,10 +26,10 @@ class WindowsPackagingTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.dist = Path(self.tmp.name)
-        for name in build_windows.APPLICATIONS:
+        for name, executable in build_windows.APPLICATIONS.items():
             directory = self.dist / name
             directory.mkdir()
-            (directory / f"{name}.exe").write_bytes(b"test fixture; not a real executable")
+            (directory / executable).write_bytes(b"test fixture; not a real executable")
         (self.dist / "Nocturne" / "runtime.dll").write_bytes(b"native library fixture")
 
     def test_failed_signature_does_not_create_a_release(self):
@@ -53,7 +53,7 @@ class WindowsPackagingTests(unittest.TestCase):
         with patch.object(build_windows, "run") as run, patch.object(build_windows, "smoke_test") as smoke:
             output = build_windows.package_signed(self.dist, "0.3.0", "signtool.exe")
         checked = {call.args[0][-1].name for call in run.call_args_list}
-        self.assertEqual(checked, {"Nocturne.exe", "runtime.dll"})
+        self.assertEqual(checked, {"NocturneChess.exe", "runtime.dll"})
         self.assertTrue(all(call.args[0][1:5] == ["verify", "/pa", "/all", "/v"] for call in run.call_args_list))
         self.assertTrue(all("/tw" in call.args[0] for call in run.call_args_list))
         smoke.assert_called_once_with(self.dist)
@@ -68,6 +68,6 @@ class WindowsPackagingTests(unittest.TestCase):
         self.assertEqual(list(self.dist.glob("*.zip")), [])
 
     def test_missing_entry_point_prevents_release(self):
-        (self.dist / "Nocturne" / "Nocturne.exe").unlink()
+        (self.dist / "Nocturne" / "NocturneChess.exe").unlink()
         with self.assertRaisesRegex(build_windows.BuildError, "Missing application executable"):
             build_windows.verify_release_files(self.dist, "signtool.exe")
