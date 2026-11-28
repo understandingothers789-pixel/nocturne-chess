@@ -21,6 +21,8 @@ source/tests remain for reproducibility; they are excluded from the desktop bund
 
 *Native application capture of Nocturne Chess 0.5.7.131.*
 
+**[Download Nocturne Chess 0.5.7.208 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.208/NocturneChess-0.5.7.208-Windows-x64-unsigned.zip?download=1).** PGN import recovers compact numbered Chessgames.com scores with missing spaces between SAN moves. Copy or save the imported game to export standard PGN. Includes the board arrow updates from 207. Windows tests and packaged startup checks passed.
+
 **[Download Nocturne Chess 0.5.7.207 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.207/NocturneChess-0.5.7.207-Windows-x64-unsigned.zip?download=1).** Nocturne Classic and paired layouts show Stockfish evaluation badges alongside Maia and Leela ranks. The new Lichess · evaluation preset adds scores to the standard Lichess arrows. Nibbler shows centipawns and mate scores in its circles. Windows tests and packaged startup checks passed.
 
 **[Download Nocturne Chess 0.5.7.206 for Windows (unsigned x64)](https://github.com/understandingothers789-pixel/nocturne-chess/releases/download/v0.5.7.206/NocturneChess-0.5.7.206-Windows-x64-unsigned.zip?download=1).** The opening explorer reserves space for five complete moves. The Games dialog filters by played move and sample list, and opens selected games on Lichess at the position being explored. Windows tests and packaged startup checks passed.
